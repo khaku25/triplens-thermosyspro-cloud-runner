@@ -3,22 +3,38 @@ name: Run ThermoSysPro GT Trip
 on:
   workflow_dispatch:
     inputs:
+      sampling_profile:
+        description: standard keeps current inputs; incident_1ms runs the safe 0-10 s / trip-at-2 s high-resolution preset
+        required: true
+        type: choice
+        default: incident_1ms
+        options:
+          - standard
+          - incident_1ms
       trip_time_s:
-        description: GT trip start time in simulation seconds
+        description: GT trip start time in seconds (standard profile only)
         required: true
         default: "600"
       trip_ramp_duration_s:
-        description: Exhaust boundary-condition collapse duration in seconds
+        description: Exhaust collapse duration in seconds (standard profile only)
         required: true
         default: "5"
       stop_time_s:
-        description: Simulation stop time in seconds
+        description: Simulation stop time in seconds (standard profile only)
         required: true
         default: "1000"
       output_intervals:
-        description: Number of ThermoSysPro output intervals
+        description: ThermoSysPro output intervals (standard profile only)
         required: true
         default: "1000"
+      incident_pre_ms:
+        description: 1 ms ECMS window before trip (incident_1ms profile)
+        required: true
+        default: "2000"
+      incident_post_ms:
+        description: 1 ms ECMS window after trip (incident_1ms profile)
+        required: true
+        default: "5000"
       fault_preset:
         description: Additional ECMS FaultBus injection
         required: true
@@ -66,10 +82,13 @@ jobs:
 
       - name: Run ThermoSysPro and ECMS pipeline
         env:
+          SAMPLING_PROFILE: ${{ inputs.sampling_profile }}
           TRIP_TIME_S: ${{ inputs.trip_time_s }}
           TRIP_RAMP_DURATION_S: ${{ inputs.trip_ramp_duration_s }}
           STOP_TIME_S: ${{ inputs.stop_time_s }}
           OUTPUT_INTERVALS: ${{ inputs.output_intervals }}
+          INCIDENT_PRE_MS: ${{ inputs.incident_pre_ms }}
+          INCIDENT_POST_MS: ${{ inputs.incident_post_ms }}
           FAULT_PRESET: ${{ inputs.fault_preset }}
           COMMAND_SCENARIO: ${{ inputs.command_scenario }}
         run: |
@@ -80,7 +99,10 @@ jobs:
             "$STOP_TIME_S" \
             "$OUTPUT_INTERVALS" \
             "$FAULT_PRESET" \
-            "$COMMAND_SCENARIO"
+            "$COMMAND_SCENARIO" \
+            "$SAMPLING_PROFILE" \
+            "$INCIDENT_PRE_MS" \
+            "$INCIDENT_POST_MS"
 
       - name: Upload simulation results
         if: success()
