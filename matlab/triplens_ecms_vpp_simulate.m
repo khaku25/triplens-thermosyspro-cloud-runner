@@ -16,6 +16,10 @@ function result = triplens_ecms_vpp_simulate(varargin)
 %     FaultPreset    none, grid_loss, relay_fail, etc.
 %     TripTime       Synthetic GT Trip time in seconds.
 %     StopTime       Synthetic run stop time in seconds.
+%     SamplingProfile standard (default) or incident_1ms.
+%     IncidentPeriodMs Incident-window trend period in milliseconds.
+%     IncidentPreMs  Incident-window duration before TripTime in ms.
+%     IncidentPostMs Incident-window duration after TripTime in ms.
 %
 %   This is an explicitly SYNTHETIC MATLAB fallback.  It preserves the
 %   TripLens 6.9 kV topology (UAT-A/UAT-B taps, no SST) and consumes the
@@ -36,6 +40,10 @@ addParameter(parser,"OutputRoot","",@isTextScalar);
 addParameter(parser,"FaultPreset","none",@isTextScalar);
 addParameter(parser,"TripTime",2,@isFiniteScalar);
 addParameter(parser,"StopTime",8,@isFiniteScalar);
+addParameter(parser,"SamplingProfile","standard",@isTextScalar);
+addParameter(parser,"IncidentPeriodMs",1,@isFiniteScalar);
+addParameter(parser,"IncidentPreMs",2000,@isFiniteScalar);
+addParameter(parser,"IncidentPostMs",5000,@isFiniteScalar);
 parse(parser,varargin{:});
 options = parser.Results;
 
@@ -124,19 +132,35 @@ assert(stopTime>tripTime,"TripLens:InvalidTimeResolution", ...
 periodMs = round(settings.TREND_PERIOD_MS);
 assert(periodMs > 0,"TripLens:InvalidTrendPeriod","TREND_PERIOD_MS must be positive.");
 stopMs = round(stopTime*1000);
-estimatedTrendRows = floor(stopMs/periodMs)+2;
+samplingProfile = lower(strtrim(string(options.SamplingProfile)));
+assert(any(samplingProfile==["standard","incident_1ms"]), ...
+    "TripLens:UnknownSamplingProfile", ...
+    "SamplingProfile must be standard or incident_1ms, got %s.",samplingProfile);
+incidentPeriodMs = validateWholeMilliseconds(options.IncidentPeriodMs, ...
+    "IncidentPeriodMs",true);
+incidentPreMs = validateWholeMilliseconds(options.IncidentPreMs, ...
+    "IncidentPreMs",false);
+incidentPostMs = validateWholeMilliseconds(options.IncidentPostMs, ...
+    "IncidentPostMs",false);
+assert(incidentPeriodMs<=periodMs,"TripLens:InvalidIncidentPeriod", ...
+    "IncidentPeriodMs must not exceed TREND_PERIOD_MS (%d ms).",periodMs);
+if samplingProfile=="incident_1ms"
+    assert(incidentPeriodMs==1,"TripLens:InvalidIncidentPeriod", ...
+        "incident_1ms requires IncidentPeriodMs=1.");
+end
+[timeMs,incidentStartMs,incidentStopMs,estimatedTrendRows] = buildSampleTimes( ...
+    stopMs,periodMs,round(tripTime*1000),samplingProfile,incidentPeriodMs, ...
+    incidentPreMs,incidentPostMs);
 assert(estimatedTrendRows<=50000,"TripLens:FallbackRunTooLarge", ...
     "The MATLAB fallback would create about %d trend rows and too many feeder rows. " + ...
-    "Shorten StopTime or increase TREND_PERIOD_MS.",estimatedTrendRows);
-timeMs = (0:periodMs:stopMs).';
-if timeMs(end) ~= stopMs
-    timeMs(end+1,1) = stopMs;
-end
+    "Shorten StopTime, shorten the incident window, or increase a sampling period.", ...
+    estimatedTrendRows);
 timeSeconds = timeMs./1000;
 
 processBus = makeSyntheticProcessBus(timeSeconds,tripTime);
 [trend,events] = simulateElectrical(processBus,timeMs,tripTime,settings, ...
-    configStatus,fault,faultPreset,commands);
+    configStatus,fault,faultPreset,commands,samplingProfile,incidentPeriodMs, ...
+    incidentStartMs,incidentStopMs);
 feeders = makeFeederTrend(trend,equipment,commands,settings,packageRoot);
 events = addFeederTransitionRows(events,feeders);
 
@@ -185,7 +209,8 @@ copyReferenceFiles(packageRoot,stagingFolder);
 
 manifest = makeManifest(runId,tripTime,stopTime,faultPreset,configStatus, ...
     settings.AUX_BUS_VOLTAGE_KV,height(processBus),height(trend), ...
-    height(events),height(feeders),height(resolvedCommandTable));
+    height(events),height(feeders),height(resolvedCommandTable),samplingProfile, ...
+    periodMs,incidentPeriodMs,incidentStartMs,incidentStopMs);
 writeJson(fullfile(stagingFolder,"manifest.json"),manifest);
 verifyStaging(stagingFolder,numel(equipment.id));
 
@@ -201,6 +226,8 @@ result.RunId = string(runId);
 result.RunFolder = string(runFolder);
 result.Engine = "MATLAB_NATIVE_SYNTHETIC_FALLBACK";
 result.Topology = "6.9 kV / UAT-A + UAT-B / NO SST";
+result.SamplingProfile = samplingProfile;
+result.IncidentWindowMs = [incidentStartMs,incidentStopMs];
 result.ProcessBus = processBus;
 result.ECMSTrend = trend;
 result.ECMSEvents = events;
@@ -226,6 +253,62 @@ end
 
 function value = isFiniteScalar(input)
 value = isnumeric(input) && isscalar(input) && isfinite(input);
+end
+
+function value = validateWholeMilliseconds(input,label,strictlyPositive)
+value = double(input);
+rounded = round(value);
+assert(abs(value-rounded)<=1e-9,"TripLens:InvalidSamplingMilliseconds", ...
+    "%s must be a whole number of milliseconds.",label);
+if strictlyPositive
+    assert(rounded>0,"TripLens:InvalidSamplingMilliseconds", ...
+        "%s must be greater than zero.",label);
+else
+    assert(rounded>=0,"TripLens:InvalidSamplingMilliseconds", ...
+        "%s must be non-negative.",label);
+end
+value = rounded;
+end
+
+function [timeMs,incidentStartMs,incidentStopMs,estimatedRows] = ...
+        buildSampleTimes(stopMs,normalPeriodMs,tripMs,samplingProfile, ...
+        incidentPeriodMs,incidentPreMs,incidentPostMs)
+estimatedRows = floor(stopMs/normalPeriodMs)+2;
+if samplingProfile=="incident_1ms"
+    estimatedIncidentStart = max(0,tripMs-incidentPreMs);
+    estimatedIncidentStop = min(stopMs,tripMs+incidentPostMs);
+    estimatedRows = estimatedRows + ...
+        floor((estimatedIncidentStop-estimatedIncidentStart)/incidentPeriodMs)+2;
+end
+assert(estimatedRows<=50000,"TripLens:FallbackRunTooLarge", ...
+    "The MATLAB fallback would create about %d trend rows and too many feeder rows. " + ...
+    "Shorten StopTime, shorten the incident window, or increase a sampling period.", ...
+    estimatedRows);
+normalTimes = (0:normalPeriodMs:stopMs).';
+if normalTimes(end)~=stopMs
+    normalTimes(end+1,1) = stopMs;
+end
+incidentStartMs = NaN;
+incidentStopMs = NaN;
+estimatedRows = numel(normalTimes);
+if samplingProfile=="standard"
+    % Preserve the legacy/default uniform grid byte-for-byte: 0, period, ...,
+    % stop, with a final partial interval only when StopTime is not aligned.
+    timeMs = normalTimes;
+    return;
+end
+
+incidentStartMs = max(0,tripMs-incidentPreMs);
+incidentStopMs = min(stopMs,tripMs+incidentPostMs);
+incidentTimes = (incidentStartMs:incidentPeriodMs:incidentStopMs).';
+if isempty(incidentTimes) || incidentTimes(end)~=incidentStopMs
+    incidentTimes(end+1,1) = incidentStopMs;
+end
+% The trip instant is a semantic boundary and remains explicit even when an
+% unusual incident-window boundary would otherwise omit it.
+estimatedRows = numel(normalTimes)+numel(incidentTimes)+1;
+timeMs = unique([normalTimes;incidentTimes;tripMs],"sorted");
+estimatedRows = numel(timeMs);
 end
 
 function pathValue = resolveOptionalPath(packageRoot,inputValue,defaultRelative)
@@ -603,7 +686,8 @@ processBus = table(scenarioId,timeSeconds,gtTrip,stgPowerW,flow,temperature, ...
 end
 
 function [trend,eventTable] = simulateElectrical(processBus,timeMs,tripTime,settings, ...
-        configStatus,fault,faultPreset,commands)
+        configStatus,fault,faultPreset,commands,samplingProfile, ...
+        incidentPeriodMs,incidentStartMs,incidentStopMs)
 n = numel(timeMs);
 tripMs = round(tripTime*1000);
 relayTripMs = tripMs + round(settings.TRIP_RECEIVE_DELAY_MS);
@@ -627,6 +711,11 @@ end
 ecmsTime = timeMs + round(settings.CLOCK_OFFSET_MS);
 quality = repmat("GOOD",n,1);
 config = repmat(string(configStatus),n,1);
+samplingResolution = repmat("NORMAL_"+string(round(settings.TREND_PERIOD_MS))+"MS",n,1);
+if samplingProfile=="incident_1ms"
+    incidentRows = timeMs>=incidentStartMs & timeMs<=incidentStopMs;
+    samplingResolution(incidentRows) = "INCIDENT_"+string(incidentPeriodMs)+"MS";
+end
 gtTrip = double(timeMs>=tripMs);
 relay86 = zeros(n,1);
 cb52gt = ones(n,1);
@@ -756,12 +845,14 @@ busAKv = busAPu.*settings.AUX_BUS_VOLTAGE_KV;
 busBKv = busBPu.*settings.AUX_BUS_VOLTAGE_KV;
 gridKv = gridPu.*settings.GRID_VOLTAGE_KV;
 parallelAllowed = repmat(double(settings.ALLOW_SOURCE_PARALLEL),n,1);
-trend = table(ecmsTime,timeMs,quality,config,gtTrip,relay86,cb52gt,cb52st, ...
+trend = table(ecmsTime,timeMs,quality,config,samplingResolution, ...
+    gtTrip,relay86,cb52gt,cb52st, ...
     cbInA,cbInB,cbTie,gtDirection,stDirection,gtMw,gtCurrent,stMw,stCurrent, ...
     gridPu,frequency,busAPu,busAKv,busBPu,busBKv,gridKv,parallelAllowed, ...
     sourceParallelActive, ...
     'VariableNames',{'ecms_time_ms','source_time_ms','quality','a_config_status', ...
-    'gt_trip_cmd','relay_86gt_operated','cb_52gt_closed','cb_52st_closed', ...
+    'sampling_resolution','gt_trip_cmd','relay_86gt_operated', ...
+    'cb_52gt_closed','cb_52st_closed', ...
     'cb_in_a_closed','cb_in_b_closed','cb_tie_ab_closed', ...
     'gt_main_transformer_direction','st_main_transformer_direction', ...
     'gtg_power_mw','gtg_current_a','stg_power_mw','stg_current_a', ...
@@ -1189,10 +1280,13 @@ for equipmentIndex = 1:numel(equipmentIds)
 end
 if ~isempty(extraRows)
     eventTable = [eventTable;extraRows];
-    % Older MATLAB releases reject a cell array containing string scalars as
-    % a table-variable subscript.  Use a character-vector cell array so the
-    % same package runs in MATLAB Online releases with the stricter API.
-    eventTable = sortrows(eventTable,{'source_time_ms','tag'});
+    % Keep the causal insertion order for equal timestamps. Alphabetically
+    % sorting by tag can invert GT.TRIP -> relay pickup -> 86GT -> 52GT when
+    % protection delays are configured to zero. The explicit ordinal also
+    % avoids depending on release-specific sort stability in MATLAB Online.
+    causalOrder = (1:height(eventTable)).';
+    [~,order] = sortrows([eventTable.source_time_ms,causalOrder],[1 2]);
+    eventTable = eventTable(order,:);
 end
 end
 
@@ -1323,7 +1417,8 @@ end
 
 function manifest = makeManifest(runId,tripTime,stopTime,faultPreset, ...
         configStatus,auxiliaryVoltageKv,processRows,trendRows,eventRows, ...
-        feederRows,commandRows)
+        feederRows,commandRows,samplingProfile,normalPeriodMs,incidentPeriodMs, ...
+        incidentStartMs,incidentStopMs)
 try
     created = char(datetime("now","TimeZone","UTC", ...
         "Format","yyyy-MM-dd'T'HH:mm:ss.SSSXXX"));
@@ -1340,6 +1435,32 @@ manifest.runtime = struct("engine","MATLAB_NATIVE_SYNTHETIC_FALLBACK", ...
     "engine_contract","MATLAB_FALLBACK_1.0", ...
     "matlab_version",version,"thermosyspro_used",false, ...
     "python_used",false,"openmodelica_used",false);
+if samplingProfile=="incident_1ms"
+    activeIncidentPeriodMs = incidentPeriodMs;
+    activeIncidentStartMs = incidentStartMs;
+    activeIncidentStopMs = incidentStopMs;
+else
+    % JSONENCODE represents NaN as null, matching the cloud manifest's
+    % inactive incident-window fields without producing a non-scalar struct.
+    activeIncidentPeriodMs = NaN;
+    activeIncidentStartMs = NaN;
+    activeIncidentStopMs = NaN;
+end
+manifest.sampling = struct("profile",char(samplingProfile), ...
+    "timing_source","MATLAB_NAME_VALUE_ARGUMENTS", ...
+    "processbus",struct( ...
+        "normal_period_ms",normalPeriodMs, ...
+        "incident_period_ms",activeIncidentPeriodMs, ...
+        "incident_window_start_ms",activeIncidentStartMs, ...
+        "incident_window_end_ms",activeIncidentStopMs, ...
+        "value_basis","SYNTHETIC_MATLAB_FALLBACK_DIRECT_SAMPLE"), ...
+    "ecms",struct( ...
+        "normal_period_ms",normalPeriodMs, ...
+        "incident_period_ms",activeIncidentPeriodMs, ...
+        "incident_window_start_ms",activeIncidentStartMs, ...
+        "incident_window_end_ms",activeIncidentStopMs, ...
+        "value_basis","MATLAB_ELECTRICAL_MODEL_ON_SHARED_SAMPLE_GRID"), ...
+    "event_timestamp_unit","ms");
 manifest.topology = struct("auxiliary_voltage_kv",auxiliaryVoltageKv, ...
     "identity","UAT-A/UAT-B taps on GT/ST main transformer paths", ...
     "sst_present",false);
@@ -1382,10 +1503,15 @@ processBus = readCsv(fullfile(stagingFolder,"processbus.csv"));
 events = readCsv(fullfile(stagingFolder,"ecms-events.csv"));
 feeders = readCsv(fullfile(stagingFolder,"ecms-feeders.csv"));
 requireColumns(processBus,{"time_s","gt_trip_cmd","data_origin"},"processbus.csv");
+requireColumns(trend,{"source_time_ms","sampling_resolution"},"ecms-trend.csv");
 assert(all(string(processBus.data_origin)== ...
     "SYNTHETIC_MATLAB_FALLBACK_NOT_THERMOSYSPRO"), ...
     "TripLens:FalseProvenance", ...
     "MATLAB fallback ProcessBus must remain clearly labeled as synthetic.");
+assert(height(processBus)==height(trend),"TripLens:IncompleteRun", ...
+    "MATLAB fallback ProcessBus and ECMS trend must share one sample grid.");
+assert(all(diff(trend.source_time_ms)>0),"TripLens:InvalidSamplingGrid", ...
+    "ECMS trend sample times must be strictly increasing and duplicate-free.");
 assert(height(feeders)==height(trend)*equipmentCount, ...
     "TripLens:IncompleteRun","Feeder row count does not match trend x equipment.");
 assert(~any(contains(lower(string(trend.Properties.VariableNames)),"sst")), ...
