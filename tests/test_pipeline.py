@@ -126,6 +126,22 @@ class PipelineTests(unittest.TestCase):
             self.assertIn("numberOfIntervals=50", mos)
             self.assertNotIn("@TRIP_TIME@", model)
 
+    def test_render_modelica_supports_one_ms_csv_output_grid(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.run_script(
+                "render_modelica.py",
+                "--trip-time", "2",
+                "--trip-ramp-duration", "5",
+                "--stop-time", "10",
+                "--intervals", "10000",
+                "--output-dir", directory,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            model = (Path(directory) / "TripLens_CombinedCycle_TripTAC.mo").read_text()
+            mos = (Path(directory) / "run.mos").read_text()
+            self.assertIn("Interval=0.001", model)
+            self.assertIn("numberOfIntervals=10000", mos)
+
     def test_normalize_and_generate_ecms(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory)
@@ -216,6 +232,192 @@ class PipelineTests(unittest.TestCase):
             at_trip = next(row for row in rows if row["source_time_ms"] == "2000")
             self.assertEqual(before["bus_a_voltage_kv"], "6.900000")
             self.assertEqual(at_trip["bus_a_voltage_kv"], "0.000000")
+
+    def test_one_ms_trend_linearly_interpolates_prepared_processbus_series(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            processbus = target / "processbus.csv"
+            self.write_csv(processbus, [
+                {"time_s": "0", "stg_power_w": "10000000"},
+                {"time_s": "0.1", "stg_power_w": "20000000"},
+            ])
+            settings_rows = self.read_csv(ROOT / "config/ecms_a_settings.csv")
+            next(
+                row for row in settings_rows if row["setting_id"] == "TREND_PERIOD_MS"
+            )["value"] = "1"
+            settings = target / "settings.csv"
+            self.write_csv(settings, settings_rows)
+            trend = target / "trend.csv"
+            result = self.run_script(
+                "generate_ecms.py",
+                "--processbus", str(processbus),
+                "--a-settings", str(settings),
+                "--trip-time", "0.05",
+                "--trend-output", str(trend),
+                "--event-output", str(target / "events.csv"),
+                "--feeder-output", str(target / "feeders.csv"),
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            rows = self.read_csv(trend)
+            self.assertEqual(len(rows), 101)
+            by_time = {row["source_time_ms"]: row for row in rows}
+            self.assertEqual(by_time["0"]["stg_power_mw"], "10.000000")
+            self.assertEqual(by_time["1"]["stg_power_mw"], "10.100000")
+            self.assertEqual(by_time["50"]["stg_power_mw"], "15.000000")
+            self.assertEqual(by_time["100"]["stg_power_mw"], "20.000000")
+
+    def test_incident_profile_uses_exact_one_ms_window_and_sparse_events(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            processbus = self.normalize_fixture(target)
+            trend = target / "trend.csv"
+            events = target / "events.csv"
+            feeders = target / "feeders.csv"
+            result = self.run_script(
+                "generate_ecms.py",
+                "--processbus", str(processbus),
+                "--trip-time", "2.003",
+                "--sampling-profile", "incident_1ms",
+                "--incident-period-ms", "1",
+                "--incident-pre-ms", "37",
+                "--incident-post-ms", "100",
+                "--trend-output", str(trend),
+                "--event-output", str(events),
+                "--feeder-output", str(feeders),
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            trend_rows = self.read_csv(trend)
+            actual_times = [int(row["source_time_ms"]) for row in trend_rows]
+            expected_times = sorted(
+                set(range(0, 5001, 20))
+                | set(range(1966, 2104))
+                | {0, 5000, 2003, 1966, 2103}
+            )
+            self.assertEqual(actual_times, expected_times)
+            self.assertEqual(len(trend_rows), 382)
+            self.assertEqual(len(self.read_csv(feeders)), len(trend_rows) * 8)
+            by_time = {int(row["source_time_ms"]): row for row in trend_rows}
+            self.assertEqual(by_time[2002]["gt_trip_cmd"], "0")
+            self.assertEqual(by_time[2003]["gt_trip_cmd"], "1")
+            self.assertEqual(by_time[2057]["relay_86gt_operated"], "0")
+            self.assertEqual(by_time[2058]["relay_86gt_operated"], "1")
+            self.assertEqual(by_time[2082]["cb_52gt_closed"], "1")
+            self.assertEqual(by_time[2083]["cb_52gt_closed"], "0")
+            self.assertEqual(by_time[1966]["sampling_resolution"], "INCIDENT_1MS")
+            self.assertEqual(by_time[2120]["sampling_resolution"], "NORMAL_20MS")
+            event_rows = self.read_csv(events)
+            event_times = {
+                row["tag"]: int(row["source_time_ms"])
+                for row in event_rows
+                if row["tag"] in {
+                    "GT.TRIP.CMD", "86GT.TRIP.RECEIVED", "86GT.OPERATE", "52GT.CLOSED"
+                }
+            }
+            self.assertEqual(event_times, {
+                "GT.TRIP.CMD": 2003,
+                "86GT.TRIP.RECEIVED": 2023,
+                "86GT.OPERATE": 2058,
+                "52GT.CLOSED": 2083,
+            })
+
+    def test_equal_time_protection_events_keep_causal_order(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            processbus = self.normalize_fixture(target)
+            settings_rows = self.read_csv(ROOT / "config/ecms_a_settings.csv")
+            for setting_id in (
+                "TRIP_RECEIVE_DELAY_MS", "LOCKOUT_OPERATE_DELAY_MS", "GT_BREAKER_OPEN_DELAY_MS"
+            ):
+                next(
+                    row for row in settings_rows if row["setting_id"] == setting_id
+                )["value"] = "0"
+            settings = target / "settings.csv"
+            self.write_csv(settings, settings_rows)
+            events = target / "events.csv"
+            result = self.run_script(
+                "generate_ecms.py",
+                "--processbus", str(processbus),
+                "--a-settings", str(settings),
+                "--trip-time", "2",
+                "--trend-output", str(target / "trend.csv"),
+                "--event-output", str(events),
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            equal_time_tags = [
+                row["tag"] for row in self.read_csv(events)
+                if row["source_time_ms"] == "2000"
+                and row["tag"] in {
+                    "GT.TRIP.CMD", "86GT.TRIP.RECEIVED", "86GT.OPERATE",
+                    "52GT.CLOSED", "TR-GT.DIRECTION",
+                }
+            ]
+            self.assertEqual(equal_time_tags, [
+                "GT.TRIP.CMD", "86GT.TRIP.RECEIVED", "86GT.OPERATE",
+                "52GT.CLOSED", "TR-GT.DIRECTION",
+            ])
+
+    def test_incident_profile_auto_tie_uses_next_actual_sample(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            processbus = self.normalize_fixture(target)
+            settings_rows = self.read_csv(ROOT / "config/ecms_a_settings.csv")
+            next(
+                row for row in settings_rows if row["setting_id"] == "AUTO_BUS_TIE_TRANSFER"
+            )["value"] = "1"
+            settings = target / "settings.csv"
+            self.write_csv(settings, settings_rows)
+            trend = target / "trend.csv"
+            events = target / "events.csv"
+            result = self.run_script(
+                "generate_ecms.py",
+                "--processbus", str(processbus),
+                "--a-settings", str(settings),
+                "--trip-time", "2.003",
+                "--fault-preset", "uat_a_fault",
+                "--sampling-profile", "incident_1ms",
+                "--incident-pre-ms", "37",
+                "--incident-post-ms", "400",
+                "--trend-output", str(trend),
+                "--event-output", str(events),
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            rows = {row["source_time_ms"]: row for row in self.read_csv(trend)}
+            self.assertEqual(rows["2303"]["cb_tie_ab_closed"], "0")
+            self.assertEqual(rows["2304"]["cb_tie_ab_closed"], "1")
+            uv_event = next(
+                row for row in self.read_csv(events) if row["tag"] == "BUS-A.27UV.OPERATE"
+            )
+            self.assertEqual(uv_event["source_time_ms"], "2303")
+
+    def test_incident_profile_rejects_non_one_ms_or_oversized_grid(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            processbus = target / "processbus.csv"
+            self.write_csv(processbus, [
+                {"time_s": "0", "stg_power_w": "250000000"},
+                {"time_s": "1000", "stg_power_w": "250000000"},
+            ])
+            common = (
+                "--processbus", str(processbus),
+                "--trip-time", "500",
+                "--sampling-profile", "incident_1ms",
+                "--trend-output", str(target / "trend.csv"),
+                "--event-output", str(target / "events.csv"),
+            )
+            wrong_period = self.run_script(
+                "generate_ecms.py", *common,
+                "--incident-period-ms", "2",
+            )
+            self.assertNotEqual(wrong_period.returncode, 0)
+            self.assertIn("exactly 1 ms", wrong_period.stderr)
+            oversized = self.run_script(
+                "generate_ecms.py", *common,
+                "--incident-period-ms", "1",
+                "--incident-pre-ms", "500000",
+                "--incident-post-ms", "500000",
+            )
+            self.assertNotEqual(oversized.returncode, 0)
+            self.assertIn("sampling grid is too large", oversized.stderr)
 
     def test_m_layer_contains_only_locked_model_tags(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -661,6 +863,24 @@ class PipelineTests(unittest.TestCase):
         self.assertRegex(workflow, r"Upload simulation results\s+if: success\(\)")
         self.assertIn("command_scenario:", workflow)
         self.assertIn('"$COMMAND_SCENARIO"', workflow)
+        self.assertIn("sampling_profile:", workflow)
+        self.assertIn("incident_1ms", workflow)
+        self.assertIn('"$SAMPLING_PROFILE"', workflow)
+        self.assertIn('--sampling-profile "$sampling_profile"', script)
+        self.assertIn("intervals=10000", script)
+
+        unknown_profile = subprocess.run(
+            [
+                "bash", str(ROOT / "scripts/run_pipeline.sh"),
+                "600", "5", "1000", "1000", "none", "none", "invented",
+            ],
+            cwd=Path(tempfile.gettempdir()),
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(unknown_profile.returncode, 2)
+        self.assertIn("unknown sampling profile", unknown_profile.stderr)
 
     def test_manifest_explicitly_distinguishes_physics_and_synthetic_sources(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -679,6 +899,7 @@ class PipelineTests(unittest.TestCase):
             manifest = json.loads((target / "manifest.json").read_text(encoding="utf-8"))
             self.assertTrue(manifest["runtime"]["thermosyspro_used"])
             self.assertEqual(manifest["runtime"]["engine"], "THERMOSYSPRO_OPENMODELICA")
+            self.assertEqual(manifest["sampling"]["profile"], "standard")
 
             synthetic = self.run_script(
                 "build_manifest.py", *common,
@@ -690,6 +911,96 @@ class PipelineTests(unittest.TestCase):
             self.assertFalse(manifest["runtime"]["thermosyspro_used"])
             self.assertIn("SYNTHETIC", manifest["runtime"]["engine"])
             self.assertEqual(manifest["scenario"]["id"], "BUNDLED_SYNTHETIC_DEMO")
+
+    def test_manifest_separates_physics_and_incident_ecms_resolution(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            settings = target / "config/ecms_a_settings.csv"
+            settings.parent.mkdir(parents=True)
+            shutil.copy2(ROOT / "config/ecms_a_settings.csv", settings)
+            result = self.run_script(
+                "build_manifest.py",
+                "--output-dir", str(target),
+                "--trip-time", "2",
+                "--trip-ramp-duration", "5",
+                "--stop-time", "10",
+                "--sampling-profile", "incident_1ms",
+                "--output-intervals", "10000",
+                "--incident-period-ms", "1",
+                "--incident-pre-ms", "2000",
+                "--incident-post-ms", "5000",
+                "--fault-preset", "none",
+                "--thermosyspro-commit", "pinned-test-commit",
+                "--openmodelica-image", "pinned-test-image",
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            manifest = json.loads((target / "manifest.json").read_text(encoding="utf-8"))
+            sampling = manifest["sampling"]
+            self.assertEqual(sampling["physics"]["nominal_output_period_ms"], 1.0)
+            self.assertEqual(sampling["ecms"]["normal_period_ms"], 20)
+            self.assertEqual(sampling["ecms"]["incident_period_ms"], 1)
+            self.assertEqual(sampling["ecms"]["incident_window_start_ms"], 0)
+            self.assertEqual(sampling["ecms"]["incident_window_end_ms"], 7000)
+            self.assertEqual(sampling["events"], {"timestamp_unit": "ms", "sampled": False})
+            self.assertIn("adaptive", sampling["physics"]["solver_step_note"])
+
+    def test_incident_profile_bundle_passes_exact_grid_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            self.create_bundle(target)
+            raw_template = self.read_csv(ROOT / "tests/fixtures/thermosyspro-raw.csv")[0]
+            raw_rows = []
+            for time_ms in range(0, 10001):
+                row = raw_template.copy()
+                row["time"] = f"{time_ms / 1000:.3f}"
+                raw_rows.append(row)
+            self.write_csv(target / "thermosyspro-raw.csv", raw_rows)
+            normalize = self.run_script(
+                "normalize_processbus.py",
+                "--input", str(target / "thermosyspro-raw.csv"),
+                "--output", str(target / "processbus.csv"),
+                "--mapping-review", str(target / "signal-mapping-review.json"),
+                "--trip-time", "2",
+            )
+            self.assertEqual(normalize.returncode, 0, normalize.stderr)
+            generate = self.run_script(
+                "generate_ecms.py",
+                "--processbus", str(target / "processbus.csv"),
+                "--trip-time", "2",
+                "--sampling-profile", "incident_1ms",
+                "--incident-period-ms", "1",
+                "--incident-pre-ms", "2000",
+                "--incident-post-ms", "5000",
+                "--trend-output", str(target / "ecms-trend.csv"),
+                "--event-output", str(target / "ecms-events.csv"),
+                "--feeder-output", str(target / "ecms-feeders.csv"),
+            )
+            self.assertEqual(generate.returncode, 0, generate.stderr)
+            manifest = self.run_script(
+                "build_manifest.py",
+                "--output-dir", str(target),
+                "--trip-time", "2",
+                "--trip-ramp-duration", "5",
+                "--stop-time", "10",
+                "--sampling-profile", "incident_1ms",
+                "--output-intervals", "10000",
+                "--incident-period-ms", "1",
+                "--incident-pre-ms", "2000",
+                "--incident-post-ms", "5000",
+                "--fault-preset", "none",
+                "--thermosyspro-commit", "test-commit",
+                "--openmodelica-image", "test-image",
+            )
+            self.assertEqual(manifest.returncode, 0, manifest.stderr)
+            validate = self.run_script(
+                "validate_outputs.py",
+                "--output-dir", str(target),
+                "--trip-time", "2",
+                "--sampling-profile", "incident_1ms",
+            )
+            self.assertEqual(validate.returncode, 0, validate.stderr)
+            self.assertEqual(len(self.read_csv(target / "ecms-trend.csv")), 7151)
+            self.assertEqual(len(self.read_csv(target / "ecms-feeders.csv")), 57208)
 
     def test_matlab_public_function_and_authoritative_topology_contracts(self) -> None:
         public_files = [
