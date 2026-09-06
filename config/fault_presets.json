@@ -1,0 +1,13 @@
+{
+  "none": {},
+  "gtg_breaker_fail": {"gtg_breaker_fail": true},
+  "uat_a_fault": {"uat_a_fault": true},
+  "uat_b_fault": {"uat_b_fault": true},
+  "gt_transformer_receive_fail": {"gt_transformer_receive_fail": true},
+  "st_transformer_receive_fail": {"st_transformer_receive_fail": true},
+  "bus_a_fault": {"bus_a_fault": true},
+  "bus_b_fault": {"bus_b_fault": true},
+  "grid_loss": {"grid_loss": true},
+  "relay_fail": {"relay_fail": true},
+  "ecms_comms_loss": {"ecms_comms_loss": true}
+}
