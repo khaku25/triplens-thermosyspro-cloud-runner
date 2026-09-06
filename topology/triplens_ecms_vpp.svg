@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900" role="img" aria-labelledby="title desc">
+  <title id="title">TripLens ECMS VPP overview</title>
+  <desc id="desc">GT and ST main transformers support generation and reverse receiving. UAT-A and UAT-B feed 6.9 kV buses. No separate SST is assumed.</desc>
+  <defs>
+    <style>
+      .bg{fill:#f4f7fa}.panel{fill:#fff;stroke:#d8e1e8;stroke-width:2}.title{font:700 27px Arial,sans-serif;fill:#16324a}.sub{font:14px Arial,sans-serif;fill:#607384}
+      .label{font:700 15px Arial,sans-serif;fill:#243746;text-anchor:middle}.tag{font:12px Arial,sans-serif;fill:#657784;text-anchor:middle}
+      .note{font:13px Arial,sans-serif;fill:#5f7280}.wire154{fill:none;stroke:#d9544d;stroke-width:6}.wire13{fill:none;stroke:#d9544d;stroke-width:4}
+      .wire69{fill:none;stroke:#376fc7;stroke-width:5}.wireoff{fill:none;stroke:#98a7b3;stroke-width:4;stroke-dasharray:8 7}
+      .bus154{stroke:#ca4742;stroke-width:15}.bus69{stroke:#2862bb;stroke-width:15;stroke-linecap:round}.closed{fill:#e04f47;stroke:#9e2925;stroke-width:2}
+      .open{fill:#fff;stroke:#7b8994;stroke-width:3}.xfmr{fill:#fff;stroke:#5947a8;stroke-width:3}.gen{fill:#fff;stroke:#1d64a5;stroke-width:4}
+      .cardM{fill:#e8f5ee;stroke:#3b9464;stroke-width:2}.cardA{fill:#fff5df;stroke:#d79a2b;stroke-width:2}.click{cursor:pointer}
+    </style>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="5" refY="4" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="#7b4caf"/></marker>
+  </defs>
+  <rect class="bg" width="1400" height="900"/>
+  <rect class="panel" x="25" y="24" width="1350" height="830" rx="18"/>
+  <text class="title" x="55" y="67">TripLens ECMS VPP — Overview</text>
+  <text class="sub" x="55" y="93">M 물리값 잠금 · A 설비/정격/로직 분리 · GT/ST 주 변압기 양방향(발전/역수전) · 별도 SST 없음</text>
+
+  <line class="bus154" x1="95" y1="155" x2="625" y2="155"/><line class="bus154" x1="775" y1="155" x2="1305" y2="155"/>
+  <text class="label" x="360" y="132">154 kV BUS-A</text><text class="label" x="1040" y="132">154 kV BUS-B</text>
+  <path class="wire154" d="M625 155 H670"/><rect class="open" x="670" y="142" width="60" height="26" rx="4"/><path class="wire154" d="M730 155 H775"/>
+  <text class="tag" x="700" y="190">154 kV BUS SECTION</text>
+
+  <path class="wire154" d="M360 155 V230"/><circle class="xfmr" cx="348" cy="250" r="18"/><circle class="xfmr" cx="372" cy="250" r="18"/>
+  <text class="label" x="360" y="215">GT 주 변압기</text><text class="tag" x="360" y="285">TR-GT · 154/13.8 kV · A</text>
+  <path d="M400 225 V282" stroke="#7b4caf" stroke-width="3" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="tag" x="475" y="246">발전 / 역수전</text>
+  <path class="wire13" d="M360 268 V350 H245"/><rect class="closed" x="215" y="337" width="30" height="26" rx="3"/><path class="wire13" d="M215 350 H150"/>
+  <circle class="gen" cx="120" cy="350" r="28"/><text class="label" x="120" y="356">G</text><text class="label" x="120" y="307">GTG</text><text class="tag" x="230" y="390">52GT · A/E</text>
+  <path class="wire13" d="M360 350 V430"/><circle class="xfmr" cx="348" cy="450" r="18"/><circle class="xfmr" cx="372" cy="450" r="18"/>
+  <text class="label" x="360" y="415">UAT-A</text><text class="tag" x="360" y="486">13.8/6.9 kV · A</text>
+
+  <path class="wire154" d="M1040 155 V230"/><circle class="xfmr" cx="1028" cy="250" r="18"/><circle class="xfmr" cx="1052" cy="250" r="18"/>
+  <text class="label" x="1040" y="215">ST 주 변압기</text><text class="tag" x="1040" y="285">TR-ST · 154/13.8 kV · A</text>
+  <path d="M1080 225 V282" stroke="#7b4caf" stroke-width="3" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="tag" x="1155" y="246">발전 / 역수전</text>
+  <path class="wire13" d="M1040 268 V350 H1155"/><rect class="closed" x="1155" y="337" width="30" height="26" rx="3"/><path class="wire13" d="M1185 350 H1250"/>
+  <circle class="gen" cx="1280" cy="350" r="28"/><text class="label" x="1280" y="356">G</text><text class="label" x="1280" y="307">STG</text><text class="tag" x="1170" y="390">52ST · A/E</text>
+  <path class="wire13" d="M1040 350 V430"/><circle class="xfmr" cx="1028" cy="450" r="18"/><circle class="xfmr" cx="1052" cy="450" r="18"/>
+  <text class="label" x="1040" y="415">UAT-B</text><text class="tag" x="1040" y="486">13.8/6.9 kV · A</text>
+
+  <path class="wire69" d="M360 468 V555"/><rect class="closed" x="345" y="540" width="30" height="30" rx="3"/><text class="tag" x="360" y="598">IN-A · 인커밍</text>
+  <path class="wire69" d="M1040 468 V555"/><rect class="closed" x="1025" y="540" width="30" height="30" rx="3"/><text class="tag" x="1040" y="598">IN-B · 인커밍</text>
+
+  <g class="click" data-view="BUS-A"><line class="bus69" x1="145" y1="650" x2="620" y2="650"/><rect x="145" y="615" width="475" height="80" fill="none"/>
+    <text class="label" x="380" y="625">6.9 kV BUS-A — 클릭하여 피더 상세</text><text class="tag" x="380" y="684">M 연결: HP/LP 급수, IP 순환, 복수계통</text></g>
+  <g class="click" data-view="BUS-B"><line class="bus69" x1="780" y1="650" x2="1255" y2="650"/><rect x="780" y="615" width="475" height="80" fill="none"/>
+    <text class="label" x="1018" y="625">6.9 kV BUS-B — 클릭하여 피더 상세</text><text class="tag" x="1018" y="684">M 연결: IP 급수, HP/LP 순환, 순환수계통</text></g>
+  <path class="wire69" d="M360 570 V650 M1040 570 V650 M620 650 H660"/><rect class="open" x="660" y="635" width="80" height="30" rx="3"/><path class="wire69" d="M740 650 H780"/>
+  <text class="tag" x="700" y="700">TIE-AB · 기본 OPEN · A</text>
+
+  <rect class="cardM" x="70" y="747" width="585" height="72" rx="10"/><text class="label" x="362" y="774">M — 변경 금지</text>
+  <text class="note" x="95" y="801">STG 유효전력, 드럼 급수·순환유량, 복수·순환수 유량은 ThermoSysPro 물리 원본</text>
+  <rect class="cardA" x="745" y="747" width="585" height="72" rx="10"/><text class="label" x="1037" y="774">A — 사용자 편집</text>
+  <text class="note" x="770" y="801">버스 배치, 차단기, 정격, 보호 지연은 별도 CSV에서 변경하며 M 원본에는 영향 없음</text>
+  <text class="note" x="55" y="842">가상 설계 기준도 · 운전/정비/LOTO용 아님 · 실제 설비 번호와 정정치는 승인 자료로 교체</text>
+</svg>

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="900" viewBox="0 0 1500 900" role="img" aria-labelledby="title desc">
+  <title id="title">TripLens ECMS VPP 6.9 kV switchgear detail</title>
+  <desc id="desc">Two 6.9 kV bus sections with incoming breakers, open bus tie, and feeders associated with locked ThermoSysPro M tags.</desc>
+  <defs><style>
+    .bg{fill:#f4f7fa}.panel{fill:#fff;stroke:#d8e1e8;stroke-width:2}.title{font:700 28px Arial,sans-serif;fill:#16324a}.sub{font:14px Arial,sans-serif;fill:#607384}
+    .bus{stroke:#2862bb;stroke-width:16;stroke-linecap:round}.wire{stroke:#376fc7;stroke-width:4;fill:none}.closed{fill:#e04f47;stroke:#9e2925;stroke-width:2}
+    .open{fill:#fff;stroke:#7b8994;stroke-width:3}.label{font:700 14px Arial,sans-serif;fill:#243746;text-anchor:middle}.tag{font:12px Arial,sans-serif;fill:#617584;text-anchor:middle}
+    .m{fill:#e8f5ee;stroke:#3b9464;stroke-width:2}.a{fill:#fff5df;stroke:#d79a2b;stroke-width:2}.note{font:13px Arial,sans-serif;fill:#5d7080}
+  </style></defs>
+  <rect class="bg" width="1500" height="900"/><rect class="panel" x="25" y="24" width="1450" height="835" rx="18"/>
+  <text class="title" x="55" y="67">TripLens ECMS VPP — 6.9 kV SWGR</text>
+  <text class="sub" x="55" y="94">피더 설비 배치·정격은 A, 초록 상자의 공정 연결값은 잠긴 M 태그</text>
+
+  <text class="label" x="365" y="135">UAT-A</text><path class="wire" d="M365 150 V245"/><rect class="closed" x="350" y="185" width="30" height="32" rx="3"/><text class="tag" x="420" y="207">IN-A · 인커밍</text>
+  <text class="label" x="1135" y="135">UAT-B</text><path class="wire" d="M1135 150 V245"/><rect class="closed" x="1120" y="185" width="30" height="32" rx="3"/><text class="tag" x="1190" y="207">IN-B · 인커밍</text>
+  <line class="bus" x1="95" y1="245" x2="675" y2="245"/><line class="bus" x1="825" y1="245" x2="1405" y2="245"/>
+  <text class="label" x="385" y="275">6.9 kV BUS-A</text><text class="label" x="1115" y="275">6.9 kV BUS-B</text>
+  <path class="wire" d="M675 245 H710"/><rect class="open" x="710" y="230" width="80" height="30" rx="3"/><path class="wire" d="M790 245 H825"/><text class="tag" x="750" y="292">TIE-AB · 기본 OPEN</text>
+
+  <g id="feeders-a">
+    <path class="wire" d="M155 245 V390"/><rect class="closed" x="140" y="315" width="30" height="32" rx="3"/><text class="tag" x="155" y="305">VCB-A01</text><rect class="a" x="80" y="390" width="150" height="54" rx="8"/><text class="label" x="155" y="414">HP 급수펌프</text><text class="tag" x="155" y="434">FWP-HP · A</text><rect class="m" x="82" y="466" width="146" height="64" rx="8"/><text class="tag" x="155" y="490">M · HP FW FLOW</text><text class="tag" x="155" y="512" font-size="7">TSP.DRUM.HP.FW_FLOW</text>
+    <path class="wire" d="M305 245 V390"/><rect class="closed" x="290" y="315" width="30" height="32" rx="3"/><text class="tag" x="305" y="305">VCB-A02</text><rect class="a" x="230" y="390" width="150" height="54" rx="8"/><text class="label" x="305" y="414">LP 급수펌프</text><text class="tag" x="305" y="434">FWP-LP · A</text><rect class="m" x="232" y="466" width="146" height="64" rx="8"/><text class="tag" x="305" y="490">M · LP FW FLOW</text><text class="tag" x="305" y="512" font-size="7">TSP.DRUM.LP.FW_FLOW</text>
+    <path class="wire" d="M455 245 V390"/><rect class="closed" x="440" y="315" width="30" height="32" rx="3"/><text class="tag" x="455" y="305">VCB-A03</text><rect class="a" x="380" y="390" width="150" height="54" rx="8"/><text class="label" x="455" y="414">IP 순환부하</text><text class="tag" x="455" y="434">RECIRC-IP · A</text><rect class="m" x="382" y="466" width="146" height="64" rx="8"/><text class="tag" x="455" y="490">M · IP RECIRC FLOW</text><text class="tag" x="455" y="512" font-size="7">TSP.DRUM.IP.RECIRC_FLOW</text>
+    <path class="wire" d="M605 245 V390"/><rect class="closed" x="590" y="315" width="30" height="32" rx="3"/><text class="tag" x="605" y="305">VCB-A04</text><rect class="a" x="530" y="390" width="150" height="54" rx="8"/><text class="label" x="605" y="414">복수 펌프 계통</text><text class="tag" x="605" y="434">COND-PUMP · A</text><rect class="m" x="532" y="466" width="146" height="64" rx="8"/><text class="tag" x="605" y="490">M · COND FLOW OUT</text><text class="tag" x="605" y="512" font-size="7">TSP.COND.COND_FLOW_OUT</text>
+  </g>
+  <g id="feeders-b">
+    <path class="wire" d="M895 245 V390"/><rect class="closed" x="880" y="315" width="30" height="32" rx="3"/><text class="tag" x="895" y="305">VCB-B01</text><rect class="a" x="820" y="390" width="150" height="54" rx="8"/><text class="label" x="895" y="414">IP 급수펌프</text><text class="tag" x="895" y="434">FWP-IP · A</text><rect class="m" x="822" y="466" width="146" height="64" rx="8"/><text class="tag" x="895" y="490">M · IP FW FLOW</text><text class="tag" x="895" y="512" font-size="7">TSP.DRUM.IP.FW_FLOW</text>
+    <path class="wire" d="M1045 245 V390"/><rect class="closed" x="1030" y="315" width="30" height="32" rx="3"/><text class="tag" x="1045" y="305">VCB-B02</text><rect class="a" x="970" y="390" width="150" height="54" rx="8"/><text class="label" x="1045" y="414">HP 순환부하</text><text class="tag" x="1045" y="434">RECIRC-HP · A</text><rect class="m" x="972" y="466" width="146" height="64" rx="8"/><text class="tag" x="1045" y="490">M · HP RECIRC FLOW</text><text class="tag" x="1045" y="512" font-size="7">TSP.DRUM.HP.RECIRC_FLOW</text>
+    <path class="wire" d="M1195 245 V390"/><rect class="closed" x="1180" y="315" width="30" height="32" rx="3"/><text class="tag" x="1195" y="305">VCB-B03</text><rect class="a" x="1120" y="390" width="150" height="54" rx="8"/><text class="label" x="1195" y="414">LP 순환부하</text><text class="tag" x="1195" y="434">RECIRC-LP · A</text><rect class="m" x="1122" y="466" width="146" height="64" rx="8"/><text class="tag" x="1195" y="490">M · LP RECIRC FLOW</text><text class="tag" x="1195" y="512" font-size="7">TSP.DRUM.LP.RECIRC_FLOW</text>
+    <path class="wire" d="M1345 245 V390"/><rect class="closed" x="1330" y="315" width="30" height="32" rx="3"/><text class="tag" x="1345" y="305">VCB-B04</text><rect class="a" x="1270" y="390" width="150" height="54" rx="8"/><text class="label" x="1345" y="414">순환수 펌프 계통</text><text class="tag" x="1345" y="434">CW-PUMP · A</text><rect class="m" x="1272" y="466" width="146" height="64" rx="8"/><text class="tag" x="1345" y="490">M · CW FLOW</text><text class="tag" x="1345" y="512" font-size="7">TSP.COND.CW_FLOW</text>
+  </g>
+  <rect class="m" x="80" y="620" width="620" height="100" rx="10"/><text class="label" x="390" y="650">M 잠금 원칙</text><text class="note" x="105" y="680">초록 태그의 ID·단위·ThermoSysPro 매핑은 Editor에서 수정할 수 없음.</text><text class="note" x="105" y="704">유량이 존재한다고 차단기 CLOSED라고 단정하지 않고 물리 연계만 표시함.</text>
+  <rect class="a" x="800" y="620" width="620" height="100" rx="10"/><text class="label" x="1110" y="650">A 편집 원칙</text><text class="note" x="825" y="680">BUS 배치·피더번호·정격·정상 차단기 상태는 별도 A CSV에서 변경 가능.</text><text class="note" x="825" y="704">확정 전 값은 PROVISIONAL로 유지하고 ECMS 출력에도 상태를 기록함.</text>
+  <text class="note" x="55" y="830">가상 설계 기준도 · 실제 발전소 화면 복제본 아님 · 운전/정비/LOTO용 아님</text>
+</svg>
