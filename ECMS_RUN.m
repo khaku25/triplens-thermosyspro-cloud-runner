@@ -3,6 +3,8 @@ function result = ECMS_RUN(varargin)
 %   ECMS_RUN creates a new atomic run with the canonical package CSV files.
 %   ECMS_RUN('FaultPreset','grid_loss') selects a fault preset.
 %   ECMS_RUN('CommandFile','examples/commands.csv') applies a command queue.
+%   ECMS_RUN('SamplingProfile','incident_1ms') keeps the normal trend grid
+%   and adds a 1 ms incident window around TripTime.
 %   Live editor tables can be passed as SettingsTable, EquipmentTable and
 %   CommandTable. No legacy start_here function is ever called.
 

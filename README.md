@@ -87,7 +87,12 @@ Run은 덮어쓰지 않습니다.
 ECMS_RUN
 ECMS_RUN("FaultPreset","grid_loss")
 ECMS_RUN("CommandFile","examples/bfp_trip_commands.csv")
+ECMS_RUN("SamplingProfile","incident_1ms")
 ```
+
+MATLAB 합성 fallback에서도 마지막 명령처럼 사고 전·후 1 ms 구간을 추가할 수
+있습니다. 이 결과는 계속 `MATLAB_NATIVE_SYNTHETIC_FALLBACK`으로 표시되며,
+ThermoSysPro 물리 실행으로 취급되지 않습니다.
 
 ### ThermoSysPro Cloud pipeline
 
@@ -107,6 +112,27 @@ OpenModelica 이미지로 물리 입력을 만든 뒤 동일한 ECMS trend/event
 - `relay_fail`
 - `ecms_comms_loss`
 
+### CSV 시간 해상도 선택
+
+Actions의 `sampling_profile`에서 두 실행 방식을 선택할 수 있습니다.
+
+| 프로필 | ThermoSysPro 물리 CSV | ECMS Trend | 용도 |
+|---|---:|---:|---|
+| `standard` | 기존 입력값 유지: 기본 1 s | 전체 20 ms | 장시간 경과 확인 |
+| `incident_1ms` (기본값) | 0~10 s 전체 1 ms | Trip 전 2 s~후 5 s는 1 ms, 나머지는 20 ms | 짧은 사고순서 정밀 확인 |
+
+`incident_1ms`는 휴대폰에서도 선택 한 번으로 안전하게 실행할 수 있도록
+Trip 2 s, 배기가스 감소 5 s, 종료 10 s, 출력구간 10,000개로 고정됩니다.
+`incident_pre_ms`와 `incident_post_ms`로 ECMS의 1 ms 구간만 조정할 수 있습니다.
+100 s에 명령하는 번들 `bfp_trip` 예제는 이 짧은 프로필에서 사용할 수 없으므로
+`command_scenario=none`을 선택해야 합니다.
+
+여기서 1 ms는 **CSV 출력 시각 간격**입니다. OpenModelica의 DASSL 적분기는
+정확도 조건에 따라 내부 계산 간격을 계속 자동 조절하므로 “솔버가 항상 1 ms
+고정 스텝으로 계산했다”는 뜻은 아닙니다. ECMS Trend의 물리 샘플 사이 값도
+기존과 같이 ProcessBus를 보간한 관측값이며, 이 출처 구분은 `manifest.json`에
+함께 기록됩니다. Alarm/SOE는 두 프로필 모두 정수 밀리초 시각을 유지합니다.
+
 ## 주요 결과 파일
 
 | 파일 | 역할 |
@@ -115,7 +141,7 @@ OpenModelica 이미지로 물리 입력을 만든 뒤 동일한 ECMS trend/event
 | `ecms-trend.csv` | 전압·전류·전력방향·차단기 상태 |
 | `ecms-events.csv` | 시간순 Relay·차단기·FaultBus·Command 사건 |
 | `ecms-feeders.csv` | A 설비표를 반영한 피더별 차단기·충전·전압·전류 |
-| `manifest.json` | 실행방식·출처·시나리오·행 수·제한사항 |
+| `manifest.json` | 실행방식·출처·시나리오·물리/ECMS 표본주기·제한사항 |
 | `config/ecms_a_settings.csv` | A 정격·보호·계산 설정 |
 | `config/ecms_a_equipment.csv` | A 피더·BUS·정격·초기상태 |
 | `config/ecms_command_catalog.csv` | 허용 Command 94개의 계약 |
@@ -153,7 +179,7 @@ python3 scripts/validate_commands.py --commands examples/bfp_trip_commands.csv
 
 Python 회귀시험은 A 설정 반영, 모든 FaultBus, Command 계약, 피더 출력,
 저전압 지연, 통신품질, 산출물 SHA-256, 과거 결과 재사용 방지와 MATLAB 공개
-함수 계약을 검사합니다. 최종 UI·자체실행은 MATLAB Online의
+함수 계약, 표준 20 ms 및 사고창 1 ms 표본 계약을 검사합니다. 최종 UI·자체실행은 MATLAB Online의
 `ECMS_DIAGNOSE`와 `ECMS_SELF_TEST`로 확인합니다.
 
 ## 제한
