@@ -1,0 +1,95 @@
+name: Run ThermoSysPro GT Trip
+
+on:
+  workflow_dispatch:
+    inputs:
+      trip_time_s:
+        description: GT trip start time in simulation seconds
+        required: true
+        default: "600"
+      trip_ramp_duration_s:
+        description: Exhaust boundary-condition collapse duration in seconds
+        required: true
+        default: "5"
+      stop_time_s:
+        description: Simulation stop time in seconds
+        required: true
+        default: "1000"
+      output_intervals:
+        description: Number of ThermoSysPro output intervals
+        required: true
+        default: "1000"
+      fault_preset:
+        description: Additional ECMS FaultBus injection
+        required: true
+        type: choice
+        default: none
+        options:
+          - none
+          - gtg_breaker_fail
+          - uat_a_fault
+          - uat_b_fault
+          - gt_transformer_receive_fail
+          - st_transformer_receive_fail
+          - bus_a_fault
+          - bus_b_fault
+          - grid_loss
+          - relay_fail
+          - ecms_comms_loss
+      command_scenario:
+        description: Optional validated CommandBus scenario
+        required: true
+        type: choice
+        default: none
+        options:
+          - none
+          - bfp_trip
+
+permissions:
+  contents: read
+
+concurrency:
+  group: thermosyspro-${{ github.ref }}
+  # Phone users often retry the Run button; keep only the newest request.
+  cancel-in-progress: true
+
+jobs:
+  simulate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out cloud runner
+        uses: actions/checkout@v4
+
+      - name: Run unit tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Run ThermoSysPro and ECMS pipeline
+        env:
+          TRIP_TIME_S: ${{ inputs.trip_time_s }}
+          TRIP_RAMP_DURATION_S: ${{ inputs.trip_ramp_duration_s }}
+          STOP_TIME_S: ${{ inputs.stop_time_s }}
+          OUTPUT_INTERVALS: ${{ inputs.output_intervals }}
+          FAULT_PRESET: ${{ inputs.fault_preset }}
+          COMMAND_SCENARIO: ${{ inputs.command_scenario }}
+        run: |
+          chmod +x scripts/run_pipeline.sh
+          scripts/run_pipeline.sh \
+            "$TRIP_TIME_S" \
+            "$TRIP_RAMP_DURATION_S" \
+            "$STOP_TIME_S" \
+            "$OUTPUT_INTERVALS" \
+            "$FAULT_PRESET" \
+            "$COMMAND_SCENARIO"
+
+      - name: Upload simulation results
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: thermosyspro-ecms-${{ github.run_number }}
+          path: |
+            outputs/
+            build/run.mos
+            build/TripLens_CombinedCycle_TripTAC.mo
+          if-no-files-found: error
+          retention-days: 30
