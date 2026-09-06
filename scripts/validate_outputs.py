@@ -266,8 +266,14 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--trip-time", type=float, required=True)
+    parser.add_argument(
+        "--sampling-profile",
+        choices=("standard", "incident_1ms"),
+        default="standard",
+    )
     args = parser.parse_args()
     process_path = args.output_dir / "processbus.csv"
+    raw_path = args.output_dir / "thermosyspro-raw.csv"
     trend_path = args.output_dir / "ecms-trend.csv"
     event_path = args.output_dir / "ecms-events.csv"
     feeder_path = args.output_dir / "ecms-feeders.csv"
@@ -379,6 +385,71 @@ def main() -> int:
     scenario = manifest.get("scenario", {})
     if float(scenario["trip_time_s"]) != args.trip_time:
         raise ValueError("manifest trip time does not match workflow input")
+    sampling = manifest.get("sampling")
+    if sampling is None and args.sampling_profile == "standard":
+        # Preserve read compatibility with result bundles created before
+        # sampling provenance was added. New bundles always include this field.
+        sampling = {"profile": "standard"}
+    if not isinstance(sampling, dict) or sampling.get("profile") != args.sampling_profile:
+        raise ValueError("manifest sampling profile does not match workflow input")
+    if args.sampling_profile == "incident_1ms":
+        physics = sampling.get("physics")
+        ecms_sampling = sampling.get("ecms")
+        if not isinstance(physics, dict) or not isinstance(ecms_sampling, dict):
+            raise ValueError("manifest incident sampling metadata is incomplete")
+        physics_period_ms = finite_float(
+            str(physics.get("nominal_output_period_ms")),
+            "nominal_output_period_ms",
+            manifest_path,
+        )
+        if not math.isclose(physics_period_ms, 1.0, abs_tol=1e-9):
+            raise ValueError("incident_1ms must use true 1 ms ThermoSysPro CSV output intervals")
+        process_times_ms = [
+            round(finite_float(row["time_s"], "time_s", process_path) * 1000)
+            for row in process_rows
+        ]
+        _, raw_rows = require_columns(raw_path, {"time"})
+        raw_times_ms = [
+            round(finite_float(row["time"], "time", raw_path) * 1000)
+            for row in raw_rows
+        ]
+        if any(
+            later - earlier != 1
+            for earlier, later in zip(process_times_ms, process_times_ms[1:])
+        ):
+            raise ValueError("processbus.csv does not contain a complete 1 ms physical output grid")
+        if raw_times_ms != process_times_ms:
+            raise ValueError("thermosyspro-raw.csv and processbus.csv 1 ms grids do not match")
+        expected_start_ms = 0
+        expected_stop_ms = round(float(scenario["stop_time_s"]) * 1000)
+        if process_times_ms[0] != expected_start_ms or process_times_ms[-1] != expected_stop_ms:
+            raise ValueError("1 ms physical output grid does not cover the complete simulation horizon")
+        window_start = int(ecms_sampling.get("incident_window_start_ms"))
+        window_end = int(ecms_sampling.get("incident_window_end_ms"))
+        incident_period_ms = int(ecms_sampling.get("incident_period_ms"))
+        normal_period_ms = int(ecms_sampling.get("normal_period_ms"))
+        if incident_period_ms != 1:
+            raise ValueError("manifest incident ECMS period is not 1 ms")
+        if normal_period_ms <= 0:
+            raise ValueError("manifest normal ECMS period must be positive")
+        trend_times = [int(row["source_time_ms"]) for row in trend_rows]
+        expected_trend_times = sorted(
+            set(range(expected_start_ms, expected_stop_ms + 1, normal_period_ms))
+            | set(range(window_start, window_end + 1, incident_period_ms))
+            | {expected_start_ms, expected_stop_ms, round(args.trip_time * 1000)}
+        )
+        if trend_times != expected_trend_times:
+            raise ValueError("ecms-trend.csv does not match the declared multirate sampling grid")
+        if "sampling_resolution" not in trend_fields:
+            raise ValueError("ecms-trend.csv is missing sampling_resolution provenance")
+        for row in trend_rows:
+            time_ms = int(row["source_time_ms"])
+            expected_label = (
+                "INCIDENT_1MS" if window_start <= time_ms <= window_end
+                else f"NORMAL_{normal_period_ms}MS"
+            )
+            if row["sampling_resolution"] != expected_label:
+                raise ValueError("ecms-trend.csv sampling_resolution does not match its time grid")
     trend_start_ms = int(float(trend_rows[0]["source_time_ms"]))
     trend_stop_ms = int(float(trend_rows[-1]["source_time_ms"]))
     if any(

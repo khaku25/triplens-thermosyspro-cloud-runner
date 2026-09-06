@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
+import math
 import platform
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,12 +21,43 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def configured_trend_period_ms(output_dir: Path) -> int | None:
+    """Read the copied run-specific A setting without assuming it is always 20 ms."""
+    path = output_dir / "config" / "ecms_a_settings.csv"
+    if not path.is_file():
+        return None
+    with path.open("r", encoding="utf-8-sig", newline="") as stream:
+        matches = [
+            row for row in csv.DictReader(stream)
+            if row.get("setting_id", "").strip() == "TREND_PERIOD_MS"
+        ]
+    if len(matches) != 1:
+        raise ValueError("ecms_a_settings.csv must contain exactly one TREND_PERIOD_MS row")
+    value = int(matches[0]["value"])
+    if value <= 0:
+        raise ValueError("TREND_PERIOD_MS must be greater than zero")
+    return value
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--trip-time", type=float, required=True)
     parser.add_argument("--trip-ramp-duration", type=float, required=True)
     parser.add_argument("--stop-time", type=float, required=True)
+    parser.add_argument(
+        "--sampling-profile",
+        choices=("standard", "incident_1ms"),
+        default="standard",
+    )
+    parser.add_argument("--output-intervals", type=int)
+    parser.add_argument("--incident-period-ms", type=int, default=1)
+    parser.add_argument("--incident-pre-ms", type=int, default=2000)
+    parser.add_argument("--incident-post-ms", type=int, default=5000)
+    parser.add_argument("--requested-trip-time", type=float)
+    parser.add_argument("--requested-trip-ramp-duration", type=float)
+    parser.add_argument("--requested-stop-time", type=float)
+    parser.add_argument("--requested-output-intervals", type=int)
     parser.add_argument("--fault-preset", required=True)
     parser.add_argument("--command-scenario", default="none")
     parser.add_argument("--scenario-id", default="GT_TRIP_TAC")
@@ -37,6 +70,70 @@ def main() -> int:
     parser.add_argument("--thermosyspro-commit", required=True)
     parser.add_argument("--openmodelica-image", required=True)
     args = parser.parse_args()
+
+    if args.output_intervals is not None and args.output_intervals <= 0:
+        parser.error("--output-intervals must be greater than zero")
+    if args.incident_period_ms <= 0:
+        parser.error("--incident-period-ms must be greater than zero")
+    if args.incident_pre_ms < 0 or args.incident_post_ms < 0:
+        parser.error("incident window lengths must be non-negative")
+
+    normal_period_ms = configured_trend_period_ms(args.output_dir)
+    physics_period_ms = (
+        args.stop_time * 1000.0 / args.output_intervals
+        if args.output_intervals is not None else None
+    )
+    if physics_period_ms is not None and not math.isfinite(physics_period_ms):
+        parser.error("derived physics output period is not finite")
+    trip_ms = round(args.trip_time * 1000)
+    stop_ms = round(args.stop_time * 1000)
+    incident_start_ms = max(0, trip_ms - args.incident_pre_ms)
+    incident_stop_ms = min(stop_ms, trip_ms + args.incident_post_ms)
+    sampling = {
+        "profile": args.sampling_profile,
+        "timing_source": (
+            "WORKFLOW_INPUTS" if args.sampling_profile == "standard"
+            else "FIXED_SHORT_DIAGNOSTIC_PRESET"
+        ),
+        "requested_workflow_values": {
+            "trip_time_s": args.requested_trip_time,
+            "trip_ramp_duration_s": args.requested_trip_ramp_duration,
+            "stop_time_s": args.requested_stop_time,
+            "output_intervals": args.requested_output_intervals,
+        },
+        "physics": {
+            "output_intervals": args.output_intervals,
+            "nominal_output_period_ms": physics_period_ms,
+            "solver_step_note": (
+                "This is the requested CSV output interval; the DASSL integration step remains adaptive."
+            ),
+        },
+        "ecms": {
+            "normal_period_ms": normal_period_ms,
+            "incident_period_ms": (
+                args.incident_period_ms if args.sampling_profile == "incident_1ms" else None
+            ),
+            "incident_pre_ms": (
+                args.incident_pre_ms if args.sampling_profile == "incident_1ms" else None
+            ),
+            "incident_post_ms": (
+                args.incident_post_ms if args.sampling_profile == "incident_1ms" else None
+            ),
+            "incident_window_start_ms": (
+                incident_start_ms if args.sampling_profile == "incident_1ms" else None
+            ),
+            "incident_window_end_ms": (
+                incident_stop_ms if args.sampling_profile == "incident_1ms" else None
+            ),
+            "value_basis": (
+                "INTERPOLATED_FROM_PROCESSBUS_EXCEPT_AT_NATIVE_PHYSICS_SAMPLES"
+            ),
+        },
+        "events": {
+            "timestamp_unit": "ms",
+            "sampled": False,
+        },
+    }
 
     files = {}
     for path in sorted(args.output_dir.rglob("*")):
@@ -84,6 +181,7 @@ def main() -> int:
             "command_scenario": args.command_scenario,
         },
         "runtime": runtime,
+        "sampling": sampling,
         "provenance": provenance,
         "assumptions": [
             "ThermoSysPro CombinedCycle_TripTAC models HRSG/steam-cycle response to GT exhaust boundary conditions.",
@@ -95,6 +193,12 @@ def main() -> int:
             "The words Incoming/인커밍 are used for auxiliary-bus source breakers.",
             "Unknown fault names are rejected instead of being inferred.",
             "THERMO_ADAPTER_REQUIRED commands create ECMS indications/events but do not mutate locked ThermoSysPro M outputs.",
+            *(
+                [
+                    "incident_1ms is a shortened 0-10 s diagnostic profile; it is not equivalent to the standard 600 s pre-trip warm-up.",
+                ]
+                if args.sampling_profile == "incident_1ms" else []
+            ),
         ],
         "files": files,
     }

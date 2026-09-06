@@ -12,6 +12,7 @@ import argparse
 import csv
 import json
 import math
+from bisect import bisect_left
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from validate_commands import load_catalog, validate_queue
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+MAX_ECMS_TREND_SAMPLES = 125_000
 
 
 @dataclass(frozen=True)
@@ -119,6 +121,15 @@ def load_a_settings(path: Path) -> tuple[dict[str, float | bool | str], str]:
     ):
         if not math.isfinite(float(settings[key])) or float(settings[key]) < 0:
             raise ValueError(f"{key} must be non-negative")
+    for key in (
+        "TRIP_RECEIVE_DELAY_MS", "LOCKOUT_OPERATE_DELAY_MS",
+        "GT_BREAKER_OPEN_DELAY_MS", "GT_POWER_DECAY_MS",
+        "ST_BREAKER_OPEN_DELAY_MS", "UNDERVOLTAGE_DELAY_MS",
+        "TREND_PERIOD_MS", "CLOCK_OFFSET_MS",
+    ):
+        value = float(settings[key])
+        if not value.is_integer():
+            raise ValueError(f"{key} must be an integer number of milliseconds")
     if int(settings["TREND_PERIOD_MS"]) <= 0:
         raise ValueError("TREND_PERIOD_MS must be greater than zero")
     if bool(settings["ALLOW_SOURCE_PARALLEL"]):
@@ -228,18 +239,98 @@ def load_m_links(path: Path, m_tags_path: Path) -> dict[str, list[tuple[str, str
     return result
 
 
+@dataclass(frozen=True)
+class LinearSeries:
+    """Prepared scalar series for repeated linear interpolation.
+
+    ProcessBus rows are sampled many times while producing a fine-grained ECMS
+    trend. Preparing numeric columns once and locating each interval with a
+    binary search avoids rescanning and reparsing the complete ProcessBus for
+    every output sample.
+    """
+
+    times_s: tuple[float, ...]
+    values: tuple[float, ...]
+
+    @classmethod
+    def from_rows(cls, rows: list[dict[str, str]], field: str) -> "LinearSeries":
+        if field not in rows[0] or rows[0].get(field, "") == "":
+            return cls((), ())
+        return cls(
+            tuple(float(row["time_s"]) for row in rows),
+            tuple(float(row[field]) for row in rows),
+        )
+
+    def at(self, time_s: float) -> float:
+        if not self.times_s:
+            return 0.0
+        if time_s <= self.times_s[0]:
+            return self.values[0]
+        right_index = bisect_left(self.times_s, time_s, 1)
+        if right_index >= len(self.times_s):
+            return self.values[-1]
+        left_index = right_index - 1
+        t0, t1 = self.times_s[left_index], self.times_s[right_index]
+        v0, v1 = self.values[left_index], self.values[right_index]
+        ratio = (time_s - t0) / (t1 - t0)
+        return v0 + ratio * (v1 - v0)
+
+
 def interpolate(rows: list[dict[str, str]], field: str, time_s: float) -> float:
-    if field not in rows[0] or rows[0].get(field, "") == "":
-        return 0.0
-    if time_s <= float(rows[0]["time_s"]):
-        return float(rows[0][field])
-    for left, right in zip(rows, rows[1:]):
-        t0, t1 = float(left["time_s"]), float(right["time_s"])
-        if time_s <= t1:
-            v0, v1 = float(left[field]), float(right[field])
-            ratio = (time_s - t0) / (t1 - t0)
-            return v0 + ratio * (v1 - v0)
-    return float(rows[-1][field])
+    """Compatibility wrapper for one-off interpolation calls."""
+    return LinearSeries.from_rows(rows, field).at(time_s)
+
+
+def build_sample_times(
+    start_ms: int,
+    stop_ms: int,
+    normal_period_ms: int,
+    trip_ms: int,
+    sampling_profile: str,
+    incident_period_ms: int,
+    incident_pre_ms: int,
+    incident_post_ms: int,
+) -> tuple[list[int], int | None, int | None]:
+    """Build a deterministic uniform or incident-window ECMS sampling grid."""
+    if stop_ms < start_ms:
+        raise ValueError("ECMS stop time must not precede start time")
+    if normal_period_ms <= 0:
+        raise ValueError("normal ECMS trend period must be greater than zero")
+    if sampling_profile not in {"standard", "incident_1ms"}:
+        raise ValueError(f"unknown sampling profile: {sampling_profile}")
+    if incident_period_ms <= 0:
+        raise ValueError("incident period must be greater than zero")
+    if incident_period_ms > normal_period_ms:
+        raise ValueError("incident period must not exceed the normal trend period")
+    if sampling_profile == "incident_1ms" and incident_period_ms != 1:
+        raise ValueError("incident_1ms requires an incident period of exactly 1 ms")
+    if incident_pre_ms < 0 or incident_post_ms < 0:
+        raise ValueError("incident window lengths must be non-negative")
+
+    incident_start_ms: int | None = None
+    incident_stop_ms: int | None = None
+    estimated_samples = (stop_ms - start_ms) // normal_period_ms + 3
+    if sampling_profile == "incident_1ms":
+        incident_start_ms = max(start_ms, trip_ms - incident_pre_ms)
+        incident_stop_ms = min(stop_ms, trip_ms + incident_post_ms)
+        estimated_samples += (
+            (incident_stop_ms - incident_start_ms) // incident_period_ms + 3
+        )
+    if estimated_samples > MAX_ECMS_TREND_SAMPLES:
+        raise ValueError(
+            "requested ECMS sampling grid is too large; shorten the run/window "
+            "or increase the normal trend period"
+        )
+
+    sample_times = set(range(start_ms, stop_ms + 1, normal_period_ms))
+    sample_times.update({start_ms, stop_ms})
+    if sampling_profile == "incident_1ms":
+        assert incident_start_ms is not None and incident_stop_ms is not None
+        sample_times.update(
+            range(incident_start_ms, incident_stop_ms + 1, incident_period_ms)
+        )
+        sample_times.update({incident_start_ms, incident_stop_ms, trip_ms})
+    return sorted(sample_times), incident_start_ms, incident_stop_ms
 
 
 def decay(time_ms: int, start_ms: int, duration_ms: int) -> float:
@@ -346,7 +437,9 @@ def write_events(path: Path, events: list[Event], clock_offset_ms: int) -> None:
     with path.open("w", encoding="utf-8", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=fields)
         writer.writeheader()
-        for event in sorted(events, key=lambda item: (item.time_ms, item.tag)):
+        # Python's sort is stable, so equal-time protection events retain the
+        # causal insertion order (Trip -> receive -> lockout -> breaker).
+        for event in sorted(events, key=lambda item: item.time_ms):
             writer.writerow({
                 "event_time_ms": event.time_ms + clock_offset_ms,
                 "source_time_ms": event.time_ms,
@@ -487,6 +580,14 @@ def main() -> int:
     parser.add_argument("--commands", type=Path)
     parser.add_argument("--fault-preset", default="none")
     parser.add_argument("--trip-time", type=float, required=True)
+    parser.add_argument(
+        "--sampling-profile",
+        choices=("standard", "incident_1ms"),
+        default="standard",
+    )
+    parser.add_argument("--incident-period-ms", type=int, default=1)
+    parser.add_argument("--incident-pre-ms", type=int, default=2000)
+    parser.add_argument("--incident-post-ms", type=int, default=5000)
     parser.add_argument("--trend-output", type=Path, required=True)
     parser.add_argument("--event-output", type=Path, required=True)
     parser.add_argument("--feeder-output", type=Path)
@@ -520,6 +621,14 @@ def main() -> int:
     if args.commands:
         commands = validate_queue(args.commands, load_catalog(args.command_catalog))
 
+    trip_time_ms = args.trip_time * 1000.0
+    if not math.isclose(trip_time_ms, round(trip_time_ms), abs_tol=1e-9):
+        raise ValueError("trip time must resolve to a whole millisecond")
+    for command in commands:
+        command_time_ms = float(command["time_s"]) * 1000.0
+        if not math.isclose(command_time_ms, round(command_time_ms), abs_tol=1e-9):
+            raise ValueError("command times must resolve to whole milliseconds")
+
     start_ms = round(float(rows[0]["time_s"]) * 1000)
     stop_ms = round(float(rows[-1]["time_s"]) * 1000)
     trip_ms = round(args.trip_time * 1000)
@@ -539,6 +648,16 @@ def main() -> int:
     if mismatched_gt_trip:
         raise ValueError("a GTG TRIP command must match --trip-time in the cloud physics pipeline")
     period_ms = int(a["TREND_PERIOD_MS"])
+    sample_times_ms, incident_start_ms, incident_stop_ms = build_sample_times(
+        start_ms,
+        stop_ms,
+        period_ms,
+        trip_ms,
+        args.sampling_profile,
+        args.incident_period_ms,
+        args.incident_pre_ms,
+        args.incident_post_ms,
+    )
     clock_offset_ms = int(a["CLOCK_OFFSET_MS"])
     relay_trip_ms = trip_ms + int(a["TRIP_RECEIVE_DELAY_MS"])
     lockout_ms = relay_trip_ms + int(a["LOCKOUT_OPERATE_DELAY_MS"])
@@ -643,10 +762,11 @@ def main() -> int:
     st_terminal_kv = float(a["ST_TERMINAL_VOLTAGE_KV"])
     auto_tie = bool(a["AUTO_BUS_TIE_TRANSFER"])
     allow_source_parallel = bool(a["ALLOW_SOURCE_PARALLEL"])
+    stg_power_series = LinearSeries.from_rows(rows, "stg_power_w")
 
     args.trend_output.parent.mkdir(parents=True, exist_ok=True)
     fields = [
-        "ecms_time_ms", "source_time_ms", "quality", "a_config_status",
+        "ecms_time_ms", "source_time_ms", "quality", "a_config_status", "sampling_resolution",
         "gt_trip_cmd", "relay_86gt_operated", "cb_52gt_closed", "cb_52st_closed",
         "cb_in_a_closed", "cb_in_b_closed", "cb_tie_ab_closed",
         "gt_main_transformer_direction", "st_main_transformer_direction",
@@ -661,9 +781,14 @@ def main() -> int:
     with args.trend_output.open("w", encoding="utf-8", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=fields)
         writer.writeheader()
-        for time_ms in range(start_ms, stop_ms + 1, period_ms):
+        for time_ms in sample_times_ms:
             time_s = time_ms / 1000.0
             after_trip = time_ms >= trip_ms
+            in_incident_window = (
+                incident_start_ms is not None
+                and incident_stop_ms is not None
+                and incident_start_ms <= time_ms <= incident_stop_ms
+            )
             grid_live = apply_availability_command(
                 not after_trip or grid_available_after_trip, commands, "GRID-154KV", time_ms
             )
@@ -679,7 +804,7 @@ def main() -> int:
             )
             gt_power_pu = decay(time_ms, trip_ms, int(a["GT_POWER_DECAY_MS"])) if after_trip else 1.0
             gtg_power_mw = float(a["GTG_PRETRIP_POWER_MW"]) * gt_power_pu if gt_cb_closed else 0.0
-            stg_model_w = interpolate(rows, "stg_power_w", time_s)
+            stg_model_w = stg_power_series.at(time_s)
             stg_power_mw = stg_model_w / 1_000_000.0 if st_cb_closed else 0.0
 
             gt_generation_live = gt_cb_closed and gt_power_pu >= float(a["UNDERVOLTAGE_PICKUP_PU"])
@@ -723,11 +848,11 @@ def main() -> int:
             # sampled low-voltage interval and an auditable 27UV event.
             bus_a_transfer_ready = (
                 bus_a_native_loss_ms is not None
-                and time_ms - period_ms >= bus_a_native_loss_ms + uv_delay_ms
+                and time_ms > bus_a_native_loss_ms + uv_delay_ms
             )
             bus_b_transfer_ready = (
                 bus_b_native_loss_ms is not None
-                and time_ms - period_ms >= bus_b_native_loss_ms + uv_delay_ms
+                and time_ms > bus_b_native_loss_ms + uv_delay_ms
             )
             transfer_ready = (
                 (not bus_a_native and bus_b_native and bus_a_transfer_ready and not bus_a_fault_active)
@@ -762,6 +887,10 @@ def main() -> int:
                 "source_time_ms": time_ms,
                 "quality": quality,
                 "a_config_status": a_config_status,
+                "sampling_resolution": (
+                    f"INCIDENT_{args.incident_period_ms}MS"
+                    if in_incident_window else f"NORMAL_{period_ms}MS"
+                ),
                 "gt_trip_cmd": int(after_trip),
                 "relay_86gt_operated": int(relay_lockout_state(relay_operates, lockout_ms, time_ms, commands)),
                 "cb_52gt_closed": int(gt_cb_closed),

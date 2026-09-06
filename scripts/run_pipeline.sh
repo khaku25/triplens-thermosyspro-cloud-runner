@@ -5,12 +5,51 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd -- "$script_dir/.." && pwd)"
 cd "$project_root"
 
-trip_time_s="${1:-600}"
-trip_ramp_duration_s="${2:-5}"
-stop_time_s="${3:-1000}"
-intervals="${4:-1000}"
+requested_trip_time_s="${1:-600}"
+requested_trip_ramp_duration_s="${2:-5}"
+requested_stop_time_s="${3:-1000}"
+requested_intervals="${4:-1000}"
 fault_preset="${5:-none}"
 command_scenario="${6:-none}"
+sampling_profile="${7:-standard}"
+incident_pre_ms="${8:-2000}"
+incident_post_ms="${9:-5000}"
+incident_period_ms=1
+
+trip_time_s="$requested_trip_time_s"
+trip_ramp_duration_s="$requested_trip_ramp_duration_s"
+stop_time_s="$requested_stop_time_s"
+intervals="$requested_intervals"
+
+if [[ ! "$incident_pre_ms" =~ ^[0-9]+$ || ! "$incident_post_ms" =~ ^[0-9]+$ ]]; then
+  echo "incident window values must be non-negative integer milliseconds" >&2
+  exit 2
+fi
+
+case "$sampling_profile" in
+  standard) ;;
+  incident_1ms)
+    # A bounded diagnostic preset keeps the per-sample feeder export small
+    # enough for GitHub Actions and MATLAB Online. The raw
+    # ThermoSysPro result is genuinely sampled every 1 ms for this entire run;
+    # the ECMS export remains 20 ms outside the requested incident window.
+    trip_time_s=2
+    trip_ramp_duration_s=5
+    stop_time_s=10
+    intervals=10000
+    if [[ "$command_scenario" == "bfp_trip" ]]; then
+      echo "bfp_trip occurs at 100 s and cannot run in the 0-10 s incident_1ms preset" >&2
+      exit 2
+    fi
+    ;;
+  *)
+    echo "unknown sampling profile: $sampling_profile" >&2
+    exit 2
+    ;;
+esac
+
+echo "Sampling profile: $sampling_profile"
+echo "Effective run: trip=${trip_time_s}s ramp=${trip_ramp_duration_s}s stop=${stop_time_s}s intervals=$intervals"
 
 case "$fault_preset" in
   none|gtg_breaker_fail|uat_a_fault|uat_b_fault|gt_transformer_receive_fail|st_transformer_receive_fail|bus_a_fault|bus_b_fault|grid_loss|relay_fail|ecms_comms_loss) ;;
@@ -111,6 +150,10 @@ python3 scripts/generate_ecms.py \
   --m-tags data/thermo_vpp_m_locked_tags.csv \
   --fault-preset "$fault_preset" \
   --trip-time "$trip_time_s" \
+  --sampling-profile "$sampling_profile" \
+  --incident-period-ms "$incident_period_ms" \
+  --incident-pre-ms "$incident_pre_ms" \
+  --incident-post-ms "$incident_post_ms" \
   --trend-output outputs/ecms-trend.csv \
   --event-output outputs/ecms-events.csv \
   --feeder-output outputs/ecms-feeders.csv \
@@ -144,9 +187,21 @@ python3 scripts/build_manifest.py \
   --trip-time "$trip_time_s" \
   --trip-ramp-duration "$trip_ramp_duration_s" \
   --stop-time "$stop_time_s" \
+  --sampling-profile "$sampling_profile" \
+  --output-intervals "$intervals" \
+  --incident-period-ms "$incident_period_ms" \
+  --incident-pre-ms "$incident_pre_ms" \
+  --incident-post-ms "$incident_post_ms" \
+  --requested-trip-time "$requested_trip_time_s" \
+  --requested-trip-ramp-duration "$requested_trip_ramp_duration_s" \
+  --requested-stop-time "$requested_stop_time_s" \
+  --requested-output-intervals "$requested_intervals" \
   --fault-preset "$fault_preset" \
   --command-scenario "$command_scenario" \
   --thermosyspro-commit "$thermosyspro_commit" \
   --openmodelica-image "$openmodelica_image"
 
-python3 scripts/validate_outputs.py --output-dir outputs --trip-time "$trip_time_s"
+python3 scripts/validate_outputs.py \
+  --output-dir outputs \
+  --trip-time "$trip_time_s" \
+  --sampling-profile "$sampling_profile"
