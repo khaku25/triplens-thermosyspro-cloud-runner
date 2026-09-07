@@ -6,7 +6,7 @@ on:
       bfp_trip_time_s:
         description: HP boiler-feed-pump trip time in seconds
         required: true
-        default: "600"
+        default: "100"
       bfp_coastdown_duration_s:
         description: Hydraulic speed-adapter coastdown duration in seconds
         required: true
@@ -14,11 +14,11 @@ on:
       stop_time_s:
         description: Simulation stop time in seconds
         required: true
-        default: "1000"
+        default: "300"
       output_intervals:
-        description: ThermoSysPro output intervals (1000 = 1 s at 1000 s)
+        description: ThermoSysPro output intervals (300 = 1 s at 300 s)
         required: true
-        default: "1000"
+        default: "300"
       bfp_final_rpm:
         description: Numerical hydraulic residual speed after electrical trip
         required: true
@@ -65,10 +65,10 @@ jobs:
         run: |
           chmod +x scripts/run_bfp_blind_pipeline.sh
           scripts/run_bfp_blind_pipeline.sh \
-            "${BFP_TRIP_TIME_S:-600}" \
+            "${BFP_TRIP_TIME_S:-100}" \
             "${BFP_COASTDOWN_DURATION_S:-5}" \
-            "${STOP_TIME_S:-1000}" \
-            "${OUTPUT_INTERVALS:-1000}" \
+            "${STOP_TIME_S:-300}" \
+            "${OUTPUT_INTERVALS:-300}" \
             "${BFP_FINAL_RPM:-1000}"
 
       - name: Upload blind incident and answer key

@@ -5,10 +5,10 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd -- "$script_dir/.." && pwd)"
 cd "$project_root"
 
-bfp_trip_time_s="${1:-600}"
+bfp_trip_time_s="${1:-100}"
 bfp_coastdown_duration_s="${2:-5}"
-stop_time_s="${3:-1000}"
-intervals="${4:-1000}"
+stop_time_s="${3:-300}"
+intervals="${4:-300}"
 bfp_final_rpm="${5:-1000}"
 
 openmodelica_image="openmodelica/openmodelica:v1.27.0-minimal"
