@@ -1,0 +1,84 @@
+name: Generate Blind BFP Trip Incident
+
+on:
+  workflow_dispatch:
+    inputs:
+      bfp_trip_time_s:
+        description: HP boiler-feed-pump trip time in seconds
+        required: true
+        default: "600"
+      bfp_coastdown_duration_s:
+        description: Hydraulic speed-adapter coastdown duration in seconds
+        required: true
+        default: "5"
+      stop_time_s:
+        description: Simulation stop time in seconds
+        required: true
+        default: "1000"
+      output_intervals:
+        description: ThermoSysPro output intervals (10000 = 100 ms at 1000 s)
+        required: true
+        default: "10000"
+      bfp_final_rpm:
+        description: Numerical hydraulic residual speed after electrical trip
+        required: true
+        default: "700"
+  push:
+    branches:
+      - feature/bfp-trip-blind
+    paths:
+      - .github/workflows/run-bfp-trip-blind.yml
+      - modelica/TripLens_CombinedCycle_BFPTrip.mo.tpl
+      - modelica/run_bfp.mos.tpl
+      - scripts/render_bfp_modelica.py
+      - scripts/normalize_bfp_processbus.py
+      - scripts/generate_bfp_blind.py
+      - scripts/validate_bfp_blind.py
+      - scripts/run_bfp_blind_pipeline.sh
+      - tests/test_bfp_blind.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bfp-blind-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out cloud runner
+        uses: actions/checkout@v4
+
+      - name: Test BFP blind-scenario contracts
+        run: python3 -m unittest tests.test_bfp_blind -v
+
+      - name: Run ThermoSysPro BFP blind pipeline
+        env:
+          BFP_TRIP_TIME_S: ${{ inputs.bfp_trip_time_s }}
+          BFP_COASTDOWN_DURATION_S: ${{ inputs.bfp_coastdown_duration_s }}
+          STOP_TIME_S: ${{ inputs.stop_time_s }}
+          OUTPUT_INTERVALS: ${{ inputs.output_intervals }}
+          BFP_FINAL_RPM: ${{ inputs.bfp_final_rpm }}
+        run: |
+          chmod +x scripts/run_bfp_blind_pipeline.sh
+          scripts/run_bfp_blind_pipeline.sh \
+            "${BFP_TRIP_TIME_S:-600}" \
+            "${BFP_COASTDOWN_DURATION_S:-5}" \
+            "${STOP_TIME_S:-1000}" \
+            "${OUTPUT_INTERVALS:-10000}" \
+            "${BFP_FINAL_RPM:-700}"
+
+      - name: Upload blind incident and answer key
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blind-bfp-incident-${{ github.run_number }}
+          path: |
+            bfp-outputs/
+            build/run_bfp.mos
+            build/TripLens_CombinedCycle_BFPTrip.mo
+          if-no-files-found: error
+          retention-days: 30
