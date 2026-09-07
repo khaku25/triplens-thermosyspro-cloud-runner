@@ -34,7 +34,7 @@ def main() -> int:
     parser.add_argument("--trip-time", type=finite_float, default=10.0)
     parser.add_argument("--coastdown-duration", type=finite_float, default=5.0)
     parser.add_argument("--stop-time", type=finite_float, default=70.0)
-    parser.add_argument("--intervals", type=int, default=70)
+    parser.add_argument("--intervals", type=int, default=100)
     parser.add_argument("--final-rpm", type=finite_float, default=1000.0)
     parser.add_argument("--template-dir", type=Path, default=PROJECT_ROOT / "modelica")
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "build")

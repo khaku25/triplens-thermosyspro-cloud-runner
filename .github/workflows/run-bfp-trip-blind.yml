@@ -16,9 +16,9 @@ on:
         required: true
         default: "70"
       output_intervals:
-        description: ThermoSysPro output intervals (70 = 1 s at 70 s)
+        description: ThermoSysPro output intervals (100 = 0.7 s at 70 s)
         required: true
-        default: "70"
+        default: "100"
       bfp_final_rpm:
         description: Numerical hydraulic residual speed after electrical trip
         required: true
@@ -68,7 +68,7 @@ jobs:
             "${BFP_TRIP_TIME_S:-10}" \
             "${BFP_COASTDOWN_DURATION_S:-5}" \
             "${STOP_TIME_S:-70}" \
-            "${OUTPUT_INTERVALS:-70}" \
+            "${OUTPUT_INTERVALS:-100}" \
             "${BFP_FINAL_RPM:-1000}"
 
       - name: Upload blind incident and answer key

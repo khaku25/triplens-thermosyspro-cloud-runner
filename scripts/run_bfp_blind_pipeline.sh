@@ -8,7 +8,7 @@ cd "$project_root"
 bfp_trip_time_s="${1:-10}"
 bfp_coastdown_duration_s="${2:-5}"
 stop_time_s="${3:-70}"
-intervals="${4:-70}"
+intervals="${4:-100}"
 bfp_final_rpm="${5:-1000}"
 
 openmodelica_image="openmodelica/openmodelica:v1.27.0-minimal"
