@@ -137,7 +137,29 @@ class CausalExportTests(unittest.TestCase):
     def test_complete_causal_bundle_contract_passes_validation(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory)
-            shutil.copytree(ROOT / "outputs", target, dirs_exist_ok=True)
+            shutil.copy2(
+                ROOT / "tests/fixtures/thermosyspro-raw.csv",
+                target / "thermosyspro-raw.csv",
+            )
+            static_files = [
+                "config/ecms_a_settings.csv", "config/ecms_a_equipment.csv",
+                "config/ecms_command_catalog.csv", "config/fault_presets.json",
+                "config/signal_map.json", "config/dcs_alarm_rules.csv",
+                "examples/bfp_trip_commands.csv", "data/ecms_m_links.csv",
+                "data/ecms_tag_catalog.csv", "data/thermo_vpp_m_locked_tags.csv",
+                "data/m_layer_manifest.json", "topology/triplens_ecms_vpp.svg",
+                "topology/triplens_ecms_6p9kv.svg", "matlab/triplens_ecms_editor.m",
+                "matlab/triplens_ecms_vpp_editor.m", "matlab/triplens_ecms_vpp_simulate.m",
+                "matlab/run_cloud_result.m", "ECMSVPP.m", "ECMS_START.m", "ECMS_RUN.m",
+                "ECMS_RESULT.m", "ECMS_DIAGNOSE.m", "ECMS_SELF_TEST.m",
+            ]
+            for relative in static_files:
+                destination = target / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(ROOT / relative, destination)
+            (target / "signal-mapping-review.json").write_text(
+                '{"test_fixture": true}\n', encoding="utf-8"
+            )
             self.write_processbus(target / "processbus.csv")
             shutil.copy2(target / "processbus.csv", target / "GT_TRIP_RAW_DATA.csv")
             self.extract(target)
