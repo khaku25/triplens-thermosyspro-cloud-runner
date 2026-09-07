@@ -16,13 +16,13 @@ on:
         required: true
         default: "1000"
       output_intervals:
-        description: ThermoSysPro output intervals (10000 = 100 ms at 1000 s)
+        description: ThermoSysPro output intervals (1000 = 1 s at 1000 s)
         required: true
-        default: "10000"
+        default: "1000"
       bfp_final_rpm:
         description: Numerical hydraulic residual speed after electrical trip
         required: true
-        default: "700"
+        default: "1000"
   push:
     branches:
       - feature/bfp-trip-blind
@@ -68,8 +68,8 @@ jobs:
             "${BFP_TRIP_TIME_S:-600}" \
             "${BFP_COASTDOWN_DURATION_S:-5}" \
             "${STOP_TIME_S:-1000}" \
-            "${OUTPUT_INTERVALS:-10000}" \
-            "${BFP_FINAL_RPM:-700}"
+            "${OUTPUT_INTERVALS:-1000}" \
+            "${BFP_FINAL_RPM:-1000}"
 
       - name: Upload blind incident and answer key
         if: success()
