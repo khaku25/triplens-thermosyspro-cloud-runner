@@ -1,0 +1,54 @@
+name: Run TripLens on Self-Hosted MATLAB
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: What to run on the real MATLAB installation
+        required: true
+        type: choice
+        default: smoke
+        options:
+          - smoke
+          - ecms
+
+permissions:
+  contents: read
+
+concurrency:
+  group: triplens-self-hosted-matlab-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  matlab-real-pc:
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 120
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Show runner identity
+        shell: powershell
+        run: |
+          Write-Host "Runner: $env:RUNNER_NAME"
+          Write-Host "Machine: $env:COMPUTERNAME"
+          Write-Host "Workspace: $env:GITHUB_WORKSPACE"
+
+      - name: Run TripLens in installed MATLAB
+        shell: powershell
+        run: |
+          $mode = '${{ inputs.mode }}'
+          $cmd = "addpath(fullfile(pwd,'matlab')); self_hosted_entrypoint('$mode');"
+          .\scripts\run_matlab_self_hosted.ps1 -MatlabCommand $cmd
+
+      - name: Upload MATLAB outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: self-hosted-matlab-${{ github.run_number }}
+          path: |
+            outputs/
+            self_hosted_last_result.mat
+          if-no-files-found: warn
+          retention-days: 30
