@@ -13,7 +13,8 @@ def main() -> int:
     parser.add_argument("--csv", type=Path, required=True)
     parser.add_argument("--expected-stop-time", type=float, required=True)
     parser.add_argument("--variant", required=True)
-    parser.add_argument("--omc-status", type=int, required=True)
+    parser.add_argument("--compile-status", type=int, required=True)
+    parser.add_argument("--simulation-status", type=int, required=True)
     parser.add_argument("--summary", type=Path, required=True)
     args = parser.parse_args()
 
@@ -37,14 +38,16 @@ def main() -> int:
 
     last_finite_time = max(times) if times else None
     completed = (
-        args.omc_status == 0
+        args.compile_status == 0
+        and args.simulation_status == 0
         and last_finite_time is not None
         and last_finite_time >= args.expected_stop_time - 1e-6
         and invalid_rows == 0
     )
     summary = {
         "variant": args.variant,
-        "omc_status": args.omc_status,
+        "compile_status": args.compile_status,
+        "simulation_status": args.simulation_status,
         "result_exists": args.csv.is_file(),
         "finite_rows": finite_rows,
         "invalid_rows": invalid_rows,
@@ -59,4 +62,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

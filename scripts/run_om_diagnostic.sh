@@ -73,13 +73,30 @@ docker run --rm \
   -w /workspace \
   "$openmodelica_image" \
   omc "/workspace/build/diagnostics/$variant/run.mos" \
-  2>&1 | tee "build/diagnostics/$variant/omc.log"
-omc_status=${PIPESTATUS[0]}
+  2>&1 | tee "build/diagnostics/$variant/compile.log"
+compile_status=${PIPESTATUS[0]}
+
+simulation_status=127
+executable="build/diagnostics/$variant/diagnostic_$variant"
+if [[ "$compile_status" -eq 0 && -x "$executable" ]]; then
+  docker run --rm \
+    -v "$project_root:/workspace" \
+    -w "/workspace/build/diagnostics/$variant" \
+    "$openmodelica_image" \
+    "/workspace/$executable" \
+    -lv=LOG_STATS,LOG_NLS,LOG_ASSERT \
+    -r="/workspace/build/diagnostics/$variant/diagnostic_${variant}_res.csv" \
+    2>&1 | tee "build/diagnostics/$variant/simulation.log"
+  simulation_status=${PIPESTATUS[0]}
+fi
 set -e
+
+sudo chmod -R a+rX "build/diagnostics/$variant"
 
 python3 scripts/check_diagnostic_result.py \
   --csv "build/diagnostics/$variant/diagnostic_${variant}_res.csv" \
   --expected-stop-time 1000 \
   --variant "$variant" \
-  --omc-status "$omc_status" \
+  --compile-status "$compile_status" \
+  --simulation-status "$simulation_status" \
   --summary "build/diagnostics/$variant/summary.json"
