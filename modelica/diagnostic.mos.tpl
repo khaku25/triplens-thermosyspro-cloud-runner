@@ -1,0 +1,19 @@
+setCommandLineOptions("--std=3.4");
+loadModel(Modelica, {"3.2.3"});
+getErrorString();
+loadFile("/workspace/vendor/ThermoSysPro/ThermoSysPro/package.mo");
+getErrorString();
+@LOAD_DIAGNOSTIC@
+cd("/workspace/build/diagnostics/@VARIANT@");
+simulate(
+  @MODEL_NAME@,
+  startTime=0,
+  stopTime=1000,
+  numberOfIntervals=1000,
+  tolerance=1e-3,
+  method="dassl",
+  outputFormat="csv",
+  fileNamePrefix="@PREFIX@",
+  simflags="-lv=LOG_STATS,LOG_NLS,LOG_ASSERT",
+  variableFilter="^(time|Debit\\.y\\.signal|Temperature\\.y\\.signal|Alternateur\\.Welec|Ballon(HP|MP|BP)\\.(yLevel\\.signal|zl|P)|Turbine(HP|MP|BP)\\.Q|EconomiseurMP\\.TwoPhaseFlowPipe\\.h\\[1\\])$");
+getErrorString();
