@@ -162,7 +162,7 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             normalized = self.read_csv(processbus)
             self.assertEqual(len(normalized), len(source_rows))
-            event_state = next(row for row in normalized if row["time_s"] == duplicate["time"])
+            event_state = next(\n                row for row in normalized\n                if float(row["time_s"]) == float(duplicate["time"])\n            )
             self.assertEqual(event_state["stg_power_w"], "123456789")
             metadata = json.loads(review.read_text())
             self.assertEqual(metadata["duplicate_time_rows_collapsed"], 1)

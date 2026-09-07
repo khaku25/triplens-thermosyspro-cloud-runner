@@ -12,6 +12,7 @@ on:
       - scripts/normalize_processbus.py
       - scripts/generate_ecms.py
       - scripts/validate_outputs.py
+      - tests/**
   workflow_dispatch:
 
 permissions:
