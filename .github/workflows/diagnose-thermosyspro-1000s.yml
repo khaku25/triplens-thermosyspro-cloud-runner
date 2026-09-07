@@ -1,0 +1,46 @@
+name: Diagnose ThermoSysPro 1000 s
+
+on:
+  push:
+    branches:
+      - diagnose-thermosyspro-1000s
+    paths:
+      - .github/workflows/diagnose-thermosyspro-1000s.yml
+      - modelica/TripLens_Diagnostic.mo.tpl
+      - modelica/diagnostic.mos.tpl
+      - scripts/run_om_diagnostic.sh
+      - scripts/check_diagnostic_result.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  simulate:
+    strategy:
+      fail-fast: false
+      matrix:
+        variant:
+          - original
+          - steady
+          - ramp_60
+          - ramp_300
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out diagnostic branch
+        uses: actions/checkout@v4
+
+      - name: Run 1000-second diagnostic
+        run: |
+          chmod +x scripts/run_om_diagnostic.sh
+          scripts/run_om_diagnostic.sh "${{ matrix.variant }}"
+
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: thermosyspro-diagnostic-${{ matrix.variant }}
+          path: build/diagnostics/${{ matrix.variant }}/
+          if-no-files-found: warn
+          retention-days: 14
