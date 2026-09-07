@@ -32,6 +32,22 @@ case "$variant" in
     flow_table='[0,606.94; 600,606.94; 900,50; 1000,50]'
     temperature_table='[0,893.75; 600,893.75; 900,423; 1000,423]'
     ;;
+  flow_only)
+    flow_table='[0,606.94; 600,606.94; 605,50; 1000,50]'
+    temperature_table='[0,893.75; 1000,893.75]'
+    ;;
+  temperature_only)
+    flow_table='[0,606.94; 1000,606.94]'
+    temperature_table='[0,893.75; 600,893.75; 605,423; 1000,423]'
+    ;;
+  mild_trip)
+    flow_table='[0,606.94; 600,606.94; 605,300; 1000,300]'
+    temperature_table='[0,893.75; 600,893.75; 605,700; 1000,700]'
+    ;;
+  moderate_trip)
+    flow_table='[0,606.94; 600,606.94; 605,150; 1000,150]'
+    temperature_table='[0,893.75; 600,893.75; 605,550; 1000,550]'
+    ;;
   *)
     echo "unknown diagnostic variant: $variant" >&2
     exit 2
@@ -84,7 +100,7 @@ if [[ "$compile_status" -eq 0 && -x "$executable" ]]; then
     -w "/workspace/build/diagnostics/$variant" \
     "$openmodelica_image" \
     "/workspace/$executable" \
-    -lv=LOG_STATS,LOG_NLS,LOG_ASSERT \
+    -lv=LOG_STATS \
     -r="/workspace/build/diagnostics/$variant/diagnostic_${variant}_res.csv" \
     2>&1 | tee "build/diagnostics/$variant/simulation.log"
   simulation_status=${PIPESTATUS[0]}

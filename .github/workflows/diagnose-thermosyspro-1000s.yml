@@ -15,6 +15,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: diagnose-thermosyspro-1000s
+  cancel-in-progress: true
+
 jobs:
   simulate:
     strategy:
@@ -22,9 +26,10 @@ jobs:
       matrix:
         variant:
           - original
-          - steady
-          - ramp_60
-          - ramp_300
+          - flow_only
+          - temperature_only
+          - mild_trip
+          - moderate_trip
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -41,6 +46,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: thermosyspro-diagnostic-${{ matrix.variant }}
-          path: build/diagnostics/${{ matrix.variant }}/
+          path: |
+            build/diagnostics/${{ matrix.variant }}/summary.json
+            build/diagnostics/${{ matrix.variant }}/compile.log
+            build/diagnostics/${{ matrix.variant }}/simulation.log
+            build/diagnostics/${{ matrix.variant }}/run.mos
+            build/diagnostics/${{ matrix.variant }}/TripLens_Diagnostic.mo
+            build/diagnostics/${{ matrix.variant }}/diagnostic_${{ matrix.variant }}_res.csv
           if-no-files-found: warn
           retention-days: 14
