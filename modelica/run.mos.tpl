@@ -14,6 +14,7 @@ simulate(
   tolerance=1e-3,
   method="dassl",
   outputFormat="csv",
+  simflags="-noEventEmit",
   fileNamePrefix="thermosyspro_trip_tac",
   variableFilter="^(time|Debit\\.y\\.signal|Temperature\\.y\\.signal|Alternateur\\.Welec|Ballon(HP|MP|BP)\\.(yLevel\\.signal|zl|P)|Turbine(HP|MP|BP)\\.Q|vanne_alimentation(HP|MP|BP)\\.Ouv\\.signal)$");
 getErrorString();
