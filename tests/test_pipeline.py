@@ -142,6 +142,32 @@ class PipelineTests(unittest.TestCase):
             self.assertIn("Interval=0.001", model)
             self.assertIn("numberOfIntervals=10000", mos)
 
+    def test_normalizer_collapses_duplicate_event_times_to_last_state(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            source_rows = self.read_csv(ROOT / "tests/fixtures/thermosyspro-raw.csv")
+            duplicate = dict(source_rows[1])
+            duplicate["Alternateur.Welec"] = "123456789"
+            raw = target / "raw-with-event-duplicate.csv"
+            self.write_csv(raw, [source_rows[0], source_rows[1], duplicate, *source_rows[2:]])
+            processbus = target / "processbus.csv"
+            review = target / "review.json"
+            result = self.run_script(
+                "normalize_processbus.py",
+                "--input", str(raw),
+                "--output", str(processbus),
+                "--mapping-review", str(review),
+                "--trip-time", "2",
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            normalized = self.read_csv(processbus)
+            self.assertEqual(len(normalized), len(source_rows))
+            event_state = next(row for row in normalized if row["time_s"] == duplicate["time"])
+            self.assertEqual(event_state["stg_power_w"], "123456789")
+            metadata = json.loads(review.read_text())
+            self.assertEqual(metadata["duplicate_time_rows_collapsed"], 1)
+            self.assertEqual(metadata["duplicate_time_policy"], "keep_last_event_state")
+
     def test_normalize_and_generate_ecms(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory)

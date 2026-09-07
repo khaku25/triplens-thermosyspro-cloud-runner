@@ -77,13 +77,13 @@ def main() -> int:
     ]
     normalized: list[dict[str, str | int | float]] = []
     previous_time: float | None = None
+    duplicate_time_rows_collapsed = 0
     for row_index, source_row in enumerate(source_rows, start=2):
         time_source = resolved["time_s"]
         assert time_source is not None
         time_s = parse_float(source_row[time_source], "time_s", row_index)
-        if previous_time is not None and time_s <= previous_time:
+        if previous_time is not None and time_s < previous_time:
             raise ValueError(f"row {row_index}: time_s must be strictly increasing")
-        previous_time = time_s
         target_row: dict[str, str | int | float] = {
             "scenario_id": args.scenario_id,
             "time_s": f"{time_s:.9f}",
@@ -94,7 +94,14 @@ def main() -> int:
                 continue
             source = resolved[target]
             target_row[target] = "" if source is None else f"{parse_float(source_row[source], target, row_index):.12g}"
-        normalized.append(target_row)
+        if previous_time is not None and time_s == previous_time:
+            # OpenModelica may emit pre-event and post-event values at one
+            # timestamp. ProcessBus retains the final post-event state.
+            normalized[-1] = target_row
+            duplicate_time_rows_collapsed += 1
+        else:
+            normalized.append(target_row)
+        previous_time = time_s
 
     if not (float(normalized[0]["time_s"]) <= args.trip_time <= float(normalized[-1]["time_s"])):
         raise ValueError("trip time is outside the simulation time range")
@@ -111,6 +118,8 @@ def main() -> int:
         "input_file": args.input.name,
         "scenario_id": args.scenario_id,
         "trip_time_s": args.trip_time,
+        "duplicate_time_rows_collapsed": duplicate_time_rows_collapsed,
+        "duplicate_time_policy": "keep_last_event_state",
         "resolved": resolved,
         "missing_optional": [name for name, source in resolved.items() if source is None],
     }
