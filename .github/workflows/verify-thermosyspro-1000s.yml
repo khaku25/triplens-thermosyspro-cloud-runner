@@ -1,0 +1,60 @@
+name: Verify TripLens ThermoSysPro 1000 s
+
+on:
+  push:
+    branches:
+      - diagnose-thermosyspro-1000s
+    paths:
+      - .github/workflows/verify-thermosyspro-1000s.yml
+      - modelica/TripLens_CombinedCycle_TripTAC.mo.tpl
+      - modelica/run.mos.tpl
+      - scripts/run_pipeline.sh
+      - scripts/normalize_processbus.py
+      - scripts/generate_ecms.py
+      - scripts/validate_outputs.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-thermosyspro-1000s
+  cancel-in-progress: true
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out verification branch
+        uses: actions/checkout@v4
+
+      - name: Run unit tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Run complete 1000-second pipeline
+        run: |
+          chmod +x scripts/run_pipeline.sh
+          scripts/run_pipeline.sh 600 5 1000 1000 none none standard 2000 5000
+
+      - name: Verify final time and finite values
+        run: |
+          python3 scripts/check_diagnostic_result.py \
+            --csv outputs/thermosyspro-raw.csv \
+            --expected-stop-time 1000 \
+            --variant production_pipeline \
+            --compile-status 0 \
+            --simulation-status 0 \
+            --summary outputs/thermosyspro-1000s-summary.json
+
+      - name: Upload complete result bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: triplens-thermosyspro-1000s
+          path: |
+            outputs/
+            build/run.mos
+            build/TripLens_CombinedCycle_TripTAC.mo
+          if-no-files-found: warn
+          retention-days: 30
