@@ -65,6 +65,9 @@ def main() -> int:
         raise ValueError("BFP disturbance did not materially change HP feedwater flow")
 
     blind = args.output_dir / "blind-input"
+    blind_files = sorted(path.name for path in blind.glob("*.csv"))
+    if blind_files != ["DCS1.csv", "DCS2.csv", "ECMS.csv"]:
+        raise ValueError("blind-input must contain exactly DCS1.csv, DCS2.csv, and ECMS.csv")
     events = {system: read_csv(blind / f"{system}.csv") for system in ("DCS1", "DCS2", "ECMS")}
     required = {
         "DCS1": {"BFP-HP.SPEED_LOW", "HP.FW.FLOW_LOW"},
@@ -87,6 +90,8 @@ def main() -> int:
     metadata = json.loads((args.output_dir / "run-metadata.json").read_text(encoding="utf-8"))
     if metadata["blind_upload_directory"] != "blind-input":
         raise ValueError("blind upload contract is missing")
+    if metadata["blind_upload_files"] != ["DCS1.csv", "DCS2.csv", "ECMS.csv"]:
+        raise ValueError("blind upload file contract is missing")
     print(json.dumps({
         "physics_rows": len(process),
         "last_time_s": times[-1],

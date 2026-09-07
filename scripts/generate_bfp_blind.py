@@ -165,7 +165,7 @@ def main() -> int:
     write_events(blind / "DCS1.csv", [event for event in events if event.system == "DCS1"])
     write_events(blind / "DCS2.csv", [event for event in events if event.system == "DCS2"])
     write_events(blind / "ECMS.csv", [event for event in events if event.system == "ECMS"])
-    write_trend(blind / "trend.csv", rows)
+    write_trend(args.output_dir / "engineering" / "trend.csv", rows)
 
     thresholds = {
         "basis": "PROVISIONAL_RELATIVE_TO_LAST_10S_PRE_INCIDENT",
@@ -196,12 +196,9 @@ def main() -> int:
         "source_clock_offsets_ms": CLOCK_OFFSET_MS,
         "alarm_thresholds": thresholds,
         "expected_causal_order": [
-            "50BFP-HP.PICKUP",
-            "52BFP-HP.CLOSED",
-            "BFP-HP.MOTOR.CURRENT_A",
-            "BFP-HP.SPEED_LOW",
-            "HP.FW.FLOW_LOW",
-            "HP.DRUM.LEVEL_LOW",
+            event.tag for event in sorted(
+                events, key=lambda item: (item.source_time_ms, item.system, item.tag)
+            )
         ],
     }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     (args.output_dir / "run-metadata.json").write_text(json.dumps({
@@ -212,6 +209,7 @@ def main() -> int:
         "stop_time_s": args.stop_time,
         "event_counts": {system: sum(event.system == system for event in events) for system in CLOCK_OFFSET_MS},
         "blind_upload_directory": "blind-input",
+        "blind_upload_files": ["DCS1.csv", "DCS2.csv", "ECMS.csv"],
         "answer_key_directory": "ground-truth",
     }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return 0

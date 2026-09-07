@@ -100,6 +100,11 @@ class BFPBlindTests(unittest.TestCase):
             dcs1 = self.read_csv(target / "blind-input" / "DCS1.csv")
             dcs2 = self.read_csv(target / "blind-input" / "DCS2.csv")
             ecms = self.read_csv(target / "blind-input" / "ECMS.csv")
+            self.assertEqual(
+                sorted(path.name for path in (target / "blind-input").glob("*.csv")),
+                ["DCS1.csv", "DCS2.csv", "ECMS.csv"],
+            )
+            self.assertTrue((target / "engineering" / "trend.csv").is_file())
             self.assertIn("HP.FW.FLOW_LOW", {row["tag"] for row in dcs1})
             self.assertIn("STG.ACTIVE_POWER_LOW", {row["tag"] for row in dcs2})
             self.assertEqual(ecms[0]["tag"], "50BFP-HP.PICKUP")
@@ -109,6 +114,7 @@ class BFPBlindTests(unittest.TestCase):
             self.assertNotIn("expected_root_cause", blind_text)
             answer = json.loads((target / "ground-truth" / "answer-key.json").read_text())
             self.assertEqual(answer["source_clock_offsets_ms"]["DCS2"], -80)
+            self.assertEqual(answer["expected_causal_order"][0], "50BFP-HP.PICKUP")
 
             validate = self.run_script(
                 "validate_bfp_blind.py",

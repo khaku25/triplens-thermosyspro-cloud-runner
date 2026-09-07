@@ -23,20 +23,6 @@ on:
         description: Numerical hydraulic residual speed after electrical trip
         required: true
         default: "1000"
-  push:
-    branches:
-      - feature/bfp-trip-blind
-    paths:
-      - .github/workflows/run-bfp-trip-blind.yml
-      - modelica/TripLens_CombinedCycle_BFPTrip.mo.tpl
-      - modelica/run_bfp.mos.tpl
-      - scripts/render_bfp_modelica.py
-      - scripts/normalize_bfp_processbus.py
-      - scripts/generate_bfp_blind.py
-      - scripts/validate_bfp_blind.py
-      - scripts/run_bfp_blind_pipeline.sh
-      - tests/test_bfp_blind.py
-
 permissions:
   contents: read
 
@@ -71,14 +57,25 @@ jobs:
             "${OUTPUT_INTERVALS:-100}" \
             "${BFP_FINAL_RPM:-1000}"
 
-      - name: Upload blind incident and answer key
-        if: always()
+      - name: Upload blind test input
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: blind-bfp-incident-${{ github.run_number }}
+          name: blind-bfp-input-${{ github.run_number }}
+          path: bfp-outputs/blind-input/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload BFP engineering evidence and answer key
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bfp-engineering-evidence-${{ github.run_number }}
           path: |
-            bfp-outputs/
+            bfp-outputs/engineering/
+            bfp-outputs/ground-truth/
+            bfp-outputs/run-metadata.json
             build/run_bfp.mos
             build/TripLens_CombinedCycle_BFPTrip.mo
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30
