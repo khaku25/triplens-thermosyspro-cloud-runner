@@ -4,11 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       sampling_profile:
-        description: standard keeps current inputs; incident_1ms runs the safe 0-10 s / trip-at-2 s high-resolution preset
+        description: causal_100ms keeps a long stable pre-trip period and 0.1 s physics through the post-trip response
         required: true
         type: choice
-        default: incident_1ms
+        default: causal_100ms
         options:
+          - causal_100ms
           - standard
           - incident_1ms
       trip_time_s:
@@ -35,6 +36,14 @@ on:
         description: 1 ms ECMS window after trip (incident_1ms profile)
         required: true
         default: "5000"
+      analysis_pre_s:
+        description: Seconds of physical RAW retained before the GT trip command
+        required: true
+        default: "60"
+      analysis_post_s:
+        description: Seconds of physical RAW retained after the GT trip command
+        required: true
+        default: "400"
       fault_preset:
         description: Additional ECMS FaultBus injection
         required: true
@@ -89,6 +98,8 @@ jobs:
           OUTPUT_INTERVALS: ${{ inputs.output_intervals }}
           INCIDENT_PRE_MS: ${{ inputs.incident_pre_ms }}
           INCIDENT_POST_MS: ${{ inputs.incident_post_ms }}
+          ANALYSIS_PRE_S: ${{ inputs.analysis_pre_s }}
+          ANALYSIS_POST_S: ${{ inputs.analysis_post_s }}
           FAULT_PRESET: ${{ inputs.fault_preset }}
           COMMAND_SCENARIO: ${{ inputs.command_scenario }}
         run: |
@@ -102,7 +113,9 @@ jobs:
             "$COMMAND_SCENARIO" \
             "$SAMPLING_PROFILE" \
             "$INCIDENT_PRE_MS" \
-            "$INCIDENT_POST_MS"
+            "$INCIDENT_POST_MS" \
+            "$ANALYSIS_PRE_S" \
+            "$ANALYSIS_POST_S"
 
       - name: Upload simulation results
         if: success()

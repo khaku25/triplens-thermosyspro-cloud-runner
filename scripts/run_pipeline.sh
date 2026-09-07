@@ -14,6 +14,8 @@ command_scenario="${6:-none}"
 sampling_profile="${7:-standard}"
 incident_pre_ms="${8:-2000}"
 incident_post_ms="${9:-5000}"
+analysis_pre_s="${10:-60}"
+analysis_post_s="${11:-400}"
 incident_period_ms=1
 
 trip_time_s="$requested_trip_time_s"
@@ -28,6 +30,22 @@ fi
 
 case "$sampling_profile" in
   standard) ;;
+  causal_100ms)
+    # Keep the requested warm-up and post-trip horizon, but force the physical
+    # CSV output grid to exactly 100 ms. This profile is intended for causal
+    # pre-trip/trip/post-trip review rather than the shortened 1 ms diagnostic.
+    intervals="$(python3 - "$stop_time_s" <<'PY'
+import math
+import sys
+
+stop = float(sys.argv[1])
+intervals = stop * 10
+if not math.isfinite(stop) or stop <= 0 or not math.isclose(intervals, round(intervals), abs_tol=1e-9):
+    raise SystemExit("causal_100ms requires a positive stop time aligned to 0.1 s")
+print(round(intervals))
+PY
+)"
+    ;;
   incident_1ms)
     # A bounded diagnostic preset keeps the per-sample feeder export small
     # enough for GitHub Actions and MATLAB Online. The raw
@@ -142,6 +160,25 @@ python3 scripts/normalize_processbus.py \
   --mapping-review outputs/signal-mapping-review.json \
   --trip-time "$trip_time_s"
 
+cp outputs/processbus.csv outputs/GT_TRIP_RAW_DATA.csv
+
+python3 scripts/extract_incident_window.py \
+  --processbus outputs/processbus.csv \
+  --trip-time "$trip_time_s" \
+  --pre-seconds "$analysis_pre_s" \
+  --post-seconds "$analysis_post_s" \
+  --raw-output outputs/incident-raw.csv \
+  --changes-output outputs/important-changes.csv \
+  --metadata-output outputs/incident-window.json
+
+python3 scripts/generate_dcs_alarms.py \
+  --incident-raw outputs/incident-raw.csv \
+  --metadata outputs/incident-window.json \
+  --rules config/dcs_alarm_rules.csv \
+  --trip-time "$trip_time_s" \
+  --dcs1-output outputs/DCS1.csv \
+  --dcs2-output outputs/DCS2.csv
+
 python3 scripts/generate_ecms.py \
   --processbus outputs/processbus.csv \
   --a-settings config/ecms_a_settings.csv \
@@ -159,6 +196,8 @@ python3 scripts/generate_ecms.py \
   --feeder-output outputs/ecms-feeders.csv \
   "${command_args[@]}"
 
+cp outputs/ecms-events.csv outputs/ECMS.csv
+
 cp topology/triplens_ecms_vpp.svg outputs/topology/triplens_ecms_vpp.svg
 cp topology/triplens_ecms_6p9kv.svg outputs/topology/triplens_ecms_6p9kv.svg
 cp data/ecms_m_links.csv outputs/data/ecms_m_links.csv
@@ -170,6 +209,7 @@ cp config/ecms_a_equipment.csv outputs/config/ecms_a_equipment.csv
 cp config/ecms_command_catalog.csv outputs/config/ecms_command_catalog.csv
 cp config/fault_presets.json outputs/config/fault_presets.json
 cp config/signal_map.json outputs/config/signal_map.json
+cp config/dcs_alarm_rules.csv outputs/config/dcs_alarm_rules.csv
 cp examples/bfp_trip_commands.csv outputs/examples/bfp_trip_commands.csv
 cp matlab/triplens_ecms_editor.m outputs/matlab/triplens_ecms_editor.m
 cp matlab/triplens_ecms_vpp_editor.m outputs/matlab/triplens_ecms_vpp_editor.m
@@ -192,6 +232,8 @@ python3 scripts/build_manifest.py \
   --incident-period-ms "$incident_period_ms" \
   --incident-pre-ms "$incident_pre_ms" \
   --incident-post-ms "$incident_post_ms" \
+  --analysis-pre-s "$analysis_pre_s" \
+  --analysis-post-s "$analysis_post_s" \
   --requested-trip-time "$requested_trip_time_s" \
   --requested-trip-ramp-duration "$requested_trip_ramp_duration_s" \
   --requested-stop-time "$requested_stop_time_s" \

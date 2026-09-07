@@ -114,12 +114,19 @@ OpenModelica 이미지로 물리 입력을 만든 뒤 동일한 ECMS trend/event
 
 ### CSV 시간 해상도 선택
 
-Actions의 `sampling_profile`에서 두 실행 방식을 선택할 수 있습니다.
+Actions의 `sampling_profile`에서 세 실행 방식을 선택할 수 있습니다.
 
 | 프로필 | ThermoSysPro 물리 CSV | ECMS Trend | 용도 |
 |---|---:|---:|---|
+| `causal_100ms` (기본값) | 전체 0.1 s | 전체 20 ms | 정상상태 600 s → GT Trip 명령 → 사고 후 400 s의 인과관계 검토 |
 | `standard` | 기존 입력값 유지: 기본 1 s | 전체 20 ms | 장시간 경과 확인 |
-| `incident_1ms` (기본값) | 0~10 s 전체 1 ms | Trip 전 2 s~후 5 s는 1 ms, 나머지는 20 ms | 짧은 사고순서 정밀 확인 |
+| `incident_1ms` | 0~10 s 전체 1 ms | Trip 전 2 s~후 5 s는 1 ms, 나머지는 20 ms | 짧은 사고순서 정밀 확인 |
+
+`causal_100ms`는 기본 입력인 Trip 600 s, 종료 1000 s를 유지하면서 물리 CSV를
+정확히 0.1 s 간격으로 출력합니다. `analysis_pre_s`와 `analysis_post_s`는 분석용
+RAW에 각각 보존할 사고 전·후 구간이며 기본값은 60 s와 400 s입니다. 사고 전
+값이 설정된 알람 조건을 실제로 넘지 않았다면 사고 전 알람 수는 0건으로 남고,
+원인을 설명하기 위해 임의 알람을 추가하지 않습니다.
 
 `incident_1ms`는 휴대폰에서도 선택 한 번으로 안전하게 실행할 수 있도록
 Trip 2 s, 배기가스 감소 5 s, 종료 10 s, 출력구간 10,000개로 고정됩니다.
@@ -137,7 +144,13 @@ Trip 2 s, 배기가스 감소 5 s, 종료 10 s, 출력구간 10,000개로 고정
 
 | 파일 | 역할 |
 |---|---|
+| `GT_TRIP_RAW_DATA.csv` | 전체 ProcessBus의 무손실 별칭(기본 causal 프로필은 0.1 s) |
 | `processbus.csv` | 물리/합성 입력과 GT Trip 시각 |
+| `incident-raw.csv` | 사고 전 정상구간·Trip·사고 후 영향을 연속 보존한 분석 RAW |
+| `important-changes.csv` | 기준값 대비 최초 지속 유의변동 시각(원인 확정 아님) |
+| `incident-window.json` | 기준구간·검출법·실제 전후 범위·알람 건수 감사정보 |
+| `DCS1.csv`, `DCS2.csv` | 실제 RAW가 공개 규칙을 넘은 경우만 기록한 시간순 알람/복귀 |
+| `ECMS.csv` | `ecms-events.csv`의 무손실 알람창 전달용 별칭 |
 | `ecms-trend.csv` | 전압·전류·전력방향·차단기 상태 |
 | `ecms-events.csv` | 시간순 Relay·차단기·FaultBus·Command 사건 |
 | `ecms-feeders.csv` | A 설비표를 반영한 피더별 차단기·충전·전압·전류 |
@@ -145,6 +158,13 @@ Trip 2 s, 배기가스 감소 5 s, 종료 10 s, 출력구간 10,000개로 고정
 | `config/ecms_a_settings.csv` | A 정격·보호·계산 설정 |
 | `config/ecms_a_equipment.csv` | A 피더·BUS·정격·초기상태 |
 | `config/ecms_command_catalog.csv` | 허용 Command 94개의 계약 |
+| `config/dcs_alarm_rules.csv` | DCS 알람 임계값·지연·히스테리시스(현재 검토필요 가정치) |
+
+현재 ThermoSysPro 래퍼의 GT Trip은 **명령 시작형 시나리오**입니다. 따라서
+독립적인 GT 고장이 먼저 진행되어 보호가 Trip을 만든 시나리오가 아니며,
+정상구간 다음에 `GT.TRIP.CMD`가 입력되고 배기가스 경계조건과 HRSG/ST가
+후속 반응합니다. `important-changes.csv`는 그 반응의 최초 관측시각을 보여줄 뿐
+원인을 하드코딩하거나 확정하지 않습니다.
 
 ## 실행 오류 복구
 
@@ -179,7 +199,8 @@ python3 scripts/validate_commands.py --commands examples/bfp_trip_commands.csv
 
 Python 회귀시험은 A 설정 반영, 모든 FaultBus, Command 계약, 피더 출력,
 저전압 지연, 통신품질, 산출물 SHA-256, 과거 결과 재사용 방지와 MATLAB 공개
-함수 계약, 표준 20 ms 및 사고창 1 ms 표본 계약을 검사합니다. 최종 UI·자체실행은 MATLAB Online의
+함수 계약, 표준 20 ms·사고창 1 ms·인과검토 100 ms 표본 계약과 DCS 알람의
+실제 임계값 통과 여부를 검사합니다. 최종 UI·자체실행은 MATLAB Online의
 `ECMS_DIAGNOSE`와 `ECMS_SELF_TEST`로 확인합니다.
 
 ## 제한

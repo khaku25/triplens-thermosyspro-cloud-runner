@@ -47,13 +47,15 @@ def main() -> int:
     parser.add_argument("--stop-time", type=float, required=True)
     parser.add_argument(
         "--sampling-profile",
-        choices=("standard", "incident_1ms"),
+        choices=("standard", "causal_100ms", "incident_1ms"),
         default="standard",
     )
     parser.add_argument("--output-intervals", type=int)
     parser.add_argument("--incident-period-ms", type=int, default=1)
     parser.add_argument("--incident-pre-ms", type=int, default=2000)
     parser.add_argument("--incident-post-ms", type=int, default=5000)
+    parser.add_argument("--analysis-pre-s", type=float, default=60.0)
+    parser.add_argument("--analysis-post-s", type=float, default=400.0)
     parser.add_argument("--requested-trip-time", type=float)
     parser.add_argument("--requested-trip-ramp-duration", type=float)
     parser.add_argument("--requested-stop-time", type=float)
@@ -77,6 +79,8 @@ def main() -> int:
         parser.error("--incident-period-ms must be greater than zero")
     if args.incident_pre_ms < 0 or args.incident_post_ms < 0:
         parser.error("incident window lengths must be non-negative")
+    if args.analysis_pre_s < 0 or args.analysis_post_s < 0:
+        parser.error("analysis window lengths must be non-negative")
 
     normal_period_ms = configured_trend_period_ms(args.output_dir)
     physics_period_ms = (
@@ -91,10 +95,11 @@ def main() -> int:
     incident_stop_ms = min(stop_ms, trip_ms + args.incident_post_ms)
     sampling = {
         "profile": args.sampling_profile,
-        "timing_source": (
-            "WORKFLOW_INPUTS" if args.sampling_profile == "standard"
-            else "FIXED_SHORT_DIAGNOSTIC_PRESET"
-        ),
+        "timing_source": {
+            "standard": "WORKFLOW_INPUTS",
+            "causal_100ms": "WORKFLOW_INPUTS_WITH_FIXED_100MS_OUTPUT_GRID",
+            "incident_1ms": "FIXED_SHORT_DIAGNOSTIC_PRESET",
+        }[args.sampling_profile],
         "requested_workflow_values": {
             "trip_time_s": args.requested_trip_time,
             "trip_ramp_duration_s": args.requested_trip_ramp_duration,
@@ -133,7 +138,27 @@ def main() -> int:
             "timestamp_unit": "ms",
             "sampled": False,
         },
+        "causal_analysis": {
+            "requested_pre_trip_s": args.analysis_pre_s,
+            "requested_post_trip_s": args.analysis_post_s,
+            "window_metadata_file": "incident-window.json",
+            "raw_window_file": "incident-raw.csv",
+            "important_changes_file": "important-changes.csv",
+        },
     }
+
+    incident_metadata_path = args.output_dir / "incident-window.json"
+    if incident_metadata_path.is_file():
+        incident_metadata = json.loads(incident_metadata_path.read_text(encoding="utf-8"))
+        sampling["causal_analysis"]["actual_window_start_s"] = incident_metadata.get(
+            "analysis_window_start_s"
+        )
+        sampling["causal_analysis"]["actual_window_end_s"] = incident_metadata.get(
+            "analysis_window_end_s"
+        )
+        sampling["causal_analysis"]["first_significant_process_change_s"] = incident_metadata.get(
+            "first_significant_process_change_s"
+        )
 
     files = {}
     for path in sorted(args.output_dir.rglob("*")):
@@ -155,6 +180,8 @@ def main() -> int:
             "processbus": "RENAMED_AND_NORMALIZED_MODEL_OUTPUT_PLUS_SCENARIO_TRIP_COMMAND",
             "ecms": "M_LOCKED_PLUS_A_CONFIGURED_ELECTRICAL_OBSERVATION_MODEL",
             "command_bus": "VALIDATED_USER_COMMANDS_APPLIED_TO_SUPPORTED_ELECTRICAL_STATES",
+            "dcs_alarms": "PROVISIONAL_RULE_CROSSINGS_OVER_UNMODIFIED_PROCESSBUS_VALUES",
+            "incident_window": "LOSSLESS_TIME_SLICE_PLUS_AUDIT_METADATA",
         }
     else:
         runtime = {
@@ -167,10 +194,12 @@ def main() -> int:
             "processbus": "NORMALIZED_SYNTHETIC_FIXTURE_PLUS_SCENARIO_TRIP_COMMAND",
             "ecms": "SYNTHETIC_DEMO_M_LOCKED_PLUS_A_CONFIGURED_ELECTRICAL_MODEL",
             "command_bus": "VALIDATED_USER_COMMANDS_APPLIED_TO_SUPPORTED_ELECTRICAL_STATES",
+            "dcs_alarms": "PROVISIONAL_RULE_CROSSINGS_OVER_SYNTHETIC_FIXTURE_VALUES",
+            "incident_window": "LOSSLESS_TIME_SLICE_PLUS_AUDIT_METADATA",
         }
 
     manifest = {
-        "schema_version": "3.1",
+        "schema_version": "3.2",
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "scenario": {
             "id": args.scenario_id,
@@ -193,11 +222,20 @@ def main() -> int:
             "The words Incoming/인커밍 are used for auxiliary-bus source breakers.",
             "Unknown fault names are rejected instead of being inferred.",
             "THERMO_ADAPTER_REQUIRED commands create ECMS indications/events but do not mutate locked ThermoSysPro M outputs.",
+            "DCS1/DCS2 thresholds are provisional review rules stored in config/dcs_alarm_rules.csv, never hidden constants.",
+            "No pre-trip alarm is fabricated when the physical data does not cross a configured rule.",
+            "The GT Trip scenario is command-initiated; the current ThermoSysPro wrapper does not create an independent pre-trip GT fault precursor.",
             *(
                 [
                     "incident_1ms is a shortened 0-10 s diagnostic profile; it is not equivalent to the standard 600 s pre-trip warm-up.",
                 ]
                 if args.sampling_profile == "incident_1ms" else []
+            ),
+            *(
+                [
+                    "causal_100ms preserves the requested long pre-trip warm-up and post-trip horizon on an exact 100 ms physical CSV grid.",
+                ]
+                if args.sampling_profile == "causal_100ms" else []
             ),
         ],
         "files": files,

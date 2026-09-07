@@ -296,7 +296,7 @@ def build_sample_times(
         raise ValueError("ECMS stop time must not precede start time")
     if normal_period_ms <= 0:
         raise ValueError("normal ECMS trend period must be greater than zero")
-    if sampling_profile not in {"standard", "incident_1ms"}:
+    if sampling_profile not in {"standard", "causal_100ms", "incident_1ms"}:
         raise ValueError(f"unknown sampling profile: {sampling_profile}")
     if incident_period_ms <= 0:
         raise ValueError("incident period must be greater than zero")
@@ -582,7 +582,7 @@ def main() -> int:
     parser.add_argument("--trip-time", type=float, required=True)
     parser.add_argument(
         "--sampling-profile",
-        choices=("standard", "incident_1ms"),
+        choices=("standard", "causal_100ms", "incident_1ms"),
         default="standard",
     )
     parser.add_argument("--incident-period-ms", type=int, default=1)

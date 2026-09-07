@@ -43,6 +43,17 @@ REQUIRED_ARTIFACTS = {
     "ECMS_SELF_TEST.m",
 }
 
+CAUSAL_ARTIFACTS = {
+    "GT_TRIP_RAW_DATA.csv",
+    "incident-raw.csv",
+    "incident-window.json",
+    "important-changes.csv",
+    "DCS1.csv",
+    "DCS2.csv",
+    "ECMS.csv",
+    "config/dcs_alarm_rules.csv",
+}
+
 
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
@@ -115,7 +126,11 @@ def read_settings(path: Path) -> tuple[dict[str, str], str]:
     return settings, derive_config_status(rows, "ecms_a_settings.csv")
 
 
-def verify_manifest(output_dir: Path, manifest: dict[str, object]) -> None:
+def verify_manifest(
+    output_dir: Path,
+    manifest: dict[str, object],
+    additional_required: set[str] | None = None,
+) -> None:
     metadata = manifest.get("files")
     if not isinstance(metadata, dict):
         raise ValueError("manifest.json: files object is missing")
@@ -124,7 +139,8 @@ def verify_manifest(output_dir: Path, manifest: dict[str, object]) -> None:
         for path in output_dir.rglob("*")
         if path.is_file() and path.name != "manifest.json"
     }
-    missing_required = REQUIRED_ARTIFACTS.difference(actual)
+    required = REQUIRED_ARTIFACTS | (additional_required or set())
+    missing_required = required.difference(actual)
     if missing_required:
         raise ValueError("output bundle is missing: " + ", ".join(sorted(missing_required)))
     if set(metadata) != set(actual):
@@ -268,7 +284,7 @@ def main() -> int:
     parser.add_argument("--trip-time", type=float, required=True)
     parser.add_argument(
         "--sampling-profile",
-        choices=("standard", "incident_1ms"),
+        choices=("standard", "causal_100ms", "incident_1ms"),
         default="standard",
     )
     args = parser.parse_args()
@@ -450,6 +466,123 @@ def main() -> int:
             )
             if row["sampling_resolution"] != expected_label:
                 raise ValueError("ecms-trend.csv sampling_resolution does not match its time grid")
+    if args.sampling_profile == "causal_100ms":
+        physical_times_ms = [
+            round(finite_float(row["time_s"], "time_s", process_path) * 1000)
+            for row in process_rows
+        ]
+        if any(
+            later - earlier != 100
+            for earlier, later in zip(physical_times_ms, physical_times_ms[1:])
+        ):
+            raise ValueError("causal_100ms requires a complete 100 ms ProcessBus grid")
+        raw_alias = args.output_dir / "GT_TRIP_RAW_DATA.csv"
+        if raw_alias.read_bytes() != process_path.read_bytes():
+            raise ValueError("GT_TRIP_RAW_DATA.csv must be a lossless ProcessBus copy")
+
+        incident_path = args.output_dir / "incident-raw.csv"
+        incident_fields, incident_rows = require_columns(
+            incident_path,
+            {"scenario_id", "time_s", "relative_time_s", "gt_trip_cmd"},
+        )
+        strictly_increasing(incident_rows, "time_s", incident_path)
+        incident_start = finite_float(incident_rows[0]["time_s"], "time_s", incident_path)
+        incident_end = finite_float(incident_rows[-1]["time_s"], "time_s", incident_path)
+        if not incident_start < args.trip_time < incident_end:
+            raise ValueError("incident-raw.csv must contain both pre-trip and post-trip samples")
+        if any(
+            not math.isclose(
+                finite_float(row["relative_time_s"], "relative_time_s", incident_path),
+                finite_float(row["time_s"], "time_s", incident_path) - args.trip_time,
+                abs_tol=1e-9,
+            )
+            for row in incident_rows
+        ):
+            raise ValueError("incident-raw.csv relative_time_s is inconsistent")
+        source_by_time = {row["time_s"]: row for row in process_rows}
+        for row in incident_rows:
+            source = source_by_time.get(row["time_s"])
+            if source is None:
+                raise ValueError("incident-raw.csv contains a non-ProcessBus sample")
+            for field in process_fields:
+                if row.get(field) != source.get(field):
+                    raise ValueError("incident-raw.csv altered a ProcessBus value")
+
+        incident_metadata_path = args.output_dir / "incident-window.json"
+        incident_metadata = json.loads(incident_metadata_path.read_text(encoding="utf-8"))
+        if not math.isclose(
+            float(incident_metadata["trip_command_time_s"]), args.trip_time, abs_tol=1e-9
+        ):
+            raise ValueError("incident-window.json trip command time mismatch")
+        if incident_metadata.get("detection", {}).get("root_cause_inferred") is not False:
+            raise ValueError("incident-window.json must not claim an inferred root cause")
+        alarm_summary = incident_metadata.get("alarm_summary", {})
+        if alarm_summary.get("pretrip_alarm_fabricated") is not False:
+            raise ValueError("incident-window.json permits fabricated pre-trip alarms")
+
+        changes_path = args.output_dir / "important-changes.csv"
+        _, change_rows = read_csv(changes_path)
+        if not change_rows:
+            raise ValueError("important-changes.csv must include at least the GT trip command")
+        nondecreasing(change_rows, "change_time_s", changes_path)
+        command_changes = [
+            row for row in change_rows
+            if row.get("change_kind") == "COMMAND" and row.get("signal") == "gt_trip_cmd"
+        ]
+        if len(command_changes) != 1 or not math.isclose(
+            float(command_changes[0]["change_time_s"]), args.trip_time, abs_tol=1e-9
+        ):
+            raise ValueError("important-changes.csv GT trip command is missing or mistimed")
+
+        rules_path = args.output_dir / "config/dcs_alarm_rules.csv"
+        _, rule_rows = require_columns(rules_path, {
+            "rule_id", "system", "source_signal", "alarm_tag", "direction",
+            "threshold_mode", "threshold_value", "status",
+        })
+        rules_by_tag = {row["alarm_tag"]: row for row in rule_rows}
+        if len(rules_by_tag) != len(rule_rows):
+            raise ValueError("dcs_alarm_rules.csv contains duplicate alarm_tag")
+        dcs_required = {
+            "event_sequence", "source_time_ms", "time_s", "phase", "system", "tag",
+            "alarm_state", "source_signal", "value", "threshold", "quality",
+            "provenance", "rule_status",
+        }
+        all_dcs_rows: list[dict[str, str]] = []
+        for system in ("DCS1", "DCS2"):
+            dcs_path = args.output_dir / f"{system}.csv"
+            dcs_fields, dcs_rows = read_csv(dcs_path)
+            missing = dcs_required.difference(dcs_fields)
+            if missing:
+                raise ValueError(f"{dcs_path.name}: missing columns: {', '.join(sorted(missing))}")
+            nondecreasing(dcs_rows, "source_time_ms", dcs_path)
+            for row in dcs_rows:
+                if row["system"] != system:
+                    raise ValueError(f"{dcs_path.name}: wrong system value")
+                time_s = finite_float(row["time_s"], "time_s", dcs_path)
+                if not incident_start <= time_s <= incident_end:
+                    raise ValueError(f"{dcs_path.name}: event is outside incident RAW")
+                rule = rules_by_tag.get(row["tag"])
+                if rule is None or row["source_signal"] != rule["source_signal"]:
+                    raise ValueError(f"{dcs_path.name}: event has no matching configured rule")
+                if row["rule_status"] != rule["status"]:
+                    raise ValueError(f"{dcs_path.name}: rule status was not propagated")
+                if row["alarm_state"] == "ACTIVE":
+                    value = finite_float(row["value"], "value", dcs_path)
+                    threshold = finite_float(row["threshold"], "threshold", dcs_path)
+                    direction = rule["direction"].strip().upper()
+                    if direction == "LOW" and value > threshold + 1e-9:
+                        raise ValueError(f"{dcs_path.name}: LOW alarm precedes its threshold crossing")
+                    if direction == "HIGH" and value < threshold - 1e-9:
+                        raise ValueError(f"{dcs_path.name}: HIGH alarm precedes its threshold crossing")
+            all_dcs_rows.extend(dcs_rows)
+        trip_dcs = [
+            row for row in all_dcs_rows
+            if row["tag"] == "GT.TRIP.CMD" and row["alarm_state"] == "ACTIVE"
+        ]
+        if len(trip_dcs) != 1 or int(trip_dcs[0]["source_time_ms"]) != round(args.trip_time * 1000):
+            raise ValueError("DCS1.csv must contain one correctly timed GT.TRIP.CMD alarm")
+        if (args.output_dir / "ECMS.csv").read_bytes() != event_path.read_bytes():
+            raise ValueError("ECMS.csv must be a lossless ecms-events.csv copy")
     trend_start_ms = int(float(trend_rows[0]["source_time_ms"]))
     trend_stop_ms = int(float(trend_rows[-1]["source_time_ms"]))
     if any(
@@ -503,7 +636,11 @@ def main() -> int:
             raise ValueError("ecms-trend.csv: communications-loss quality is not BAD after trip")
         if any(row["quality"] != "BAD" for row in feeder_rows if int(row["source_time_ms"]) >= trip_ms):
             raise ValueError("ecms-feeders.csv: communications-loss quality is not BAD after trip")
-    verify_manifest(args.output_dir, manifest)
+    verify_manifest(
+        args.output_dir,
+        manifest,
+        CAUSAL_ARTIFACTS if args.sampling_profile == "causal_100ms" else None,
+    )
     return 0
 
 
