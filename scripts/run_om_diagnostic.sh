@@ -59,6 +59,13 @@ sed \
   modelica/diagnostic.mos.tpl \
   > "build/diagnostics/$variant/run.mos"
 
+docker run --rm \
+  -v "$project_root/build/diagnostics/$variant/omhome:/root" \
+  -v "$project_root:/workspace" \
+  -w /workspace \
+  "$openmodelica_image" \
+  omc /workspace/modelica/install_dependencies.mos
+
 set +e
 docker run --rm \
   -v "$project_root/build/diagnostics/$variant/omhome:/root" \
