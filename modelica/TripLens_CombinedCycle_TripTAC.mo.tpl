@@ -14,10 +14,12 @@ model TripLens_CombinedCycle_TripTAC
   extends ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC(
     Debit(Table=[0,exhaustFlowNormal;
                  tripTime,exhaustFlowNormal;
-                 tripTime + tripRampDuration,exhaustFlowTripped]),
+                 tripTime + tripRampDuration,exhaustFlowTripped;
+                 @STOP_TIME@,exhaustFlowTripped]),
     Temperature(Table=[0,exhaustTemperatureNormal;
                        tripTime,exhaustTemperatureNormal;
-                       tripTime + tripRampDuration,exhaustTemperatureTripped]));
+                       tripTime + tripRampDuration,exhaustTemperatureTripped;
+                       @STOP_TIME@,exhaustTemperatureTripped]));
 
   annotation(experiment(
     StartTime=0,
