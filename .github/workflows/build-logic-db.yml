@@ -1,0 +1,36 @@
+name: Build TripLens Logic Database
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/triplens_A-L_alarm_logic_master_absolute_v2.csv'
+      - 'config/dcs_alarm_rules.csv'
+      - 'logic_db/**'
+      - '.github/workflows/build-logic-db.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-logic-db:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build normalized SQLite logic master
+        run: |
+          python3 logic_db/build_logic_db.py --source-commit "$GITHUB_SHA"
+      - name: Query smoke test
+        run: |
+          python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --platform ECMS --enabled true --limit 5
+      - name: Upload logic database
+        uses: actions/upload-artifact@v4
+        with:
+          name: triplens-logic-db-${{ github.run_number }}
+          path: |
+            outputs/triplens_logic_master_v2.sqlite
+            outputs/logic_db_manifest.json
+          if-no-files-found: error
+          retention-days: 30
