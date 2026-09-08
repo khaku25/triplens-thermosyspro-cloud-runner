@@ -160,6 +160,12 @@ SELECT * FROM logic_rule WHERE enabled_default = 1;
 CREATE VIEW v_deferred_logic AS
 SELECT * FROM logic_rule WHERE enabled_default = 0;
 
+CREATE VIEW v_excluded_unlinked_analog AS
+SELECT * FROM logic_rule
+WHERE enabled_default = 0
+  AND alarm_type IN ('H','HH','L','LL')
+  AND absolute_conversion_status = 'UNLINKED_OPTIONAL_SIGNAL';
+
 CREATE VIEW v_absolute_thresholds AS
 SELECT logic_id, platform, system, subsystem, equipment, derived_signal,
        alarm_type, alarm_text_ko, threshold_value, threshold_unit,
@@ -179,4 +185,5 @@ SELECT l.logic_id, l.platform, l.system, l.equipment, l.alarm_text_ko,
        m.equipment_reference, m.mapping_confidence, m.verification_status
 FROM logic_rule l
 JOIN logic_drawing_map m ON m.logic_id = l.logic_id
-JOIN drawing_reference d ON d.drawing_id = m.drawing_id;
+JOIN drawing_reference d ON d.drawing_id = m.drawing_id
+WHERE l.enabled_default = 1;
