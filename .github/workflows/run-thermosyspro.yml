@@ -1,10 +1,10 @@
-name: Run ThermoSysPro GT Trip
+name: Generate ThermoSysPro RAW (GT physical adapter)
 
 on:
   workflow_dispatch:
     inputs:
       sampling_profile:
-        description: causal_100ms keeps a long stable pre-trip period and 0.1 s physics through the post-trip response
+        description: Physical CSV sampling profile; no alarm or ECMS data is generated
         required: true
         type: choice
         default: causal_100ms
@@ -12,70 +12,28 @@ on:
           - causal_100ms
           - standard
           - incident_1ms
-      trip_time_s:
-        description: GT trip start time in seconds (standard profile only)
+      event_time_s:
+        description: Physical exhaust-boundary change start time in seconds
         required: true
         default: "600"
-      trip_ramp_duration_s:
-        description: Exhaust collapse duration in seconds (standard profile only)
+      transition_duration_s:
+        description: Physical exhaust-boundary transition duration in seconds
         required: true
         default: "5"
       stop_time_s:
-        description: Simulation stop time in seconds (standard profile only)
+        description: Simulation stop time in seconds
         required: true
         default: "1000"
       output_intervals:
-        description: ThermoSysPro output intervals (standard profile only)
+        description: Output interval count used by the standard profile
         required: true
         default: "1000"
-      incident_pre_ms:
-        description: 1 ms ECMS window before trip (incident_1ms profile)
-        required: true
-        default: "2000"
-      incident_post_ms:
-        description: 1 ms ECMS window after trip (incident_1ms profile)
-        required: true
-        default: "5000"
-      analysis_pre_s:
-        description: Seconds of physical RAW retained before the GT trip command
-        required: true
-        default: "60"
-      analysis_post_s:
-        description: Seconds of physical RAW retained after the GT trip command
-        required: true
-        default: "400"
-      fault_preset:
-        description: Additional ECMS FaultBus injection
-        required: true
-        type: choice
-        default: none
-        options:
-          - none
-          - gtg_breaker_fail
-          - uat_a_fault
-          - uat_b_fault
-          - gt_transformer_receive_fail
-          - st_transformer_receive_fail
-          - bus_a_fault
-          - bus_b_fault
-          - grid_loss
-          - relay_fail
-          - ecms_comms_loss
-      command_scenario:
-        description: Optional validated CommandBus scenario
-        required: true
-        type: choice
-        default: none
-        options:
-          - none
-          - bfp_trip
 
 permissions:
   contents: read
 
 concurrency:
-  group: thermosyspro-${{ github.ref }}
-  # Phone users often retry the Run button; keep only the newest request.
+  group: thermosyspro-raw-gt-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -83,48 +41,35 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
-      - name: Check out cloud runner
+      - name: Check out physical-model runner
         uses: actions/checkout@v4
 
-      - name: Run unit tests
-        run: python3 -m unittest discover -s tests -v
+      - name: Verify RAW-only boundary
+        run: python3 -m unittest tests.test_raw_action -v
 
-      - name: Run ThermoSysPro and ECMS pipeline
+      - name: Run ThermoSysPro RAW-only simulation
         env:
           SAMPLING_PROFILE: ${{ inputs.sampling_profile }}
-          TRIP_TIME_S: ${{ inputs.trip_time_s }}
-          TRIP_RAMP_DURATION_S: ${{ inputs.trip_ramp_duration_s }}
+          EVENT_TIME_S: ${{ inputs.event_time_s }}
+          TRANSITION_DURATION_S: ${{ inputs.transition_duration_s }}
           STOP_TIME_S: ${{ inputs.stop_time_s }}
           OUTPUT_INTERVALS: ${{ inputs.output_intervals }}
-          INCIDENT_PRE_MS: ${{ inputs.incident_pre_ms }}
-          INCIDENT_POST_MS: ${{ inputs.incident_post_ms }}
-          ANALYSIS_PRE_S: ${{ inputs.analysis_pre_s }}
-          ANALYSIS_POST_S: ${{ inputs.analysis_post_s }}
-          FAULT_PRESET: ${{ inputs.fault_preset }}
-          COMMAND_SCENARIO: ${{ inputs.command_scenario }}
         run: |
           chmod +x scripts/run_pipeline.sh
           scripts/run_pipeline.sh \
-            "$TRIP_TIME_S" \
-            "$TRIP_RAMP_DURATION_S" \
+            "$EVENT_TIME_S" \
+            "$TRANSITION_DURATION_S" \
             "$STOP_TIME_S" \
             "$OUTPUT_INTERVALS" \
-            "$FAULT_PRESET" \
-            "$COMMAND_SCENARIO" \
-            "$SAMPLING_PROFILE" \
-            "$INCIDENT_PRE_MS" \
-            "$INCIDENT_POST_MS" \
-            "$ANALYSIS_PRE_S" \
-            "$ANALYSIS_POST_S"
+            "$SAMPLING_PROFILE"
 
-      - name: Upload simulation results
+      - name: Upload blind-test RAW
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: thermosyspro-ecms-${{ github.run_number }}
+          name: thermosyspro-raw-${{ github.run_number }}
           path: |
-            outputs/
-            build/run.mos
-            build/TripLens_CombinedCycle_TripTAC.mo
+            outputs/thermosyspro-raw.csv
+            outputs/raw-manifest.json
           if-no-files-found: error
           retention-days: 30
