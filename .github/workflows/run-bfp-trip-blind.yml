@@ -1,14 +1,14 @@
-name: Generate Blind BFP Trip Incident
+name: Generate ThermoSysPro RAW (BFP physical adapter)
 
 on:
   workflow_dispatch:
     inputs:
-      bfp_trip_time_s:
-        description: HP boiler-feed-pump trip time in seconds
+      event_time_s:
+        description: HP boiler-feed-pump physical disturbance start time in seconds
         required: true
         default: "10"
-      bfp_coastdown_duration_s:
-        description: Hydraulic speed-adapter coastdown duration in seconds
+      transition_duration_s:
+        description: Hydraulic speed transition duration in seconds
         required: true
         default: "5"
       stop_time_s:
@@ -16,18 +16,19 @@ on:
         required: true
         default: "70"
       output_intervals:
-        description: ThermoSysPro output intervals (100 = 0.7 s at 70 s)
+        description: OpenModelica output interval count
         required: true
-        default: "100"
-      bfp_final_rpm:
-        description: Numerical hydraulic residual speed after electrical trip
+        default: "700"
+      final_rpm:
+        description: Physical adapter final shaft-speed boundary in RPM
         required: true
         default: "1000"
+
 permissions:
   contents: read
 
 concurrency:
-  group: bfp-blind-${{ github.ref }}
+  group: thermosyspro-raw-bfp-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -35,47 +36,35 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
-      - name: Check out cloud runner
+      - name: Check out physical-model runner
         uses: actions/checkout@v4
 
-      - name: Test BFP blind-scenario contracts
-        run: python3 -m unittest tests.test_bfp_blind -v
+      - name: Verify RAW-only boundary
+        run: python3 -m unittest tests.test_raw_action -v
 
-      - name: Run ThermoSysPro BFP blind pipeline
+      - name: Run ThermoSysPro RAW-only simulation
         env:
-          BFP_TRIP_TIME_S: ${{ inputs.bfp_trip_time_s }}
-          BFP_COASTDOWN_DURATION_S: ${{ inputs.bfp_coastdown_duration_s }}
+          EVENT_TIME_S: ${{ inputs.event_time_s }}
+          TRANSITION_DURATION_S: ${{ inputs.transition_duration_s }}
           STOP_TIME_S: ${{ inputs.stop_time_s }}
           OUTPUT_INTERVALS: ${{ inputs.output_intervals }}
-          BFP_FINAL_RPM: ${{ inputs.bfp_final_rpm }}
+          FINAL_RPM: ${{ inputs.final_rpm }}
         run: |
           chmod +x scripts/run_bfp_blind_pipeline.sh
           scripts/run_bfp_blind_pipeline.sh \
-            "${BFP_TRIP_TIME_S:-10}" \
-            "${BFP_COASTDOWN_DURATION_S:-5}" \
-            "${STOP_TIME_S:-70}" \
-            "${OUTPUT_INTERVALS:-100}" \
-            "${BFP_FINAL_RPM:-1000}"
+            "$EVENT_TIME_S" \
+            "$TRANSITION_DURATION_S" \
+            "$STOP_TIME_S" \
+            "$OUTPUT_INTERVALS" \
+            "$FINAL_RPM"
 
-      - name: Upload blind test input
+      - name: Upload blind-test RAW
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: blind-bfp-input-${{ github.run_number }}
-          path: bfp-outputs/blind-input/
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Upload BFP engineering evidence and answer key
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: bfp-engineering-evidence-${{ github.run_number }}
+          name: thermosyspro-raw-${{ github.run_number }}
           path: |
-            bfp-outputs/engineering/
-            bfp-outputs/ground-truth/
-            bfp-outputs/run-metadata.json
-            build/run_bfp.mos
-            build/TripLens_CombinedCycle_BFPTrip.mo
+            outputs/thermosyspro-raw.csv
+            outputs/raw-manifest.json
           if-no-files-found: error
           retention-days: 30
