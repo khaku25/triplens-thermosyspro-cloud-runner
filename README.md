@@ -1,8 +1,14 @@
-# TripLens ECMS VPP 3.1
+# TripLens ThermoSysPro RAW Runner / ECMS VPP Reference
 
-MATLAB Online에서 6.9 kV ECMS 계통을 직접 편집하고, A 설정과 Command를
-실행해 새 결과를 만든 뒤 검토하는 통합 패키지입니다. GitHub Actions에서는
-ThermoSysPro/OpenModelica 물리 결과를 같은 ECMS 계약에 연결할 수 있습니다.
+GitHub Actions에서 ThermoSysPro/OpenModelica 물리 원천을 생성하는 저장소입니다.
+Action의 공식 산출물은 `thermosyspro-raw.csv`와 `raw-manifest.json`뿐입니다.
+ProcessBus 변환, DCS 알람 판정, ECMS 사건 생성과 원인 추론은 수행하지 않습니다.
+
+저장소에 함께 있는 MATLAB ECMS VPP와 기존 Python 변환기는 웹 변환부 이관 및
+예제 검증을 위한 참고 구현입니다. Action 실행 경로와는 분리되어 있습니다.
+확정된 전체 책임 경계는
+[`docs/TRIPLENS_WORKFLOW_BOUNDARY.md`](docs/TRIPLENS_WORKFLOW_BOUNDARY.md)를
+기준으로 합니다.
 
 ## MATLAB Online에서 가장 빠른 시작
 
@@ -74,7 +80,7 @@ UAT와 6.9 kV 모선에 전원을 공급할 수 있습니다. 승인된 동기�
 M은 읽기 전용입니다. A와 Command를 바꾸면 C/E만 새 Run에 계산되며 기존
 Run은 덮어쓰지 않습니다.
 
-## 두 실행 방식의 차이
+## 실행 방식과 책임 경계
 
 ### MATLAB-native VPP
 
@@ -94,77 +100,57 @@ MATLAB 합성 fallback에서도 마지막 명령처럼 사고 전·후 1 ms 구�
 있습니다. 이 결과는 계속 `MATLAB_NATIVE_SYNTHETIC_FALLBACK`으로 표시되며,
 ThermoSysPro 물리 실행으로 취급되지 않습니다.
 
-### ThermoSysPro Cloud pipeline
+### ThermoSysPro Cloud Action (RAW-only)
 
-GitHub Actions의 `Run ThermoSysPro GT Trip`은 고정 ThermoSysPro commit과
-OpenModelica 이미지로 물리 입력을 만든 뒤 동일한 ECMS trend/event/feeder
-계약을 생성합니다. 새 요청이 들어오면 같은 브랜치의 오래 대기하던 Run은
-취소하며, 실패한 Run은 정상 결과 artifact로 게시하지 않습니다.
+두 Workflow가 현재 등록되어 있습니다.
 
-지원 FaultBus:
+| Workflow | 물리 어댑터 | Action 산출물 |
+|---|---|---|
+| `Generate ThermoSysPro RAW (GT physical adapter)` | GT 배기 유량·온도 경계 변화 | RAW CSV + 무라벨 manifest |
+| `Generate ThermoSysPro RAW (BFP physical adapter)` | HP BFP 회전속도 경계 변화 | RAW CSV + 무라벨 manifest |
 
-- `none`
-- `gtg_breaker_fail`
-- `uat_a_fault`, `uat_b_fault`
-- `gt_transformer_receive_fail`, `st_transformer_receive_fail`
-- `bus_a_fault`, `bus_b_fault`
-- `grid_loss`
-- `relay_fail`
-- `ecms_comms_loss`
+두 Workflow 모두 고정 ThermoSysPro commit과 OpenModelica 이미지를 사용합니다.
+OpenModelica 결과를 바이트 그대로 복사한 뒤 해시와 구조를 검증하며, 실패한
+실행은 artifact를 게시하지 않습니다. `fault_preset`, ECMS Command, DCS 규칙,
+사고 정답은 Action 입력 또는 산출물에 포함하지 않습니다.
 
 ### CSV 시간 해상도 선택
 
-Actions의 `sampling_profile`에서 세 실행 방식을 선택할 수 있습니다.
+GT 물리 어댑터의 `sampling_profile`에서 세 RAW 출력 방식을 선택할 수 있습니다.
 
-| 프로필 | ThermoSysPro 물리 CSV | ECMS Trend | 용도 |
-|---|---:|---:|---|
-| `causal_100ms` (기본값) | 전체 0.1 s | 전체 20 ms | 정상상태 600 s → GT Trip 명령 → 사고 후 400 s의 인과관계 검토 |
-| `standard` | 기존 입력값 유지: 기본 1 s | 전체 20 ms | 장시간 경과 확인 |
-| `incident_1ms` | 0~10 s 전체 1 ms | Trip 전 2 s~후 5 s는 1 ms, 나머지는 20 ms | 짧은 사고순서 정밀 확인 |
+| 프로필 | ThermoSysPro RAW CSV | 용도 |
+|---|---:|---|
+| `causal_100ms` (기본값) | 전체 0.1 s | 사고 전·후 물리 변화 검토 |
+| `standard` | 입력한 종료시간/구간 수 | 임의 장시간 해상도 |
+| `incident_1ms` | 0~10 s 전체 1 ms | 짧은 물리 변화 정밀 확인 |
 
-`causal_100ms`는 기본 입력인 Trip 600 s, 종료 1000 s를 유지하면서 물리 CSV를
-정확히 0.1 s 간격으로 출력합니다. `analysis_pre_s`와 `analysis_post_s`는 분석용
-RAW에 각각 보존할 사고 전·후 구간이며 기본값은 60 s와 400 s입니다. 사고 전
-값이 설정된 알람 조건을 실제로 넘지 않았다면 사고 전 알람 수는 0건으로 남고,
-원인을 설명하기 위해 임의 알람을 추가하지 않습니다.
+`causal_100ms`는 기본 입력인 사건시각 600 s, 종료 1000 s를 유지하면서 물리
+CSV를 0.1 s 간격으로 출력합니다. BFP 어댑터는 `stop_time_s / output_intervals`
+간격의 표준 RAW를 출력합니다. 어떤 프로필도 알람 시각이나 ECMS 사건을 만들지
+않습니다.
 
-`incident_1ms`는 휴대폰에서도 선택 한 번으로 안전하게 실행할 수 있도록
-Trip 2 s, 배기가스 감소 5 s, 종료 10 s, 출력구간 10,000개로 고정됩니다.
-`incident_pre_ms`와 `incident_post_ms`로 ECMS의 1 ms 구간만 조정할 수 있습니다.
-100 s에 명령하는 번들 `bfp_trip` 예제는 이 짧은 프로필에서 사용할 수 없으므로
-`command_scenario=none`을 선택해야 합니다.
+`incident_1ms`는 사건시각 2 s, 경계 변화 5 s, 종료 10 s, 출력구간 10,000개인
+제한된 진단용 실행입니다.
 
 여기서 1 ms는 **CSV 출력 시각 간격**입니다. OpenModelica의 DASSL 적분기는
-정확도 조건에 따라 내부 계산 간격을 계속 자동 조절하므로 “솔버가 항상 1 ms
-고정 스텝으로 계산했다”는 뜻은 아닙니다. ECMS Trend의 물리 샘플 사이 값도
-기존과 같이 ProcessBus를 보간한 관측값이며, 이 출처 구분은 `manifest.json`에
-함께 기록됩니다. Alarm/SOE는 두 프로필 모두 정수 밀리초 시각을 유지합니다.
+정확도 조건에 따라 내부 계산 간격을 자동 조절하므로 “솔버가 항상 1 ms 고정
+스텝으로 계산했다”는 뜻은 아닙니다. 알람/SOE의 밀리초 시각은 이후 웹 변환부가
+승인된 논리와 실제 RAW crossing을 적용해 별도로 생성해야 합니다.
 
-## 주요 결과 파일
+## Action 결과 파일
 
 | 파일 | 역할 |
 |---|---|
-| `GT_TRIP_RAW_DATA.csv` | 전체 ProcessBus의 무손실 별칭(기본 causal 프로필은 0.1 s) |
-| `processbus.csv` | 물리/합성 입력과 GT Trip 시각 |
-| `incident-raw.csv` | 사고 전 정상구간·Trip·사고 후 영향을 연속 보존한 분석 RAW |
-| `important-changes.csv` | 기준값 대비 최초 지속 유의변동 시각(원인 확정 아님) |
-| `incident-window.json` | 기준구간·검출법·실제 전후 범위·알람 건수 감사정보 |
-| `DCS1.csv`, `DCS2.csv` | 실제 RAW가 공개 규칙을 넘은 경우만 기록한 시간순 알람/복귀 |
-| `ECMS.csv` | `ecms-events.csv`의 무손실 알람창 전달용 별칭 |
-| `ecms-trend.csv` | 전압·전류·전력방향·차단기 상태 |
-| `ecms-events.csv` | 시간순 Relay·차단기·FaultBus·Command 사건 |
-| `ecms-feeders.csv` | A 설비표를 반영한 피더별 차단기·충전·전압·전류 |
-| `manifest.json` | 실행방식·출처·시나리오·물리/ECMS 표본주기·제한사항 |
-| `config/ecms_a_settings.csv` | A 정격·보호·계산 설정 |
-| `config/ecms_a_equipment.csv` | A 피더·BUS·정격·초기상태 |
-| `config/ecms_command_catalog.csv` | 허용 Command 94개의 계약 |
-| `config/dcs_alarm_rules.csv` | DCS 알람 임계값·지연·히스테리시스(현재 검토필요 가정치) |
+| `thermosyspro-raw.csv` | OpenModelica native 결과의 바이트 단위 복사본 |
+| `raw-manifest.json` | SHA-256, 행·열·시간범위, 엔진·표본 설정, RAW-only 경계 |
 
-현재 ThermoSysPro 래퍼의 GT Trip은 **명령 시작형 시나리오**입니다. 따라서
-독립적인 GT 고장이 먼저 진행되어 보호가 Trip을 만든 시나리오가 아니며,
-정상구간 다음에 `GT.TRIP.CMD`가 입력되고 배기가스 경계조건과 HRSG/ST가
-후속 반응합니다. `important-changes.csv`는 그 반응의 최초 관측시각을 보여줄 뿐
-원인을 하드코딩하거나 확정하지 않습니다.
+기존 `processbus.csv`, `DCS1.csv`, `DCS2.csv`, `ECMS.csv`, 사고창과 정답 파일은
+Action artifact가 아니다. 관련 Python 코드는 다음 웹 변환부 구현 때 검토·이관할
+참고자료로만 남겨 두었다.
+
+현재 GT 어댑터는 독립적인 GT 내부고장을 계산하는 모델이 아니라 배기 경계가
+변하는 물리 예제이고, BFP 어댑터도 HP BFP 속도 경계 변화 예제다. 따라서 어느
+Workflow도 임의 사고 범용 생성기로 표시하지 않는다.
 
 ## 실행 오류 복구
 
