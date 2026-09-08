@@ -1,0 +1,166 @@
+from __future__ import annotations
+
+import json
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class RawOnlyActionTests(unittest.TestCase):
+    def run_script(self, name: str, *arguments: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / name), *arguments],
+            cwd=ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+    def build_bundle(self, target: Path) -> None:
+        raw = target / "thermosyspro-raw.csv"
+        shutil.copy2(ROOT / "tests" / "fixtures" / "thermosyspro-raw.csv", raw)
+        result = self.run_script(
+            "build_raw_manifest.py",
+            "--raw-file", str(raw),
+            "--output", str(target / "raw-manifest.json"),
+            "--sampling-profile", "causal_100ms",
+            "--stop-time", "10",
+            "--output-intervals", "100",
+            "--thermosyspro-commit", "test-commit",
+            "--openmodelica-image", "test-image",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_raw_bundle_passes_without_scenario_or_answer_label(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            self.build_bundle(target)
+            result = self.run_script(
+                "validate_raw_outputs.py", "--output-dir", str(target)
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            manifest = json.loads(
+                (target / "raw-manifest.json").read_text(encoding="utf-8")
+            )
+            serialized = json.dumps(manifest).lower()
+            self.assertNotIn("gt_trip_tac", serialized)
+            self.assertNotIn('"trip_time', serialized)
+            self.assertNotIn("scenario", manifest)
+            self.assertNotIn("root_cause", manifest)
+            self.assertNotIn("ground_truth", manifest)
+            self.assertFalse(manifest["boundary"]["scenario_label_included"])
+            self.assertFalse(manifest["boundary"]["root_cause_label_included"])
+            self.assertEqual(
+                manifest["boundary"]["action_output"], ["MODELICA_RAW_PHYSICS"]
+            )
+
+    def test_derived_artifact_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            self.build_bundle(target)
+            (target / "ECMS.csv").write_text("time,tag\n0,FAKE\n", encoding="utf-8")
+            result = self.run_script(
+                "validate_raw_outputs.py", "--output-dir", str(target)
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("unexpected files", result.stderr)
+
+    def test_native_duplicate_event_times_are_preserved(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            raw = target / "thermosyspro-raw.csv"
+            raw.write_text('"time","x"\n0,1\n1,2\n1,3\n2,4\n', encoding="utf-8")
+            result = self.run_script(
+                "build_raw_manifest.py",
+                "--raw-file", str(raw),
+                "--output", str(target / "raw-manifest.json"),
+                "--sampling-profile", "standard",
+                "--stop-time", "2",
+                "--output-intervals", "2",
+                "--thermosyspro-commit", "test-commit",
+                "--openmodelica-image", "test-image",
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            validate = self.run_script(
+                "validate_raw_outputs.py", "--output-dir", str(target)
+            )
+            self.assertEqual(validate.returncode, 0, validate.stderr)
+            manifest = json.loads(
+                (target / "raw-manifest.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(manifest["raw"]["duplicate_native_time_rows"], 1)
+
+    def test_both_action_runners_exclude_downstream_conversion(self) -> None:
+        workflow_paths = [
+            ROOT / ".github" / "workflows" / "run-thermosyspro.yml",
+            ROOT / ".github" / "workflows" / "run-bfp-trip-blind.yml",
+        ]
+        runner_paths = [
+            ROOT / "scripts" / "run_pipeline.sh",
+            ROOT / "scripts" / "run_bfp_blind_pipeline.sh",
+        ]
+        forbidden_calls = (
+            "normalize_processbus.py",
+            "normalize_bfp_processbus.py",
+            "extract_incident_window.py",
+            "generate_dcs_alarms.py",
+            "generate_ecms.py",
+            "generate_bfp_blind.py",
+            "GT_TRIP_RAW_DATA.csv",
+            "answer-key.json",
+        )
+        for path in workflow_paths + runner_paths:
+            content = path.read_text(encoding="utf-8")
+            executable_text = "\n".join(
+                line for line in content.splitlines()
+                if not line.lstrip().startswith("#")
+            )
+            for forbidden in forbidden_calls:
+                self.assertNotIn(forbidden, executable_text, f"{path}: {forbidden}")
+
+        for workflow_path in workflow_paths:
+            workflow = workflow_path.read_text(encoding="utf-8")
+            self.assertNotIn("fault_preset", workflow.lower())
+            self.assertNotIn("command_scenario", workflow.lower())
+            upload_block = workflow.split("path: |", 1)[1].split(
+                "if-no-files-found", 1
+            )[0]
+            self.assertEqual(
+                [line.strip() for line in upload_block.splitlines() if line.strip()],
+                ["outputs/thermosyspro-raw.csv", "outputs/raw-manifest.json"],
+            )
+
+    def test_raw_validator_rejects_answer_metadata_column(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            raw = target / "thermosyspro-raw.csv"
+            raw.write_text(
+                '"time","x","root_cause"\n0,1,KNOWN\n1,2,KNOWN\n',
+                encoding="utf-8",
+            )
+            result = self.run_script(
+                "build_raw_manifest.py",
+                "--raw-file", str(raw),
+                "--output", str(target / "raw-manifest.json"),
+                "--sampling-profile", "standard",
+                "--stop-time", "1",
+                "--output-intervals", "1",
+                "--thermosyspro-commit", "test-commit",
+                "--openmodelica-image", "test-image",
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            validate = self.run_script(
+                "validate_raw_outputs.py", "--output-dir", str(target)
+            )
+            self.assertNotEqual(validate.returncode, 0)
+            self.assertIn("answer/scenario metadata", validate.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()
