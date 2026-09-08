@@ -11,6 +11,7 @@ def main():
     p.add_argument("--platform")
     p.add_argument("--system")
     p.add_argument("--equipment")
+    p.add_argument("--tag-id",help="Return logic linked to this exact Tag Master ID")
     p.add_argument("--search")
     p.add_argument("--enabled",choices=["true","false"])
     p.add_argument("--scope",choices=["active","disabled","all"],default="active",
@@ -23,6 +24,9 @@ def main():
     if a.platform: where.append("platform=?"); params.append(a.platform)
     if a.system: where.append("system=?"); params.append(a.system)
     if a.equipment: where.append("equipment LIKE ?"); params.append(f"%{a.equipment}%")
+    if a.tag_id:
+        where.append("EXISTS (SELECT 1 FROM logic_tag_link x WHERE x.logic_id=logic_rule.logic_id AND x.tag_id=?)")
+        params.append(a.tag_id)
     if a.enabled is not None:
         where.append("enabled_default=?"); params.append(int(a.enabled=="true"))
     elif a.scope != "all":
@@ -32,7 +36,9 @@ def main():
         params.extend([f"%{a.search}%"]*4)
     sql="""SELECT logic_id,platform,system,subsystem,equipment,derived_signal,
            alarm_type,alarm_text_ko,threshold_basis,threshold_value,threshold_unit,
-           threshold_direction,delay_s,enabled_default,absolute_conversion_status
+           threshold_direction,delay_s,enabled_default,absolute_conversion_status,
+           (SELECT group_concat(DISTINCT x.tag_id)
+              FROM logic_tag_link x WHERE x.logic_id=logic_rule.logic_id) AS linked_tag_ids
            FROM logic_rule"""
     if where: sql+=" WHERE "+" AND ".join(where)
     sql+=" ORDER BY platform,system,priority_rank,logic_id LIMIT ?"; params.append(a.limit)
