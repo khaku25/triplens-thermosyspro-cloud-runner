@@ -1,86 +1,169 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
+  "contract": {
+    "mode": "canonical_plus_dynamic_numeric_passthrough",
+    "unmapped_numeric_policy": "preserve",
+    "raw_mutation": false
+  },
   "signals": {
     "time_s": {
       "required": true,
       "unit": "s",
-      "aliases": ["time", "Time"]
+      "aliases": [
+        "time",
+        "Time",
+        "time_s"
+      ]
     },
     "stg_power_w": {
-      "required": true,
+      "required": false,
       "unit": "W",
-      "aliases": ["Alternateur.Welec"]
+      "aliases": [
+        "Alternateur.Welec",
+        "stg_power_w"
+      ]
     },
     "gt_exhaust_mass_flow_kg_s": {
-      "required": true,
+      "required": false,
       "unit": "kg/s",
-      "aliases": ["Debit.y.signal"]
+      "aliases": [
+        "Debit.y.signal",
+        "gt_exhaust_mass_flow_kg_s"
+      ]
     },
     "gt_exhaust_temperature_k": {
-      "required": true,
+      "required": false,
       "unit": "K",
-      "aliases": ["Temperature.y.signal"]
+      "aliases": [
+        "Temperature.y.signal",
+        "gt_exhaust_temperature_k"
+      ]
     },
     "hp_drum_level_m": {
       "required": false,
       "unit": "m",
-      "aliases": ["BallonHP.yLevel.signal", "BallonHP.zl"]
+      "aliases": [
+        "BallonHP.yLevel.signal",
+        "BallonHP.zl",
+        "hp_drum_level_m"
+      ]
     },
     "ip_drum_level_m": {
       "required": false,
       "unit": "m",
-      "aliases": ["BallonMP.yLevel.signal", "BallonMP.zl"]
+      "aliases": [
+        "BallonMP.yLevel.signal",
+        "BallonMP.zl",
+        "ip_drum_level_m"
+      ]
     },
     "lp_drum_level_m": {
       "required": false,
       "unit": "m",
-      "aliases": ["BallonBP.yLevel.signal", "BallonBP.zl"]
+      "aliases": [
+        "BallonBP.yLevel.signal",
+        "BallonBP.zl",
+        "lp_drum_level_m"
+      ]
     },
     "hp_drum_pressure_pa": {
       "required": false,
       "unit": "Pa",
-      "aliases": ["BallonHP.P"]
+      "aliases": [
+        "BallonHP.P",
+        "hp_drum_pressure_pa"
+      ]
     },
     "ip_drum_pressure_pa": {
       "required": false,
       "unit": "Pa",
-      "aliases": ["BallonMP.P"]
+      "aliases": [
+        "BallonMP.P",
+        "ip_drum_pressure_pa"
+      ]
     },
     "lp_drum_pressure_pa": {
       "required": false,
       "unit": "Pa",
-      "aliases": ["BallonBP.P"]
+      "aliases": [
+        "BallonBP.P",
+        "lp_drum_pressure_pa"
+      ]
     },
     "hp_steam_flow_kg_s": {
       "required": false,
       "unit": "kg/s",
-      "aliases": ["TurbineHP.Q"]
+      "aliases": [
+        "TurbineHP.Q",
+        "hp_steam_flow_kg_s"
+      ]
     },
     "ip_steam_flow_kg_s": {
       "required": false,
       "unit": "kg/s",
-      "aliases": ["TurbineMP.Q"]
+      "aliases": [
+        "TurbineMP.Q",
+        "ip_steam_flow_kg_s"
+      ]
     },
     "lp_steam_flow_kg_s": {
       "required": false,
       "unit": "kg/s",
-      "aliases": ["TurbineBP.Q"]
+      "aliases": [
+        "TurbineBP.Q",
+        "lp_steam_flow_kg_s"
+      ]
     },
     "hp_feedwater_valve_pu": {
       "required": false,
       "unit": "pu",
-      "aliases": ["vanne_alimentationHP.Ouv.signal"]
+      "aliases": [
+        "vanne_alimentationHP.Ouv.signal",
+        "hp_feedwater_valve_pu"
+      ]
     },
     "ip_feedwater_valve_pu": {
       "required": false,
       "unit": "pu",
-      "aliases": ["vanne_alimentationMP.Ouv.signal"]
+      "aliases": [
+        "vanne_alimentationMP.Ouv.signal",
+        "ip_feedwater_valve_pu"
+      ]
     },
     "lp_feedwater_valve_pu": {
       "required": false,
       "unit": "pu",
-      "aliases": ["vanne_alimentationBP.Ouv.signal"]
+      "aliases": [
+        "vanne_alimentationBP.Ouv.signal",
+        "lp_feedwater_valve_pu"
+      ]
+    },
+    "bfp_hp_speed_rpm": {
+      "required": false,
+      "unit": "rpm",
+      "aliases": [
+        "PompeAlimHP.Vr",
+        "arretPomesHP.y.signal",
+        "bfp_hp_speed_rpm"
+      ]
+    },
+    "bfp_hp_mass_flow_kg_s": {
+      "required": false,
+      "unit": "kg/s",
+      "aliases": [
+        "CapteurDebitEauHP.Q",
+        "CapteurDebitEauHP.Measure.signal",
+        "PompeAlimHP.Q",
+        "bfp_hp_mass_flow_kg_s"
+      ]
+    },
+    "bfp_hp_mechanical_power_w": {
+      "required": false,
+      "unit": "W",
+      "aliases": [
+        "PompeAlimHP.Wm",
+        "bfp_hp_mechanical_power_w"
+      ]
     }
   }
 }
-
