@@ -29,7 +29,7 @@ class Rule:
     direction: str
     mode: str
     threshold_value: float
-    hysteresis_ratio: float
+    hysteresis_value: float
     delay_s: float
     severity: str
     unit: str
@@ -45,7 +45,7 @@ def read_csv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
 def load_rules(path: Path) -> list[Rule]:
     required = {
         "rule_id", "system", "source_signal", "alarm_tag", "description_ko",
-        "direction", "threshold_mode", "threshold_value", "hysteresis_ratio",
+        "direction", "threshold_mode", "threshold_value", "hysteresis_value",
         "delay_s", "severity", "unit", "status",
     }
     fields, rows = read_csv(path)
@@ -66,7 +66,7 @@ def load_rules(path: Path) -> list[Rule]:
             raise ValueError(f"{rule_id}: system must be DCS1 or DCS2")
         if direction not in {"LOW", "HIGH"}:
             raise ValueError(f"{rule_id}: direction must be LOW or HIGH")
-        if mode not in {"BASELINE_RATIO", "ABSOLUTE", "BOOLEAN"}:
+        if mode not in {"ABSOLUTE", "BOOLEAN"}:
             raise ValueError(f"{rule_id}: unsupported threshold mode")
         rules.append(Rule(
             rule_id=rule_id,
@@ -77,7 +77,7 @@ def load_rules(path: Path) -> list[Rule]:
             direction=direction,
             mode=mode,
             threshold_value=float(row["threshold_value"]),
-            hysteresis_ratio=float(row["hysteresis_ratio"]),
+            hysteresis_value=float(row["hysteresis_value"]),
             delay_s=float(row["delay_s"]),
             severity=row["severity"].strip().upper(),
             unit=row["unit"].strip(),
@@ -130,15 +130,9 @@ def main() -> int:
             baseline = 0.0
             threshold = rule.threshold_value
         else:
-            baseline_entry = baselines.get(rule.signal)
-            if not isinstance(baseline_entry, dict) or "median" not in baseline_entry:
-                continue
-            baseline = float(baseline_entry["median"])
-            threshold = (
-                baseline * rule.threshold_value
-                if rule.mode == "BASELINE_RATIO" else rule.threshold_value
-            )
-        hysteresis = abs(baseline) * rule.hysteresis_ratio
+            baseline = 0.0
+            threshold = rule.threshold_value
+        hysteresis = rule.hysteresis_value
 
         def asserted(value: float) -> bool:
             return value <= threshold if rule.direction == "LOW" else value >= threshold
@@ -198,7 +192,7 @@ def main() -> int:
                             "quality": "GOOD",
                             "provenance": (
                                 "SCENARIO_INPUT" if rule.mode == "BOOLEAN"
-                                else "PHYSICS_THRESHOLD_DERIVED"
+                                else "PHYSICS_ABSOLUTE_THRESHOLD"
                             ),
                             "rule_status": rule.status,
                             "description": rule.description,
@@ -228,7 +222,7 @@ def main() -> int:
                         "quality": "GOOD",
                         "provenance": (
                             "SCENARIO_INPUT" if rule.mode == "BOOLEAN"
-                            else "PHYSICS_THRESHOLD_DERIVED"
+                            else "PHYSICS_ABSOLUTE_THRESHOLD"
                         ),
                         "rule_status": rule.status,
                         "description": rule.description,
@@ -248,7 +242,7 @@ def main() -> int:
 
     metadata["alarm_summary"] = {
         "rules_file": args.rules.name,
-        "rule_status": "PROVISIONAL_REVIEW_REQUIRED",
+        "rule_status": "MODEL_ABSOLUTE_NOT_PLANT_APPROVED",
         "dcs1_event_count": len(dcs1),
         "dcs2_event_count": len(dcs2),
         "pretrip_event_count": sum(row["phase"] == "PRE_TRIP" for row in clean_events),
@@ -264,3 +258,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
