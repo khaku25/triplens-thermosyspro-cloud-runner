@@ -11,6 +11,11 @@ on:
       - 'config/signal_map.json'
       - 'logic_db/**'
       - '.github/workflows/build-logic-db.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'logic_db/**'
+      - '.github/workflows/build-logic-db.yml'
   workflow_dispatch:
 
 permissions:
@@ -31,6 +36,9 @@ jobs:
           python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --platform ECMS --limit 5
           # Logic DB -> Tag Master foreign-key lookup.
           python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --tag-id TSP.DRUM.HP.LEVEL --limit 5
+      - name: Export visual traceability viewer
+        run: |
+          python3 logic_db/export_traceability.py outputs/triplens_logic_master_v2.sqlite --output-dir outputs
       - name: Upload logic database
         uses: actions/upload-artifact@v4
         with:
@@ -38,5 +46,8 @@ jobs:
           path: |
             outputs/triplens_logic_master_v2.sqlite
             outputs/logic_db_manifest.json
+            outputs/active_logic_trace.json
+            outputs/active_logic_trace.csv
+            outputs/logic_traceability.html
           if-no-files-found: error
           retention-days: 30
