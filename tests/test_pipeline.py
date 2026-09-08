@@ -889,9 +889,9 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(syntax.returncode, 0, syntax.stderr)
         workflow = (ROOT / ".github/workflows/run-thermosyspro.yml").read_text(encoding="utf-8")
         self.assertIn("cancel-in-progress: true", workflow)
-        self.assertRegex(workflow, r"Upload simulation results\s+if: success\(\)")
-        self.assertIn("command_scenario:", workflow)
-        self.assertIn('"$COMMAND_SCENARIO"', workflow)
+        self.assertRegex(workflow, r"Upload blind-test RAW\s+if: success\(\)")
+        self.assertNotIn("command_scenario:", workflow)
+        self.assertNotIn('"$COMMAND_SCENARIO"', workflow)
         self.assertIn("sampling_profile:", workflow)
         self.assertIn("incident_1ms", workflow)
         self.assertIn('"$SAMPLING_PROFILE"', workflow)
@@ -901,7 +901,7 @@ class PipelineTests(unittest.TestCase):
         unknown_profile = subprocess.run(
             [
                 "bash", str(ROOT / "scripts/run_pipeline.sh"),
-                "600", "5", "1000", "1000", "none", "none", "invented",
+                "600", "5", "1000", "1000", "invented",
             ],
             cwd=Path(tempfile.gettempdir()),
             check=False,
