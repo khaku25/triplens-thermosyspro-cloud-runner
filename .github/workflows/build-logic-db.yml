@@ -5,7 +5,10 @@ on:
     branches: [main]
     paths:
       - 'data/triplens_A-L_alarm_logic_master_absolute_v2.csv'
+      - 'data/thermo_vpp_full_tag_list.csv'
+      - 'data/ecms_tag_catalog.csv'
       - 'config/dcs_alarm_rules.csv'
+      - 'config/signal_map.json'
       - 'logic_db/**'
       - '.github/workflows/build-logic-db.yml'
   workflow_dispatch:
@@ -26,6 +29,8 @@ jobs:
         run: |
           # Default query scope must remain active-only.
           python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --platform ECMS --limit 5
+          # Logic DB -> Tag Master foreign-key lookup.
+          python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --tag-id TSP.DRUM.HP.LEVEL --limit 5
       - name: Upload logic database
         uses: actions/upload-artifact@v4
         with:
