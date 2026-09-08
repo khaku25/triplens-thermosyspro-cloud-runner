@@ -7,6 +7,7 @@ import argparse
 import csv
 import json
 import math
+import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -48,7 +49,20 @@ def load_rules(path: Path) -> list[Rule]:
         "direction", "threshold_mode", "threshold_value", "hysteresis_value",
         "delay_s", "severity", "unit", "status",
     }
-    fields, rows = read_csv(path)
+    if path.suffix.lower() in {".db", ".sqlite", ".sqlite3"}:
+        with sqlite3.connect(path) as database:
+            database.row_factory = sqlite3.Row
+            result = database.execute(
+                """SELECT rule_id, system, source_signal, alarm_tag,
+                          description_ko, direction, threshold_mode,
+                          threshold_value, hysteresis_value, delay_s,
+                          severity, unit, status
+                   FROM runtime_alarm_rule ORDER BY rule_id"""
+            )
+            rows = [dict(row) for row in result]
+        fields = list(rows[0]) if rows else []
+    else:
+        fields, rows = read_csv(path)
     missing = required.difference(fields)
     if missing:
         raise ValueError("DCS rule file is missing: " + ", ".join(sorted(missing)))
@@ -258,4 +272,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
