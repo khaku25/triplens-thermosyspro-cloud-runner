@@ -18,6 +18,14 @@ Outputs:
 
 - `outputs/triplens_logic_master_v2.sqlite`
 - `outputs/logic_db_manifest.json`
+- `outputs/logic_traceability.html`: self-contained active-logic visual browser
+- `outputs/active_logic_trace.csv`: auditable flat export
+- `outputs/active_logic_trace.json`: machine-readable end-to-end trace export
+
+The viewer separates three states that must not be conflated: a source declared
+in the Logic Master, a Tag Master foreign-key link, and an external physical
+signal wired to an ECMS Simulink port. P&ID/SLD links remain visibly pending
+until `drawing_reference` and `tag_drawing_map` contain reviewed mappings.
 
 ## Query
 
