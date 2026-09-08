@@ -24,7 +24,8 @@ jobs:
           python3 logic_db/build_logic_db.py --source-commit "$GITHUB_SHA"
       - name: Query smoke test
         run: |
-          python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --platform ECMS --enabled true --limit 5
+          # Default query scope must remain active-only.
+          python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --platform ECMS --limit 5
       - name: Upload logic database
         uses: actions/upload-artifact@v4
         with:

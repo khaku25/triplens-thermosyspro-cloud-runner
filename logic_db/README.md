@@ -1,7 +1,8 @@
-# TripLens Logic DB v2
+# TripLens Active Logic DB v2
 
-SQLite is the canonical query layer for the 903-row absolute engineering-unit logic master.
-The source CSV files remain reviewable deployment inputs.
+SQLite is the canonical query layer for TripLens logic. Operational queries and validation
+use **active logic only** by default. The full 903-row catalog remains available solely for
+traceability and later restoration; it is not an implemented-logic count.
 
 ## Build
 
@@ -17,13 +18,17 @@ Outputs:
 ## Query
 
 ```bash
-python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --platform ECMS --enabled true
+python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --platform ECMS
 python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --search "드럼" --limit 20
+python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --scope disabled --limit 20
+python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --scope all --limit 20
 ```
 
 ## Tables
 
-- `logic_rule`: 903 master logic records
+- `logic_rule`: complete candidate catalog; default queries exclude disabled rows
+- `v_active_logic`: operational and verification scope
+- `v_excluded_unlinked_analog`: restorable H/HH/L/LL candidates with no bound model input
 - `logic_source`: normalized tag and Modelica-variable links
 - `runtime_alarm_rule`: 32 DCS runtime rules
 - `ecms_setting`: ECMS thresholds/timing
@@ -32,4 +37,6 @@ python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --sea
 - `validation_result`: build-time integrity checks
 
 Enabled rules cannot use baseline ratios, normalized spans, or pending absolute values.
+Unlinked H/HH/L/LL candidates stay stored with `enabled_default=0` and do not participate
+in normal queries, P&ID mapping views, or active validation.
 Values are virtual-model engineering settings and are not approved plant protection settings.

@@ -81,6 +81,7 @@ def main():
             "source_commit":a.source_commit,
             "plant_use":"NOT APPROVED FOR REAL PLANT PROTECTION",
             "unit_policy":"Enabled numeric logic uses absolute engineering units",
+            "reporting_scope":"ACTIVE_LOGIC_ONLY",
         }
         meta.update({f"sha256:{x.name}":digest(x) for x in inputs[1:]})
         db.executemany("INSERT INTO schema_metadata(key,value) VALUES (?,?)",meta.items())
@@ -139,14 +140,24 @@ def main():
 
         total=db.execute("SELECT count(*) FROM logic_rule").fetchone()[0]
         active=db.execute("SELECT count(*) FROM logic_rule WHERE enabled_default=1").fetchone()[0]
+        excluded_unlinked_analog=db.execute("""SELECT count(*) FROM logic_rule
+            WHERE enabled_default=0
+              AND alarm_type IN ('H','HH','L','LL')
+              AND absolute_conversion_status='UNLINKED_OPTIONAL_SIGNAL'""").fetchone()[0]
+        active_unlinked_analog=db.execute("""SELECT count(*) FROM logic_rule
+            WHERE enabled_default=1
+              AND alarm_type IN ('H','HH','L','LL')
+              AND absolute_conversion_status='UNLINKED_OPTIONAL_SIGNAL'""").fetchone()[0]
         legacy=db.execute("""SELECT count(*) FROM logic_rule WHERE enabled_default=1 AND
             (threshold_basis IN ('PRE_EVENT_BASELINE_RATIO','NORMALIZED_SPAN','ABSOLUTE_VALUE_PENDING')
              OR lower(coalesce(hysteresis_raw,'')) LIKE '%ratio%')""").fetchone()[0]
         invalid_abs=db.execute("""SELECT count(*) FROM logic_rule WHERE enabled_default=1
             AND threshold_basis LIKE 'ABSOLUTE_%'
             AND (threshold_value IS NULL OR trim(coalesce(threshold_unit,''))='')""").fetchone()[0]
-        add_validation(db,"logic_row_count",total==903,total,903,"Complete v2 logic master")
         add_validation(db,"active_logic_count",active==538,active,538,"Enabled absolute/discrete logic")
+        add_validation(db,"active_unlinked_analog_count",active_unlinked_analog==0,
+                       active_unlinked_analog,0,
+                       "Unlinked H/HH/L/LL candidates are excluded from active validation")
         add_validation(db,"active_legacy_ratio_count",legacy==0,legacy,0,"No enabled ratio/span logic")
         add_validation(db,"invalid_active_absolute_count",invalid_abs==0,invalid_abs,0,"Absolute value and unit required")
         add_validation(db,"runtime_rule_count",len(dcs_rows)==32,len(dcs_rows),32,"DCS deployment rules")
@@ -156,14 +167,19 @@ def main():
         add_validation(db,"sqlite_integrity",integrity=="ok",integrity,"ok","SQLite integrity check")
         db.commit()
         stats={
-          "logic_rules":total,"active_logic":active,"deferred_logic":total-active,
+          "active_logic_rules":active,
+          "runtime_alarm_rules":len(dcs_rows),
+          "excluded_unlinked_analog_rules":excluded_unlinked_analog,
+          "disabled_backlog_rules":total-active,
+          "catalogued_logic_rows":total,
           "logic_sources":db.execute("SELECT count(*) FROM logic_source").fetchone()[0],
-          "runtime_alarm_rules":len(dcs_rows),"ecms_settings":len(setting_rows),
+          "ecms_settings":len(setting_rows),
           "ecms_signals":len(interface_rows),"active_legacy_ratio":legacy,
           "validation_passed":db.execute("SELECT count(*) FROM validation_result WHERE passed=1").fetchone()[0],
         }
         manifest={"schema_version":"2.0","database":a.output.name,"sha256":digest(a.output),
                   "source_commit":a.source_commit,"stats":stats,
+                  "reporting_scope":"ACTIVE_LOGIC_ONLY",
                   "plant_use":"NOT APPROVED FOR REAL PLANT PROTECTION"}
         a.manifest.write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
         print(json.dumps(manifest,ensure_ascii=False,indent=2))
@@ -172,4 +188,3 @@ def main():
 
 if __name__=="__main__":
     main()
-

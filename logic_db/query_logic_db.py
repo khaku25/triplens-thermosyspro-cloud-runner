@@ -13,6 +13,8 @@ def main():
     p.add_argument("--equipment")
     p.add_argument("--search")
     p.add_argument("--enabled",choices=["true","false"])
+    p.add_argument("--scope",choices=["active","disabled","all"],default="active",
+                   help="Query scope; defaults to active logic only")
     p.add_argument("--limit",type=int,default=50)
     p.add_argument("--format",choices=["json","csv"],default="json")
     a=p.parse_args()
@@ -21,7 +23,10 @@ def main():
     if a.platform: where.append("platform=?"); params.append(a.platform)
     if a.system: where.append("system=?"); params.append(a.system)
     if a.equipment: where.append("equipment LIKE ?"); params.append(f"%{a.equipment}%")
-    if a.enabled is not None: where.append("enabled_default=?"); params.append(int(a.enabled=="true"))
+    if a.enabled is not None:
+        where.append("enabled_default=?"); params.append(int(a.enabled=="true"))
+    elif a.scope != "all":
+        where.append("enabled_default=?"); params.append(int(a.scope=="active"))
     if a.search:
         where.append("(logic_id LIKE ? OR alarm_text_ko LIKE ? OR derived_signal LIKE ? OR equipment LIKE ?)")
         params.extend([f"%{a.search}%"]*4)
