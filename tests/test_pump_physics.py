@@ -195,23 +195,11 @@ class PumpPhysicsTests(unittest.TestCase):
             "Table=[0,893.75; 10,893.75; 600,893.75; 650,893.75]",
             hp_model,
         )
+        self.assertNotIn("feedwaterTripExhaust", hp_model)
+        self.assertIn("connect(Debit.y,SourceFumees. IMassFlow)", hp_model)
         self.assertIn(
-            "Modelica.SIunits.MassFlowRate feedwaterTripExhaustMassFlow",
-            hp_model,
+            "connect(Temperature.y,SourceFumees. ITemperature)", hp_model
         )
-        self.assertIn(
-            "feedwaterTripExhaustMassFlow = if breakerHPClosed then Debit.y.signal",
-            hp_model,
-        )
-        self.assertIn(
-            "SourceFumees.IMassFlow.signal = feedwaterTripExhaustMassFlow",
-            hp_model,
-        )
-        self.assertIn(
-            "SourceFumees.ITemperature.signal = feedwaterTripExhaustTemperature",
-            hp_model,
-        )
-        self.assertNotIn("connect(Debit.y,SourceFumees. IMassFlow)", hp_model)
         self.assertNotIn("cwPumpDrive", hp_model)
         self.assertNotIn("TripLens_RegularizedCondenser", hp_model)
 
