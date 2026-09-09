@@ -191,7 +191,6 @@ package TripLens_PumpPhysics
     parameter Modelica.SIunits.Length lpHHThreshold=1.95;
     parameter Modelica.SIunits.Length lpLLThreshold=1.55;
     parameter Real alarmDelay(unit="s")=0.5;
-    parameter Real timerResetTime(unit="s")=0.05;
     parameter Real gtReceiveDelay(unit="s")=0.020;
     parameter Real gtLockoutDelay(unit="s")=0.035;
     parameter Real gtBreakerDelay(unit="s")=0.080;
@@ -215,31 +214,50 @@ package TripLens_PumpPhysics
     output Boolean lpDrumLLPickup;
     output Boolean gtTripRequest;
     output Boolean stTripRequest;
-    output Boolean gtTripLatched(start=false, fixed=true);
-    output Boolean stTripLatched(start=false, fixed=true);
+    output Boolean gtTripLatched(start=false);
+    output Boolean stTripLatched(start=false);
     output Boolean relay86GTTripReceived;
     output Boolean relay86GTOperated;
     output Boolean breaker52GTClosed;
     output Boolean breaker52STClosed;
 
-    Real hpHHTimer(start=0, fixed=true);
-    Real hpLLTimer(start=0, fixed=true);
-    Real ipHHTimer(start=0, fixed=true);
-    Real ipLLTimer(start=0, fixed=true);
-    Real lpHHTimer(start=0, fixed=true);
-    Real lpLLTimer(start=0, fixed=true);
-    Real gtSequenceTimer(start=0, fixed=true);
-    Real stSequenceTimer(start=0, fixed=true);
+    output Real hpHHTimer(unit="s");
+    output Real hpLLTimer(unit="s");
+    output Real ipHHTimer(unit="s");
+    output Real ipLLTimer(unit="s");
+    output Real lpHHTimer(unit="s");
+    output Real lpLLTimer(unit="s");
+    output Real gtSequenceTimer(unit="s");
+    output Real stSequenceTimer(unit="s");
+
+    discrete Real hpHHSince(start=-1);
+    discrete Real hpLLSince(start=-1);
+    discrete Real ipHHSince(start=-1);
+    discrete Real ipLLSince(start=-1);
+    discrete Real lpHHSince(start=-1);
+    discrete Real lpLLSince(start=-1);
+    discrete Real gtTripTime(start=-1);
+    discrete Real stTripTime(start=-1);
 
   initial equation
+    hpHHSince = if hpDrumLevel >= hpHHThreshold then 0 else -1;
+    hpLLSince = if hpDrumLevel <= hpLLThreshold then 0 else -1;
+    ipHHSince = if ipDrumLevel >= ipHHThreshold then 0 else -1;
+    ipLLSince = if ipDrumLevel <= ipLLThreshold then 0 else -1;
+    lpHHSince = if lpDrumLevel >= lpHHThreshold then 0 else -1;
+    lpLLSince = if lpDrumLevel <= lpLLThreshold then 0 else -1;
     gtTripLatched = false;
     stTripLatched = false;
+    gtTripTime = -1;
+    stTripTime = -1;
 
   equation
-    assert(alarmDelay > 0 and timerResetTime > 0 and
-      gtReceiveDelay >= 0 and gtLockoutDelay >= 0 and
-      gtBreakerDelay >= 0 and stBreakerDelay >= 0,
+    assert(alarmDelay > 0 and gtReceiveDelay >= 0 and
+      gtLockoutDelay >= 0 and gtBreakerDelay >= 0 and stBreakerDelay >= 0,
       "CommonDrumTripProtection delays must be non-negative");
+    assert(hpLLThreshold < hpHHThreshold and ipLLThreshold < ipHHThreshold and
+      lpLLThreshold < lpHHThreshold,
+      "Drum LL thresholds must be below HH thresholds");
 
     hpDrumHH = hpDrumLevel >= hpHHThreshold;
     hpDrumLL = hpDrumLevel <= hpLLThreshold;
@@ -248,12 +266,31 @@ package TripLens_PumpPhysics
     lpDrumHH = lpDrumLevel >= lpHHThreshold;
     lpDrumLL = lpDrumLevel <= lpLLThreshold;
 
-    der(hpHHTimer) = if hpDrumHH then 1 else -hpHHTimer/timerResetTime;
-    der(hpLLTimer) = if hpDrumLL then 1 else -hpLLTimer/timerResetTime;
-    der(ipHHTimer) = if ipDrumHH then 1 else -ipHHTimer/timerResetTime;
-    der(ipLLTimer) = if ipDrumLL then 1 else -ipLLTimer/timerResetTime;
-    der(lpHHTimer) = if lpDrumHH then 1 else -lpHHTimer/timerResetTime;
-    der(lpLLTimer) = if lpDrumLL then 1 else -lpLLTimer/timerResetTime;
+    when change(hpDrumHH) then
+      hpHHSince = if hpDrumHH then time else -1;
+    end when;
+    when change(hpDrumLL) then
+      hpLLSince = if hpDrumLL then time else -1;
+    end when;
+    when change(ipDrumHH) then
+      ipHHSince = if ipDrumHH then time else -1;
+    end when;
+    when change(ipDrumLL) then
+      ipLLSince = if ipDrumLL then time else -1;
+    end when;
+    when change(lpDrumHH) then
+      lpHHSince = if lpDrumHH then time else -1;
+    end when;
+    when change(lpDrumLL) then
+      lpLLSince = if lpDrumLL then time else -1;
+    end when;
+
+    hpHHTimer = if hpDrumHH and hpHHSince >= 0 then time - hpHHSince else 0;
+    hpLLTimer = if hpDrumLL and hpLLSince >= 0 then time - hpLLSince else 0;
+    ipHHTimer = if ipDrumHH and ipHHSince >= 0 then time - ipHHSince else 0;
+    ipLLTimer = if ipDrumLL and ipLLSince >= 0 then time - ipLLSince else 0;
+    lpHHTimer = if lpDrumHH and lpHHSince >= 0 then time - lpHHSince else 0;
+    lpLLTimer = if lpDrumLL and lpLLSince >= 0 then time - lpLLSince else 0;
 
     hpDrumHHPickup = hpHHTimer >= alarmDelay;
     hpDrumLLPickup = hpLLTimer >= alarmDelay;
@@ -269,13 +306,15 @@ package TripLens_PumpPhysics
 
     when gtTripRequest then
       gtTripLatched = true;
+      gtTripTime = time;
     end when;
     when stTripRequest then
       stTripLatched = true;
+      stTripTime = time;
     end when;
 
-    der(gtSequenceTimer) = if gtTripLatched then 1 else 0;
-    der(stSequenceTimer) = if stTripLatched then 1 else 0;
+    gtSequenceTimer = if gtTripLatched then time - gtTripTime else 0;
+    stSequenceTimer = if stTripLatched then time - stTripTime else 0;
     relay86GTTripReceived = gtTripLatched and
       gtSequenceTimer >= gtReceiveDelay;
     relay86GTOperated = gtTripLatched and
