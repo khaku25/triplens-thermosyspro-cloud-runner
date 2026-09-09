@@ -16,7 +16,7 @@ import tempfile
 from pathlib import Path
 
 
-MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V3"
+MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V4"
 
 
 PARAMETERS = f'''  // {MARKER}
@@ -30,8 +30,8 @@ PARAMETERS = f'''  // {MARKER}
     "LPBP 95 percent opening time";
   parameter Real vppSprayStroke95(unit="s") = 0.050
     "Spray-water actuator 95 percent opening time";
-  parameter Real vppValveLeak = 1e-4
-    "Closed-valve leakage position for the physical bypass valves";
+  parameter Real vppValveLeak = 0
+    "Fully closed pre-Trip bypass position";
   parameter Modelica.SIunits.Volume vppHPHeaderVolume = 1
     "Preliminary cold-reheat mixing volume";
   parameter Modelica.SIunits.Volume vppLPHeaderVolume = 50
@@ -92,8 +92,8 @@ COMPONENTS = '''
   ThermoSysPro.WaterSteam.PressureLosses.ControlValve vppHPBypassValve(
     Cvmax=vppHPBypassCvmax,
     mode=2,
-    continuous_flow_reversal=true,
-    Q(start=0.01),
+    continuous_flow_reversal=false,
+    Q(start=0),
     Cv(start=vppValveLeak*vppHPBypassCvmax),
     h(start=3450835),
     Pm(start=7703850),
@@ -120,8 +120,8 @@ COMPONENTS = '''
   ThermoSysPro.WaterSteam.PressureLosses.ControlValve vppLPBypassValve(
     Cvmax=vppLPBypassCvmax,
     mode=2,
-    continuous_flow_reversal=true,
-    Q(start=0.01),
+    continuous_flow_reversal=false,
+    Q(start=0),
     Cv(start=vppValveLeak*vppLPBypassCvmax),
     h(start=3523910),
     Pm(start=1277368),

@@ -146,8 +146,8 @@ class RawOnlyActionTests(unittest.TestCase):
         mos = (ROOT / "modelica" / "run.mos.tpl").read_text(encoding="utf-8")
 
         self.assertIn("patch_turbine_bypass_model.py", runner)
-        self.assertIn("HPBP_LPBP_DYNAMIC_V3", runner)
-        self.assertIn("TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V3", runner)
+        self.assertIn("HPBP_LPBP_DYNAMIC_V4", runner)
+        self.assertIn("TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V4", runner)
         self.assertIn("vppTripTime=tripTime", model)
         self.assertIn("HPBypassMassFlow", mos)
         self.assertIn("LPBypassMassFlow", mos)
@@ -189,7 +189,7 @@ class RawOnlyActionTests(unittest.TestCase):
                 "vppCondenserPressure",
                 "vppCondenserLevel",
             ]
-            leakage = 1e-4
+            leakage = 0.0
             trip_time = 0.1
 
             def opening(elapsed: float, stroke95: float) -> float:
@@ -258,8 +258,8 @@ class RawOnlyActionTests(unittest.TestCase):
                 "--output-intervals", "1000",
                 "--thermosyspro-commit", "test-commit",
                 "--openmodelica-image", "test-image",
-                "--model-variant", "HPBP_LPBP_DYNAMIC_V3",
-                "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V3",
+                "--model-variant", "HPBP_LPBP_DYNAMIC_V4",
+                "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V4",
                 "--patched-model-sha256", "a"*64,
             )
             self.assertEqual(build.returncode, 0, build.stderr)
