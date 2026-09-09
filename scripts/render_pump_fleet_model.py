@@ -209,12 +209,71 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
     closeFlow={selected["close_flow"]},
     closedResistance={selected["closed_resistance"]});
 ''')
+        declarations.append("""
+  // Protection is driven by native drum states, never directly by the pump breaker.
+  TripLens_PumpPhysics.CommonDrumTripProtection commonTripProtection;
+  TripLens_PumpPhysics.ProtectedExhaustGasBoundary protectedExhaust;
+  TripLens_PumpPhysics.FastSteamTripValve stTripValveHP;
+  TripLens_PumpPhysics.FastSteamTripValve stTripValveMP;
+  Boolean hpDrumLevelHHPickup;
+  Boolean hpDrumLevelLLPickup;
+  Boolean ipDrumLevelHHPickup;
+  Boolean ipDrumLevelLLPickup;
+  Boolean lpDrumLevelHHPickup;
+  Boolean lpDrumLevelLLPickup;
+  Boolean gtTripRequest;
+  Boolean stTripRequest;
+  Boolean gtTripLatched;
+  Boolean stTripLatched;
+  Boolean relay86GTTripReceived;
+  Boolean relay86GTOperated;
+  Boolean gt52GClosed;
+  Boolean st52GClosed;
+  Modelica.SIunits.Power gtGridElectricalPower;
+  Modelica.SIunits.Power stGridElectricalPower;
+""")
         equations.append(f'''
   breaker{axis}Closed = not (time >= pumpTripTime);
   drive{axis}.breakerClosed.signal = breaker{axis}Closed;
   drive{axis}.pumpPower.signal = {name}.Wm;
   connect(drive{axis}.speedCommand, {name}.rpm_or_mpower);
 ''')
+        equations.append("""
+  commonTripProtection.hpDrumLevel = BallonHP.yLevel.signal;
+  commonTripProtection.ipDrumLevel = BallonMP.yLevel.signal;
+  commonTripProtection.lpDrumLevel = BallonBP.yLevel.signal;
+
+  hpDrumLevelHHPickup = commonTripProtection.hpDrumHHPickup;
+  hpDrumLevelLLPickup = commonTripProtection.hpDrumLLPickup;
+  ipDrumLevelHHPickup = commonTripProtection.ipDrumHHPickup;
+  ipDrumLevelLLPickup = commonTripProtection.ipDrumLLPickup;
+  lpDrumLevelHHPickup = commonTripProtection.lpDrumHHPickup;
+  lpDrumLevelLLPickup = commonTripProtection.lpDrumLLPickup;
+  gtTripRequest = commonTripProtection.gtTripRequest;
+  stTripRequest = commonTripProtection.stTripRequest;
+  gtTripLatched = commonTripProtection.gtTripLatched;
+  stTripLatched = commonTripProtection.stTripLatched;
+  relay86GTTripReceived = commonTripProtection.relay86GTTripReceived;
+  relay86GTOperated = commonTripProtection.relay86GTOperated;
+  gt52GClosed = commonTripProtection.breaker52GTClosed;
+  st52GClosed = commonTripProtection.breaker52STClosed;
+  gtGridElectricalPower = if gt52GClosed then 160e6 else 0;
+  stGridElectricalPower = if st52GClosed then Alternateur.Welec else 0;
+
+  connect(Debit.y, protectedExhaust.normalMassFlow);
+  connect(Temperature.y, protectedExhaust.normalTemperature);
+  protectedExhaust.gtTripLatched = gtTripLatched;
+  protectedExhaust.gtTripElapsed = commonTripProtection.gtSequenceTimer;
+  connect(protectedExhaust.effectiveMassFlow, SourceFumees.IMassFlow);
+  connect(protectedExhaust.effectiveTemperature, SourceFumees.ITemperature);
+
+  connect(ConstantVanneTurbineHP.y, stTripValveHP.normalOpening);
+  connect(ConstantVanneTurbineMP.y, stTripValveMP.normalOpening);
+  stTripValveHP.trip.signal = stTripLatched;
+  stTripValveMP.trip.signal = stTripLatched;
+  connect(stTripValveHP.effectiveOpening, vanne_entree_TurbineHP.Ouv);
+  connect(stTripValveMP.effectiveOpening, vanne_entree_TurbineMP.Ouv);
+""")
         text = replace_statement(
             text,
             str(selected["speed_marker"]),
@@ -228,6 +287,17 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
             f"  connect(checkValve{axis}.C2, {selected['downstream']});\n",
             f"{axis} discharge check valve",
         )
+        for marker, label in (
+            ("  connect(Debit.y,SourceFumees. IMassFlow)",
+             "original flue-gas mass-flow boundary"),
+            ("  connect(Temperature.y,SourceFumees. ITemperature)",
+             "original flue-gas temperature boundary"),
+            ("  connect(ConstantVanneTurbineHP.y, vanne_entree_TurbineHP.Ouv)",
+             "original HP turbine valve command"),
+            ("  connect(ConstantVanneTurbineMP.y, vanne_entree_TurbineMP.Ouv)",
+             "original IP turbine valve command"),
+        ):
+            text = replace_statement(text, marker, "", label)
         # Protection/actuation is added from drum state below; the pump
         # breaker must never bypass the common trip matrix.
         if f"{name}.rpm_or_mpower" in text:
@@ -308,7 +378,6 @@ def main() -> int:
         "stop_time_s": args.stop_time,
         "output_intervals": args.intervals,
         "output_prefix": prefix,
-        "lp_condensate_alias": args.pump_id in {"FWP-LP", "COND-PUMP"},
     }
     (args.output_dir / "pump-scenario.json").write_text(
         json.dumps(metadata, ensure_ascii=False, indent=2) + "\n",
