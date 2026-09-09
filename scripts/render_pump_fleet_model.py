@@ -357,17 +357,6 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
              "original IP turbine valve command"),
         ):
             text = replace_statement(text, marker, "", label)
-        for marker, label in (
-            ("  connect(Debit.y,SourceFumees. IMassFlow)",
-             "original flue-gas mass-flow boundary"),
-            ("  connect(Temperature.y,SourceFumees. ITemperature)",
-             "original flue-gas temperature boundary"),
-            ("  connect(ConstantVanneTurbineHP.y, vanne_entree_TurbineHP.Ouv)",
-             "original HP turbine valve command"),
-            ("  connect(ConstantVanneTurbineMP.y, vanne_entree_TurbineMP.Ouv)",
-             "original IP turbine valve command"),
-        ):
-            text = replace_statement(text, marker, "", label)
         # Protection/actuation is added from drum state below; the pump
         # breaker must never bypass the common trip matrix.
         if f"{name}.rpm_or_mpower" in text:
