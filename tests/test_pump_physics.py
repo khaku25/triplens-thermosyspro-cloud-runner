@@ -60,7 +60,7 @@ class PumpPhysicsTests(unittest.TestCase):
                     f"drive{axis}.pumpPower.signal = {component}.Wm", model
                 )
                 self.assertIn(f"BreakerInertialPumpDrive drive{axis}", model)
-                self.assertIn(f"SpringLoadedIdealCheckValve checkValve{axis}", model)
+                self.assertIn(f"SpringLoadedCheckValve checkValve{axis}", model)
                 self.assertIn(f"checkValve{axis}.C1", model)
                 self.assertIn(f"checkValve{axis}.C2", model)
                 for normal_component in all_components.difference({component}):

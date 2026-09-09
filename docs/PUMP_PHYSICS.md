@@ -14,8 +14,8 @@ Each connected motor pump follows this causal chain:
 3. the combined rotating inertia follows `J*der(w) = motor torque - pump load
    torque - friction torque`;
 4. pump head and mass flow change through the native pump curve;
-5. the spring-loaded ideal discharge check valve closes before forward flow
-   reverses;
+5. the spring-loaded finite-resistance discharge check valve closes before
+   forward flow reverses;
 6. the existing drum, condenser, valve, economizer, and turbine equations
    calculate the downstream process response.
 
