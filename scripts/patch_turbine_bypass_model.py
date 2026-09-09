@@ -16,7 +16,7 @@ import tempfile
 from pathlib import Path
 
 
-MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V4"
+MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V5"
 
 
 PARAMETERS = f'''  // {MARKER}
@@ -36,6 +36,13 @@ PARAMETERS = f'''  // {MARKER}
     "Preliminary cold-reheat mixing volume";
   parameter Modelica.SIunits.Volume vppLPHeaderVolume = 50
     "Preliminary condenser-inlet steam mixing volume";
+  parameter Modelica.SIunits.MassFlowRate vppHPMainFlow0 = 151.7690991976083
+    "Verified pre-Trip HP steam-flow initialization point";
+  parameter Modelica.SIunits.MassFlowRate vppIPMainFlow0 = 176.7893383342879
+    "Verified pre-Trip hot-reheat steam-flow initialization point";
+  parameter Modelica.SIunits.MassFlowRate vppCondenserSteamFlow0 =
+      196.6524916480812
+    "Verified pre-Trip condenser steam-flow initialization point";
   parameter ThermoSysPro.Units.Cv vppHPBypassCvmax = 4000
     "Initial HPBP Cv calibration value";
   parameter ThermoSysPro.Units.Cv vppLPBypassCvmax = 50000
@@ -88,17 +95,27 @@ COMPONENTS = '''
   Modelica.SIunits.Length vppCondenserLevel;
 
   ThermoSysPro.WaterSteam.Junctions.Splitter2 vppHPSplitter(
-    mode=2, P(start=12681000), h(start=3450835));
+    mode=2,
+    P(start=12681000, nominal=1.3e7),
+    h(start=3450835, nominal=3.5e6),
+    Ce(Q(start=vppHPMainFlow0, nominal=200),
+       h(start=3450835), h_vol(start=3450835)),
+    Cs1(Q(start=vppHPMainFlow0, nominal=200),
+        h(start=3450835), h_vol(start=3450835)),
+    Cs2(Q(start=0, nominal=200),
+        h(start=3248547.5), h_vol(start=3450835)));
   ThermoSysPro.WaterSteam.PressureLosses.ControlValve vppHPBypassValve(
     Cvmax=vppHPBypassCvmax,
     mode=2,
-    continuous_flow_reversal=false,
-    Q(start=0),
+    continuous_flow_reversal=true,
+    Q(start=0, nominal=200),
     Cv(start=vppValveLeak*vppHPBypassCvmax),
-    h(start=3450835),
-    Pm(start=7703850),
-    C1(P(start=12681000), h_vol(start=3450835)),
-    C2(P(start=2726700), h_vol(start=3450835)));
+    h(start=3248547.5, nominal=3.5e6),
+    Pm(start=7703850, nominal=1e7),
+    C1(P(start=12681000), Q(start=0, nominal=200),
+       h(start=3248547.5), h_vol(start=3450835)),
+    C2(P(start=2726700), Q(start=0, nominal=200),
+       h(start=3248547.5), h_vol(start=3046260)));
   ThermoSysPro.WaterSteam.BoundaryConditions.SourceQ vppHPSpraySource(
     Q0=0, h0=1396866);
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
@@ -107,41 +124,65 @@ COMPONENTS = '''
     V=vppHPHeaderVolume,
     dynamic_mass_balance=true,
     steady_state=false,
+    mode=0,
     P0=2726700,
     h0=3046260,
-    P(start=2726700), h(start=3046260),
-    Ce1(h(start=3046260), h_vol(start=3046260)),
-    Ce2(h(start=3450835), h_vol(start=3450835)),
-    Ce3(h(start=1396866), h_vol(start=1396866)),
-    Cs(h(start=3046260), h_vol(start=3046260)));
+    P(start=2726700, nominal=3e6),
+    h(start=3046260, nominal=3.2e6),
+    Ce1(Q(start=vppHPMainFlow0, nominal=200),
+        h(start=3046260), h_vol(start=3046260)),
+    Ce2(Q(start=0, nominal=200),
+        h(start=3248547.5), h_vol(start=3046260)),
+    Ce3(Q(start=0, nominal=200),
+        h(start=1396866), h_vol(start=3046260)),
+    Cs(Q(start=vppHPMainFlow0, nominal=200),
+       h(start=3046260), h_vol(start=3046260)));
 
   ThermoSysPro.WaterSteam.Junctions.Splitter2 vppLPSplitter(
-    mode=2, P(start=2548600), h(start=3523910));
+    mode=2,
+    P(start=2548600, nominal=3e6),
+    h(start=3523910, nominal=3.6e6),
+    Ce(Q(start=vppIPMainFlow0, nominal=200),
+       h(start=3523910), h_vol(start=3523910)),
+    Cs1(Q(start=vppIPMainFlow0, nominal=200),
+        h(start=3523910), h_vol(start=3523910)),
+    Cs2(Q(start=0, nominal=200),
+        h(start=2962470), h_vol(start=3523910)));
   ThermoSysPro.WaterSteam.PressureLosses.ControlValve vppLPBypassValve(
     Cvmax=vppLPBypassCvmax,
     mode=2,
-    continuous_flow_reversal=false,
-    Q(start=0),
+    continuous_flow_reversal=true,
+    Q(start=0, nominal=200),
     Cv(start=vppValveLeak*vppLPBypassCvmax),
-    h(start=3523910),
-    Pm(start=1277368),
-    C1(P(start=2548600), h_vol(start=3523910)),
-    C2(P(start=6136), h_vol(start=3523910)));
+    h(start=2962470, nominal=3e6),
+    Pm(start=1277368, nominal=2e6),
+    C1(P(start=2548600), Q(start=0, nominal=200),
+       h(start=2962470), h_vol(start=3523910)),
+    C2(P(start=6136), Q(start=0, nominal=200),
+       h(start=2962470), h_vol(start=2401030)));
   ThermoSysPro.WaterSteam.BoundaryConditions.SourceQ vppLPSpraySource(
     Q0=0, h0=550000);
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
     vppLPSprayFlowCommand;
   ThermoSysPro.WaterSteam.Volumes.VolumeC vppCondenserSteamVolume(
     V=vppLPHeaderVolume,
-    dynamic_mass_balance=true,
+    // Condenser pressure already supplies the LP-side mass-storage state.
+    // This header retains its own thermal hold-up without duplicating that
+    // pressure state across an ideal (zero-pressure-drop) sensor connection.
+    dynamic_mass_balance=false,
     steady_state=false,
-    P0=6136,
+    mode=0,
     h0=2401030,
-    P(start=6136), h(start=2401030),
-    Ce1(h(start=2401030), h_vol(start=2401030)),
-    Ce2(h(start=3523910), h_vol(start=3523910)),
-    Ce3(h(start=550000), h_vol(start=550000)),
-    Cs(h(start=2401030), h_vol(start=2401030)));
+    P(start=6136, nominal=1e4),
+    h(start=2401030, nominal=2.5e6),
+    Ce1(Q(start=vppCondenserSteamFlow0, nominal=200),
+        h(start=2401030), h_vol(start=2401030)),
+    Ce2(Q(start=0, nominal=200),
+        h(start=2962470), h_vol(start=2401030)),
+    Ce3(Q(start=0, nominal=200),
+        h(start=550000), h_vol(start=2401030)),
+    Cs(Q(start=vppCondenserSteamFlow0, nominal=200),
+       h(start=2401030), h_vol(start=2401030)));
 '''
 
 

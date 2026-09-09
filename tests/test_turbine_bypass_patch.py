@@ -64,9 +64,13 @@ class TurbineBypassPatchTests(unittest.TestCase):
             patched,
         )
         self.assertIn("dynamic_mass_balance=true", patched)
+        self.assertIn("dynamic_mass_balance=false", patched)
         self.assertIn("steady_state=false", patched)
         self.assertIn("parameter Real vppValveLeak = 0", patched)
-        self.assertIn("continuous_flow_reversal=false", patched)
+        self.assertEqual(patched.count("continuous_flow_reversal=true"), 2)
+        self.assertIn("vppHPMainFlow0 = 151.7690991976083", patched)
+        self.assertIn("vppIPMainFlow0 = 176.7893383342879", patched)
+        self.assertIn("vppCondenserSteamFlow0 =", patched)
         self.assertIn(
             "regulation_Niveau_BP.SortieReelle1.signal*"
             "vppLPDrumAdmissionMultiplier",
