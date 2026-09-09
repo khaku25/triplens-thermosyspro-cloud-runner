@@ -43,7 +43,7 @@ class BFPBlindTests(unittest.TestCase):
                 "incident_id": "BLIND-INCIDENT-001",
                 "time_s": second,
                 "bfp_hp_speed_rpm": 1400 - 700 * after,
-                "bfp_hp_mass_flow_kg_s": 100 - 75 * after,
+                "bfp_hp_mass_flow_t_h": 360 - 270 * after,
                 "bfp_hp_mechanical_power_w": 1_000_000 * (1 - after),
                 "hp_drum_level_m": 1.05 - 0.15 * after,
                 "ip_drum_level_m": 1.05,
@@ -51,13 +51,13 @@ class BFPBlindTests(unittest.TestCase):
                 "hp_drum_pressure_pa": 12_000_000 - 1_000_000 * after,
                 "ip_drum_pressure_pa": 2_700_000,
                 "lp_drum_pressure_pa": 530_000,
-                "hp_steam_flow_kg_s": 150 - 20 * after,
-                "ip_steam_flow_kg_s": 175,
-                "lp_steam_flow_kg_s": 195,
+                "hp_steam_flow_t_h": 540 - 72 * after,
+                "ip_steam_flow_t_h": 630,
+                "lp_steam_flow_t_h": 702,
                 "hp_feedwater_valve_pu": 0.8 + 0.15 * after,
                 "ip_feedwater_valve_pu": 0.8,
                 "stg_power_w": 260_000_000 - 20_000_000 * after,
-                "gt_exhaust_mass_flow_kg_s": 606.94,
+                "gt_exhaust_mass_flow_t_h": 2184.984,
                 "gt_exhaust_temperature_k": 893.75,
             })
         return rows
@@ -77,7 +77,8 @@ class BFPBlindTests(unittest.TestCase):
             model = (Path(directory) / "TripLens_CombinedCycle_BFPTrip.mo").read_text()
             self.assertIn('bfpTripTime(unit="s") = 10', model)
             self.assertIn("Finalvalue=bfpResidualSpeed", model)
-            self.assertIn("20,exhaustFlowNormal", model)
+            self.assertIn("20,exhaustFlowNormalTH/3.6", model)
+            self.assertIn("vppFWPHPMassFlowTH", model)
             self.assertNotIn("@BFP_TRIP_TIME@", model)
             mos = (Path(directory) / "run_bfp.mos").read_text()
             self.assertIn("numberOfIntervals=200", mos)

@@ -50,36 +50,32 @@ def main() -> int:
     assert contract["raw_contract"]["physics_interval_s"] == 0.1
     assert contract["raw_contract"]["canonical_speed"] == "fwp_hp_speed_rpm"
     assert contract["raw_contract"]["canonical_mass_flow"] == (
-        "fwp_hp_mass_flow_kg_s"
+        "fwp_hp_mass_flow_t_h"
     )
+    assert contract["raw_contract"]["published_mass_flow_unit"] == "t/h"
+    assert contract["raw_contract"]["native_to_published_multiplier"] == 3.6
     assert contract["logic_contract"]["logic_step_s"] == 0.001
     assert contract["logic_contract"]["sample_count_delay_forbidden"] is True
     assert contract["raw_contract"]["scenario_answer_labels_allowed"] is False
 
     signals = signal_map["signals"]
-    # The feature branch predates the user's canonical FWP rename, while the
-    # PR merge ref contains the current main schema. Validate both views
-    # without modifying signal_map.json; the merge check must take the first
-    # (current canonical) branch.
     speed_entry = signals.get("fwp_hp_speed_rpm")
-    flow_entry = signals.get("fwp_hp_mass_flow_kg_s")
+    flow_entry = signals.get("fwp_hp_mass_flow_t_h")
     current_canonical_schema = speed_entry is not None and flow_entry is not None
-    if speed_entry is None:
-        speed_entry = signals["bfp_hp_speed_rpm"]
-    if flow_entry is None:
-        flow_entry = signals["bfp_hp_mass_flow_kg_s"]
+    assert current_canonical_schema
     speed = speed_entry["aliases"]
     flow = flow_entry["aliases"]
     assert "PompeAlimHP.Vr" in speed
     assert "arretPomesHP.y.signal" in speed
     assert "PompeAlimHP.Q" in flow
     assert "CapteurDebitEauHP.Measure.signal" in flow
-    if current_canonical_schema:
-        assert "bfp_hp_speed_rpm" in speed
-        assert "bfp_hp_mass_flow_kg_s" in flow
-        breaker = signals["fwp_hp_vcb_closed"]["aliases"]
-        assert "VCB-A01.CLOSED" in breaker
-        assert "ECMS.VCB-A01.CLOSED" in breaker
+    assert "vppFWPHPMassFlowTH" in flow
+    assert flow_entry["unit"] == "t/h"
+    assert flow_entry["source_multipliers"]["PompeAlimHP.Q"] == 3.6
+    assert "bfp_hp_speed_rpm" in speed
+    breaker = signals["fwp_hp_vcb_closed"]["aliases"]
+    assert "VCB-A01.CLOSED" in breaker
+    assert "ECMS.VCB-A01.CLOSED" in breaker
 
     # Synthetic components from the abandoned cold-start PR must not be part
     # of the Competition RAW contract.

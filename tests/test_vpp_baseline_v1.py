@@ -90,20 +90,78 @@ class VppBaselineV1Tests(unittest.TestCase):
             "TSP.VLV.07.POS_FB": "100*vppHPBypassPos",
             "TSP.VLV.07.OPEN_LS": "vppHPBypassOpenLS",
             "TSP.VLV.07.CLOSE_LS": "vppHPBypassCloseLS",
-            "TSP.VLV.07.MASS_FLOW": "vppHPBypassMassFlow",
+            "TSP.VLV.07.MASS_FLOW": "vppHPBypassMassFlowTH",
             "TSP.VLV.07.P_IN": "vppHPBypassInletPressure",
             "TSP.VLV.07.P_OUT": "vppHPBypassOutletPressure",
             "TSP.VLV.09.POS_CMD": "100*vppLPBypassCmd",
             "TSP.VLV.09.POS_FB": "100*vppLPBypassPos",
             "TSP.VLV.09.OPEN_LS": "vppLPBypassOpenLS",
             "TSP.VLV.09.CLOSE_LS": "vppLPBypassCloseLS",
-            "TSP.VLV.09.MASS_FLOW": "vppLPBypassMassFlow",
+            "TSP.VLV.09.MASS_FLOW": "vppLPBypassMassFlowTH",
             "TSP.VLV.09.P_IN": "vppLPBypassInletPressure",
             "TSP.VLV.09.P_OUT": "vppLPBypassOutletPressure",
         }
         for tag_id, model_mapping in expected_mappings.items():
             self.assertEqual(by_tag[tag_id]["model_mapping"], model_mapping)
             self.assertNotIn("planned", by_tag[tag_id]["notes"].lower())
+
+    def test_mass_flow_contract_is_tonnes_per_hour_end_to_end(self) -> None:
+        unit_contract = self.baseline["unit_contract"]
+        self.assertEqual(unit_contract["published_mass_flow_unit"], "t/h")
+        self.assertEqual(unit_contract["published_signal_suffix"], "_t_h")
+        self.assertEqual(unit_contract["model_to_published_multiplier"], 3.6)
+        systems = self.baseline["turbine_bypass"]["systems"]
+        self.assertTrue(math.isclose(
+            systems["HPBP"]["nominal_steam_flow_t_h"], 151.696 * 3.6
+        ))
+        self.assertTrue(math.isclose(
+            systems["LPBP"]["nominal_steam_flow_t_h"], 176.758 * 3.6
+        ))
+
+        signal_map = json.loads(
+            (ROOT / "config" / "signal_map.json").read_text(encoding="utf-8")
+        )["signals"]
+        flow_signals = {
+            name: definition for name, definition in signal_map.items()
+            if "flow" in name
+        }
+        self.assertTrue(flow_signals)
+        self.assertTrue(all(name.endswith("_t_h") for name in flow_signals))
+        self.assertTrue(all(row["unit"] == "t/h" for row in flow_signals.values()))
+
+        runtime_flow_rules = [
+            row for row in read_csv(ROOT / "config" / "dcs_alarm_rules.csv")
+            if "flow" in row["source_signal"]
+        ]
+        self.assertTrue(runtime_flow_rules)
+        self.assertTrue(all(row["unit"] == "t/h" for row in runtime_flow_rules))
+
+        logic_flow_rules = [
+            row for row in read_csv(
+                ROOT / "data" / "triplens_A-L_alarm_logic_master_absolute_v2.csv"
+            )
+            if row["absolute_conversion_status"]
+            == "CALIBRATED_MODEL_MASS_FLOW_T_H"
+        ]
+        self.assertEqual(len(logic_flow_rules), 107)
+        self.assertTrue(all(row["threshold_unit"] == "t/h" for row in logic_flow_rules))
+        self.assertTrue(all(row["calibration_nominal_value"] == "360" for row in logic_flow_rules))
+
+        public_contract_files = (
+            "config/dcs_alarm_rules.csv",
+            "config/signal_map.json",
+            "config/vpp_baseline_v1.json",
+            "config/fwp_hp_rnd_boundary.json",
+            "data/ecms_m_links.csv",
+            "data/thermo_vpp_full_tag_list.csv",
+            "data/thermo_vpp_m_locked_tags.csv",
+            "data/triplens_A-L_alarm_logic_master_absolute_v2.csv",
+            "topology/turbine_bypass_vpp.svg",
+        )
+        for relative in public_contract_files:
+            self.assertNotIn(
+                "kg/s", (ROOT / relative).read_text(encoding="utf-8-sig"), relative
+            )
 
     def test_breaker_and_protection_values_match_execution_settings(self) -> None:
         timing = self.baseline["timing"]

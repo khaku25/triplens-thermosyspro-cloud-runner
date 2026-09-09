@@ -57,13 +57,15 @@
       "bfp_hp_speed_rpm"
     ],
     "native_flow_aliases": [
+      "vppFWPHPMassFlowTH",
       "PompeAlimHP.Q",
       "CapteurDebitEauHP.Measure.signal",
-      "fwp_hp_mass_flow_kg_s",
-      "bfp_hp_mass_flow_kg_s"
+      "fwp_hp_mass_flow_t_h"
     ],
     "canonical_speed": "fwp_hp_speed_rpm",
-    "canonical_mass_flow": "fwp_hp_mass_flow_kg_s"
+    "canonical_mass_flow": "fwp_hp_mass_flow_t_h",
+    "published_mass_flow_unit": "t/h",
+    "native_to_published_multiplier": 3.6
   },
   "logic_contract": {
     "logic_step_s": 0.001,

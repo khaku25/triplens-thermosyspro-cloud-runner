@@ -64,7 +64,7 @@ def numeric_values(rows: list[dict[str, str]], field: str) -> list[float]:
 
 def unit_for(field: str) -> str:
     suffixes = (
-        ("_kg_s", "kg/s"),
+        ("_t_h", "t/h"),
         ("_rpm", "rpm"),
         ("_mw", "MW"),
         ("_w", "W"),

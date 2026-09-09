@@ -47,7 +47,7 @@ result.Manifest = jsondecode(fileread(fullfile(outputsFolder,"manifest.json")));
 result.OutputsFolder = outputsFolder;
 
 requireColumns(result.ProcessBus, ...
-    ["time_s","stg_power_w","gt_exhaust_mass_flow_kg_s","gt_exhaust_temperature_k"],"processbus.csv");
+    ["time_s","stg_power_w","gt_exhaust_mass_flow_t_h","gt_exhaust_temperature_k"],"processbus.csv");
 requireColumns(result.ECMSTrend, ...
     ["source_time_ms","bus_a_voltage_pu","bus_b_voltage_pu"],"ecms-trend.csv");
 requireColumns(result.ECMSEvents, ...
@@ -86,8 +86,8 @@ title(sourceLabel+" · steam-turbine generator output");
 
 nexttile(layout);
 processTime = asDouble(result.ProcessBus.time_s,"processbus.time_s");
-plot(processTime,asDouble(result.ProcessBus.gt_exhaust_mass_flow_kg_s, ...
-    "processbus.gt_exhaust_mass_flow_kg_s"),"LineWidth",1.2);
+plot(processTime,asDouble(result.ProcessBus.gt_exhaust_mass_flow_t_h, ...
+    "processbus.gt_exhaust_mass_flow_t_h"),"LineWidth",1.2);
 hold on;
 yyaxis right;
 plot(processTime,asDouble(result.ProcessBus.gt_exhaust_temperature_k, ...
@@ -95,7 +95,7 @@ plot(processTime,asDouble(result.ProcessBus.gt_exhaust_temperature_k, ...
 grid on;
 ylabel("Temperature K");
 yyaxis left;
-ylabel("Flow kg/s");
+ylabel("Flow t/h");
 title("GT exhaust boundary conditions");
 
 nexttile(layout);

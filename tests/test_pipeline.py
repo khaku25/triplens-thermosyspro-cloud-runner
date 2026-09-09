@@ -160,7 +160,8 @@ class PipelineTests(unittest.TestCase):
             model = (Path(directory) / "TripLens_CombinedCycle_TripTAC.mo").read_text()
             self.assertIn("vppTripTime=181", model)
             self.assertIn(
-                "Debit(Table=[0,exhaustFlowNormal; 180,exhaustFlowNormal])",
+                "Debit(Table=[0,exhaustFlowNormalTH/3.6; "
+                "180,exhaustFlowNormalTH/3.6])",
                 model,
             )
             self.assertIn(
@@ -168,7 +169,7 @@ class PipelineTests(unittest.TestCase):
                 "180,exhaustTemperatureNormal])",
                 model,
             )
-            self.assertNotIn("exhaustFlowTripped]", model)
+            self.assertNotIn("exhaustFlowTrippedTH/3.6]", model)
 
     def test_normalizer_collapses_duplicate_event_times_to_last_state(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

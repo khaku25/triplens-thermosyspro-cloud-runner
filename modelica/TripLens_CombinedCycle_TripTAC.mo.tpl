@@ -2,14 +2,25 @@ within ;
 model TripLens_CombinedCycle_TripTAC
   parameter Real tripTime(unit="s") = @TRIP_TIME@;
   parameter Real tripRampDuration(unit="s") = @TRIP_RAMP_DURATION@;
-  parameter Real exhaustFlowNormal(unit="kg/s") = 606.94;
+  parameter Real exhaustFlowNormalTH = 2184.984
+    "Published normal GT exhaust mass flow in t/h";
   // The legacy ThermoSysPro CCPP becomes singular when flue-gas flow is
-  // forced to 50 kg/s while its steam-side pumps and valves remain online.
-  // 150 kg/s is the lowest severe-trip point verified to reach 1000 s in
+  // forced to 180 t/h while its steam-side pumps and valves remain online.
+  // 540 t/h is the lowest severe-trip point verified to reach 1000 s in
   // OpenModelica 1.27 with the paired temperature floor below.
-  parameter Real exhaustFlowTripped(unit="kg/s") = 150.0;
+  parameter Real exhaustFlowTrippedTH = 540.0
+    "Published tripped GT exhaust mass flow in t/h";
   parameter Real exhaustTemperatureNormal(unit="K") = 893.75;
   parameter Real exhaustTemperatureTripped(unit="K") = 550.0;
+
+  Real vppGTExhaustMassFlowTH "Published GT exhaust mass flow in t/h";
+  Real vppHPTurbineSteamFlowTH "Published HP turbine steam flow in t/h";
+  Real vppIPTurbineSteamFlowTH "Published IP turbine steam flow in t/h";
+  Real vppLPTurbineSteamFlowTH "Published LP turbine steam flow in t/h";
+  Real vppHPBypassMassFlowTH "Published HP bypass steam flow in t/h";
+  Real vppLPBypassMassFlowTH "Published LP bypass steam flow in t/h";
+  Real vppHPSprayMassFlowTH "Published HP bypass spray flow in t/h";
+  Real vppLPSprayMassFlowTH "Published LP bypass spray flow in t/h";
 
   extends ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC(
     vppTripTime=@VPP_TRIP_TIME@,
@@ -83,6 +94,18 @@ model TripLens_CombinedCycle_TripTAC
       C2(Q(start=196.6524916480812, nominal=200))),
     Debit(Table=@EXHAUST_FLOW_TABLE@),
     Temperature(Table=@EXHAUST_TEMPERATURE_TABLE@));
+
+equation
+  // ThermoSysPro connectors retain their native SI balance. Only the
+  // published RAW boundary is converted to the plant-facing t/h contract.
+  vppGTExhaustMassFlowTH = 3.6*Debit.y.signal;
+  vppHPTurbineSteamFlowTH = 3.6*TurbineHP.Q;
+  vppIPTurbineSteamFlowTH = 3.6*TurbineMP.Q;
+  vppLPTurbineSteamFlowTH = 3.6*TurbineBP.Q;
+  vppHPBypassMassFlowTH = 3.6*vppHPBypassMassFlow;
+  vppLPBypassMassFlowTH = 3.6*vppLPBypassMassFlow;
+  vppHPSprayMassFlowTH = 3.6*vppHPSprayMassFlow;
+  vppLPSprayMassFlowTH = 3.6*vppLPSprayMassFlow;
 
   annotation(experiment(
     StartTime=0,

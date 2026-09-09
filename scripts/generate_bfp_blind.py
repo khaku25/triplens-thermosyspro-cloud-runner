@@ -138,12 +138,12 @@ def main() -> int:
     rows = load_rows(args.processbus)
     trip_ms = round(args.trip_time * 1000)
     speed_field = available_field(rows, "fwp_hp_speed_rpm", "bfp_hp_speed_rpm")
-    flow_field = available_field(rows, "fwp_hp_mass_flow_kg_s", "bfp_hp_mass_flow_kg_s")
+    flow_field = available_field(rows, "fwp_hp_mass_flow_t_h", "bfp_hp_mass_flow_t_h")
     b_speed = baseline(rows, speed_field, args.trip_time)
     b_flow = baseline(rows, flow_field, args.trip_time)
     b_level = baseline(rows, "hp_drum_level_m", args.trip_time)
     b_pressure = baseline(rows, "hp_drum_pressure_pa", args.trip_time)
-    b_steam = baseline(rows, "hp_steam_flow_kg_s", args.trip_time)
+    b_steam = baseline(rows, "hp_steam_flow_t_h", args.trip_time)
     b_valve = baseline(rows, "hp_feedwater_valve_pu", args.trip_time)
 
     events: list[Event] = [
@@ -168,7 +168,7 @@ def main() -> int:
     add_crossing(events, rows, args.trip_time, system="DCS1", field="hp_drum_level_m", tag="HP.DRUM.LEVEL_LOW", threshold=level_low, predicate=lambda x: x < level_low, event_class="ALARM", description="HP drum level low")
     add_crossing(events, rows, args.trip_time, system="DCS1", field="hp_drum_level_m", tag="HP.DRUM.LEVEL_LOW_LOW", threshold=level_low_low, predicate=lambda x: x < level_low_low, event_class="TRIP", description="HP drum level low-low")
     add_crossing(events, rows, args.trip_time, system="DCS2", field="hp_drum_pressure_pa", tag="HP.DRUM.PRESSURE_LOW", threshold=pressure_low, predicate=lambda x: x < pressure_low, event_class="ALARM", description="HP drum pressure low")
-    add_crossing(events, rows, args.trip_time, system="DCS2", field="hp_steam_flow_kg_s", tag="HP.STEAM.FLOW_LOW", threshold=steam_low, predicate=lambda x: abs(x) < steam_low, event_class="ALARM", description="HP steam flow low")
+    add_crossing(events, rows, args.trip_time, system="DCS2", field="hp_steam_flow_t_h", tag="HP.STEAM.FLOW_LOW", threshold=steam_low, predicate=lambda x: abs(x) < steam_low, event_class="ALARM", description="HP steam flow low")
 
     blind = args.output_dir / "blind-input"
     write_events(blind / "DCS1.csv", [event for event in events if event.system == "DCS1"])
@@ -179,13 +179,13 @@ def main() -> int:
     thresholds = {
         "basis": "PROVISIONAL_RELATIVE_TO_LAST_10S_PRE_INCIDENT",
         "fwp_hp_speed_low_rpm": speed_low,
-        "hp_feedwater_flow_low_kg_s": flow_low,
-        "hp_feedwater_flow_low_low_kg_s": flow_low_low,
+        "hp_feedwater_flow_low_t_h": flow_low,
+        "hp_feedwater_flow_low_low_t_h": flow_low_low,
         "hp_drum_level_low_m": level_low,
         "hp_drum_level_low_low_m": level_low_low,
         "hp_feedwater_valve_demand_high_pu": valve_high,
         "hp_drum_pressure_low_pa": pressure_low,
-        "hp_steam_flow_low_kg_s": steam_low,
+        "hp_steam_flow_low_t_h": steam_low,
     }
     truth = args.output_dir / "ground-truth"
     truth.mkdir(parents=True, exist_ok=True)

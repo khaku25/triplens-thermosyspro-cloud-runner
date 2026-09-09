@@ -155,8 +155,9 @@ class RawOnlyActionTests(unittest.TestCase):
         self.assertIn("resultFile = \"\"", runner)
         self.assertIn("vppTripTime=@VPP_TRIP_TIME@", model)
         self.assertEqual(model.count("regularizePressureCrossover=true"), 3)
-        self.assertIn("HPBypassMassFlow", mos)
-        self.assertIn("LPBypassMassFlow", mos)
+        self.assertIn("HPBypassMassFlowTH", mos)
+        self.assertIn("LPBypassMassFlowTH", mos)
+        self.assertNotIn("Turbine(HP|MP|BP)\\\\.Q", mos)
         self.assertNotIn("nlssMaxDensity=0", mos)
         self.assertNotIn("nls=hybrid", mos)
         self.assertNotIn("iim=none", mos)
@@ -186,10 +187,10 @@ class RawOnlyActionTests(unittest.TestCase):
                 "vppHPBypassCloseLS",
                 "vppLPBypassOpenLS",
                 "vppLPBypassCloseLS",
-                "vppHPBypassMassFlow",
-                "vppLPBypassMassFlow",
-                "vppHPSprayMassFlow",
-                "vppLPSprayMassFlow",
+                "vppHPBypassMassFlowTH",
+                "vppLPBypassMassFlowTH",
+                "vppHPSprayMassFlowTH",
+                "vppLPSprayMassFlowTH",
                 "vppHPBypassInletPressure",
                 "vppLPBypassInletPressure",
                 "vppHPBypassOutletPressure",
@@ -245,10 +246,10 @@ class RawOnlyActionTests(unittest.TestCase):
                             hp_pos <= 0.01,
                             lp_pos >= 0.95,
                             lp_pos <= 0.01,
-                            hp_pos*151.696,
-                            lp_pos*176.758,
-                            spray_pos*10,
-                            spray_pos*20,
+                            hp_pos*546.1056,
+                            lp_pos*636.3288,
+                            spray_pos*36,
+                            spray_pos*72,
                             12681000,
                             2548600,
                             2726700,
@@ -292,8 +293,8 @@ class RawOnlyActionTests(unittest.TestCase):
                 "vppLPBypassPos", "vppHPSprayPos", "vppLPSprayPos",
                 "vppHPBypassOpenLS", "vppHPBypassCloseLS",
                 "vppLPBypassOpenLS", "vppLPBypassCloseLS",
-                "vppHPBypassMassFlow", "vppLPBypassMassFlow",
-                "vppHPSprayMassFlow", "vppLPSprayMassFlow",
+                "vppHPBypassMassFlowTH", "vppLPBypassMassFlowTH",
+                "vppHPSprayMassFlowTH", "vppLPSprayMassFlowTH",
                 "vppHPBypassInletPressure", "vppLPBypassInletPressure",
                 "vppHPBypassOutletPressure", "vppLPBypassOutletPressure",
                 "vppHPBypassInletTemperature", "vppLPBypassInletTemperature",
@@ -302,14 +303,15 @@ class RawOnlyActionTests(unittest.TestCase):
                 "Alternateur.Welec", "BallonHP.yLevel.signal",
                 "BallonMP.yLevel.signal", "BallonBP.yLevel.signal",
                 "BallonHP.P", "BallonMP.P", "BallonBP.P",
-                "TurbineHP.Q", "TurbineMP.Q", "TurbineBP.Q",
+                "vppHPTurbineSteamFlowTH", "vppIPTurbineSteamFlowTH",
+                "vppLPTurbineSteamFlowTH",
             ]
             row = [
                 0, False, 0.8, 0.8, 1.0, 0, 0, 0, 0, 0, 0,
                 False, True, False, True, 0, 0, 1e-4, 1e-4,
                 12681000, 2548600, 2726700, 6136, 813, 813, 723, 373,
                 6136, 1.5, 129400000, 1.05, 1.05, 1.75,
-                12681000, 2548600, 563775, 151.769, 176.789, 196.652,
+                12681000, 2548600, 563775, 546.3684, 636.4404, 707.9472,
             ]
             with raw.open("w", encoding="utf-8", newline="") as stream:
                 writer = csv.writer(stream)

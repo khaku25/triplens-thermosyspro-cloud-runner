@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       sampling_profile:
-        description: Physical CSV sampling profile; no alarm or ECMS data is generated
+        description: Physical CSV profile; mass-flow aliases publish t/h; no alarm or ECMS data is generated
         required: true
         type: choice
         default: causal_100ms

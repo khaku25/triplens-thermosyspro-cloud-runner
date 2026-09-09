@@ -165,7 +165,7 @@ python3 scripts/build_raw_manifest.py \
   --output-intervals "$intervals" \
   --thermosyspro-commit "$thermosyspro_commit" \
   --openmodelica-image "$openmodelica_image" \
-  --model-variant "HPBP_LPBP_PHYSICAL_V12" \
+  --model-variant "HPBP_LPBP_PHYSICAL_V12_TPH_EXPORT_V1" \
   --source-patch-marker "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12" \
   --patched-model-sha256 "$patched_model_sha256"
 

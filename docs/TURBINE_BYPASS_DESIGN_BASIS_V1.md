@@ -50,12 +50,12 @@ before the GT exhaust ramp. They are calibration inputs, not plant settings.
 | HP drum pressure | 12.717 MPa | HP pressure consistency check |
 | HP main-steam header pressure | about 12.681 MPa | HPBP inlet start value |
 | Cold-reheat/HP exhaust pressure | about 2.727 MPa | HPBP outlet start value |
-| HP turbine steam flow | 151.696 kg/s | HPBP 100% nominal-flow target |
+| HP turbine steam flow | 546.1056 t/h | HPBP 100% nominal-flow target |
 | IP drum pressure | 2.733 MPa | IP pressure consistency check |
 | Hot-reheat/IP inlet pressure | about 2.549 MPa | LPBP inlet start value |
-| IP turbine steam flow | 176.758 kg/s | LPBP 100% nominal-flow target |
-| LP turbine/condenser steam flow | 196.594 kg/s | Existing condenser normal-flow basis |
-| LP drum contribution | 19.836 kg/s | Keep separate from LPBP |
+| IP turbine steam flow | 636.3288 t/h | LPBP 100% nominal-flow target |
+| LP turbine/condenser steam flow | 707.7384 t/h | Existing condenser normal-flow basis |
+| LP drum contribution | 71.4096 t/h | Keep separate from LPBP |
 | Condenser pressure | about 6.14 kPa abs | LPBP back-pressure start value |
 | ST generator output | about 262.88 MW | Physical-model normal point; baseline rating remains 250 MW pending calibration |
 
@@ -69,8 +69,8 @@ use the physical-model value until the generator model is recalibrated.
 
 Both valves initially target 100% of the corresponding pre-Trip turbine flow:
 
-- HPBP: 151.696 kg/s at approximately 12.681 MPa to 2.727 MPa.
-- LPBP: 176.758 kg/s at approximately 2.549 MPa to the condenser inlet.
+- HPBP: 546.1056 t/h at approximately 12.681 MPa to 2.727 MPa.
+- LPBP: 636.3288 t/h at approximately 2.549 MPa to the condenser inlet.
 
 The final `Cvmax` values are deliberately not locked. ThermoSysPro calculates
 valve flow from pressure loss, density, valve position, and `Cv`. Steam density
@@ -86,8 +86,8 @@ The initial energy-balance estimate uses
 
 | Train | Assumed states | Preliminary spray flow |
 |---|---|---:|
-| HPBP | 3.4508 MJ/kg steam; 3.0463 MJ/kg target; 1.3969 MJ/kg spray water | about 37.21 kg/s |
-| LPBP | 3.5239 MJ/kg steam; 2.7000 MJ/kg target; 0.5500 MJ/kg spray water | about 67.74 kg/s |
+| HPBP | 3.4508 MJ/kg steam; 3.0463 MJ/kg target; 1.3969 MJ/kg spray water | about 133.956 t/h |
+| LPBP | 3.5239 MJ/kg steam; 2.7000 MJ/kg target; 0.5500 MJ/kg spray water | about 243.864 t/h |
 
 These are conservative calculation points, not valve settings. The final
 values must be recomputed from the simulated pressure/temperature limits and
@@ -134,6 +134,9 @@ they must not be inferred from the normal ST Trip open action.
 
 ## 7. Tag contract decision
 
+- Publish every mass-flow tag, threshold, event value and GitHub RAW alias in
+  `t/h`; the ThermoSysPro connector balance remains internal to the solver and
+  is converted by the exact factor 3.6 at the export boundary.
 - Keep `TSP.VLV.07.*` for HPBP.
 - Remove `TSP.VLV.08.*` IPBP tags.
 - Keep `TSP.VLV.09.*`, but define them explicitly as Hot-Reheat LPBP to condenser.

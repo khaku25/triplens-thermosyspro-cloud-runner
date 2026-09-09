@@ -215,7 +215,7 @@ def main() -> int:
         "assumptions": [
             "ThermoSysPro CombinedCycle_TripTAC models HRSG/steam-cycle response to GT exhaust boundary conditions.",
             "Alternateur.Welec is treated as steam-turbine generator electrical power, not GT generator power.",
-            "M-tag IDs, units and ThermoSysPro mappings are read-only model facts.",
+            "M-tag IDs and ThermoSysPro mappings are read-only model facts; published mass-flow units use t/h with an exact x3.6 boundary conversion.",
             "GTG electrical values, breaker timing, transformer ratings and protection settings are editable A assumptions.",
             "The 6.9 kV topology uses UAT-A on the GT transformer low-voltage tap and UAT-B on the ST transformer low-voltage tap.",
             "No separate SST is assumed; GT/ST main transformers may reverse-feed auxiliaries from the 154 kV grid.",

@@ -49,7 +49,8 @@ python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --sco
 - `runtime_tag_link`: runtime rule source/output to Tag Master foreign-key mapping
 - `v_active_logic_tag_map`, `v_active_analog_tag_map`: active mapping views
 - `v_unlinked_active_logic_source`: must remain empty
-- `runtime_alarm_rule`: 30 DCS runtime rules
+- `runtime_alarm_rule`: 30 Baseline DCS rules before Core filtering; the current
+  first-order H/HH/L/LL artifact retains 28 and reports the count dynamically
 - `ecms_setting`: ECMS thresholds/timing
 - `ecms_signal`: Simulink input/output contract
 - `drawing_reference`, `tag_drawing_map`: primary future P&ID/SLD cross-reference

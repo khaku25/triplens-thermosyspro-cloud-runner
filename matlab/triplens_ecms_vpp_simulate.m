@@ -796,7 +796,7 @@ function processBus = makeSyntheticProcessBus(timeSeconds,tripTime)
 progress = min(max((timeSeconds-tripTime)./3,0),1);
 exhaustProgress = min(max((timeSeconds-tripTime)./1,0),1);
 stgPowerW = 250e6 + (10e6-250e6).*progress;
-flow = 606.94 + (50-606.94).*exhaustProgress;
+flow = 2184.984 + (180-2184.984).*exhaustProgress;
 temperature = 893.75 + (423-893.75).*exhaustProgress;
 hpLevel = 1.05 + (0.95-1.05).*progress;
 ipLevel = 1.05 + (0.90-1.05).*progress;
@@ -804,9 +804,9 @@ lpLevel = 1.75 + (1.55-1.75).*progress;
 hpPressure = 12703151 + (10500000-12703151).*progress;
 ipPressure = 2732895 + (2200000-2732895).*progress;
 lpPressure = 450000 + (380000-450000).*progress;
-hpSteam = 150 + (50-150).*progress;
-ipSteam = 40 + (15-40).*progress;
-lpSteam = 12 + (4-12).*progress;
+hpSteam = 540 + (180-540).*progress;
+ipSteam = 144 + (54-144).*progress;
+lpSteam = 43.2 + (14.4-43.2).*progress;
 hpValve = 0.80 + (0.50-0.80).*progress;
 scenarioId = repmat("MATLAB_SYNTHETIC_GT_TRIP",numel(timeSeconds),1);
 origin = repmat("SYNTHETIC_MATLAB_FALLBACK_NOT_THERMOSYSPRO",numel(timeSeconds),1);
@@ -815,10 +815,10 @@ processBus = table(scenarioId,timeSeconds,gtTrip,stgPowerW,flow,temperature, ...
     hpLevel,ipLevel,lpLevel,hpPressure,ipPressure,lpPressure, ...
     hpSteam,ipSteam,lpSteam,hpValve,origin, ...
     'VariableNames',{'scenario_id','time_s','gt_trip_cmd','stg_power_w', ...
-    'gt_exhaust_mass_flow_kg_s','gt_exhaust_temperature_k', ...
+    'gt_exhaust_mass_flow_t_h','gt_exhaust_temperature_k', ...
     'hp_drum_level_m','ip_drum_level_m','lp_drum_level_m', ...
     'hp_drum_pressure_pa','ip_drum_pressure_pa','lp_drum_pressure_pa', ...
-    'hp_steam_flow_kg_s','ip_steam_flow_kg_s','lp_steam_flow_kg_s', ...
+    'hp_steam_flow_t_h','ip_steam_flow_t_h','lp_steam_flow_t_h', ...
     'hp_feedwater_valve_pu','data_origin'});
 end
 

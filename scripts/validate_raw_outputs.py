@@ -43,6 +43,7 @@ PHYSICAL_BYPASS_VARIANTS = {
     "HPBP_LPBP_DYNAMIC_V11",
     "HPBP_LPBP_PHYSICAL_V11",
     "HPBP_LPBP_PHYSICAL_V12",
+    "HPBP_LPBP_PHYSICAL_V12_TPH_EXPORT_V1",
 }
 DYNAMIC_BYPASS_COLUMNS = {
     "vppSTTripLatch",
@@ -59,10 +60,10 @@ DYNAMIC_BYPASS_COLUMNS = {
     "vppHPBypassCloseLS",
     "vppLPBypassOpenLS",
     "vppLPBypassCloseLS",
-    "vppHPBypassMassFlow",
-    "vppLPBypassMassFlow",
-    "vppHPSprayMassFlow",
-    "vppLPSprayMassFlow",
+    "vppHPBypassMassFlowTH",
+    "vppLPBypassMassFlowTH",
+    "vppHPSprayMassFlowTH",
+    "vppLPSprayMassFlowTH",
     "vppHPBypassInletPressure",
     "vppLPBypassInletPressure",
     "vppHPBypassOutletPressure",
@@ -82,9 +83,9 @@ NORMAL_RELIABILITY_COLUMNS = DYNAMIC_BYPASS_COLUMNS | {
     "BallonHP.P",
     "BallonMP.P",
     "BallonBP.P",
-    "TurbineHP.Q",
-    "TurbineMP.Q",
-    "TurbineBP.Q",
+    "vppHPTurbineSteamFlowTH",
+    "vppIPTurbineSteamFlowTH",
+    "vppLPTurbineSteamFlowTH",
 }
 
 
@@ -187,7 +188,7 @@ def validate_dynamic_bypass(path: Path, nominal_period_ms: float) -> dict[str, f
     ):
         if numeric[column][-1] > 0.01:
             raise ValueError(f"Trip isolation did not reach closed state: {column}")
-    for column in ("vppHPBypassMassFlow", "vppLPBypassMassFlow"):
+    for column in ("vppHPBypassMassFlowTH", "vppLPBypassMassFlowTH"):
         if max(numeric[column][trip_index:]) <= 0:
             raise ValueError(f"no positive physical bypass flow was produced: {column}")
     for column in (
@@ -292,10 +293,10 @@ def validate_normal_operation(path: Path) -> dict[str, float]:
     ):
         if max(abs(value) for value in numeric[column]) > 1e-8:
             raise ValueError(f"normal-operation command/position changed: {column}")
-    for column in ("vppHPBypassMassFlow", "vppLPBypassMassFlow"):
+    for column in ("vppHPBypassMassFlowTH", "vppLPBypassMassFlowTH"):
         if max(abs(value) for value in numeric[column]) > 1e-6:
             raise ValueError(f"normal-operation bypass produced steam flow: {column}")
-    for column in ("vppHPSprayMassFlow", "vppLPSprayMassFlow"):
+    for column in ("vppHPSprayMassFlowTH", "vppLPSprayMassFlowTH"):
         if min(numeric[column]) < 0 or max(numeric[column]) > 1e-3:
             raise ValueError(f"normal-operation spray seat leakage is invalid: {column}")
 
@@ -316,9 +317,9 @@ def validate_normal_operation(path: Path) -> dict[str, float]:
         "BallonHP.P",
         "BallonMP.P",
         "BallonBP.P",
-        "TurbineHP.Q",
-        "TurbineMP.Q",
-        "TurbineBP.Q",
+        "vppHPTurbineSteamFlowTH",
+        "vppIPTurbineSteamFlowTH",
+        "vppLPTurbineSteamFlowTH",
         "vppHPBypassInletPressure",
         "vppLPBypassInletPressure",
         "vppHPBypassOutletPressure",
@@ -351,9 +352,9 @@ def validate_normal_operation(path: Path) -> dict[str, float]:
         "BallonHP.P",
         "BallonMP.P",
         "BallonBP.P",
-        "TurbineHP.Q",
-        "TurbineMP.Q",
-        "TurbineBP.Q",
+        "vppHPTurbineSteamFlowTH",
+        "vppIPTurbineSteamFlowTH",
+        "vppLPTurbineSteamFlowTH",
         "vppCondenserPressure",
     )
     relative_drift: dict[str, float] = {}
@@ -377,9 +378,9 @@ def validate_normal_operation(path: Path) -> dict[str, float]:
             for column, drift in relative_drift.items()
             if column != "Alternateur.Welec"
         ),
-        "maximum_bypass_steam_flow_kg_s": max(
+        "maximum_bypass_steam_flow_t_h": max(
             max(abs(value) for value in numeric[column])
-            for column in ("vppHPBypassMassFlow", "vppLPBypassMassFlow")
+            for column in ("vppHPBypassMassFlowTH", "vppLPBypassMassFlowTH")
         ),
     }
 
@@ -538,7 +539,9 @@ def main() -> int:
             raise ValueError("dynamic bypass manifest is missing source-transform proof")
         expected_marker = (
             "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12"
-            if runtime.get("model_variant") == "HPBP_LPBP_PHYSICAL_V12"
+            if str(runtime.get("model_variant", "")).startswith(
+                "HPBP_LPBP_PHYSICAL_V12"
+            )
             else "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11"
         )
         if transform.get("marker") != expected_marker:

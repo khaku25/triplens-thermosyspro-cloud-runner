@@ -60,7 +60,7 @@ def main() -> int:
     if args.normal_operation:
         vpp_trip_time = f"{args.stop_time + 1:.12g}"
         exhaust_flow_table = (
-            f"[0,exhaustFlowNormal; {stop_time},exhaustFlowNormal]"
+            f"[0,exhaustFlowNormalTH/3.6; {stop_time},exhaustFlowNormalTH/3.6]"
         )
         exhaust_temperature_table = (
             f"[0,exhaustTemperatureNormal; {stop_time},exhaustTemperatureNormal]"
@@ -68,10 +68,10 @@ def main() -> int:
     else:
         vpp_trip_time = f"{args.trip_time:.12g}"
         exhaust_flow_table = (
-            "[0,exhaustFlowNormal; "
-            "tripTime,exhaustFlowNormal; "
-            "tripTime + tripRampDuration,exhaustFlowTripped; "
-            f"{stop_time},exhaustFlowTripped]"
+            "[0,exhaustFlowNormalTH/3.6; "
+            "tripTime,exhaustFlowNormalTH/3.6; "
+            "tripTime + tripRampDuration,exhaustFlowTrippedTH/3.6; "
+            f"{stop_time},exhaustFlowTrippedTH/3.6]"
         )
         exhaust_temperature_table = (
             "[0,exhaustTemperatureNormal; "

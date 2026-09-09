@@ -18,8 +18,8 @@ class CausalExportTests(unittest.TestCase):
     def write_processbus(path: Path, *, precursor: bool = False) -> None:
         fields = [
             "scenario_id", "time_s", "gt_trip_cmd", "stg_power_w",
-            "gt_exhaust_mass_flow_kg_s", "gt_exhaust_temperature_k",
-            "hp_drum_level_m", "hp_drum_pressure_pa", "hp_steam_flow_kg_s",
+            "gt_exhaust_mass_flow_t_h", "gt_exhaust_temperature_k",
+            "hp_drum_level_m", "hp_drum_pressure_pa", "hp_steam_flow_t_h",
         ]
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8", newline="") as stream:
@@ -28,21 +28,21 @@ class CausalExportTests(unittest.TestCase):
             for index in range(101):
                 time_s = index / 10
                 elapsed = max(0.0, time_s - 5.0)
-                flow = 606.94
+                flow = 2184.984
                 if precursor and time_s >= 4.0:
-                    flow = 580.0
+                    flow = 2088.0
                 if time_s >= 5.0:
-                    flow = max(50.0, 606.94 - elapsed * 150.0)
+                    flow = max(180.0, 2184.984 - elapsed * 540.0)
                 writer.writerow({
                     "scenario_id": "CAUSAL_TEST",
                     "time_s": f"{time_s:.1f}",
                     "gt_trip_cmd": int(time_s >= 5.0),
                     "stg_power_w": f"{250_000_000 * max(0.04, 1 - elapsed / 4):.3f}",
-                    "gt_exhaust_mass_flow_kg_s": f"{flow:.6f}",
+                    "gt_exhaust_mass_flow_t_h": f"{flow:.6f}",
                     "gt_exhaust_temperature_k": f"{max(423.0, 893.75 - elapsed * 150):.6f}",
                     "hp_drum_level_m": f"{max(0.80, 1.05 - elapsed * 0.06):.6f}",
                     "hp_drum_pressure_pa": f"{max(8_000_000, 12_703_151 - elapsed * 1_000_000):.3f}",
-                    "hp_steam_flow_kg_s": f"{max(20, 150 - elapsed * 35):.6f}",
+                    "hp_steam_flow_t_h": f"{max(72, 540 - elapsed * 126):.6f}",
                 })
 
     @staticmethod
@@ -126,7 +126,7 @@ class CausalExportTests(unittest.TestCase):
             changes = self.read_csv(target / "important-changes.csv")
             precursor = next(
                 row for row in changes
-                if row["signal"] == "gt_exhaust_mass_flow_kg_s"
+                if row["signal"] == "gt_exhaust_mass_flow_t_h"
             )
             self.assertEqual(precursor["change_time_s"], "4.000000000")
             self.assertEqual(precursor["phase"], "PRE_TRIP")
