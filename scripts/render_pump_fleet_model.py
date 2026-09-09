@@ -114,19 +114,34 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
             f"{source_name} table package path",
         )
 
-    # CombinedCycle_TripTAC carries an unrelated 100-to-50% exhaust ramp.
-    # Freeze both GT exhaust inputs so the selected pump is the only initiator.
+    # Keep the original source and connector topology for robust plant
+    # initialization. The selected feedwater trip is the only initiator; the
+    # existing tables then implement a continuous five-second unit heat rundown.
+    if trip_target == 0:
+        exhaust_flow_table = "Table=[0,606.94; 650,606.94]"
+        exhaust_temperature_table = "Table=[0,893.75; 650,893.75]"
+    else:
+        rundown_end = trip_time + 5
+        hold_end = rundown_end + 1
+        exhaust_flow_table = (
+            f"Table=[0,606.94; {trip_time:.12g},606.94; "
+            f"{rundown_end:.12g},50; {hold_end:.12g},50]"
+        )
+        exhaust_temperature_table = (
+            f"Table=[0,893.75; {trip_time:.12g},893.75; "
+            f"{rundown_end:.12g},423; {hold_end:.12g},423]"
+        )
     text = replace_once(
         text,
         "Table=[0,606.94; 10,606.94; 600,\n        50; 650,50]",
-        "Table=[0,606.94; 10,606.94; 600,\n        606.94; 650,606.94]",
-        "normal GT exhaust mass-flow boundary",
+        exhaust_flow_table,
+        "GT exhaust mass-flow boundary",
     )
     text = replace_once(
         text,
         "Table=[0,893.75; 10,893.75; 600,423; 650,423]",
-        "Table=[0,893.75; 10,893.75; 600,893.75; 650,893.75]",
-        "normal GT exhaust temperature boundary",
+        exhaust_temperature_table,
+        "GT exhaust temperature boundary",
     )
 
     header = f'''model {MODEL_NAME}
@@ -227,32 +242,6 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
             f"  connect({name}.C2, checkValve{axis}.C1);\n"
             f"  connect(checkValve{axis}.C2, {selected['downstream']});\n",
             f"{axis} discharge check valve",
-        )
-        # In this single-train model, loss of any selected feedwater path
-        # is a total feedwater-loss event. Run down GT/HRSG heat input instead
-        # of continuing to heat stagnant water beyond the IF97 domain.
-        declarations.append("""
-  TripLens_PumpPhysics.EmergencyExhaustGasRamp feedwaterTripRundown(
-    tripStartTime=pumpTripTime);
-""")
-        equations.append(f"""
-  connect(Debit.y, feedwaterTripRundown.normalMassFlow);
-  connect(Temperature.y, feedwaterTripRundown.normalTemperature);
-  feedwaterTripRundown.trip.signal = not breaker{axis}Closed;
-  connect(feedwaterTripRundown.effectiveMassFlow, SourceFumees.IMassFlow);
-  connect(feedwaterTripRundown.effectiveTemperature, SourceFumees.ITemperature);
-""")
-        text = replace_statement(
-            text,
-            "  connect(Debit.y,SourceFumees. IMassFlow)",
-            "",
-            "original flue-gas mass-flow boundary",
-        )
-        text = replace_statement(
-            text,
-            "  connect(Temperature.y,SourceFumees. ITemperature)",
-            "",
-            "original flue-gas temperature boundary",
         )
         if f"{name}.rpm_or_mpower" in text:
             raise ValueError(f"legacy prescribed-speed connection remains for {name}")
