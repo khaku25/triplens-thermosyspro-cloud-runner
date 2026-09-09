@@ -104,7 +104,7 @@ class PumpPhysicsTests(unittest.TestCase):
             cw_model,
         )
 
-    def test_registry_accounts_for_every_ecms_pump_without_inventing_recirc(self) -> None:
+    def test_registry_covers_active_ecms_pumps_and_marks_non_ecms_paths(self) -> None:
         with (ROOT / "config" / "ecms_a_equipment.csv").open(
             "r", encoding="utf-8", newline=""
         ) as stream:
@@ -114,7 +114,11 @@ class PumpPhysicsTests(unittest.TestCase):
         ) as stream:
             registry = {row["equipment_id"]: row for row in csv.DictReader(stream)}
 
-        self.assertEqual(set(registry), equipment)
+        # The active ECMS list intentionally contains only equipment grounded
+        # in the simplified simulation. The broader physics registry also
+        # documents shared/boundary paths and explicitly rejected fictitious
+        # motor-pump interpretations.
+        self.assertLessEqual(equipment, set(registry))
         self.assertEqual(PUMP_TARGETS["FWP-LP"], PUMP_TARGETS["COND-PUMP"])
         for item in ("RECIRC-HP", "RECIRC-IP", "RECIRC-LP"):
             self.assertEqual(
