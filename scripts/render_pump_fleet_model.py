@@ -144,6 +144,11 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
         "GT exhaust temperature boundary",
     )
 
+    native_turbine = "ThermoSysPro.WaterSteam.Machines.StodolaTurbine Turbine"
+    if text.count(native_turbine) != 3:
+        raise ValueError("expected exactly three native Stodola turbines")
+    text = text.replace(native_turbine, "TripLens_RegularizedStodolaTurbine Turbine")
+
     header = f'''model {MODEL_NAME}
   "Combined cycle with breaker, dynamic shaft inertia and check valves"
   parameter Integer tripTarget = {trip_target}
