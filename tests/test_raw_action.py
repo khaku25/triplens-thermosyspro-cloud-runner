@@ -340,6 +340,53 @@ class RawOnlyActionTests(unittest.TestCase):
             self.assertEqual(validate.returncode, 0, validate.stderr)
             self.assertIn("NORMAL_OPERATION_RELIABILITY_PASS", validate.stdout)
 
+    def test_gt_derate_keeps_trip_only_bypass_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            raw = target / "thermosyspro-raw.csv"
+            columns = [
+                "time", "vppSTTripLatch", "vppHPBypassCmd",
+                "vppLPBypassCmd", "vppHPBypassPos", "vppLPBypassPos",
+                "vppHPSprayPos", "vppLPSprayPos", "vppHPBypassOpenLS",
+                "vppHPBypassCloseLS", "vppLPBypassOpenLS",
+                "vppLPBypassCloseLS", "vppHPBypassMassFlowTH",
+                "vppLPBypassMassFlowTH", "vppHPSprayMassFlowTH",
+                "vppLPSprayMassFlowTH", "vppGTExhaustMassFlowTH",
+                "Temperature.y.signal",
+            ]
+            initial = [
+                0, False, 0, 0, 0, 0, 0, 0, False, True, False, True,
+                0, 0, 0, 0, 2184.984, 893.75,
+            ]
+            final = list(initial)
+            final[0] = 190
+            final[-2] = 540
+            final[-1] = 550
+            with raw.open("w", encoding="utf-8", newline="") as stream:
+                writer = csv.writer(stream, lineterminator="\n")
+                writer.writerow(columns)
+                writer.writerow(initial)
+                writer.writerow(final)
+            build = self.run_script(
+                "build_raw_manifest.py",
+                "--raw-file", str(raw),
+                "--output", str(target / "raw-manifest.json"),
+                "--sampling-profile", "gt_derate_3min_10ms",
+                "--stop-time", "190",
+                "--output-intervals", "19000",
+                "--thermosyspro-commit", "test-commit",
+                "--openmodelica-image", "test-image",
+                "--model-variant", "HPBP_LPBP_PHYSICAL_V12_TPH_EXPORT_V1",
+                "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12",
+                "--patched-model-sha256", "c"*64,
+            )
+            self.assertEqual(build.returncode, 0, build.stderr)
+            validate = self.run_script(
+                "validate_raw_outputs.py", "--output-dir", str(target)
+            )
+            self.assertEqual(validate.returncode, 0, validate.stderr)
+            self.assertIn("GT_DERATE_BOUNDARY_VALIDATION_PASS", validate.stdout)
+
     def test_partial_raw_run_is_rejected_before_manifest_creation(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory)

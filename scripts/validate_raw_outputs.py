@@ -87,6 +87,25 @@ NORMAL_RELIABILITY_COLUMNS = DYNAMIC_BYPASS_COLUMNS | {
     "vppIPTurbineSteamFlowTH",
     "vppLPTurbineSteamFlowTH",
 }
+DERATE_BOUNDARY_COLUMNS = {
+    "vppSTTripLatch",
+    "vppHPBypassCmd",
+    "vppLPBypassCmd",
+    "vppHPBypassPos",
+    "vppLPBypassPos",
+    "vppHPSprayPos",
+    "vppLPSprayPos",
+    "vppHPBypassOpenLS",
+    "vppHPBypassCloseLS",
+    "vppLPBypassOpenLS",
+    "vppLPBypassCloseLS",
+    "vppHPBypassMassFlowTH",
+    "vppLPBypassMassFlowTH",
+    "vppHPSprayMassFlowTH",
+    "vppLPSprayMassFlowTH",
+    "vppGTExhaustMassFlowTH",
+    "Temperature.y.signal",
+}
 
 
 def sha256(path: Path) -> str:
@@ -385,6 +404,92 @@ def validate_normal_operation(path: Path) -> dict[str, float]:
     }
 
 
+def validate_derate_operation(path: Path) -> dict[str, float]:
+    """Verify that the exhaust DERATE profile does not assert turbine Trip."""
+    with path.open("r", encoding="utf-8-sig", newline="") as stream:
+        reader = csv.DictReader(stream)
+        columns = set(reader.fieldnames or [])
+        missing = sorted(DERATE_BOUNDARY_COLUMNS.difference(columns))
+        if missing:
+            raise ValueError(
+                "GT DERATE RAW is missing columns: " + ", ".join(missing)
+            )
+        rows = list(reader)
+
+    boolean_columns = {
+        "vppSTTripLatch",
+        "vppHPBypassOpenLS",
+        "vppHPBypassCloseLS",
+        "vppLPBypassOpenLS",
+        "vppLPBypassCloseLS",
+    }
+    numeric_columns = DERATE_BOUNDARY_COLUMNS.difference(boolean_columns)
+    numeric: dict[str, list[float]] = {column: [] for column in numeric_columns}
+    boolean: dict[str, list[bool]] = {column: [] for column in boolean_columns}
+    for row_number, row in enumerate(rows, start=2):
+        for column in numeric_columns:
+            try:
+                value = float(row[column])
+            except ValueError as exc:
+                raise ValueError(
+                    f"RAW CSV row {row_number} {column} is not numeric"
+                ) from exc
+            if not math.isfinite(value):
+                raise ValueError(
+                    f"RAW CSV row {row_number} {column} is not finite"
+                )
+            numeric[column].append(value)
+        for column in boolean_columns:
+            boolean[column].append(
+                parse_boolean(row[column], column=column, row_number=row_number)
+            )
+
+    if any(boolean["vppSTTripLatch"]):
+        raise ValueError("GT DERATE profile asserted the embedded ST Trip latch")
+    expected_limits = {
+        "vppHPBypassOpenLS": False,
+        "vppHPBypassCloseLS": True,
+        "vppLPBypassOpenLS": False,
+        "vppLPBypassCloseLS": True,
+    }
+    for column, expected in expected_limits.items():
+        if any(value is not expected for value in boolean[column]):
+            raise ValueError(f"GT DERATE changed bypass limit switch: {column}")
+    for column in (
+        "vppHPBypassCmd",
+        "vppLPBypassCmd",
+        "vppHPBypassPos",
+        "vppLPBypassPos",
+        "vppHPSprayPos",
+        "vppLPSprayPos",
+    ):
+        if max(abs(value) for value in numeric[column]) > 1e-8:
+            raise ValueError(f"GT DERATE actuated the Trip-only bypass path: {column}")
+    for column in (
+        "vppHPBypassMassFlowTH",
+        "vppLPBypassMassFlowTH",
+        "vppHPSprayMassFlowTH",
+        "vppLPSprayMassFlowTH",
+    ):
+        if max(abs(value) for value in numeric[column]) > 1e-6:
+            raise ValueError(f"GT DERATE produced Trip-only bypass flow: {column}")
+
+    flow = numeric["vppGTExhaustMassFlowTH"]
+    temperature = numeric["Temperature.y.signal"]
+    expected = {
+        "flow_initial_t_h": (flow[0], 2184.984),
+        "flow_final_t_h": (flow[-1], 540.0),
+        "temperature_initial_k": (temperature[0], 893.75),
+        "temperature_final_k": (temperature[-1], 550.0),
+    }
+    for label, (actual, target) in expected.items():
+        if not math.isclose(actual, target, rel_tol=1e-8, abs_tol=1e-6):
+            raise ValueError(
+                f"GT DERATE {label} is {actual:.12g}, expected {target:.12g}"
+            )
+    return {label: actual for label, (actual, _) in expected.items()}
+
+
 def validate_raw_csv(path: Path) -> dict[str, object]:
     with path.open("r", encoding="utf-8-sig", newline="") as stream:
         reader = csv.reader(stream)
@@ -554,6 +659,12 @@ def main() -> int:
             print(
                 "NORMAL_OPERATION_RELIABILITY_PASS "
                 + json.dumps(reliability, sort_keys=True)
+            )
+        elif sampling.get("profile") == "gt_derate_3min_10ms":
+            derate = validate_derate_operation(raw_path)
+            print(
+                "GT_DERATE_BOUNDARY_VALIDATION_PASS "
+                + json.dumps(derate, sort_keys=True)
             )
         else:
             crossings = validate_dynamic_bypass(raw_path, nominal_period_ms)

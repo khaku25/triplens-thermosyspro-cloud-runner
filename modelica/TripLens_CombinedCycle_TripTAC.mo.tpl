@@ -1,17 +1,19 @@
 within ;
 model TripLens_CombinedCycle_TripTAC
-  parameter Real tripTime(unit="s") = @TRIP_TIME@;
-  parameter Real tripRampDuration(unit="s") = @TRIP_RAMP_DURATION@;
+  // Legacy wrapper/model name retained because it extends ThermoSysPro's
+  // CombinedCycle_TripTAC example. The exhaust boundary itself is not the
+  // canonical GT Trip definition used by TripLens.
+  parameter Real eventTime(unit="s") = @TRIP_TIME@;
+  parameter Real boundaryRampDuration(unit="s") = @TRIP_RAMP_DURATION@;
   parameter Real exhaustFlowNormalTH = 2184.984
     "Published normal GT exhaust mass flow in t/h";
-  // The legacy ThermoSysPro CCPP becomes singular when flue-gas flow is
-  // forced to 180 t/h while its steam-side pumps and valves remain online.
-  // 540 t/h is the lowest severe-trip point verified to reach 1000 s in
-  // OpenModelica 1.27 with the paired temperature floor below.
-  parameter Real exhaustFlowTrippedTH = 540.0
-    "Published tripped GT exhaust mass flow in t/h";
+  // Canonical semantics: 2184.984 -> 540 t/h and 893.75 -> 550 K is GT DERATE.
+  // It must not be used as evidence of GT Trip success; GT Trip success is
+  // electrical separation with 52GT.CLOSED=0 in the VPP/ECMS path.
+  parameter Real exhaustFlowDeratedTH = 540.0
+    "Published derated GT exhaust mass flow in t/h";
   parameter Real exhaustTemperatureNormal(unit="K") = 893.75;
-  parameter Real exhaustTemperatureTripped(unit="K") = 550.0;
+  parameter Real exhaustTemperatureDerated(unit="K") = 550.0;
 
   Real vppGTExhaustMassFlowTH "Published GT exhaust mass flow in t/h";
   Real vppHPTurbineSteamFlowTH "Published HP turbine steam flow in t/h";
@@ -26,7 +28,7 @@ model TripLens_CombinedCycle_TripTAC
     vppTripTime=@VPP_TRIP_TIME@,
     // Seed the routed steam path from the last verified normal operating
     // point. These are initialization guesses only; the fluid equations own
-    // every value after initialization and throughout the Trip transient.
+    // every value after initialization and throughout the transient.
     DoubleDebitHP(
       P(start=12681000, nominal=1.3e7),
       h(start=3450835, nominal=3.5e6),

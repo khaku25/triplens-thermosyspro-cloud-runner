@@ -5,6 +5,11 @@ set -euo pipefail
 #   ThermoSysPro/OpenModelica RAW physics only.
 # This script must not normalize ProcessBus, evaluate DCS rules, synthesize
 # ECMS/SOE, select an incident window, or attach a scenario/root-cause label.
+#
+# Semantic boundary:
+#   2184.984 t/h / 893.75 K -> 540 t/h / 550 K is GT DERATE only.
+#   True GT TRIP is owned by the separate run-vpp-gt-trip path and requires
+#   electrical separation (52GT.CLOSED=0). Never label this boundary as Trip.
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd -- "$script_dir/.." && pwd)"
@@ -21,7 +26,8 @@ transition_duration_s="$requested_transition_duration_s"
 stop_time_s="$requested_stop_time_s"
 intervals="$requested_intervals"
 normal_operation=false
-operating_mode="trip-transient"
+derate_only=false
+operating_mode="boundary-transient"
 
 case "$sampling_profile" in
   standard) ;;
@@ -54,11 +60,15 @@ PY
     normal_operation=true
     operating_mode="normal"
     ;;
-  gt_trip_3min_10ms)
+  gt_derate_3min_10ms)
+    # Canonical long GT DERATE profile. Exhaust flow/temperature are reduced,
+    # while the embedded ST Trip trigger is suppressed beyond stop time.
     event_time_s=180
     transition_duration_s=5
     stop_time_s=190
     intervals=19000
+    derate_only=true
+    operating_mode="gt-derate"
     ;;
   *)
     echo "unknown sampling profile: $sampling_profile" >&2
@@ -74,8 +84,8 @@ echo "Effective physical run: event=${event_time_s}s transition=${transition_dur
 openmodelica_image="openmodelica/openmodelica:v1.27.0-minimal"
 dependency_timeout="${OPENMODELICA_DEPENDENCY_TIMEOUT:-5m}"
 simulation_timeout="${OPENMODELICA_SIMULATION_TIMEOUT:-20m}"
-if [[ "$sampling_profile" == "gt_trip_3min_10ms" ]]; then
-  simulation_timeout="${OPENMODELICA_LONG_TRIP_TIMEOUT:-25m}"
+if [[ "$sampling_profile" == "gt_derate_3min_10ms" ]]; then
+  simulation_timeout="${OPENMODELICA_LONG_DERATE_TIMEOUT:-25m}"
 fi
 thermosyspro_commit="db81ae1b5a6a85f6c6c7693244cafa6087e18ff5"
 
@@ -89,6 +99,8 @@ render_arguments=(
 )
 if [[ "$normal_operation" == true ]]; then
   render_arguments+=(--normal-operation)
+elif [[ "$derate_only" == true ]]; then
+  render_arguments+=(--derate-only)
 fi
 python3 scripts/render_modelica.py "${render_arguments[@]}"
 

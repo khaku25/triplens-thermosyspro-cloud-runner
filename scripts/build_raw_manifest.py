@@ -85,7 +85,7 @@ def main() -> int:
             "causal_100ms",
             "incident_1ms",
             "normal_3min",
-            "gt_trip_3min_10ms",
+            "gt_derate_3min_10ms",
         ),
         required=True,
     )

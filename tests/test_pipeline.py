@@ -125,7 +125,9 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             model = (Path(directory) / "TripLens_CombinedCycle_TripTAC.mo").read_text()
             mos = (Path(directory) / "run.mos").read_text()
-            self.assertIn('tripTime(unit="s") = 2', model)
+            self.assertIn('eventTime(unit="s") = 2', model)
+            self.assertIn('boundaryRampDuration(unit="s") = 1', model)
+            self.assertIn("exhaustFlowDeratedTH/3.6", model)
             self.assertIn("numberOfIntervals=50", mos)
             self.assertNotIn("@TRIP_TIME@", model)
 
@@ -936,14 +938,14 @@ class PipelineTests(unittest.TestCase):
         self.assertIn("sampling_profile:", workflow)
         self.assertIn("incident_1ms", workflow)
         self.assertIn("normal_3min", workflow)
-        self.assertIn("gt_trip_3min_10ms", workflow)
+        self.assertIn("gt_derate_3min_10ms", workflow)
         self.assertIn('"$SAMPLING_PROFILE"', workflow)
         self.assertIn('--sampling-profile "$sampling_profile"', script)
         self.assertIn("intervals=10000", script)
         self.assertIn("intervals=1800", script)
         self.assertIn("intervals=19000", script)
         self.assertIn("--normal-operation", script)
-        self.assertIn("OPENMODELICA_LONG_TRIP_TIMEOUT:-25m", script)
+        self.assertIn("OPENMODELICA_LONG_DERATE_TIMEOUT:-25m", script)
 
         unknown_profile = subprocess.run(
             [

@@ -1,4 +1,4 @@
-name: Generate ThermoSysPro RAW (GT physical adapter)
+name: Generate ThermoSysPro RAW (GT exhaust-boundary adapter)
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ on:
           - standard
           - incident_1ms
           - normal_3min
-          - gt_trip_3min_10ms
+          - gt_derate_3min_10ms
       event_time_s:
         description: Physical exhaust-boundary change start time in seconds
         required: true
@@ -35,7 +35,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: thermosyspro-raw-gt-${{ github.ref }}
+  group: thermosyspro-raw-gt-boundary-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -46,8 +46,11 @@ jobs:
       - name: Check out physical-model runner
         uses: actions/checkout@v4
 
-      - name: Verify RAW-only boundary
-        run: python3 -m unittest tests.test_raw_action -v
+      - name: Verify RAW-only boundary and GT DERATE semantics
+        run: |
+          python3 -m unittest \
+            tests.test_raw_action \
+            tests.test_gt_derate_profile_semantics -v
 
       - name: Run ThermoSysPro RAW-only simulation
         env:
