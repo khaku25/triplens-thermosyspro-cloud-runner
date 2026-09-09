@@ -151,7 +151,7 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
         text,
         "ThermoSysPro.WaterSteam.Machines.StodolaTurbine TurbineHP(\n    W_fric=1,",
         "ThermoSysPro.WaterSteam.Machines.StodolaTurbine TurbineHP(\n"
-        "    regularizePressureCrossover=true,\n    W_fric=1,",
+        "    regularizePressureCrossover=tripTarget == 1,\n    W_fric=1,",
         "HP turbine pressure-crossover regularization",
     )
 

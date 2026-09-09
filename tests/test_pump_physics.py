@@ -79,7 +79,9 @@ class PumpPhysicsTests(unittest.TestCase):
                     model.count("ThermoSysPro.WaterSteam.Machines.StodolaTurbine Turbine"),
                     3,
                 )
-                self.assertEqual(model.count("regularizePressureCrossover=true"), 1)
+                self.assertEqual(
+                    model.count("regularizePressureCrossover=tripTarget == 1"), 1
+                )
                 self.assertIn(f"StaticCentrifugalPump {component}", model)
                 self.assertIn(
                     f"connect(drive{axis}.speedCommand, {component}.rpm_or_mpower)",
