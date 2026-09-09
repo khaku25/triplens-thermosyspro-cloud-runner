@@ -61,6 +61,10 @@ class PumpPhysicsTests(unittest.TestCase):
                 )
                 self.assertIn(f"BreakerInertialPumpDrive drive{axis}", model)
                 self.assertIn(f"SpringLoadedCheckValve checkValve{axis}", model)
+                expected_resistance = "1e5" if axis == "LP" else "1e6"
+                self.assertIn(
+                    f"closedResistance={expected_resistance}", model
+                )
                 self.assertIn(f"checkValve{axis}.C1", model)
                 self.assertIn(f"checkValve{axis}.C2", model)
                 for normal_component in all_components.difference({component}):
