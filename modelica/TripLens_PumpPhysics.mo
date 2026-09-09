@@ -48,8 +48,8 @@ package TripLens_PumpPhysics
       "Upstream pressure needed to reopen a closed valve";
 
     Boolean ouvert(start=true, fixed=true) "Valve state";
-    Boolean closeRequest;
-    Boolean reopenRequest;
+    discrete Boolean tOpen(start=false, fixed=true);
+    discrete Boolean tClose(start=false, fixed=true);
     Modelica.SIunits.MassFlowRate Q "Mass flow rate";
     ThermoSysPro.Units.DifferentialPressure deltaP
       "Pressure difference between inlet and outlet";
@@ -75,13 +75,13 @@ package TripLens_PumpPhysics
       Q = closedFlow;
     end if;
 
-    closeRequest = not (Q > closeFlow);
-    reopenRequest = deltaP > reopenPressure;
+    tClose = not (Q > closeFlow);
+    tOpen = deltaP > reopenPressure;
 
-    when closeRequest then
-      ouvert = false;
-    elsewhen reopenRequest then
-      ouvert = true;
+    // Match ThermoSysPro IdealCheckValve's pre-trigger formulation so the
+    // nonlinear hydraulic relation stays outside the when-equation.
+    when {pre(tClose), pre(tOpen)} then
+      ouvert = pre(tOpen);
     end when;
   end SpringLoadedIdealCheckValve;
 
