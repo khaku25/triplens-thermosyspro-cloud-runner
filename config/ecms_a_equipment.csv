@@ -1,9 +1,4 @@
 equipment_id,label_ko,bus,feeder_id,voltage_kv,rated_kw,normal_breaker_state,priority,status,editable,notes
-FWP-HP,HP 급수펌프,BUS-A,VCB-A01,6.9,,CLOSED,ESSENTIAL,PROVISIONAL,true,정격은 미입력
-FWP-IP,IP 급수펌프,BUS-B,VCB-B01,6.9,,CLOSED,ESSENTIAL,PROVISIONAL,true,정격은 미입력
-FWP-LP,LP 급수펌프,BUS-A,VCB-A02,6.9,,CLOSED,ESSENTIAL,PROVISIONAL,true,정격은 미입력
-RECIRC-HP,HP 드럼 순환부하,BUS-B,VCB-B02,6.9,,CLOSED,PROCESS,PROVISIONAL,true,실제 펌프 구성 확인 필요
-RECIRC-IP,IP 드럼 순환부하,BUS-A,VCB-A03,6.9,,CLOSED,PROCESS,PROVISIONAL,true,실제 펌프 구성 확인 필요
-RECIRC-LP,LP 드럼 순환부하,BUS-B,VCB-B03,6.9,,CLOSED,PROCESS,PROVISIONAL,true,실제 펌프 구성 확인 필요
-COND-PUMP,복수 펌프 계통,BUS-A,VCB-A04,6.9,,CLOSED,ESSENTIAL,PROVISIONAL,true,실제 대수와 전압 확인 필요
-CW-PUMP,순환수 펌프 계통,BUS-B,VCB-B04,6.9,,CLOSED,ESSENTIAL,PROVISIONAL,true,실제 대수와 전압 확인 필요
+FWP-HP,HP 급수펌프,BUS-A,VCB-A01,6.9,,CLOSED,ESSENTIAL,PROVISIONAL,true,원본 ThermoSysPro PompeAlimHP 객체 확인; 명칭 정합화는 별도 수행
+FWP-IP,IP 급수펌프,BUS-B,VCB-B01,6.9,,CLOSED,ESSENTIAL,PROVISIONAL,true,원본 ThermoSysPro PompeAlimMP 객체에 대응; IP/MP 명칭 정합화는 별도 수행
+FWP-LP,LP 급수펌프,BUS-A,VCB-A02,6.9,,CLOSED,ESSENTIAL,PROVISIONAL,true,원본 ThermoSysPro PompeAlimBP 객체에 대응; LP/BP 명칭 정합화는 별도 수행
