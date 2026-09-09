@@ -45,7 +45,7 @@ class VPPEventEngineTests(unittest.TestCase):
             "unit",
         )
         self.assertEqual(len(current), 31)
-        self.assertEqual(len(draft), 39)
+        self.assertEqual(len(draft), 40)
         for current_rule in current:
             draft_rule = by_id[current_rule["rule_id"]]
             for field in compared_fields:
@@ -53,9 +53,9 @@ class VPPEventEngineTests(unittest.TestCase):
         self.assertTrue(
             all(row["status"] == "PROVISIONAL_NOT_PLANT_APPROVED" for row in draft)
         )
-        self.assertEqual(sum(row["logic_kind"] == "STATE" for row in draft), 8)
+        self.assertEqual(sum(row["logic_kind"] == "STATE" for row in draft), 9)
         self.assertEqual(sum(row["system"] == "DCS1" for row in draft), 15)
-        self.assertEqual(sum(row["system"] == "DCS2" for row in draft), 24)
+        self.assertEqual(sum(row["system"] == "DCS2" for row in draft), 25)
 
     def test_modelica_generator_owns_threshold_delay_hysteresis_and_trip_matrix(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -203,14 +203,50 @@ class VPPEventEngineTests(unittest.TestCase):
         self.assertEqual(manifest["raw"]["duplicate_native_time_rows"], 1)
 
     def test_action_keeps_event_points_and_bypasses_old_alarm_generator(self) -> None:
-        mos = (ROOT / "modelica" / "run_vpp_event.mos.tpl").read_text()
+        mos = (ROOT / "modelica" / "run_vpp_event_validated.mos.tpl").read_text()
         pipeline = (ROOT / "scripts" / "run_vpp_event_pipeline.sh").read_text()
         self.assertNotIn("-noEventEmit", mos)
         self.assertIn("alarmRuntime\\\\..*", mos)
+        self.assertIn("render_vpp_event_validated.py", pipeline)
+        self.assertIn("Simulation execution failed", pipeline)
         self.assertIn("export_vpp_events.py", pipeline)
         self.assertNotIn("generate_dcs_alarms.py", pipeline)
         self.assertNotIn("generate_ecms.py", pipeline)
         self.assertIn("cmp -s", pipeline)
+
+    def test_validated_bfp_renderer_wires_the_runtime_and_event_state(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            rendered = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "render_vpp_event_validated.py"),
+                    "--event-time", "10",
+                    "--coastdown-duration", "5",
+                    "--stop-time", "70",
+                    "--intervals", "700",
+                    "--final-rpm", "1000",
+                    "--output-dir", str(output),
+                ],
+                cwd=ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            model = (output / "TripLens_CombinedCycle_VPPEvent.mo").read_text()
+            mos = (output / "run_vpp_event.mos").read_text()
+            runtime = (output / "TripLens_VPPAlarmRuntime.mo").read_text()
+
+        self.assertEqual(rendered.returncode, 0, rendered.stderr)
+        self.assertIn("VPP_PHYSICAL_ADAPTER=VALIDATED_BFP_BOUNDARY", rendered.stdout)
+        self.assertIn("EVENT_RULES=40", rendered.stdout)
+        self.assertIn("TripLens_VPPAlarmRuntime.VPPAlarmRuntime alarmRuntime", model)
+        self.assertIn("bfpHPBreakerClosed = not (time >= bfpEventTime)", model)
+        self.assertIn("Starttime=bfpEventTime", model)
+        self.assertIn("Finalvalue=bfpResidualSpeed", model)
+        self.assertIn("alarmRuntime.hp_drum_level_m = BallonHP.yLevel.signal", model)
+        self.assertIn('fileNamePrefix="triplens_vpp_event"', mos)
+        self.assertIn("output Boolean alarm_D2_104", runtime)
 
 
 if __name__ == "__main__":

@@ -110,14 +110,14 @@ ThermoSysPro 물리 실행으로 취급되지 않습니다.
 |---|---|---|
 | `Generate ThermoSysPro RAW (GT physical adapter)` | GT 배기 유량·온도 경계 변화 | RAW CSV + 무라벨 manifest |
 | `Generate ThermoSysPro RAW (BFP physical adapter)` | HP BFP 회전속도 경계 변화 | RAW CSV + 무라벨 manifest |
-| `Generate VPP RAW and Modelica-owned events` | FWP 물리 Trip + 모델 내부 알람·보호 | VPP RAW + VPP/DCS1/DCS2 Event |
+| `Generate VPP RAW and Modelica-owned events` | 검증된 HP BFP 속도 경계 + 모델 내부 알람·보호 | VPP RAW + VPP/DCS1/DCS2 Event |
 
 각 Workflow는 고정 ThermoSysPro commit과 OpenModelica 이미지를 사용합니다.
 OpenModelica 결과를 바이트 그대로 복사한 뒤 해시와 구조를 검증하며, 실패한
 실행은 artifact를 게시하지 않습니다. `fault_preset`, ECMS Command, DCS 규칙,
 사고 정답은 Action 입력 또는 산출물에 포함하지 않습니다.
 
-VPP Event Workflow의 구조·39개 임시 규칙·교체 방법은
+VPP Event Workflow의 구조·40개 임시 규칙·교체 방법은
 [`docs/VPP_EVENT_ENGINE_PROVISIONAL.md`](docs/VPP_EVENT_ENGINE_PROVISIONAL.md)를
 참조합니다. 이 경로에서 CSV 변환기는 임계값을 계산하지 않고 Modelica Boolean
 상태 변화만 기록하므로 알람 화면을 모니터 전용으로 연결할 수 있습니다.

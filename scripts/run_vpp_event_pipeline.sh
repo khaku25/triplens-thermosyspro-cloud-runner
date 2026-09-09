@@ -10,28 +10,21 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd -- "$script_dir/.." && pwd)"
 cd "$project_root"
 
-pump_id="${1:-FWP-HP}"
-event_time_s="${2:-300}"
-stop_time_s="${3:-420}"
-intervals="${4:-4200}"
+event_time_s="${1:-10}"
+coastdown_duration_s="${2:-5}"
+stop_time_s="${3:-70}"
+intervals="${4:-700}"
+final_rpm="${5:-1000}"
 
-case "$pump_id" in
-  FWP-HP|FWP-IP|FWP-LP) ;;
-  *)
-    echo "Unsupported VPP event initiator: $pump_id" >&2
-    exit 2
-    ;;
-esac
-
-safe_pump_id="$(printf '%s' "$pump_id" | tr '[:upper:]-' '[:lower:]_')"
 output_dir="$project_root/outputs/vpp-event"
-result_file="$project_root/build/triplens_vpp_event_${safe_pump_id}_res.csv"
+result_file="$project_root/build/triplens_vpp_event_res.csv"
 logic_rules="$project_root/config/vpp_event_logic_provisional.csv"
 openmodelica_image="openmodelica/openmodelica:v1.27.0-minimal"
 thermosyspro_commit="db81ae1b5a6a85f6c6c7693244cafa6087e18ff5"
 
 echo "ThermoSysPro VPP internal-logic run"
-echo "initiator=$pump_id event=${event_time_s}s stop=${stop_time_s}s intervals=$intervals"
+echo "physical_adapter=VALIDATED_BFP_BOUNDARY"
+echo "event=${event_time_s}s coastdown=${coastdown_duration_s}s final_rpm=$final_rpm stop=${stop_time_s}s intervals=$intervals"
 echo "alarm_decision_owner=MODELICA_VPP_LOGIC_RUNTIME"
 
 mkdir -p build/omhome vendor "$output_dir"
@@ -51,11 +44,12 @@ git -C vendor/ThermoSysPro checkout --detach "$thermosyspro_commit"
 test "$(git -C vendor/ThermoSysPro rev-parse HEAD)" = "$thermosyspro_commit"
 test -f vendor/ThermoSysPro/ThermoSysPro/package.mo
 
-python3 scripts/render_vpp_event_model.py \
-  --pump-id "$pump_id" \
+python3 scripts/render_vpp_event_validated.py \
   --event-time "$event_time_s" \
+  --coastdown-duration "$coastdown_duration_s" \
   --stop-time "$stop_time_s" \
   --intervals "$intervals" \
+  --final-rpm "$final_rpm" \
   --rules "$logic_rules"
 
 rm -f "$result_file"
@@ -81,8 +75,18 @@ docker run --rm \
   "$openmodelica_image" \
   omc /workspace/build/run_vpp_event.mos | tee build/vpp_event.log
 
+if grep -Fq 'resultFile = ""' build/vpp_event.log || \
+   grep -Fq 'Simulation execution failed' build/vpp_event.log; then
+  echo "OpenModelica reported a failed VPP simulation" >&2
+  exit 1
+fi
 if [[ ! -s "$result_file" ]]; then
   echo "OpenModelica did not create a fresh non-empty VPP result CSV" >&2
+  exit 1
+fi
+result_lines="$(wc -l < "$result_file")"
+if (( result_lines < 3 )); then
+  echo "OpenModelica VPP result needs a header and at least two data rows" >&2
   exit 1
 fi
 

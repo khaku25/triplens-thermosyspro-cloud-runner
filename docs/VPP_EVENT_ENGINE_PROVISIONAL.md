@@ -28,11 +28,13 @@ flowchart LR
 |---|---:|---|
 | Modelica 알람 판정 | 31 | DCS1 7 + DCS2 24 |
 | Trip/Relay/52G 상태 사건 | 8 | DCS1 |
-| 전체 Event 규칙 | 39 | `config/vpp_event_logic_provisional.csv` |
+| BFP 조작 상태 사건 | 1 | DCS2(BOP) |
+| 전체 Event 규칙 | 40 | DCS1 15 + DCS2 25 |
 
-DCS1은 GT/ST, DCS2는 HRSG 계통으로 라우팅한다. 현재 규칙에는 승인된 BOP
-알람 정정치가 없으므로 BOP 값을 새로 꾸며 넣지 않았다. BOP와 통신 사건은
-승인된 표준 규칙 또는 ECMS 사건이 들어오면 같은 스키마로 추가한다.
+DCS1은 GT/ST, DCS2는 HRSG/BOP 계통으로 라우팅한다. 현재 BOP 항목은
+Modelica 실행이 직접 만드는 `HP BFP event command` 상태 1건뿐이다. 승인된 BOP
+알람 정정치는 새로 꾸며 넣지 않았으며, 이후 표준 규칙 또는 ECMS 사건이 들어오면
+같은 스키마로 추가한다.
 
 모든 현재 설정은 `PROVISIONAL_NOT_PLANT_APPROVED`다. 기존
 `config/dcs_alarm_rules.csv`의 31개 값을 그대로 이식했으며 발전소 정정치로
@@ -75,20 +77,25 @@ python3 scripts/generate_vpp_modelica_logic.py \
 
 ## 실행
 
-GitHub Actions의 `Generate VPP RAW and Modelica-owned events`에서 FWP-HP,
-FWP-IP 또는 FWP-LP를 선택한다. 로컬 Docker 실행은 다음과 같다.
+GitHub Actions의 `Generate VPP RAW and Modelica-owned events`는 실행 성공 이력이
+있는 HP BFP 물리 어댑터를 사용한다. 입력 순서는 event time, coastdown duration,
+stop time, output intervals, residual RPM이다. 로컬 Docker 실행은 다음과 같다.
 
 ```bash
-scripts/run_vpp_event_pipeline.sh FWP-HP 300 420 4200
+scripts/run_vpp_event_pipeline.sh 10 5 70 700 1000
 ```
 
 ## 현재 물리 결합 한계
 
-선택한 FWP 차단기 개방은 모터 토크·회전관성·펌프·체크밸브를 거쳐 실제
-ThermoSysPro 물리값을 변화시킨다. 그 물리값으로부터 드럼 보호와 GT/ST
-Trip/Relay/52G 상태가 Modelica 안에서 계산된다.
+현재 안정 실행 경로는 HP BFP 속도 경계를 1400 rpm에서 검증된 잔류값으로
+변화시켜 ThermoSysPro 공정값을 계산한다. 같은 Modelica Run 안에서 BFP 조작
+상태와 드럼 보호, GT/ST Trip/Relay/52G 상태를 계산한다. BFP 조작 상태는
+속도 경계 사건과 동일 시각에 생성되는 명령 상태이며, 실제 모터 차단기 전기모델의
+피드백이라고 해석하면 안 된다.
 
 다만 공통 Trip 뒤 GT 배기가스 경계와 ST 증기밸브까지 동시에 다시 연결하는
 열역학 폐루프는 현재 대형 모델 초기화가 검증되지 않아 이 초안에서는 활성화하지
-않는다. 따라서 이 버전은 `물리 FWP → 공정값 → 보호판정 → 전기 Trip 상태 →
-Event` 경로의 시연·통합본이며, 전체 발전소 보호설계나 현장 로직의 검증본이 아니다.
+않는다. 초기화에 실패한 동적 FWP 회전관성 모델은 실험 경로로만 남긴다. 따라서
+이 버전은 `BFP 물리 경계 → 공정값 → 보호판정 → Trip 상태 → Event` 경로의
+시연·통합본이며, 실제 모터 Trip, 전체 발전소 보호설계 또는 현장 로직의 검증본이
+아니다.

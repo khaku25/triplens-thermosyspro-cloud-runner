@@ -11,12 +11,15 @@ on:
       - 'config/vpp_modelica_signal_bindings.csv'
       - 'config/vpp_trip_timing_provisional.csv'
       - 'modelica/TripLens_PumpPhysics.mo'
+      - 'modelica/TripLens_CombinedCycle_VPPEvent.mo.tpl'
       - 'modelica/TripLens_VPPLogicBlocks.mo'
       - 'modelica/run_vpp_event.mos.tpl'
+      - 'modelica/run_vpp_event_validated.mos.tpl'
       - 'scripts/export_vpp_events.py'
       - 'scripts/generate_vpp_modelica_logic.py'
       - 'scripts/render_pump_fleet_model.py'
       - 'scripts/render_vpp_event_model.py'
+      - 'scripts/render_vpp_event_validated.py'
       - 'scripts/run_vpp_event_pipeline.sh'
       - 'scripts/validate_vpp_event_bundle.py'
       - 'tests/test_vpp_event_engine.py'
@@ -29,38 +32,40 @@ on:
       - 'config/vpp_modelica_signal_bindings.csv'
       - 'config/vpp_trip_timing_provisional.csv'
       - 'modelica/TripLens_PumpPhysics.mo'
+      - 'modelica/TripLens_CombinedCycle_VPPEvent.mo.tpl'
       - 'modelica/TripLens_VPPLogicBlocks.mo'
       - 'modelica/run_vpp_event.mos.tpl'
+      - 'modelica/run_vpp_event_validated.mos.tpl'
       - 'scripts/export_vpp_events.py'
       - 'scripts/generate_vpp_modelica_logic.py'
       - 'scripts/render_pump_fleet_model.py'
       - 'scripts/render_vpp_event_model.py'
+      - 'scripts/render_vpp_event_validated.py'
       - 'scripts/run_vpp_event_pipeline.sh'
       - 'scripts/validate_vpp_event_bundle.py'
       - 'tests/test_vpp_event_engine.py'
   workflow_dispatch:
     inputs:
-      pump_id:
-        description: Physical FWP breaker initiator
-        required: true
-        type: choice
-        default: FWP-HP
-        options:
-          - FWP-HP
-          - FWP-IP
-          - FWP-LP
       event_time_s:
-        description: Pump breaker opening time in seconds
+        description: HP BFP event command time in seconds
         required: true
-        default: '300'
+        default: '10'
+      coastdown_duration_s:
+        description: HP BFP speed-boundary coastdown duration in seconds
+        required: true
+        default: '5'
       stop_time_s:
         description: Simulation stop time in seconds
         required: true
-        default: '420'
+        default: '70'
       output_intervals:
         description: Native CSV interval count
         required: true
-        default: '4200'
+        default: '700'
+      final_rpm:
+        description: Numerically validated HP BFP residual speed boundary
+        required: true
+        default: '1000'
 
 permissions:
   contents: read
@@ -80,19 +85,21 @@ jobs:
       - name: Verify logic generator and transition-only serializer
         run: python3 -m unittest tests.test_vpp_event_engine -v
 
-      - name: Run VPP internal alarm and Trip logic
+      - name: Run validated BFP adapter with VPP internal alarm and Trip logic
         env:
-          PUMP_ID: ${{ inputs.pump_id || 'FWP-HP' }}
-          EVENT_TIME_S: ${{ inputs.event_time_s || '300' }}
-          STOP_TIME_S: ${{ inputs.stop_time_s || '420' }}
-          OUTPUT_INTERVALS: ${{ inputs.output_intervals || '4200' }}
+          EVENT_TIME_S: ${{ inputs.event_time_s || '10' }}
+          COASTDOWN_DURATION_S: ${{ inputs.coastdown_duration_s || '5' }}
+          STOP_TIME_S: ${{ inputs.stop_time_s || '70' }}
+          OUTPUT_INTERVALS: ${{ inputs.output_intervals || '700' }}
+          FINAL_RPM: ${{ inputs.final_rpm || '1000' }}
         run: |
           chmod +x scripts/run_vpp_event_pipeline.sh
           scripts/run_vpp_event_pipeline.sh \
-            "$PUMP_ID" \
             "$EVENT_TIME_S" \
+            "$COASTDOWN_DURATION_S" \
             "$STOP_TIME_S" \
-            "$OUTPUT_INTERVALS"
+            "$OUTPUT_INTERVALS" \
+            "$FINAL_RPM"
 
       - name: Upload monitor-ready VPP bundle
         if: always()
@@ -107,7 +114,7 @@ jobs:
             outputs/vpp-event/VPP_LOGIC_SNAPSHOT.csv
             outputs/vpp-event/vpp-event-manifest.json
             build/TripLens_VPPAlarmRuntime.mo
-            build/TripLens_CombinedCycle_AllPumps.mo
+            build/TripLens_CombinedCycle_VPPEvent.mo
             build/vpp_event.log
           if-no-files-found: warn
           retention-days: 30
