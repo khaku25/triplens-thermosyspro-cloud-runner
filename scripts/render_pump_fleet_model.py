@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """Build a TripLens model with physical motor-pump coastdown.
 
-The pinned ThermoSysPro combined-cycle example contains three centrifugal pumps
-and one fixed cooling-water mass-flow boundary. Each run retains the selected
-pump's native hydraulic curve, replaces its prescribed RPM source with a
-breaker/motor/shaft-inertia state, and inserts its discharge check valve. This
-preserves the upstream hydraulic initialization while making coastdown dynamic.
-The workflow matrix covers every available path. The cooling-water boundary
-receives equivalent breaker/inertia semantics because the upstream example has
-no CW hydraulic loop.
+The pinned ThermoSysPro combined-cycle example contains three centrifugal
+feedwater pumps. Each run retains the selected pump's native hydraulic curve,
+replaces its prescribed RPM source with a breaker/motor/shaft-inertia state, and
+inserts its discharge check valve. The upstream GT exhaust schedule is frozen
+at its 100% boundary so a pump test is not confounded by the example's built-in
+100-to-50% load ramp.
 """
 
 from __future__ import annotations
@@ -36,11 +34,7 @@ PUMP_TARGETS = {
     "NONE": 0,
     "FWP-HP": 1,
     "FWP-IP": 2,
-    # The simplified upstream plant uses PompeAlimBP as both the condenser
-    # extraction/LP feed path. Keep both plant names as explicit aliases.
     "FWP-LP": 3,
-    "COND-PUMP": 3,
-    "CW-PUMP": 4,
 }
 
 PHYSICAL_COMPONENT = {
@@ -48,8 +42,6 @@ PHYSICAL_COMPONENT = {
     "FWP-HP": "PompeAlimHP",
     "FWP-IP": "PompeAlimMP",
     "FWP-LP": "PompeAlimBP",
-    "COND-PUMP": "PompeAlimBP",
-    "CW-PUMP": "SourceCaloporteur+cwPumpDrive",
 }
 
 
@@ -122,10 +114,25 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
             f"{source_name} table package path",
         )
 
+    # CombinedCycle_TripTAC carries an unrelated 100-to-50% exhaust ramp.
+    # Freeze both GT exhaust inputs so the selected pump is the only initiator.
+    text = replace_once(
+        text,
+        "Table=[0,606.94; 10,606.94; 600,\n        50; 650,50]",
+        "Table=[0,606.94; 10,606.94; 600,\n        606.94; 650,606.94]",
+        "normal GT exhaust mass-flow boundary",
+    )
+    text = replace_once(
+        text,
+        "Table=[0,893.75; 10,893.75; 600,423; 650,423]",
+        "Table=[0,893.75; 10,893.75; 600,893.75; 650,893.75]",
+        "normal GT exhaust temperature boundary",
+    )
+
     header = f'''model {MODEL_NAME}
   "Combined cycle with breaker, dynamic shaft inertia and check valves"
   parameter Integer tripTarget = {trip_target}
-    "0:none, 1:HP FWP, 2:IP FWP, 3:LP/condensate path, 4:CW";
+    "0:none, 1:HP FWP, 2:IP FWP, 3:LP FWP";
   parameter Real pumpTripTime(unit="s") = {trip_time:.12g};'''
     text = replace_once(
         text,
@@ -221,101 +228,8 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
             f"  connect(checkValve{axis}.C2, {selected['downstream']});\n",
             f"{axis} discharge check valve",
         )
-        if axis == "HP":
-            # This single pump represents total HP-feedwater-path loss in the
-            # simplified plant. Continue the real protection sequence by
-            # reducing GT/HRSG exhaust heat instead of heating stagnant water.
-            declarations.append("""
-  TripLens_PumpPhysics.EmergencyExhaustGasRamp hpFeedwaterTripRundown;
-""")
-            equations.append("""
-  connect(Debit.y, hpFeedwaterTripRundown.normalMassFlow);
-  connect(Temperature.y, hpFeedwaterTripRundown.normalTemperature);
-  hpFeedwaterTripRundown.trip.signal = not breakerHPClosed;
-  connect(hpFeedwaterTripRundown.effectiveMassFlow,
-    SourceFumees.IMassFlow);
-  connect(hpFeedwaterTripRundown.effectiveTemperature,
-    SourceFumees.ITemperature);
-""")
-            text = replace_statement(
-                text,
-                "  connect(Debit.y,SourceFumees. IMassFlow)",
-                "",
-                "original flue-gas mass-flow boundary",
-            )
-            text = replace_statement(
-                text,
-                "  connect(Temperature.y,SourceFumees. ITemperature)",
-                "",
-                "original flue-gas temperature boundary",
-            )
         if f"{name}.rpm_or_mpower" in text:
             raise ValueError(f"legacy prescribed-speed connection remains for {name}")
-    elif trip_target == 4:
-        text = replace_once(
-            text,
-            "  ThermoSysPro.WaterSteam.HeatExchangers.SimpleDynamicCondenser Condenseur(",
-            "  TripLens_RegularizedCondenser Condenseur(\n"
-            "    regularizationStartTime=pumpTripTime,",
-            "regularized condenser model",
-        )
-        text = replace_statement(
-            text,
-            "  connect(ConstantVanneTurbineHP.y, vanne_entree_TurbineHP.Ouv)",
-            "",
-            "HP turbine admission control",
-        )
-        text = replace_statement(
-            text,
-            "  connect(ConstantVanneTurbineMP.y, vanne_entree_TurbineMP.Ouv)",
-            "",
-            "IP turbine admission control",
-        )
-        declarations.append('''
-  // Condenseur.P is the physical ST-backpressure source.
-  TripLens_PumpPhysics.BackpressureTurbineTrip stBackpressureProtection;
-  TripLens_PumpPhysics.FastSteamTripValve stTripValveHP;
-  TripLens_PumpPhysics.FastSteamTripValve stTripValveMP;
-  Boolean stBackpressureHigh;
-  Boolean stBackpressureTripPickup;
-  Boolean stTripLatched;
-  Boolean st52GClosed;
-  Modelica.SIunits.Power stGridElectricalPower;
-''')
-        equations.append('''
-  stBackpressureProtection.armed.signal = time >= pumpTripTime;
-  stBackpressureProtection.condenserPressure.signal = Condenseur.P;
-  stBackpressureHigh = stBackpressureProtection.highAlarm.signal;
-  stBackpressureTripPickup = stBackpressureProtection.tripPickup.signal;
-  stTripLatched = stBackpressureProtection.tripLatched.signal;
-  st52GClosed = stBackpressureProtection.generatorBreakerClosed.signal;
-
-  // A protection trip disconnects grid power immediately. Alternateur.Welec
-  // remains the internal pre-breaker electrical quantity during coastdown.
-  stGridElectricalPower = if st52GClosed then Alternateur.Welec else 0;
-  // The generator breaker opens algebraically at the protection trip.
-  // Steam stop valves retain their finite actuator stroke, avoiding an
-  // unphysical zero-flow discontinuity inside the Stodola turbine equations.
-  connect(ConstantVanneTurbineHP.y, stTripValveHP.normalOpening);
-  connect(ConstantVanneTurbineMP.y, stTripValveMP.normalOpening);
-  stTripValveHP.trip.signal = stTripLatched;
-  stTripValveMP.trip.signal = stTripLatched;
-  connect(stTripValveHP.effectiveOpening, vanne_entree_TurbineHP.Ouv);
-  connect(stTripValveMP.effectiveOpening, vanne_entree_TurbineMP.Ouv);
-''')
-        declarations.append('''
-  Boolean breakerCWClosed;
-  TripLens_PumpPhysics.BoundaryMotorPump cwPumpDrive(
-    nominalSpeedRpm=600,
-    nominalMassFlow=29804.5,
-    coastdownTime=2,
-    valveTimeConstant=0.1);
-''')
-        equations.append('''
-  breakerCWClosed = not (time >= pumpTripTime);
-  cwPumpDrive.breakerClosed.signal = breakerCWClosed;
-  connect(cwPumpDrive.massFlow, SourceCaloporteur.IMassFlow);
-''')
     elif trip_target != 0:
         raise ValueError(f"unsupported trip target: {trip_target}")
 
