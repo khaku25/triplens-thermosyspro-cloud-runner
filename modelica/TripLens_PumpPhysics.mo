@@ -38,6 +38,53 @@ package TripLens_PumpPhysics
     shaft.Ctr = motorTorque;
   end BreakerTorqueDrive;
 
+  model SpringLoadedIdealCheckValve
+    "Ideal non-return valve with a spring-equivalent minimum closing flow"
+    parameter Modelica.SIunits.MassFlowRate closeFlow = 1
+      "Forward flow below which the spring closes the valve";
+    parameter Modelica.SIunits.MassFlowRate closedFlow = 0.1
+      "Small positive numerical leakage while closed";
+    parameter ThermoSysPro.Units.DifferentialPressure reopenPressure = 1e5
+      "Upstream pressure needed to reopen a closed valve";
+
+    Boolean ouvert(start=true, fixed=true) "Valve state";
+    Boolean closeRequest;
+    Boolean reopenRequest;
+    Modelica.SIunits.MassFlowRate Q "Mass flow rate";
+    ThermoSysPro.Units.DifferentialPressure deltaP
+      "Pressure difference between inlet and outlet";
+    ThermoSysPro.WaterSteam.Connectors.FluidInlet C1;
+    ThermoSysPro.WaterSteam.Connectors.FluidOutlet C2;
+
+  equation
+    assert(closedFlow >= 0 and closedFlow < closeFlow,
+      "SpringLoadedIdealCheckValve requires 0 <= closedFlow < closeFlow");
+
+    C1.Q = C2.Q;
+    C1.h = C2.h;
+    Q = C1.Q;
+    deltaP = C1.P - C2.P;
+
+    // Preserve ThermoSysPro's directional enthalpy transport without adding
+    // a second IF97 property state to the large plant initialization system.
+    0 = if Q > 0 then C1.h - C1.h_vol else C2.h - C2.h_vol;
+
+    if ouvert then
+      deltaP = 0;
+    else
+      Q = closedFlow;
+    end if;
+
+    closeRequest = not (Q > closeFlow);
+    reopenRequest = deltaP > reopenPressure;
+
+    when closeRequest then
+      ouvert = false;
+    elsewhen reopenRequest then
+      ouvert = true;
+    end when;
+  end SpringLoadedIdealCheckValve;
+
   model BoundaryMotorPump
     "Motor-pump coastdown for an existing mass-flow boundary such as CW"
     parameter Real nominalSpeedRpm(unit="rev/min") = 600;

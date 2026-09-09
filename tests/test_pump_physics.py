@@ -53,7 +53,7 @@ class PumpPhysicsTests(unittest.TestCase):
                 self.assertIn(f"DynamicCentrifugalPump {component}", model)
                 self.assertNotIn(f"{component}.rpm_or_mpower", model)
                 self.assertIn(f"BreakerTorqueDrive drive{axis}", model)
-                self.assertIn(f"IdealCheckValve checkValve{axis}", model)
+                self.assertIn(f"SpringLoadedIdealCheckValve checkValve{axis}", model)
                 self.assertIn(f"checkValve{axis}.C1", model)
                 self.assertIn(f"checkValve{axis}.C2", model)
                 self.assertIn("VRot0=1400", model)
