@@ -221,6 +221,34 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
             f"  connect(checkValve{axis}.C2, {selected['downstream']});\n",
             f"{axis} discharge check valve",
         )
+        if axis == "HP":
+            # This single pump represents total HP-feedwater-path loss in the
+            # simplified plant. Continue the real protection sequence by
+            # reducing GT/HRSG exhaust heat instead of heating stagnant water.
+            declarations.append("""
+  TripLens_PumpPhysics.EmergencyExhaustGasRamp hpFeedwaterTripRundown;
+""")
+            equations.append("""
+  connect(Debit.y, hpFeedwaterTripRundown.normalMassFlow);
+  connect(Temperature.y, hpFeedwaterTripRundown.normalTemperature);
+  hpFeedwaterTripRundown.trip.signal = not breakerHPClosed;
+  connect(hpFeedwaterTripRundown.effectiveMassFlow,
+    SourceFumees.IMassFlow);
+  connect(hpFeedwaterTripRundown.effectiveTemperature,
+    SourceFumees.ITemperature);
+""")
+            text = replace_statement(
+                text,
+                "  connect(Debit.y,SourceFumees. IMassFlow)",
+                "",
+                "original flue-gas mass-flow boundary",
+            )
+            text = replace_statement(
+                text,
+                "  connect(Temperature.y,SourceFumees. ITemperature)",
+                "",
+                "original flue-gas temperature boundary",
+            )
         if f"{name}.rpm_or_mpower" in text:
             raise ValueError(f"legacy prescribed-speed connection remains for {name}")
     elif trip_target == 4:
