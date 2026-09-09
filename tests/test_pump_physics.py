@@ -196,7 +196,7 @@ class PumpPhysicsTests(unittest.TestCase):
             hp_model,
         )
         self.assertIn(
-            "EmergencyExhaustGasRamp feedwaterTripRundown",ันวาคม
+            "EmergencyExhaustGasRamp feedwaterTripRundown",
             hp_model,
         )
         self.assertIn(
