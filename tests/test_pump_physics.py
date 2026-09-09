@@ -25,8 +25,11 @@ model CombinedCycle_TripTAC
     a3=400);
   Control.Drum_LevelControl regulation_Niveau_BP;
   FlueGases.BoundaryConditions.SourceQ SourceFumees;
-  InstrumentationAndControl.Blocks.Tables.Table1DTemps Debit;
-  InstrumentationAndControl.Blocks.Tables.Table1DTemps Temperature;
+  InstrumentationAndControl.Blocks.Tables.Table1DTemps Debit(
+    Table=[0,606.94; 10,606.94; 600,
+        50; 650,50]);
+  InstrumentationAndControl.Blocks.Tables.Table1DTemps Temperature(
+    Table=[0,893.75; 10,893.75; 600,423; 650,423]);
   ThermoSysPro.WaterSteam.HeatExchangers.SimpleDynamicCondenser Condenseur(
     V=1);
   ThermoSysPro.WaterSteam.Machines.Generator Alternateur;
@@ -89,23 +92,6 @@ class PumpPhysicsTests(unittest.TestCase):
                 self.assertIn(f"tripTarget = {target}", model)
                 self.assertIn("pumpTripTime(unit=\"s\") = 300", model)
 
-        cw_model = transform(MINIMAL_UPSTREAM, trip_target=4, trip_time=300)
-        self.assertNotIn("DynamicCentrifugalPump PompeAlim", cw_model)
-        self.assertEqual(cw_model.count("StaticCentrifugalPump PompeAlim"), 3)
-        self.assertIn(
-            "connect(cwPumpDrive.massFlow, SourceCaloporteur.IMassFlow)",
-            cw_model,
-        )
-        self.assertNotIn("  Control.Drum_LevelControl", cw_model)
-        self.assertIn(
-            "ThermoSysPro.Examples.CombinedCyclePowerPlant.Control.Drum_LevelControl",
-            cw_model,
-        )
-        self.assertIn(
-            "ThermoSysPro.FlueGases.BoundaryConditions.SourceQ SourceFumees",
-            cw_model,
-        )
-
     def test_registry_covers_active_ecms_pumps_and_marks_non_ecms_paths(self) -> None:
         with (ROOT / "config" / "ecms_a_equipment.csv").open(
             "r", encoding="utf-8", newline=""
@@ -121,7 +107,13 @@ class PumpPhysicsTests(unittest.TestCase):
         # documents shared/boundary paths and explicitly rejected fictitious
         # motor-pump interpretations.
         self.assertLessEqual(equipment, set(registry))
-        self.assertEqual(PUMP_TARGETS["FWP-LP"], PUMP_TARGETS["COND-PUMP"])
+        self.assertEqual(
+            set(PUMP_TARGETS), {"NONE", "FWP-HP", "FWP-IP", "FWP-LP"}
+        )
+        self.assertNotIn("COND-PUMP", equipment)
+        self.assertNotIn("CW-PUMP", equipment)
+        self.assertNotIn("COND-PUMP", registry)
+        self.assertNotIn("CW-PUMP", registry)
         for item in ("RECIRC-HP", "RECIRC-IP", "RECIRC-LP"):
             self.assertEqual(
                 registry[item]["implementation_status"],
@@ -167,12 +159,12 @@ class PumpPhysicsTests(unittest.TestCase):
             target = Path(directory)
             raw = target / "partial.csv"
             raw.write_text(
-                "time,breakerCWClosed,cwPumpDrive.motorTorque,"
-                "cwPumpDrive.speedRpm,cwPumpDrive.checkValvePosition,"
-                "cwPumpDrive.massFlow.signal,Condenseur.P\n"
-                "0,true,1,600,1,100,100000\n"
-                "300,false,0,500,1,80,99999\n"
-                "304,false,0,400,1,60,99998\n",
+                "time,breakerHPClosed,driveHP.motorTorque,"
+                "driveHP.speedRpm,checkValveHP.ouvert,PompeAlimHP.Q,"
+                "BallonHP.yLevel.signal,BallonHP.P\n"
+                "0,true,100,1400,true,100,1.05,12000000\n"
+                "300,false,0,1200,false,20,1.00,11000000\n"
+                "304,false,0,1000,false,1,0.95,10000000\n",
                 encoding="utf-8",
             )
             completed = subprocess.run(
@@ -180,7 +172,7 @@ class PumpPhysicsTests(unittest.TestCase):
                     sys.executable,
                     str(ROOT / "scripts" / "validate_pump_physics.py"),
                     "--input", str(raw),
-                    "--pump-id", "CW-PUMP",
+                    "--pump-id", "FWP-HP",
                     "--trip-time", "300",
                     "--stop-time", "420",
                 ],
@@ -191,110 +183,26 @@ class PumpPhysicsTests(unittest.TestCase):
             )
             self.assertNotEqual(completed.returncode, 0)
             self.assertIn("RAW CSV stopped early", completed.stderr)
-            self.assertIn("METRICS CW-PUMP: final_time=304", completed.stdout)
+            self.assertIn("METRICS FWP-HP: final_time=304", completed.stdout)
 
-    def test_renderer_wires_regularized_condenser_and_real_st_breaker_trip(self) -> None:
-        model = transform(MINIMAL_UPSTREAM, trip_target=4, trip_time=300)
-        self.assertIn("TripLens_RegularizedCondenser Condenseur(", model)
-        self.assertIn("BackpressureTurbineTrip stBackpressureProtection", model)
-        self.assertIn("stGridElectricalPower = if st52GClosed then Alternateur.Welec else 0", model)
-        self.assertIn("FastSteamTripValve stTripValveHP", model)
-        self.assertIn("FastSteamTripValve stTripValveMP", model)
-        self.assertIn(
-            "connect(stTripValveHP.effectiveOpening, vanne_entree_TurbineHP.Ouv)",
-            model,
-        )
-        self.assertIn(
-            "connect(stTripValveMP.effectiveOpening, vanne_entree_TurbineMP.Ouv)",
-            model,
-        )
-        self.assertNotIn(
-            "vanne_entree_TurbineHP.Ouv.signal = if stTripLatched then 0", model
-        )
-        self.assertNotIn(
-            "connect(ConstantVanneTurbineHP.y, vanne_entree_TurbineHP.Ouv)",
-            model,
-        )
-        self.assertNotIn(
-            "connect(ConstantVanneTurbineMP.y, vanne_entree_TurbineMP.Ouv)",
-            model,
-        )
-
+    def test_renderer_freezes_gt_boundary_and_keeps_pump_as_only_initiator(self) -> None:
         hp_model = transform(MINIMAL_UPSTREAM, trip_target=1, trip_time=300)
         self.assertIn(
-            "ThermoSysPro.WaterSteam.HeatExchangers.SimpleDynamicCondenser Condenseur(",
+            "Table=[0,606.94; 10,606.94; 600,\n        606.94; 650,606.94]",
             hp_model,
         )
-        self.assertNotIn("TripLens_RegularizedCondenser Condenseur(", hp_model)
-        self.assertNotIn("BackpressureTurbineTrip stBackpressureProtection", hp_model)
         self.assertIn(
-            "EmergencyExhaustGasRamp hpFeedwaterTripRundown", hp_model
-        )
-        self.assertIn(
-            "hpFeedwaterTripRundown.trip.signal = not breakerHPClosed", hp_model
-        )
-        self.assertIn(
-            "connect(hpFeedwaterTripRundown.effectiveMassFlow,",
+            "Table=[0,893.75; 10,893.75; 600,893.75; 650,893.75]",
             hp_model,
         )
-        self.assertNotIn(
-            "connect(Debit.y,SourceFumees. IMassFlow)", hp_model
-        )
-        self.assertNotIn(
+        self.assertIn("connect(Debit.y,SourceFumees. IMassFlow)", hp_model)
+        self.assertIn(
             "connect(Temperature.y,SourceFumees. ITemperature)", hp_model
         )
+        self.assertNotIn("EmergencyExhaustGasRamp", hp_model)
+        self.assertNotIn("cwPumpDrive", hp_model)
+        self.assertNotIn("TripLens_RegularizedCondenser", hp_model)
 
-    def test_cw_validator_requires_real_st_breaker_trip(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            target = Path(directory)
-            raw = target / "cw-no-st-trip.csv"
-            raw.write_text(
-                "time,breakerCWClosed,cwPumpDrive.motorTorque,"
-                "cwPumpDrive.speedRpm,cwPumpDrive.checkValvePosition,"
-                "cwPumpDrive.massFlow.signal,Condenseur.P,"
-                "stBackpressureTripPickup,stTripLatched,st52GClosed,"
-                "stGridElectricalPower,Alternateur.Welec,"
-                "stBackpressureProtection.persistenceTimer,"
-                "stBackpressureProtection.tripSetpoint\n"
-                "0,true,1,600,1,100,10000,false,false,true,"
-                "140000000,140000000,0,11500\n"
-                "299.9,true,1,600,1,100,10000,false,false,true,"
-                "140000000,140000000,0,11500\n"
-                "300,false,0,500,0.5,50,11000,false,false,true,"
-                "139000000,139000000,0,11500\n"
-                "302,false,0,250,0.05,10,12000,true,false,true,"
-                "138000000,138000000,2,11500\n",
-                encoding="utf-8",
-            )
-            completed = subprocess.run(
-                [
-                    sys.executable,
-                    str(ROOT / "scripts" / "validate_pump_physics.py"),
-                    "--input", str(raw),
-                    "--pump-id", "CW-PUMP",
-                    "--trip-time", "300",
-                    "--stop-time", "302",
-                ],
-                cwd=ROOT,
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            self.assertNotEqual(completed.returncode, 0)
-            self.assertIn(
-                "ST trip did not latch after persistent backpressure",
-                completed.stderr,
-            )
-
-    def test_regularized_condenser_removes_zero_flow_heat_singularity(self) -> None:
-        source = (ROOT / "modelica" / "TripLens_RegularizedCondenser.mo").read_text(
-            encoding="utf-8"
-        )
-        self.assertIn("coolantFlowRegularization", source)
-        self.assertIn("coolantHeatCapacity", source)
-        self.assertIn("heatBalanceRegularizationError", source)
-        self.assertNotIn("Wout = -Cv.Q*(Cv.h - hl);", source)
-        self.assertNotIn("Wout = -Cee.Q*(Cse.h - Cee.h);", source)
 
 
 if __name__ == "__main__":
