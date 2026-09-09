@@ -228,35 +228,8 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
             f"  connect(checkValve{axis}.C2, {selected['downstream']});\n",
             f"{axis} discharge check valve",
         )
-        # In this single-train model, loss of any selected feedwater path
-        # is a total feedwater-loss event. Run down GT/HRSG heat input instead
-        # of continuing to heat stagnant water beyond the IF97 domain.
-        declarations.append("""
-  Modelica.SIunits.MassFlowRate feedwaterTripExhaustMassFlow;
-  Modelica.SIunits.Temperature feedwaterTripExhaustTemperature;
-""")
-        equations.append(f"""
-  feedwaterTripExhaustMassFlow = if breaker{axis}Closed then Debit.y.signal
-    else 50 + (Debit.y.signal - 50)*
-      exp(-(time - pumpTripTime)/5);
-  feedwaterTripExhaustTemperature = if breaker{axis}Closed then
-    Temperature.y.signal else 423 + (Temperature.y.signal - 423)*
-      exp(-(time - pumpTripTime)/5);
-  SourceFumees.IMassFlow.signal = feedwaterTripExhaustMassFlow;
-  SourceFumees.ITemperature.signal = feedwaterTripExhaustTemperature;
-""")
-        text = replace_statement(
-            text,
-            "  connect(Debit.y,SourceFumees. IMassFlow)",
-            "",
-            "original flue-gas mass-flow boundary",
-        )
-        text = replace_statement(
-            text,
-            "  connect(Temperature.y,SourceFumees. ITemperature)",
-            "",
-            "original flue-gas temperature boundary",
-        )
+        # Protection/actuation is added from drum state below; the pump
+        # breaker must never bypass the common trip matrix.
         if f"{name}.rpm_or_mpower" in text:
             raise ValueError(f"legacy prescribed-speed connection remains for {name}")
     elif trip_target != 0:
