@@ -158,8 +158,10 @@ class RawOnlyActionTests(unittest.TestCase):
         self.assertNotIn("nlssMaxDensity=0", mos)
         self.assertNotIn("nls=hybrid", mos)
         self.assertNotIn("iim=none", mos)
-        self.assertIn("LOG_NLS", mos)
+        self.assertNotIn("LOG_INIT", mos)
+        self.assertNotIn("LOG_NLS", mos)
         self.assertNotIn("LOG_NLS_V", mos)
+        self.assertIn('simflags="-noEventEmit"', mos)
         self.assertIn("CondenserPressure", mos)
 
     def test_one_ms_dynamic_bypass_raw_meets_stroke_contract(self) -> None:
