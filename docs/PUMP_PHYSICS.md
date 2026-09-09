@@ -54,3 +54,28 @@ breaker opening, coastdown, check-valve closure, and the first downstream
 process response without extrapolating a full-plant shutdown beyond the pinned
 example's valid transient envelope. DASSL still takes smaller internal
 integration steps around the transient.
+
+
+## CW low-flow condenser and ST backpressure protection
+
+The cooling-water trip path replaces the upstream condenser's two algebraic
+equalities that force all steam latent heat through the coolant at any flow.
+The TripLens condenser limits heat removal continuously by actual cooling-water
+thermal capacity. At zero actual flow, removable heat tends to zero without
+creating a fictitious bypass flow or an unbounded outlet enthalpy. The explicit
+`heatBalanceRegularizationError` signal exposes the small numerical closure
+inside the regularization band.
+
+`Condenseur.P` is the physical backpressure source. While protection is
+unarmed, a slow tracker establishes the pre-event reference. After the pump
+event it freezes that reference, raises High at 110%, and picks up HH at 115%.
+A two-second persistent HH condition latches the ST trip. These ratios are
+demonstration settings pending OEM/plant protection values.
+
+The latched protection opens the modeled ST generator breaker immediately:
+
+`stGridElectricalPower = st52GClosed ? Alternateur.Welec : 0`
+
+At the same time, the HP and IP turbine admission valves close. Grid export
+therefore becomes zero at breaker opening, while the internal turbine-generator
+mechanical quantities remain available to show physical coastdown.

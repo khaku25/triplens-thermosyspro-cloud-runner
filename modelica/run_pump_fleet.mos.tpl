@@ -5,6 +5,8 @@ loadFile("/workspace/vendor/ThermoSysPro/ThermoSysPro/package.mo");
 getErrorString();
 loadFile("/workspace/modelica/TripLens_PumpPhysics.mo");
 getErrorString();
+loadFile("/workspace/modelica/TripLens_RegularizedCondenser.mo");
+getErrorString();
 loadFile("/workspace/build/TripLens_CombinedCycle_AllPumps.mo");
 getErrorString();
 cd("/workspace/build");
@@ -20,5 +22,5 @@ simulate(
   // the native plant's proven default hydraulic initialization path.
   simflags="-noEventEmit",
   fileNamePrefix="@OUTPUT_PREFIX@",
-  variableFilter="^(time|breaker(HP|IP|LP|CW)Closed|drive(HP|IP|LP)\\.(speedRpm|motorTorque|hydraulicTorque|frictionTorque|speedError)|cwPumpDrive\\.(speedRpm|speedRatio|motorTorque|hydraulicTorque|checkValvePosition|massFlow\\.signal)|PompeAlim(HP|MP|BP)\\.(Vr|Q|Qv|Wm|Wh|R|deltaP)|checkValve(HP|IP|LP)\\.(ouvert|opening|valveTarget|effectiveResistance|Q|deltaP)|CapteurDebitEau(HP|MP|BP|Condenseur)\\.(Q|Measure\\.signal)|Alternateur\\.Welec|Condenseur\\.(P|yNiveau\\.signal)|Ballon(HP|MP|BP)\\.(yLevel\\.signal|zl|P)|Turbine(HP|MP|BP)\\.Q|vanne_alimentation(HP|MP|BP)\\.Ouv\\.signal|Debit\\.y\\.signal|Temperature\\.y\\.signal)$");
+  variableFilter="^(time|breaker(HP|IP|LP|CW)Closed|drive(HP|IP|LP)\\.(speedRpm|motorTorque|hydraulicTorque|frictionTorque|speedError)|cwPumpDrive\\.(speedRpm|speedRatio|motorTorque|hydraulicTorque|checkValvePosition|massFlow\\.signal)|PompeAlim(HP|MP|BP)\\.(Vr|Q|Qv|Wm|Wh|R|deltaP)|checkValve(HP|IP|LP)\\.(ouvert|opening|valveTarget|effectiveResistance|Q|deltaP)|CapteurDebitEau(HP|MP|BP|Condenseur)\\.(Q|Measure\\.signal)|Alternateur\\.Welec|st(BackpressureHigh|BackpressureTripPickup|TripLatched|52GClosed|GridElectricalPower)|stBackpressureProtection\\.(referencePressure|highSetpoint|tripSetpoint|persistenceTimer)|Condenseur\\.(P|yNiveau\\.signal|Wout|steamHeatDemand|coolantHeatCapacity|effectiveHeatRemoval|coolantEnergyTransport|heatBalanceRegularizationError)|Ballon(HP|MP|BP)\\.(yLevel\\.signal|zl|P)|Turbine(HP|MP|BP)\\.Q|vanne_alimentation(HP|MP|BP)\\.Ouv\\.signal|Debit\\.y\\.signal|Temperature\\.y\\.signal)$");
 getErrorString();

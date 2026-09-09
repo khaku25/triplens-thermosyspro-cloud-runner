@@ -325,6 +325,59 @@
         "cwPumpDrive.checkValvePosition",
         "cw_pump_check_valve_position"
       ]
+    },
+    "condenser_pressure_pa": {
+      "required": false,
+      "unit": "Pa",
+      "aliases": [
+        "Condenseur.P",
+        "TSP.COND.PRESS",
+        "condenser_pressure_pa"
+      ]
+    },
+    "st_backpressure_high": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "stBackpressureHigh",
+        "st_backpressure_high"
+      ]
+    },
+    "st_backpressure_trip_pickup": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "stBackpressureTripPickup",
+        "st_backpressure_trip_pickup"
+      ]
+    },
+    "st_trip_latched": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "stTripLatched",
+        "st_trip_latched"
+      ]
+    },
+    "st_52g_closed": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "st52GClosed",
+        "st_52g_closed"
+      ]
+    },
+    "st_grid_electrical_power_w": {
+      "required": false,
+      "unit": "W",
+      "aliases": [
+        "stGridElectricalPower",
+        "st_grid_electrical_power_w"
+      ]
     }
   }
 }

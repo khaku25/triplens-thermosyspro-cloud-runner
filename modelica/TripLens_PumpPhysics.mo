@@ -154,4 +154,58 @@ package TripLens_PumpPhysics
       *max(0, min(1, checkValvePosition));
   end BoundaryMotorPump;
 
+  model BackpressureTurbineTrip
+    "Condenser-pressure protection with latched turbine and generator trip"
+    parameter Modelica.SIunits.AbsolutePressure nominalPressurePa=10000;
+    parameter Real highRatio=1.10;
+    parameter Real tripRatio=1.15;
+    parameter Real tripDelay(unit="s")=2;
+    parameter Real referenceTrackingTime(unit="s")=30;
+    parameter Real timerResetTime(unit="s")=0.1;
+
+    ThermoSysPro.InstrumentationAndControl.Connectors.InputReal
+      condenserPressure;
+    ThermoSysPro.InstrumentationAndControl.Connectors.InputLogical armed;
+    ThermoSysPro.InstrumentationAndControl.Connectors.OutputLogical
+      highAlarm;
+    ThermoSysPro.InstrumentationAndControl.Connectors.OutputLogical
+      tripPickup;
+    ThermoSysPro.InstrumentationAndControl.Connectors.OutputLogical
+      tripLatched;
+    ThermoSysPro.InstrumentationAndControl.Connectors.OutputLogical
+      generatorBreakerClosed;
+
+    Modelica.SIunits.AbsolutePressure referencePressure(
+      start=nominalPressurePa, fixed=true);
+    Modelica.SIunits.AbsolutePressure highSetpoint;
+    Modelica.SIunits.AbsolutePressure tripSetpoint;
+    Real persistenceTimer(unit="s", start=0, fixed=true);
+    discrete Boolean latched(start=false, fixed=true);
+
+  equation
+    assert(highRatio > 1 and tripRatio > highRatio and tripDelay > 0,
+      "Backpressure trip requires 1 < highRatio < tripRatio and delay > 0");
+
+    der(referencePressure) = if armed.signal then 0 else
+      (max(condenserPressure.signal, 1000) - referencePressure)/
+      referenceTrackingTime;
+    highSetpoint = highRatio*referencePressure;
+    tripSetpoint = tripRatio*referencePressure;
+    highAlarm.signal = armed.signal and condenserPressure.signal >=
+      highSetpoint;
+    tripPickup.signal = armed.signal and condenserPressure.signal >=
+      tripSetpoint;
+
+    der(persistenceTimer) = if tripPickup.signal and not latched then 1
+      else if not tripPickup.signal then -persistenceTimer/timerResetTime
+      else 0;
+
+    when persistenceTimer >= tripDelay then
+      latched = true;
+    end when;
+
+    tripLatched.signal = latched;
+    generatorBreakerClosed.signal = not latched;
+  end BackpressureTurbineTrip;
+
 end TripLens_PumpPhysics;

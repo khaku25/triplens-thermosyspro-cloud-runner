@@ -174,6 +174,32 @@ class PumpPhysicsTests(unittest.TestCase):
             self.assertIn("RAW CSV stopped early", completed.stderr)
             self.assertIn("METRICS CW-PUMP: final_time=304", completed.stdout)
 
+    def test_renderer_wires_regularized_condenser_and_real_st_breaker_trip(self) -> None:
+        model = transform(MINIMAL_UPSTREAM, trip_target=4, trip_time=300)
+        self.assertIn("TripLens_RegularizedCondenser Condenseur(", model)
+        self.assertIn("BackpressureTurbineTrip stBackpressureProtection", model)
+        self.assertIn("stGridElectricalPower = if st52GClosed then Alternateur.Welec else 0", model)
+        self.assertIn("vanne_entree_TurbineHP.Ouv.signal = if stTripLatched then 0", model)
+        self.assertIn("vanne_entree_TurbineMP.Ouv.signal = if stTripLatched then 0", model)
+        self.assertNotIn(
+            "connect(ConstantVanneTurbineHP.y, vanne_entree_TurbineHP.Ouv)",
+            model,
+        )
+        self.assertNotIn(
+            "connect(ConstantVanneTurbineMP.y, vanne_entree_TurbineMP.Ouv)",
+            model,
+        )
+
+    def test_regularized_condenser_removes_zero_flow_heat_singularity(self) -> None:
+        source = (ROOT / "modelica" / "TripLens_RegularizedCondenser.mo").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("coolantFlowRegularization", source)
+        self.assertIn("coolantHeatCapacity", source)
+        self.assertIn("heatBalanceRegularizationError", source)
+        self.assertNotIn("Wout = -Cv.Q*(Cv.h - hl);", source)
+        self.assertNotIn("Wout = -Cee.Q*(Cse.h - Cee.h);", source)
+
 
 if __name__ == "__main__":
     unittest.main()
