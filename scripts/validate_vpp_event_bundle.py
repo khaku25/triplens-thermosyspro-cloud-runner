@@ -29,7 +29,7 @@ def validate_bundle(bundle_dir: Path, contract_path: Path) -> dict[str, object]:
     contract = load_contract(contract_path)
     public_dir = bundle_dir / "public"
     internal_dir = bundle_dir / "internal"
-    event_path = public_dir / "EVENT.csv"
+    event_paths = [public_dir / "VPP_EVENT.csv", public_dir / "ECMS_EVENT.csv"]
     manifest_path = internal_dir / "event-manifest.json"
     if not public_dir.is_dir():
         raise ValueError("VPP bundle is missing public/")
@@ -43,28 +43,29 @@ def validate_bundle(bundle_dir: Path, contract_path: Path) -> dict[str, object]:
     expected_public = contract["boundary"]["public_directory_exact_files"]
     if public_files != expected_public:
         raise ValueError(
-            "public/ must contain exactly EVENT.csv; found: "
+            "public/ must contain exactly VPP_EVENT.csv and ECMS_EVENT.csv; found: "
             + (", ".join(public_files) if public_files else "nothing")
         )
     if not manifest_path.is_file():
         raise ValueError("internal/event-manifest.json is missing")
 
-    fields, rows = read_csv(event_path)
-    validate_events(fields, rows, contract)
+    all_rows = []
+    for event_path in event_paths:
+        fields, rows = read_csv(event_path)
+        validate_events(fields, rows, contract)
+        all_rows.extend(rows)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("schema_version") != contract["schema_version"]:
         raise ValueError("internal manifest schema version mismatch")
-    output = manifest.get("public_output", {})
-    if output.get("file") != "public/EVENT.csv":
-        raise ValueError("internal manifest public output path mismatch")
-    if output.get("sha256") != sha256(event_path):
-        raise ValueError("internal manifest EVENT.csv hash mismatch")
-    if output.get("row_count") != len(rows):
-        raise ValueError("internal manifest EVENT.csv row count mismatch")
+    outputs = {item.get("file"): item for item in manifest.get("public_outputs", [])}
+    for event_path in event_paths:
+        key = f"public/{event_path.name}"
+        if outputs.get(key, {}).get("sha256") != sha256(event_path):
+            raise ValueError(f"internal manifest {event_path.name} hash mismatch")
     boundary = manifest.get("consumer_boundary", {})
     if boundary != {
-        "alarm_console_inputs": ["EVENT.csv"],
-        "triplens_ai_inputs": ["EVENT.csv"],
+        "alarm_console_inputs": ["VPP_EVENT.csv", "ECMS_EVENT.csv"],
+        "triplens_ai_inputs": ["DCS1", "DCS2", "ECMS"],
         "raw_published_to_alarm_console": False,
         "raw_published_to_triplens_ai": False,
     }:
@@ -75,8 +76,8 @@ def validate_bundle(bundle_dir: Path, contract_path: Path) -> dict[str, object]:
         if source.get("published_to_consumers") is not False:
             raise ValueError("an internal source is marked for consumer publication")
     return {
-        "event_rows": len(rows),
-        "systems": output.get("system_counts", {}),
+        "event_rows": len(all_rows),
+        "systems": manifest.get("system_counts", {}),
         "public_files": public_files,
         "raw_published_to_consumers": False,
     }
