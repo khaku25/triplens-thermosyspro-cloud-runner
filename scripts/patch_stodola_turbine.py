@@ -10,6 +10,8 @@ from pathlib import Path
 MARKER = "TRIPLENS_STODOLA_PRESSURE_CROSSOVER_V1"
 PARAMETER_ANCHOR = "protected\n"
 PARAMETER_PATCH = f'''  // {MARKER}
+  parameter Boolean regularizePressureCrossover=false
+    "Enable the smooth one-way law only on a pressure-reversing turbine";
   parameter Modelica.SIunits.Pressure pressureDifferenceRegularization=100
     "Finite low-flow scale for a tiny one-way numerical leakage";
 
@@ -34,13 +36,19 @@ NATIVE_EQUATIONS = '''  if noEvent((Pe > pcrit) or (Te > Tcrit)) then
   else
     Q = sqrt((Pe^2 - Ps^2)/(Cst*Te*proe.x));
   end if;'''
-REGULARIZED_EQUATIONS = '''  if noEvent((Pe > pcrit) or (Te > Tcrit)) then
-    Q = sqrt(noEvent(regularizedPositivePressureSquare(
-      Pe^2 - Ps^2, pressureDifferenceRegularization))/(Cst*Te));
+REGULARIZED_EQUATIONS = '''  if regularizePressureCrossover then
+    if noEvent((Pe > pcrit) or (Te > Tcrit)) then
+      Q = sqrt(noEvent(regularizedPositivePressureSquare(
+        Pe^2 - Ps^2, pressureDifferenceRegularization))/(Cst*Te));
+    else
+      Q = sqrt(noEvent(regularizedPositivePressureSquare(
+        Pe^2 - Ps^2, pressureDifferenceRegularization))
+        /(Cst*Te*max(proe.x, 1e-6)));
+    end if;
+  elseif noEvent((Pe > pcrit) or (Te > Tcrit)) then
+    Q = sqrt((Pe^2 - Ps^2)/(Cst*Te));
   else
-    Q = sqrt(noEvent(regularizedPositivePressureSquare(
-      Pe^2 - Ps^2, pressureDifferenceRegularization))
-      /(Cst*Te*max(proe.x, 1e-6)));
+    Q = sqrt((Pe^2 - Ps^2)/(Cst*Te*proe.x));
   end if;'''
 
 

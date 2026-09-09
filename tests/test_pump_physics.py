@@ -34,7 +34,9 @@ model CombinedCycle_TripTAC
   ThermoSysPro.WaterSteam.HeatExchangers.SimpleDynamicCondenser Condenseur(
     V=1);
   ThermoSysPro.WaterSteam.Machines.Generator Alternateur;
-  ThermoSysPro.WaterSteam.Machines.StodolaTurbine TurbineHP;
+  ThermoSysPro.WaterSteam.Machines.StodolaTurbine TurbineHP(
+    W_fric=1,
+    eta_stato=1);
   ThermoSysPro.WaterSteam.Machines.StodolaTurbine TurbineMP;
   ThermoSysPro.WaterSteam.Machines.StodolaTurbine TurbineBP;
   ThermoSysPro.WaterSteam.PressureLosses.ControlValve
@@ -77,6 +79,7 @@ class PumpPhysicsTests(unittest.TestCase):
                     model.count("ThermoSysPro.WaterSteam.Machines.StodolaTurbine Turbine"),
                     3,
                 )
+                self.assertEqual(model.count("regularizePressureCrossover=true"), 1)
                 self.assertIn(f"StaticCentrifugalPump {component}", model)
                 self.assertIn(
                     f"connect(drive{axis}.speedCommand, {component}.rpm_or_mpower)",
@@ -117,7 +120,8 @@ end StodolaTurbine;
         self.assertIn("function regularizedPositivePressureSquare", patched)
         self.assertIn("pressureScale^4/(discriminant - pressureSquareDifference)", patched)
         self.assertIn("Pe^2 - Ps^2, pressureDifferenceRegularization", patched)
-        self.assertNotIn("sqrt((Pe^2 - Ps^2)", patched)
+        self.assertIn("if regularizePressureCrossover then", patched)
+        self.assertEqual(patched.count("sqrt((Pe^2 - Ps^2)"), 2)
         self.assertEqual(patch_text(patched), patched)
 
     def test_registry_covers_active_ecms_pumps_and_marks_non_ecms_paths(self) -> None:

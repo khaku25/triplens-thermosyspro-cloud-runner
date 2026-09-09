@@ -147,6 +147,13 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
     native_turbine = "ThermoSysPro.WaterSteam.Machines.StodolaTurbine Turbine"
     if text.count(native_turbine) != 3:
         raise ValueError("expected exactly three native Stodola turbines")
+    text = replace_once(
+        text,
+        "ThermoSysPro.WaterSteam.Machines.StodolaTurbine TurbineHP(\n    W_fric=1,",
+        "ThermoSysPro.WaterSteam.Machines.StodolaTurbine TurbineHP(\n"
+        "    regularizePressureCrossover=true,\n    W_fric=1,",
+        "HP turbine pressure-crossover regularization",
+    )
 
     header = f'''model {MODEL_NAME}
   "Combined cycle with breaker, dynamic shaft inertia and check valves"
