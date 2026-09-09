@@ -107,7 +107,8 @@ ThermoSysPro 물리 실행으로 취급되지 않습니다.
 
 공통 Trip은 `config/common_trip_matrix.csv`가 실행 원본입니다. GT Trip은 GT와
 ST를 함께 요청하고, Drum HH는 ST만, Drum LL은 GT와 ST를 함께 요청합니다.
-`stg_low_state`는 Trip 이후 상태 표시일 뿐 Trip 원인이 아닙니다. FWP 정상 STOP은
+STG Active Power는 추세·전류계산용 측정값만 유지하며 H/HH/L/LL 및
+`stg_low_state`를 만들지 않습니다. FWP 정상 STOP은
 VCB를 닫힌 상태로 유지하고, TRIP만 latch와 VCB 개방을 발생시키며 RESET만으로는
 재투입되지 않습니다.
 

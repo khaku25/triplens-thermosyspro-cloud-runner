@@ -43,7 +43,7 @@ logic_rows = csv_rows(Path(logic_value))
 expected_active = sum(as_bool(row.get("enabled_default", "")) for row in logic_rows)
 
 runtime_value = argument_value("--dcs")
-expected_runtime = len(csv_rows(Path(runtime_value))) if runtime_value else 32
+expected_runtime = len(csv_rows(Path(runtime_value))) if runtime_value else 30
 
 interface_value = argument_value("--ecms-interface")
 interface_path = Path(interface_value) if interface_value else root / "logic_db" / "sources" / "a_logic_interface_v1.csv"

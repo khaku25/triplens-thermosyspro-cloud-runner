@@ -83,6 +83,10 @@ if [[ ! -f vendor/ThermoSysPro/ThermoSysPro/package.mo ]]; then
   exit 1
 fi
 
+python3 scripts/patch_turbine_bypass_model.py \
+  --source vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
+patched_model_sha256="$(sha256sum vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo | cut -d' ' -f1)"
+
 # A new Action run owns these generated paths. Clear only run-generated data.
 rm -f "$project_root/build/thermosyspro_trip_tac_res.csv"
 rm -rf "$project_root/outputs"
@@ -122,6 +126,9 @@ python3 scripts/build_raw_manifest.py \
   --stop-time "$stop_time_s" \
   --output-intervals "$intervals" \
   --thermosyspro-commit "$thermosyspro_commit" \
-  --openmodelica-image "$openmodelica_image"
+  --openmodelica-image "$openmodelica_image" \
+  --model-variant "HPBP_LPBP_DYNAMIC_V1" \
+  --source-patch-marker "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V1" \
+  --patched-model-sha256 "$patched_model_sha256"
 
 python3 scripts/validate_raw_outputs.py --output-dir outputs

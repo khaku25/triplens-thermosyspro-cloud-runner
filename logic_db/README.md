@@ -1,7 +1,7 @@
 # TripLens Active Logic DB v2
 
 SQLite is the canonical query layer for TripLens logic and Tag Master data. Operational queries and validation
-use **active logic only** by default. The full 903-row catalog remains available solely for
+use **active logic only** by default. The full 899-row catalog remains available solely for
 traceability and later restoration; it is not an implemented-logic count.
 
 The database imports the Thermo VPP tag catalog, ECMS tag catalog, ProcessBus signal map,
@@ -49,7 +49,7 @@ python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --sco
 - `runtime_tag_link`: runtime rule source/output to Tag Master foreign-key mapping
 - `v_active_logic_tag_map`, `v_active_analog_tag_map`: active mapping views
 - `v_unlinked_active_logic_source`: must remain empty
-- `runtime_alarm_rule`: 32 DCS runtime rules
+- `runtime_alarm_rule`: 30 DCS runtime rules
 - `ecms_setting`: ECMS thresholds/timing
 - `ecms_signal`: Simulink input/output contract
 - `drawing_reference`, `tag_drawing_map`: primary future P&ID/SLD cross-reference

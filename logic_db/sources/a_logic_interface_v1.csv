@@ -30,4 +30,3 @@ cb_52st_trip_cmd,OUT,boolean,PROTECTION_CONTROL,52ST trip command latch,MIGRATED
 bus_a_27uv_operate,OUT,boolean,PROTECTION_CONTROL,BUS-A undervoltage operate,MIGRATED_V1,,Driven only by bus_a_voltage_kv input
 bus_b_27uv_operate,OUT,boolean,PROTECTION_CONTROL,BUS-B undervoltage operate,MIGRATED_V1,,Driven only by bus_b_voltage_kv input
 cb_tie_ab_auto_close_permissive,OUT,boolean,PROTECTION_CONTROL,Auto tie close permissive,MIGRATED_V1_DISABLED,,Enable input defaults false; no direct breaker actuation in v1
-stg_low_state,OUT,boolean,PROTECTION_CONTROL,ST low-power VPP state,MIGRATED_V1,,State indication only; never initiates ST Trip

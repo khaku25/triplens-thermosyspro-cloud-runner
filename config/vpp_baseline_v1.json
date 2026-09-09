@@ -75,6 +75,62 @@
       "reclose_requires_separate_close": true
     }
   },
+  "turbine_bypass": {
+    "design_status": "TOPOLOGY_LOCKED_CV_CALIBRATION_PENDING",
+    "model_naming": {
+      "HP": "HP",
+      "IP": "MP",
+      "LP": "BP"
+    },
+    "systems": {
+      "HPBP": {
+        "installed": true,
+        "source": "HP_MAIN_STEAM_HEADER_UPSTREAM_HP_TURBINE_STOP_CONTROL_VALVE",
+        "destination": "COLD_REHEAT_HEADER_DOWNSTREAM_HP_TURBINE",
+        "bypassed_turbines": ["HP"],
+        "nominal_steam_flow_kg_s": 151.696,
+        "nominal_inlet_pressure_pa": 12681000.0,
+        "nominal_outlet_pressure_pa": 2726700.0,
+        "stroke_time_ms": 300,
+        "trip_action": "OPEN",
+        "fail_position": "TBD_AFTER_FAILURE_MODE_REVIEW"
+      },
+      "IPBP": {
+        "installed": false,
+        "reason": "HOT_REHEAT_LPBP_BYPASSES_THE_IP_AND_LP_TURBINE_TRAIN"
+      },
+      "LPBP": {
+        "installed": true,
+        "source": "HOT_REHEAT_HEADER_UPSTREAM_IP_TURBINE_STOP_CONTROL_VALVE",
+        "destination": "CONDENSER_STEAM_INLET_HEADER",
+        "bypassed_turbines": ["IP", "LP"],
+        "nominal_steam_flow_kg_s": 176.758,
+        "nominal_inlet_pressure_pa": 2548600.0,
+        "nominal_outlet_pressure_pa": 6136.0,
+        "stroke_time_ms": 400,
+        "trip_action": "OPEN",
+        "fail_position": "TBD_AFTER_FAILURE_MODE_REVIEW",
+        "not_lp_drum_steam_dump": true
+      },
+      "LP_DRUM_STEAM_DUMP": {
+        "installed": false,
+        "reason": "NOT_INCLUDED_IN_THIS_VPP_DESIGN"
+      }
+    },
+    "trip_sequence": {
+      "trigger": "ST_TRIP_LATCH",
+      "turbine_admission_close_time_ms": 150,
+      "bypass_open_command_delay_ms": 0,
+      "open_limit_percent": 95.0,
+      "lp_drum_admission_isolation": true,
+      "power_decay_is_trip_consequence": true
+    },
+    "calibration": {
+      "cv_status": "OPENMODELICA_CALIBRATION_REQUIRED",
+      "spray_flow_status": "ENERGY_BALANCE_PRELIMINARY_ONLY",
+      "condenser_acceptance_status": "TRANSIENT_VERIFICATION_REQUIRED"
+    }
+  },
   "relay": {
     "measurement": "RMS",
     "fault_current_a": 12000.0,
@@ -99,9 +155,9 @@
     "rule_catalog": "config/dcs_alarm_rules.csv",
     "catalog_adoption": "ALL_ROWS_ARE_VPP_BASELINE_V1",
     "threshold_families": ["H", "HH", "L", "LL"],
-    "rule_count": 32,
+    "rule_count": 30,
     "required_rule_ids": [
-      "D1-001", "D1-010", "D1-011", "D1-020", "D1-021", "D1-030", "D1-031",
+      "D1-001", "D1-010", "D1-011", "D1-020", "D1-021",
       "D2-001", "D2-101", "D2-102", "D2-103", "D2-104",
       "D2-111", "D2-112", "D2-113", "D2-114",
       "D2-121", "D2-122", "D2-123", "D2-124",

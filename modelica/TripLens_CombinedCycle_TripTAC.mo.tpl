@@ -12,6 +12,7 @@ model TripLens_CombinedCycle_TripTAC
   parameter Real exhaustTemperatureTripped(unit="K") = 550.0;
 
   extends ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC(
+    vppTripTime=tripTime,
     Debit(Table=[0,exhaustFlowNormal;
                  tripTime,exhaustFlowNormal;
                  tripTime + tripRampDuration,exhaustFlowTripped;

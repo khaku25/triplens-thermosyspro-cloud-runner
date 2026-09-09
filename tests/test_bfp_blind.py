@@ -107,7 +107,7 @@ class BFPBlindTests(unittest.TestCase):
             self.assertTrue((target / "engineering" / "trend.csv").is_file())
             self.assertIn("HP.FW.FLOW_LOW", {row["tag"] for row in dcs2})
             self.assertIn("FWP-HP.SPEED_LOW", {row["tag"] for row in dcs2})
-            self.assertIn("STG.ACTIVE_POWER_LOW", {row["tag"] for row in dcs2})
+            self.assertNotIn("STG.ACTIVE_POWER_LOW", {row["tag"] for row in dcs2})
             self.assertEqual(ecms[0]["tag"], "50FWP-HP.PICKUP")
             self.assertEqual(int(ecms[0]["source_time_ms"]), 10015)
             self.assertEqual(int(dcs1[0]["event_time_ms"]) - int(dcs1[0]["source_time_ms"]), 120)

@@ -64,6 +64,26 @@ class VppBaselineV1Tests(unittest.TestCase):
             },
         )
 
+    def test_turbine_bypass_topology_is_hp_and_lp_only(self) -> None:
+        bypass = self.baseline["turbine_bypass"]
+        systems = bypass["systems"]
+        self.assertTrue(systems["HPBP"]["installed"])
+        self.assertFalse(systems["IPBP"]["installed"])
+        self.assertTrue(systems["LPBP"]["installed"])
+        self.assertEqual(systems["LPBP"]["bypassed_turbines"], ["IP", "LP"])
+        self.assertTrue(systems["LPBP"]["not_lp_drum_steam_dump"])
+        self.assertFalse(systems["LP_DRUM_STEAM_DUMP"]["installed"])
+
+        tag_rows = read_csv(ROOT / "data" / "thermo_vpp_full_tag_list.csv")
+        bypass_subsystems = {
+            row["subsystem"] for row in tag_rows if "BYPASS" in row["subsystem"]
+        }
+        self.assertEqual(
+            bypass_subsystems,
+            {"HP_BYPASS", "HOT_REHEAT_LP_BYPASS"},
+        )
+        self.assertFalse(any(row["tag_id"].startswith("TSP.VLV.08.") for row in tag_rows))
+
     def test_breaker_and_protection_values_match_execution_settings(self) -> None:
         timing = self.baseline["timing"]
         expected = {
@@ -103,6 +123,38 @@ class VppBaselineV1Tests(unittest.TestCase):
             self.assertLess(ll, low)
             self.assertLess(low, h)
             self.assertLess(h, hh)
+
+    def test_active_power_is_measurement_only(self) -> None:
+        self.assertNotIn("ST_TRIP_POWER_PU", self.settings)
+
+        alarm_rows = read_csv(ROOT / self.baseline["alarms"]["rule_catalog"])
+        self.assertFalse(
+            any("POWER" in row["alarm_tag"] for row in alarm_rows),
+            "Active Power must not have H/HH/L/LL alarm rules",
+        )
+
+        tag_rows = read_csv(ROOT / "data" / "thermo_vpp_full_tag_list.csv")
+        tag_ids = {row["tag_id"] for row in tag_rows}
+        self.assertIn("TSP.GEN.ACTIVE_POWER", tag_ids)
+        self.assertFalse(any(tag.endswith("POWER_LOW_EVT") for tag in tag_ids))
+
+        logic_rows = read_csv(
+            ROOT / "data" / "triplens_A-L_alarm_logic_master_absolute_v2.csv"
+        )
+        self.assertFalse(
+            any(
+                row["derived_signal"].strip().lower() == "active_power"
+                and row["alarm_type"].strip().upper() in {"H", "HH", "L", "LL"}
+                for row in logic_rows
+            )
+        )
+
+        interface_rows = read_csv(
+            ROOT / "logic_db" / "sources" / "a_logic_interface_v1.csv"
+        )
+        self.assertNotIn(
+            "stg_low_state", {row["signal_name"] for row in interface_rows}
+        )
 
     def test_trip_coupling_exactly_matches_matrix(self) -> None:
         declared = self.baseline["common_trip"]["rules"]

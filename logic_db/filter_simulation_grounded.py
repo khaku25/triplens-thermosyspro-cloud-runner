@@ -10,7 +10,7 @@ Everything that needs a scenario-only sensor, operator event, command, ratio,
 rate-of-change, multiple model signals, sequence, interlock, permissive, master
 trip, communication state, or protection action is deliberately deferred.
 
-The 903-row legacy CSV remains an archive/traceability source and is never
+The 899-row legacy CSV remains an archive/traceability source and is never
 silently destroyed by this filter.
 """
 from __future__ import annotations

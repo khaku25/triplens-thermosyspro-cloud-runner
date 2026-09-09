@@ -418,9 +418,9 @@ def main():
                        runtime_tag_links,len(dcs_rows)*2,"Runtime source and alarm output tags are linked")
         add_validation(db,"logic_tag_unit_transform_valid",invalid_unit_transforms==0,
                        invalid_unit_transforms,0,"Every active source has an explicit valid engineering-unit transform")
-        add_validation(db,"runtime_rule_count",len(dcs_rows)==32,len(dcs_rows),32,"DCS deployment rules")
+        add_validation(db,"runtime_rule_count",len(dcs_rows)==30,len(dcs_rows),30,"DCS deployment rules")
         add_validation(db,"ecms_setting_count",len(setting_rows)==10,len(setting_rows),10,"ECMS settings")
-        add_validation(db,"ecms_signal_count",len(interface_rows)==20,len(interface_rows),20,"ECMS ports")
+        add_validation(db,"ecms_signal_count",len(interface_rows)==31,len(interface_rows),31,"ECMS ports")
         integrity=db.execute("PRAGMA integrity_check").fetchone()[0]
         add_validation(db,"sqlite_integrity",integrity=="ok",integrity,"ok","SQLite integrity check")
         db.commit()

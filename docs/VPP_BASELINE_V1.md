@@ -15,6 +15,7 @@ for representing a particular real plant.
 | Speed | GTG/STG 3,600 rpm; FWP-HP/IP/LP 1,400 rpm |
 | GT Trip timing | receive 20 ms, 86GT operate after another 35 ms, 52GT open 80 ms from Trip request |
 | ST Trip timing | 52ST open 100 ms from resolved ST Trip request |
+| Turbine bypass | HPBP: HP main steam→cold reheat; no separate IPBP; LPBP: hot reheat→condenser around IP/LP; no LP-drum dump |
 | FWP Trip timing | VCB open 80 ms from Trip command |
 | Output decay | GT 0.35 s, ST 0.80 s |
 | Speed coastdown time constant | GT 1.20 s, ST 2.50 s |
@@ -22,12 +23,22 @@ for representing a particular real plant.
 | 51 element | 1,200 A pickup, IEC standard inverse, TMS 0.10 |
 | Feeder fault model | 12,000 A RMS, 0.20 pu terminal residual voltage |
 
+The connection points, model-grounded flows, preliminary heat balances and
+acceptance gates are recorded in
+[`TURBINE_BYPASS_DESIGN_BASIS_V1.md`](TURBINE_BYPASS_DESIGN_BASIS_V1.md).
+The bypass topology is locked, but valve `Cv`, spray flow and condenser
+acceptance remain explicitly pending OpenModelica transient calibration.
+
 ## Alarm contract
 
-All 32 rows in `config/dcs_alarm_rules.csv` are adopted as Baseline v1.0.
+All 30 rows in `config/dcs_alarm_rules.csv` are adopted as Baseline v1.0.
 Consequently their threshold, direction, hysteresis and delay fields are VPP
 design values even though their legacy `status` text correctly says that they
 are not plant-approved settings.
+
+Generator active power remains an analog trend and electrical-calculation input.
+It has no H/HH/L/LL alarm family; falling MW after a Trip is consequence evidence,
+not an alarm or a Trip cause.
 
 This is not a status conflict: `LOCKED` means frozen as a VPP design input;
 `PROVISIONAL` or `MODEL_*_NOT_PLANT_APPROVED` in a compatibility CSV describes

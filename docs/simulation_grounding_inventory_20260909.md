@@ -46,7 +46,9 @@ GT_REQ = GT_TRIP_CMD OR HP_LL OR IP_LL OR LP_LL
 ST_REQ = ST_TRIP_CMD OR GT_TRIP_CMD OR HP_HH OR IP_HH OR LP_HH OR HP_LL OR IP_LL OR LP_LL
 ```
 
-`stg_low_state` / low ST MW indication is **not** a Trip source. GT→ST Trip linkage is signal-based, not an indirect consequence of ST output rundown.
+ST MW is retained only as an analog measurement. There is no `stg_low_state`
+or Active Power H/HH/L/LL output. GT→ST Trip linkage is signal-based, not an
+indirect consequence of ST output rundown.
 
 Layer 3 actuation remains separate from the matrix: resolved GT request feeds the existing 86GT→52GT path; resolved ST request feeds the 52ST trip latch. The current breaker timing values are virtual-model provisional values, not plant-approved C&E settings.
 
@@ -142,7 +144,7 @@ not a solved network fault, EMT waveform, approved protection study or plant set
 
 ## Legacy catalogue policy
 
-The 903-row legacy A-L CSV remains only as an archive/traceability catalogue. It is not the executable Logic Core.
+The 899-row legacy A-L CSV remains only as an archive/traceability catalogue. It is not the executable Logic Core. The four generator active-power H/HH/L/LL candidates were removed because MW is a trend/protection input, not a four-level process alarm.
 
 The current build produces separate Core artifacts:
 

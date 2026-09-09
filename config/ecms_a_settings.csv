@@ -9,7 +9,6 @@ TRIP_RECEIVE_DELAY_MS,A_PROTECTION,GT Trip 신호 수신 지연,20,ms,PROVISIONA
 LOCKOUT_OPERATE_DELAY_MS,A_PROTECTION,86GT 동작 지연,35,ms,PROVISIONAL,true,보호계전 정정자료 확인 후 변경
 GT_BREAKER_OPEN_DELAY_MS,A_PROTECTION,52GT 개방 지연,80,ms,PROVISIONAL,true,차단기 시험자료 확인 후 변경
 GT_POWER_DECAY_MS,A_CALC,GTG 파생 출력 감소시간,350,ms,PROVISIONAL,true,표시용 파생식
-ST_TRIP_POWER_PU,A_CONTROL,STG 저출력 상태 판정 기준,0.20,pu,PROVISIONAL,true,자동 Trip 기준이 아니라 VPP 상태전환 기준
 ST_BREAKER_OPEN_DELAY_MS,A_PROTECTION,ST Trip 요청 후 52ST 개방 지연,100,ms,PROVISIONAL,true,출력 저하는 Trip 원인이 아니며 C&E 확인 후 변경
 MOTOR_BREAKER_OPEN_DELAY_MS,A_PROTECTION,Motor Trip 명령 후 VCB 개방 지연,80,ms,PROVISIONAL,true,BFP RAW의 VCB-A01 80 ms 동작을 기준으로 한 모델값
 FEEDER_FAULT_CURRENT_A,A_FAULT,6.9 kV feeder 고장 RMS 전류 기본값,12000,A,PROVISIONAL,true,실제 계통 임피던스 및 단락용량 확보 후 대체

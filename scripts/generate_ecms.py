@@ -98,7 +98,7 @@ def load_a_settings(path: Path) -> tuple[dict[str, float | bool | str], str]:
         "GT_TERMINAL_VOLTAGE_KV", "ST_TERMINAL_VOLTAGE_KV",
         "TRIP_RECEIVE_DELAY_MS", "LOCKOUT_OPERATE_DELAY_MS",
         "GT_BREAKER_OPEN_DELAY_MS", "GT_POWER_DECAY_MS",
-        "ST_TRIP_POWER_PU", "ST_BREAKER_OPEN_DELAY_MS", "MOTOR_BREAKER_OPEN_DELAY_MS",
+        "ST_BREAKER_OPEN_DELAY_MS", "MOTOR_BREAKER_OPEN_DELAY_MS",
         "FEEDER_FAULT_CURRENT_A", "FEEDER_FAULT_RESIDUAL_VOLTAGE_PU",
         "FEEDER_50_PICKUP_A", "FEEDER_50_DELAY_MS", "FEEDER_51_PICKUP_A",
         "FEEDER_51_TIME_MULTIPLIER",
@@ -114,8 +114,6 @@ def load_a_settings(path: Path) -> tuple[dict[str, float | bool | str], str]:
             raise ValueError(f"{key} must be greater than zero")
     if not 0 < float(settings["POWER_FACTOR"]) <= 1:
         raise ValueError("POWER_FACTOR must be in (0, 1]")
-    if not 0 <= float(settings["ST_TRIP_POWER_PU"]) <= 1:
-        raise ValueError("ST_TRIP_POWER_PU must be in [0, 1]")
     if not 0 < float(settings["UNDERVOLTAGE_PICKUP_PU"]) <= 1:
         raise ValueError("UNDERVOLTAGE_PICKUP_PU must be in (0, 1]")
     if not 0 <= float(settings["FEEDER_FAULT_RESIDUAL_VOLTAGE_PU"]) < 1:
@@ -1101,8 +1099,6 @@ def main() -> int:
     stg_power_series = LinearSeries.from_rows(rows, "stg_power_w")
     gt_trip_input_series = StepSeries.from_rows(rows, "gt_trip_cmd")
     observed_bus_a_voltage = LinearSeries.from_rows(rows, "ecms_bus_a_voltage_kv")
-    initial_stg_w = abs(stg_power_series.values[0]) if stg_power_series.values else 0.0
-    stg_reference_w = initial_stg_w
 
     relay_operates = gt_request_ms is not None and not fault.get("relay_fail", False)
     gt_breaker_opens = relay_operates and not fault.get("gtg_breaker_fail", False)
@@ -1321,7 +1317,7 @@ def main() -> int:
     args.trend_output.parent.mkdir(parents=True, exist_ok=True)
     fields = [
         "ecms_time_ms", "source_time_ms", "quality", "a_config_status", "sampling_resolution",
-        "gt_trip_cmd", "gt_trip_request", "st_trip_request", "stg_low_state",
+        "gt_trip_cmd", "gt_trip_request", "st_trip_request",
         "relay_86gt_operated", "cb_52gt_trip_cmd", "cb_52st_trip_cmd",
         "cb_52gt_closed", "cb_52st_closed",
         "cb_in_a_closed", "cb_in_b_closed", "cb_tie_ab_closed",
@@ -1369,13 +1365,7 @@ def main() -> int:
             stg_power_mw = stg_model_w / 1_000_000.0 if st_cb_closed else 0.0
 
             gt_generation_live = gt_cb_closed and gt_power_pu >= float(a["UNDERVOLTAGE_PICKUP_PU"])
-            stg_low_state = (
-                bool(stg_reference_w)
-                and abs(stg_model_w) < stg_reference_w * float(a["ST_TRIP_POWER_PU"])
-            )
-            st_generation_live = st_cb_closed and (
-                not stg_reference_w or not stg_low_state
-            )
+            st_generation_live = st_cb_closed and stg_model_w > 0.0
             gt_transformer_live = apply_availability_command(
                 gt_receive_available, commands, "TR-GT", time_ms
             )
@@ -1478,7 +1468,6 @@ def main() -> int:
                 "gt_trip_cmd": gt_trip_cmd,
                 "gt_trip_request": int(gt_request_active),
                 "st_trip_request": int(st_request_active),
-                "stg_low_state": int(stg_low_state),
                 "relay_86gt_operated": int(
                     relay_lockout_state(relay_operates, lockout_ms, time_ms, commands)
                     if lockout_ms is not None else False

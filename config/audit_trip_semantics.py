@@ -170,7 +170,7 @@ def main() -> None:
     report = {
         "pass": not errors,
         "canonical_trip_result": "associated breaker CLOSED feedback = 0",
-        "st_output_policy": "stg_low_state is a result/status only, never a Trip source",
+        "st_output_policy": "active power is a measurement only; no H/HH/L/LL or low-state output",
         "canonical_naming": "VPP / FWP-HP-IP-LP / IP-LP; VVP-BFP-MP-BP are aliases only",
         "raw_aliases_checked": len(REQUIRED_RAW_ALIASES),
         "common_trip_causes_checked": len(EXPECTED_COMMON_TRIP),

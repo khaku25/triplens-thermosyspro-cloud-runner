@@ -147,7 +147,7 @@ class TripContractTests(unittest.TestCase):
             self.assertEqual(by_tag["52GT.CLOSED"], 1080)
             self.assertEqual(by_tag["52ST.CLOSED"], 1100)
             row = next(row for row in self.read_csv(trend) if row["source_time_ms"] == "1100")
-            self.assertEqual(row["stg_low_state"], "0")
+            self.assertNotIn("stg_low_state", row)
             self.assertEqual(row["cb_52st_closed"], "0")
 
     def test_every_common_trip_cause_resolves_the_declared_gt_st_requests(self) -> None:

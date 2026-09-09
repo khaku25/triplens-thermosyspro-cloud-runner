@@ -87,6 +87,9 @@ def main() -> int:
     parser.add_argument("--output-intervals", type=int, required=True)
     parser.add_argument("--thermosyspro-commit", required=True)
     parser.add_argument("--openmodelica-image", required=True)
+    parser.add_argument("--model-variant", default="BASE_GT_EXHAUST_ADAPTER")
+    parser.add_argument("--source-patch-marker")
+    parser.add_argument("--patched-model-sha256")
     args = parser.parse_args()
 
     if not args.raw_file.is_file() or args.raw_file.stat().st_size == 0:
@@ -95,6 +98,15 @@ def main() -> int:
         parser.error("--stop-time must be positive and finite")
     if args.output_intervals <= 0:
         parser.error("--output-intervals must be positive")
+    if bool(args.source_patch_marker) != bool(args.patched_model_sha256):
+        parser.error(
+            "--source-patch-marker and --patched-model-sha256 must be supplied together"
+        )
+    if args.patched_model_sha256 and (
+        len(args.patched_model_sha256) != 64
+        or any(character not in "0123456789abcdef" for character in args.patched_model_sha256)
+    ):
+        parser.error("--patched-model-sha256 must be a lowercase SHA-256 digest")
 
     summary = read_raw_summary(args.raw_file)
     nominal_period_ms = args.stop_time * 1000.0 / args.output_intervals
@@ -107,6 +119,15 @@ def main() -> int:
             "thermosyspro_repository": "Dwarf-Planet-Project/ThermoSysPro",
             "thermosyspro_commit": args.thermosyspro_commit,
             "openmodelica_image": args.openmodelica_image,
+            "model_variant": args.model_variant,
+            "source_transform": (
+                {
+                    "marker": args.source_patch_marker,
+                    "patched_model_sha256": args.patched_model_sha256,
+                }
+                if args.source_patch_marker
+                else None
+            ),
             "manifest_builder_python": platform.python_version(),
         },
         "sampling": {
