@@ -35,14 +35,12 @@ jobs:
             --excluded-report outputs/excluded_non_simulation_logic.csv
       - name: Build normalized SQLite logic master
         run: |
-          python3 logic_db/build_logic_db.py \
+          python3 logic_db/build_simulation_grounded_db.py \
             --logic outputs/simulation_grounded_logic.csv \
             --source-commit "$GITHUB_SHA"
       - name: Query smoke test
         run: |
-          # Default query scope must remain active-only and simulation-grounded.
           python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --platform ECMS --limit 5
-          # Logic DB -> Tag Master foreign-key lookup.
           python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --tag-id TSP.DRUM.HP.LEVEL --limit 5
       - name: Export visual traceability viewer
         run: |
