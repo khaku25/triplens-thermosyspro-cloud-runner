@@ -33,11 +33,11 @@ class VPPEventContractTests(unittest.TestCase):
             bundle = Path(directory) / "bundle"
             events = self.build_actual(bundle)
             report = validate_bundle(bundle, CONTRACT)
-            fields, written = read_csv(bundle / "public" / "EVENT.csv")
+            fields, written = read_csv(bundle / "public" / "ECMS_EVENT.csv")
 
         self.assertEqual(len(events), 9)
         self.assertEqual(len(written), 9)
-        self.assertEqual(report["public_files"], ["EVENT.csv"])
+        self.assertEqual(report["public_files"], ["ECMS_EVENT.csv", "VPP_EVENT.csv"])
         self.assertNotIn("FWP_HP_SPEED_RPM", fields)
         self.assertNotIn("THERMO_FWP_HP_SPEED_INPUT_RPM", fields)
         self.assertFalse(report["raw_published_to_consumers"])
@@ -89,10 +89,10 @@ class VPPEventContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             bundle = Path(directory) / "bundle"
             self.build_actual(bundle)
-            event_path = bundle / "public" / "EVENT.csv"
+            event_path = bundle / "public" / "ECMS_EVENT.csv"
             alarm = read_event_feed(event_path, CONTRACT, "alarm-console")
             ai = read_event_feed(event_path, CONTRACT, "triplens-ai")
-            with self.assertRaisesRegex(ValueError, "accepts EVENT.csv only"):
+            with self.assertRaisesRegex(ValueError, "accepts VPP_EVENT.csv or ECMS_EVENT.csv only"):
                 read_event_feed(ACTUAL_ECMS, CONTRACT, "triplens-ai")
 
         self.assertEqual(alarm, ai)
@@ -103,7 +103,7 @@ class VPPEventContractTests(unittest.TestCase):
             bundle = Path(directory) / "bundle"
             self.build_actual(bundle)
             shutil.copy2(ACTUAL_ECMS, bundle / "public" / "ECMS_RAW.csv")
-            with self.assertRaisesRegex(ValueError, "must contain exactly EVENT.csv"):
+            with self.assertRaisesRegex(ValueError, "must contain exactly VPP_EVENT.csv and ECMS_EVENT.csv"):
                 validate_bundle(bundle, CONTRACT)
 
     def test_scenario_answer_column_is_rejected_before_publication(self) -> None:
@@ -207,8 +207,8 @@ class VPPEventContractTests(unittest.TestCase):
             second = target / "second"
             self.build_actual(first, "DETERMINISTIC-RUN")
             self.build_actual(second, "DETERMINISTIC-RUN")
-            first_bytes = (first / "public" / "EVENT.csv").read_bytes()
-            second_bytes = (second / "public" / "EVENT.csv").read_bytes()
+            first_bytes = (first / "public" / "ECMS_EVENT.csv").read_bytes()
+            second_bytes = (second / "public" / "ECMS_EVENT.csv").read_bytes()
 
         self.assertEqual(first_bytes, second_bytes)
 
@@ -220,7 +220,7 @@ class VPPEventContractTests(unittest.TestCase):
         ]
         self.assertTrue(all(not path.exists() for path in retired))
         contract = json.loads(CONTRACT.read_text(encoding="utf-8"))
-        self.assertEqual(contract["official_output"], "public/EVENT.csv")
+        self.assertEqual(contract["official_outputs"], ["public/VPP_EVENT.csv", "public/ECMS_EVENT.csv"])
 
     def test_every_ecms_event_uses_a_registered_tag_master_id(self) -> None:
         _, tags = read_csv(ROOT / "data" / "ecms_tag_catalog.csv")
@@ -236,7 +236,9 @@ class VPPEventContractTests(unittest.TestCase):
 
     def test_versioned_example_is_a_valid_event_only_feed(self) -> None:
         example = ROOT / "examples" / "fwp_hp_actual_event_v1" / "EVENT.csv"
-        rows = read_event_feed(example, CONTRACT, "alarm-console")
+        fields, rows = read_csv(example)
+        from scripts.build_vpp_event_bundle import validate_events
+        validate_events(fields, rows, json.loads(CONTRACT.read_text(encoding="utf-8")))
         self.assertEqual(len(rows), 9)
         self.assertEqual({row["system"] for row in rows}, {"ECMS"})
 
@@ -246,7 +248,8 @@ class VPPEventContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         public_step = workflow.split("Upload Alarm Console and AI input only", 1)[1]
         public_step = public_step.split("Upload internal evidence separately", 1)[0]
-        self.assertIn("outputs/vpp-final/public/EVENT.csv", public_step)
+        self.assertIn("outputs/vpp-final/public/VPP_EVENT.csv", public_step)
+        self.assertIn("outputs/vpp-final/public/ECMS_EVENT.csv", public_step)
         self.assertNotIn("RAW", public_step)
         self.assertNotIn("internal/", public_step)
         self.assertIn("outputs/vpp-final/internal/", workflow)
