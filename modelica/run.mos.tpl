@@ -14,10 +14,10 @@ simulate(
   tolerance=1e-3,
   method="dassl",
   outputFormat="csv",
-  // Force a dense nonlinear initialization solve. The added physical bypass
-  // junctions raise the initialization-system density only to about 5%; the
-  // default sparse KINSOL path cannot build its fallback numeric Jacobian.
-  simflags="-noEventEmit -nlssMaxDensity=0",
+  // V2 mixes each bypass into an always-flowing header, so the large
+  // initialization system can remain on OpenModelica's tractable automatic
+  // sparse/dense selection without a zero-flow junction fallback.
+  simflags="-noEventEmit",
   fileNamePrefix="thermosyspro_trip_tac",
   variableFilter="^(time|Debit\\.y\\.signal|Temperature\\.y\\.signal|Alternateur\\.Welec|Ballon(HP|MP|BP)\\.(yLevel\\.signal|zl|P)|Turbine(HP|MP|BP)\\.Q|vanne_alimentation(HP|MP|BP)\\.Ouv\\.signal|vpp(STTripLatch|HPAdmissionPos|IPAdmissionPos|LPDrumAdmissionMultiplier|HPBypassCmd|LPBypassCmd|HPBypassPos|LPBypassPos|HPSprayPos|LPSprayPos|HPBypassOpenLS|HPBypassCloseLS|LPBypassOpenLS|LPBypassCloseLS|HPBypassMassFlow|LPBypassMassFlow|HPSprayMassFlow|LPSprayMassFlow|HPBypassInletPressure|LPBypassInletPressure|HPBypassOutletPressure|LPBypassOutletPressure|HPBypassInletTemperature|LPBypassInletTemperature|HPBypassOutletTemperature|LPBypassOutletTemperature|CondenserPressure|CondenserLevel))$");
 getErrorString();
