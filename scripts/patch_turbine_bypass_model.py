@@ -16,7 +16,7 @@ import tempfile
 from pathlib import Path
 
 
-MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V1"
+MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V2"
 
 
 PARAMETERS = f'''  // {MARKER}
@@ -31,7 +31,7 @@ PARAMETERS = f'''  // {MARKER}
   parameter Real vppSprayStroke95(unit="s") = 0.050
     "Spray-water actuator 95 percent opening time";
   parameter Real vppValveLeak = 1e-4
-    "Numerical leakage position used to avoid a zero-flow junction singularity";
+    "Closed-valve leakage position for the physical bypass valves";
   parameter ThermoSysPro.Units.Cv vppHPBypassCvmax = 4000
     "Initial HPBP Cv calibration value";
   parameter ThermoSysPro.Units.Cv vppLPBypassCvmax = 50000
@@ -98,12 +98,11 @@ COMPONENTS = '''
     Q0=0, h0=1396866);
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
     vppHPSprayFlowCommand;
-  ThermoSysPro.WaterSteam.Junctions.Mixer2 vppHPBypassMixer(
+  ThermoSysPro.WaterSteam.Junctions.Mixer3 vppHPColdReheatMixer(
     P(start=2726700), h(start=3046260),
-    Ce1(h_vol(start=3450835)), Ce2(h_vol(start=1396866)));
-  ThermoSysPro.WaterSteam.Junctions.Mixer2 vppHPColdReheatMixer(
-    P(start=2726700), h(start=3046260),
-    Ce1(h_vol(start=3046260)), Ce2(h_vol(start=3046260)));
+    Ce1(h_vol(start=3046260)),
+    Ce2(h_vol(start=3450835)),
+    Ce3(h_vol(start=1396866)));
 
   ThermoSysPro.WaterSteam.Junctions.Splitter2 vppLPSplitter(
     P(start=2548600), h(start=3523910));
@@ -120,12 +119,11 @@ COMPONENTS = '''
     Q0=0, h0=550000);
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
     vppLPSprayFlowCommand;
-  ThermoSysPro.WaterSteam.Junctions.Mixer2 vppLPBypassMixer(
-    P(start=6136), h(start=2700000),
-    Ce1(h_vol(start=3523910)), Ce2(h_vol(start=550000)));
-  ThermoSysPro.WaterSteam.Junctions.Mixer2 vppCondenserSteamMixer(
+  ThermoSysPro.WaterSteam.Junctions.Mixer3 vppCondenserSteamMixer(
     P(start=10053), h(start=2401030),
-    Ce1(h_vol(start=2401030)), Ce2(h_vol(start=2700000)));
+    Ce1(h_vol(start=2401030)),
+    Ce2(h_vol(start=3523910)),
+    Ce3(h_vol(start=550000)));
 '''
 
 
@@ -163,12 +161,12 @@ EQUATIONS = '''
   vppLPSprayMassFlow = vppLPSpraySource.Q;
   vppHPBypassInletPressure = vppHPSplitter.P;
   vppLPBypassInletPressure = vppLPSplitter.P;
-  vppHPBypassOutletPressure = vppHPBypassMixer.P;
-  vppLPBypassOutletPressure = vppLPBypassMixer.P;
+  vppHPBypassOutletPressure = vppHPColdReheatMixer.P;
+  vppLPBypassOutletPressure = vppCondenserSteamMixer.P;
   vppHPBypassInletTemperature = vppHPSplitter.T;
   vppLPBypassInletTemperature = vppLPSplitter.T;
-  vppHPBypassOutletTemperature = vppHPBypassMixer.T;
-  vppLPBypassOutletTemperature = vppLPBypassMixer.T;
+  vppHPBypassOutletTemperature = vppHPColdReheatMixer.T;
+  vppLPBypassOutletTemperature = vppCondenserSteamMixer.T;
   vppCondenserPressure = Condenseur.P;
   vppCondenserLevel = Condenseur.yNiveau.signal;
 
@@ -184,11 +182,11 @@ EQUATIONS = '''
     *vppLPSprayRatio*vppLPSprayPos;
 
   connect(vppHPSprayFlowCommand, vppHPSpraySource.IMassFlow);
-  connect(vppHPSpraySource.C, vppHPBypassMixer.Ce2);
-  connect(vppHPBypassValve.C2, vppHPBypassMixer.Ce1);
+  connect(vppHPBypassValve.C2, vppHPColdReheatMixer.Ce2);
+  connect(vppHPSpraySource.C, vppHPColdReheatMixer.Ce3);
   connect(vppLPSprayFlowCommand, vppLPSpraySource.IMassFlow);
-  connect(vppLPSpraySource.C, vppLPBypassMixer.Ce2);
-  connect(vppLPBypassValve.C2, vppLPBypassMixer.Ce1);
+  connect(vppLPBypassValve.C2, vppCondenserSteamMixer.Ce2);
+  connect(vppLPSpraySource.C, vppCondenserSteamMixer.Ce3);
 '''
 
 
@@ -255,7 +253,6 @@ def patch_model(source: str) -> str:
         source,
         "TurbineHP.Cs, MoitieDebitHP.Ce",
         "  connect(TurbineHP.Cs, vppHPColdReheatMixer.Ce1);\n"
-        "  connect(vppHPBypassMixer.Cs, vppHPColdReheatMixer.Ce2);\n"
         "  connect(vppHPColdReheatMixer.Cs, MoitieDebitHP.Ce);",
     )
     source = replace_connect_statement(
@@ -269,7 +266,6 @@ def patch_model(source: str) -> str:
         source,
         "perteChargeK1.C2, CapteurDebitVapCondenseur.C1",
         "  connect(perteChargeK1.C2, vppCondenserSteamMixer.Ce1);\n"
-        "  connect(vppLPBypassMixer.Cs, vppCondenserSteamMixer.Ce2);\n"
         "  connect(vppCondenserSteamMixer.Cs, CapteurDebitVapCondenseur.C1);",
     )
 

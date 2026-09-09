@@ -84,6 +84,27 @@ class VppBaselineV1Tests(unittest.TestCase):
         )
         self.assertFalse(any(row["tag_id"].startswith("TSP.VLV.08.") for row in tag_rows))
 
+        by_tag = {row["tag_id"]: row for row in tag_rows}
+        expected_mappings = {
+            "TSP.VLV.07.POS_CMD": "100*vppHPBypassCmd",
+            "TSP.VLV.07.POS_FB": "100*vppHPBypassPos",
+            "TSP.VLV.07.OPEN_LS": "vppHPBypassOpenLS",
+            "TSP.VLV.07.CLOSE_LS": "vppHPBypassCloseLS",
+            "TSP.VLV.07.MASS_FLOW": "vppHPBypassMassFlow",
+            "TSP.VLV.07.P_IN": "vppHPBypassInletPressure",
+            "TSP.VLV.07.P_OUT": "vppHPBypassOutletPressure",
+            "TSP.VLV.09.POS_CMD": "100*vppLPBypassCmd",
+            "TSP.VLV.09.POS_FB": "100*vppLPBypassPos",
+            "TSP.VLV.09.OPEN_LS": "vppLPBypassOpenLS",
+            "TSP.VLV.09.CLOSE_LS": "vppLPBypassCloseLS",
+            "TSP.VLV.09.MASS_FLOW": "vppLPBypassMassFlow",
+            "TSP.VLV.09.P_IN": "vppLPBypassInletPressure",
+            "TSP.VLV.09.P_OUT": "vppLPBypassOutletPressure",
+        }
+        for tag_id, model_mapping in expected_mappings.items():
+            self.assertEqual(by_tag[tag_id]["model_mapping"], model_mapping)
+            self.assertNotIn("planned", by_tag[tag_id]["notes"].lower())
+
     def test_breaker_and_protection_values_match_execution_settings(self) -> None:
         timing = self.baseline["timing"]
         expected = {

@@ -38,11 +38,33 @@ class TurbineBypassPatchTests(unittest.TestCase):
         self.assertNotIn("vppIPBypass", patched)
         self.assertIn("connect(DoubleDebitHP.Cs, vppHPSplitter.Ce)", patched)
         self.assertIn("connect(TurbineHP.Cs, vppHPColdReheatMixer.Ce1)", patched)
-        self.assertIn("connect(DoubleDebitMP.Cs, vppLPSplitter.Ce)", patched)
         self.assertIn(
-            "connect(vppLPBypassMixer.Cs, vppCondenserSteamMixer.Ce2)",
+            "ThermoSysPro.WaterSteam.Junctions.Mixer3 vppHPColdReheatMixer",
             patched,
         )
+        self.assertIn(
+            "connect(vppHPBypassValve.C2, vppHPColdReheatMixer.Ce2)",
+            patched,
+        )
+        self.assertIn(
+            "connect(vppHPSpraySource.C, vppHPColdReheatMixer.Ce3)",
+            patched,
+        )
+        self.assertIn("connect(DoubleDebitMP.Cs, vppLPSplitter.Ce)", patched)
+        self.assertIn(
+            "ThermoSysPro.WaterSteam.Junctions.Mixer3 vppCondenserSteamMixer",
+            patched,
+        )
+        self.assertIn(
+            "connect(vppLPBypassValve.C2, vppCondenserSteamMixer.Ce2)",
+            patched,
+        )
+        self.assertIn(
+            "connect(vppLPSpraySource.C, vppCondenserSteamMixer.Ce3)",
+            patched,
+        )
+        self.assertNotIn("vppHPBypassMixer", patched)
+        self.assertNotIn("vppLPBypassMixer", patched)
         self.assertIn(
             "regulation_Niveau_BP.SortieReelle1.signal*"
             "vppLPDrumAdmissionMultiplier",
