@@ -1,0 +1,83 @@
+name: Validate final VPP EVENT contract
+
+on:
+  push:
+    branches:
+      - 'codex/final-vpp-event-contract-*'
+      - 'integration/validated-stack-*'
+    paths:
+      - '.github/workflows/validate-vpp-event-contract.yml'
+      - 'config/event_contract_v1.json'
+      - 'config/ecms_event_map_v1.csv'
+      - 'data/ecms_tag_catalog.csv'
+      - 'scripts/build_vpp_event_bundle.py'
+      - 'scripts/validate_vpp_event_bundle.py'
+      - 'scripts/read_event_feed.py'
+      - 'tests/test_vpp_event_contract.py'
+      - 'tests/fixtures/ecms_fwp_hp_actual_trip_transitions.csv'
+      - 'examples/fwp_hp_actual_event_v1/EVENT.csv'
+  pull_request:
+    branches:
+      - main
+      - 'integration/validated-stack-*'
+    paths:
+      - '.github/workflows/validate-vpp-event-contract.yml'
+      - 'config/event_contract_v1.json'
+      - 'config/ecms_event_map_v1.csv'
+      - 'data/ecms_tag_catalog.csv'
+      - 'scripts/build_vpp_event_bundle.py'
+      - 'scripts/validate_vpp_event_bundle.py'
+      - 'scripts/read_event_feed.py'
+      - 'tests/test_vpp_event_contract.py'
+      - 'tests/fixtures/ecms_fwp_hp_actual_trip_transitions.csv'
+      - 'examples/fwp_hp_actual_event_v1/EVENT.csv'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out VPP contract source
+        uses: actions/checkout@v4
+
+      - name: Test Event Observer and external boundary
+        run: python3 -m unittest tests.test_vpp_event_contract -v
+
+      - name: Build VPP and ECMS Event outputs
+        run: |
+          python3 scripts/build_vpp_event_bundle.py \
+            --bundle-dir outputs/vpp-final \
+            --run-id CONTRACT-CI-${{ github.run_id }} \
+            --ecms-raw tests/fixtures/ecms_fwp_hp_actual_trip_transitions.csv
+          python3 scripts/validate_vpp_event_bundle.py \
+            --bundle-dir outputs/vpp-final
+
+      - name: Prove both consumers are Event-only
+        run: |
+          python3 scripts/read_event_feed.py \
+            --event outputs/vpp-final/public/VPP_EVENT.csv \
+            --consumer alarm-console
+          python3 scripts/read_event_feed.py \
+            --event outputs/vpp-final/public/ECMS_EVENT.csv \
+            --consumer triplens-ai
+
+      - name: Upload Alarm Console and AI input only
+        uses: actions/upload-artifact@v4
+        with:
+          name: vpp-event-only-${{ github.run_number }}
+          path: |
+            outputs/vpp-final/public/VPP_EVENT.csv
+            outputs/vpp-final/public/ECMS_EVENT.csv
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload internal evidence separately
+        uses: actions/upload-artifact@v4
+        with:
+          name: vpp-internal-evidence-${{ github.run_number }}
+          path: outputs/vpp-final/internal/
+          if-no-files-found: error
+          retention-days: 30
