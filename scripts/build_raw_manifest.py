@@ -110,6 +110,18 @@ def main() -> int:
 
     summary = read_raw_summary(args.raw_file)
     nominal_period_ms = args.stop_time * 1000.0 / args.output_intervals
+    completion_tolerance_s = max(1e-9, nominal_period_ms / 2000.0)
+    if abs(float(summary["first_time_s"])) > completion_tolerance_s:
+        raise ValueError(
+            "RAW simulation does not start at the requested 0 s boundary: "
+            f"first_time={summary['first_time_s']} s"
+        )
+    if abs(float(summary["last_time_s"]) - args.stop_time) > completion_tolerance_s:
+        raise ValueError(
+            "RAW simulation ended early: "
+            f"last_time={summary['last_time_s']} s, "
+            f"requested_stop_time={args.stop_time} s"
+        )
     manifest = {
         "schema_version": "1.0",
         "artifact_type": "THERMOSYSPRO_RAW_ONLY",
@@ -132,6 +144,8 @@ def main() -> int:
         },
         "sampling": {
             "profile": args.sampling_profile,
+            "requested_start_time_s": 0.0,
+            "requested_stop_time_s": args.stop_time,
             "native_csv_output_intervals": args.output_intervals,
             "nominal_csv_period_ms": nominal_period_ms,
             "solver_step_note": "CSV output interval only; DASSL integration remains adaptive.",

@@ -89,6 +89,7 @@ patched_model_sha256="$(sha256sum vendor/ThermoSysPro/ThermoSysPro/Examples/Comb
 
 # A new Action run owns these generated paths. Clear only run-generated data.
 rm -f "$project_root/build/thermosyspro_trip_tac_res.csv"
+rm -f "$project_root/build/openmodelica-run.log"
 rm -rf "$project_root/outputs"
 mkdir -p "$project_root/outputs"
 
@@ -104,7 +105,13 @@ docker run --rm \
   -v "$project_root:/workspace" \
   -w /workspace \
   "$openmodelica_image" \
-  omc /workspace/build/run.mos
+  omc /workspace/build/run.mos | tee "$project_root/build/openmodelica-run.log"
+
+if grep -Eq 'resultFile = ""|Failed to build model|Simulation execution failed' \
+    "$project_root/build/openmodelica-run.log"; then
+  echo "OpenModelica reported an incomplete simulation" >&2
+  exit 1
+fi
 
 if [[ ! -s build/thermosyspro_trip_tac_res.csv ]]; then
   echo "OpenModelica did not create a fresh non-empty result CSV" >&2
@@ -127,8 +134,8 @@ python3 scripts/build_raw_manifest.py \
   --output-intervals "$intervals" \
   --thermosyspro-commit "$thermosyspro_commit" \
   --openmodelica-image "$openmodelica_image" \
-  --model-variant "HPBP_LPBP_DYNAMIC_V9" \
-  --source-patch-marker "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V9" \
+  --model-variant "HPBP_LPBP_DYNAMIC_V10" \
+  --source-patch-marker "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V10" \
   --patched-model-sha256 "$patched_model_sha256"
 
 python3 scripts/validate_raw_outputs.py --output-dir outputs

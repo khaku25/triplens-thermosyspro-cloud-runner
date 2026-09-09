@@ -39,7 +39,7 @@ FORBIDDEN_METADATA_COLUMNS = {
     "expected_result",
 }
 
-DYNAMIC_BYPASS_VARIANT = "HPBP_LPBP_DYNAMIC_V9"
+DYNAMIC_BYPASS_VARIANT = "HPBP_LPBP_DYNAMIC_V10"
 DYNAMIC_BYPASS_COLUMNS = {
     "vppSTTripLatch",
     "vppHPAdmissionPos",
@@ -340,20 +340,40 @@ def main() -> int:
     runtime = manifest.get("runtime")
     if not isinstance(runtime, dict):
         raise ValueError("raw-manifest.json is missing runtime metadata")
+    sampling = manifest.get("sampling")
+    if not isinstance(sampling, dict):
+        raise ValueError("raw-manifest.json is missing sampling metadata")
+    try:
+        requested_start_s = float(sampling["requested_start_time_s"])
+        requested_stop_s = float(sampling["requested_stop_time_s"])
+        nominal_period_ms = float(sampling["nominal_csv_period_ms"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("raw-manifest.json has invalid simulation boundaries") from exc
+    if not all(
+        math.isfinite(value)
+        for value in (requested_start_s, requested_stop_s, nominal_period_ms)
+    ) or requested_stop_s <= requested_start_s or nominal_period_ms <= 0:
+        raise ValueError("raw-manifest.json has invalid simulation boundaries")
+    completion_tolerance_s = max(1e-9, nominal_period_ms / 2000.0)
+    if abs(float(raw_summary["first_time_s"]) - requested_start_s) > completion_tolerance_s:
+        raise ValueError("RAW simulation does not reach the requested start boundary")
+    if abs(float(raw_summary["last_time_s"]) - requested_stop_s) > completion_tolerance_s:
+        raise ValueError(
+            "RAW simulation ended early: "
+            f"last_time={raw_summary['last_time_s']} s, "
+            f"requested_stop_time={requested_stop_s} s"
+        )
     if runtime.get("model_variant") == DYNAMIC_BYPASS_VARIANT:
         transform = runtime.get("source_transform")
         if not isinstance(transform, dict):
             raise ValueError("dynamic bypass manifest is missing source-transform proof")
-        if transform.get("marker") != "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V9":
+        if transform.get("marker") != "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V10":
             raise ValueError("dynamic bypass manifest has the wrong patch marker")
         digest = transform.get("patched_model_sha256")
         if not isinstance(digest, str) or len(digest) != 64:
             raise ValueError("dynamic bypass manifest has an invalid patched-model hash")
-        sampling = manifest.get("sampling")
-        if not isinstance(sampling, dict):
-            raise ValueError("dynamic bypass manifest is missing sampling metadata")
         crossings = validate_dynamic_bypass(
-            raw_path, float(sampling["nominal_csv_period_ms"])
+            raw_path, nominal_period_ms
         )
         print(
             "DYNAMIC_BYPASS_VALIDATION_PASS "

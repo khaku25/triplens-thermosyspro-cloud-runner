@@ -16,7 +16,7 @@ import tempfile
 from pathlib import Path
 
 
-MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V9"
+MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V10"
 
 
 PARAMETERS = f'''  // {MARKER}
@@ -63,6 +63,8 @@ PARAMETERS = f'''  // {MARKER}
     "Spray-water actuator 95 percent opening time";
   parameter Modelica.SIunits.MassFlowRate vppSpraySeatLeak = 1e-4
     "Numerical spray-valve seat leakage preventing a zero-flow tear";
+  parameter Real vppAdmissionSeatLeak = 1e-3
+    "Numerical 0.1 percent turbine admission-valve seat leakage";
   parameter Real vppValveLeak = 0
     "Fully closed pre-Trip bypass position";
   parameter Modelica.SIunits.Volume vppHPHeaderVolume = 1
@@ -76,10 +78,10 @@ PARAMETERS = f'''  // {MARKER}
   parameter Modelica.SIunits.MassFlowRate vppCondenserSteamFlow0 =
       196.6524916480812
     "Verified pre-Trip condenser steam-flow initialization point";
-  parameter ThermoSysPro.Units.Cv vppHPBypassCvmax = 4000
-    "Initial HPBP Cv calibration value";
-  parameter ThermoSysPro.Units.Cv vppLPBypassCvmax = 50000
-    "Initial LPBP Cv calibration value";
+  parameter ThermoSysPro.Units.Cv vppHPBypassCvmax = 1890
+    "HPBP Cv calibrated to the verified normal HP steam flow";
+  parameter ThermoSysPro.Units.Cv vppLPBypassCvmax = 22000
+    "LPBP Cv calibrated to the verified normal hot-reheat steam flow";
   parameter Real vppHPSprayRatio = 0.245289
     "HP spray-water mass flow divided by measured HPBP steam flow";
   parameter Real vppLPSprayRatio = 0.383212
@@ -219,13 +221,15 @@ EQUATIONS = '''
   vppLPBypassCmd = if vppSTTripLatch then 1 else vppValveLeak;
 
   der(vppHPAdmissionPos) =
-    ((if vppSTTripLatch then 0 else 0.8) - vppHPAdmissionPos)
+    ((if vppSTTripLatch then vppAdmissionSeatLeak else 0.8)
+      - vppHPAdmissionPos)
       /vppAdmissionTau;
   der(vppIPAdmissionPos) =
-    ((if vppSTTripLatch then 0 else 0.8) - vppIPAdmissionPos)
+    ((if vppSTTripLatch then vppAdmissionSeatLeak else 0.8)
+      - vppIPAdmissionPos)
       /vppAdmissionTau;
   der(vppLPDrumAdmissionMultiplier) =
-    ((if vppSTTripLatch then 0 else 1)
+    ((if vppSTTripLatch then vppAdmissionSeatLeak else 1)
       - vppLPDrumAdmissionMultiplier)/vppAdmissionTau;
   der(vppHPBypassPos) =
     (vppHPBypassCmd - vppHPBypassPos)/vppHPBypassTau;

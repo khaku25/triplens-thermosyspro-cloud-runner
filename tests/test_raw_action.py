@@ -32,8 +32,8 @@ class RawOnlyActionTests(unittest.TestCase):
             "--raw-file", str(raw),
             "--output", str(target / "raw-manifest.json"),
             "--sampling-profile", "causal_100ms",
-            "--stop-time", "10",
-            "--output-intervals", "100",
+            "--stop-time", "5",
+            "--output-intervals", "50",
             "--thermosyspro-commit", "test-commit",
             "--openmodelica-image", "test-image",
         )
@@ -146,8 +146,12 @@ class RawOnlyActionTests(unittest.TestCase):
         mos = (ROOT / "modelica" / "run.mos.tpl").read_text(encoding="utf-8")
 
         self.assertIn("patch_turbine_bypass_model.py", runner)
-        self.assertIn("HPBP_LPBP_DYNAMIC_V9", runner)
-        self.assertIn("TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V9", runner)
+        self.assertIn("HPBP_LPBP_DYNAMIC_V10", runner)
+        self.assertIn("TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V10", runner)
+        self.assertIn("RAW simulation ended early", (
+            ROOT / "scripts" / "build_raw_manifest.py"
+        ).read_text(encoding="utf-8"))
+        self.assertIn("resultFile = \"\"", runner)
         self.assertIn("vppTripTime=tripTime", model)
         self.assertIn("HPBypassMassFlow", mos)
         self.assertIn("LPBypassMassFlow", mos)
@@ -262,8 +266,8 @@ class RawOnlyActionTests(unittest.TestCase):
                 "--output-intervals", "1000",
                 "--thermosyspro-commit", "test-commit",
                 "--openmodelica-image", "test-image",
-                "--model-variant", "HPBP_LPBP_DYNAMIC_V9",
-                "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V9",
+                "--model-variant", "HPBP_LPBP_DYNAMIC_V10",
+                "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V10",
                 "--patched-model-sha256", "a"*64,
             )
             self.assertEqual(build.returncode, 0, build.stderr)
@@ -272,6 +276,40 @@ class RawOnlyActionTests(unittest.TestCase):
             )
             self.assertEqual(validate.returncode, 0, validate.stderr)
             self.assertIn("DYNAMIC_BYPASS_VALIDATION_PASS", validate.stdout)
+
+    def test_partial_raw_run_is_rejected_before_manifest_creation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            raw = target / "thermosyspro-raw.csv"
+            raw.write_text('"time","x"\n0,1\n0.5,2\n', encoding="utf-8")
+            result = self.run_script(
+                "build_raw_manifest.py",
+                "--raw-file", str(raw),
+                "--output", str(target / "raw-manifest.json"),
+                "--sampling-profile", "standard",
+                "--stop-time", "1",
+                "--output-intervals", "2",
+                "--thermosyspro-commit", "test-commit",
+                "--openmodelica-image", "test-image",
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("RAW simulation ended early", result.stderr)
+
+    def test_validator_rejects_tampered_requested_stop_time(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            self.build_bundle(target)
+            manifest_path = target / "raw-manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["sampling"]["requested_stop_time_s"] = 11
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+            )
+            result = self.run_script(
+                "validate_raw_outputs.py", "--output-dir", str(target)
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("RAW simulation ended early", result.stderr)
 
     def test_raw_validator_rejects_answer_metadata_column(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
