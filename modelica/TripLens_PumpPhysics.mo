@@ -154,6 +154,35 @@ package TripLens_PumpPhysics
       *max(0, min(1, checkValvePosition));
   end BoundaryMotorPump;
 
+  model FastSteamTripValve
+    "Finite-stroke steam trip valve; 52G opening remains instantaneous"
+    parameter Real closeTime(unit="s")=0.15
+      "Fast hydraulic actuator closing time";
+    parameter Real reopenTime(unit="s")=1
+      "Reset/reopening time used outside a latched trip";
+
+    ThermoSysPro.InstrumentationAndControl.Connectors.InputReal
+      normalOpening;
+    ThermoSysPro.InstrumentationAndControl.Connectors.InputLogical trip;
+    ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
+      effectiveOpening;
+
+    Real position(start=1, fixed=false, min=0, max=1);
+    Real target(min=0, max=1);
+
+  initial equation
+    position = max(0, min(1, normalOpening.signal));
+
+  equation
+    assert(closeTime > 0 and reopenTime > 0,
+      "FastSteamTripValve time constants must be positive");
+    target = if trip.signal then 0 else
+      max(0, min(1, normalOpening.signal));
+    der(position) = (target - position)/noEvent(if target < position then
+      closeTime else reopenTime);
+    effectiveOpening.signal = position;
+  end FastSteamTripValve;
+
   model BackpressureTurbineTrip
     "Condenser-pressure protection with latched turbine and generator trip"
     parameter Modelica.SIunits.AbsolutePressure nominalPressurePa=10000;
