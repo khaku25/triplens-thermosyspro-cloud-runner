@@ -48,13 +48,89 @@ def parse_float(value: str, field: str, row_number: int) -> float:
     return number
 
 
-def parse_boolean(value: str, field: str, row_number: int) -> int:
-    normalized = str(value).strip().lower()
-    if normalized in {"true", "1", "1.0"}:
-        return 1
-    if normalized in {"false", "0", "0.0"}:
-        return 0
-    raise ValueError(f"row {row_number}: {field} is not boolean: {value!r}")
+def normalize_typed_value(
+    raw: str,
+    field: str,
+    definition: dict[str, object],
+    row_number: int,
+) -> str:
+    """Normalize a mapped value without changing the immutable source CSV."""
+    configured_type = definition.get("data_type")
+    if configured_type is None and definition.get("value_type") == "boolean":
+        configured_type = "BOOL"
+    data_type = str(configured_type or "REAL").strip().upper()
+    if data_type == "REAL":
+        return f"{parse_float(raw, field, row_number):.12g}"
+    if data_type == "INTEGER":
+        value = parse_float(raw, field, row_number)
+        if not value.is_integer():
+            raise ValueError(f"row {row_number}: {field} must be an integer, got {raw!r}")
+        return str(int(value))
+    if data_type == "BOOL":
+        normalized = raw.strip().lower()
+        if normalized in {"1", "1.0", "true", "yes", "on"}:
+            return "1"
+        if normalized in {"0", "0.0", "false", "no", "off"}:
+            return "0"
+        raise ValueError(f"row {row_number}: {field} must be BOOL, got {raw!r}")
+    if data_type == "ENUM":
+        value = raw.strip().upper()
+        allowed = {str(item).upper() for item in definition.get("allowed_values", [])}
+        if allowed and value not in allowed:
+            raise ValueError(
+                f"row {row_number}: {field} must be one of {sorted(allowed)}, got {raw!r}"
+            )
+        return value
+    raise ValueError(f"{field}: unsupported data_type {data_type!r}")
+
+
+def extend_aliases_from_contract(
+    signals: dict[str, dict[str, object]],
+    path: Path,
+) -> dict[str, object]:
+    """Apply the canonical alias registry to the ProcessBus mapping."""
+    required = {"kind", "canonical_name", "alias", "owner", "processbus_field", "status"}
+    with path.open("r", encoding="utf-8-sig", newline="") as stream:
+        reader = csv.DictReader(stream)
+        fields = set(reader.fieldnames or [])
+        missing = required.difference(fields)
+        if missing:
+            raise ValueError("tag alias contract is missing: " + ", ".join(sorted(missing)))
+        rows = list(reader)
+    if not rows:
+        raise ValueError("tag alias contract is empty")
+
+    alias_owner: dict[str, str] = {}
+    applied = 0
+    for number, row in enumerate(rows, start=2):
+        alias = row["alias"].strip()
+        processbus_field = row["processbus_field"].strip()
+        canonical_name = row["canonical_name"].strip()
+        if not alias or not canonical_name:
+            raise ValueError(f"tag alias contract row {number} has an empty name")
+        if not processbus_field:
+            continue
+        if processbus_field not in signals:
+            raise ValueError(
+                f"tag alias contract row {number} references unknown ProcessBus field "
+                f"{processbus_field!r}"
+            )
+        previous = alias_owner.get(alias)
+        if previous is not None and previous != processbus_field:
+            raise ValueError(
+                f"tag alias {alias!r} maps to both {previous!r} and {processbus_field!r}"
+            )
+        alias_owner[alias] = processbus_field
+        aliases = signals[processbus_field].setdefault("aliases", [])
+        if alias not in aliases:
+            aliases.append(alias)
+        applied += 1
+    return {
+        "file": path.name,
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "row_count": len(rows),
+        "processbus_alias_count": applied,
+    }
 
 
 def numeric_source_column(rows: list[dict[str, str]], header: str) -> bool:
@@ -117,6 +193,11 @@ def main() -> int:
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--mapping", type=Path, default=PROJECT_ROOT / "config/signal_map.json")
+    parser.add_argument(
+        "--alias-contract",
+        type=Path,
+        default=PROJECT_ROOT / "config/tag_alias_contract.csv",
+    )
     parser.add_argument("--mapping-review", type=Path)
     parser.add_argument(
         "--event-time",
@@ -149,6 +230,7 @@ def main() -> int:
     signals = specification.get("signals")
     if not isinstance(signals, dict) or "time_s" not in signals:
         raise ValueError("signal mapping must contain a signals.time_s definition")
+    alias_contract = extend_aliases_from_contract(signals, args.alias_contract)
 
     with args.input.open("r", encoding="utf-8-sig", newline="") as stream:
         reader = csv.DictReader(stream)
@@ -230,12 +312,10 @@ def main() -> int:
                 target_row[target] = ""
                 continue
             raw = (source_row.get(source) or "").strip()
-            if not raw:
-                target_row[target] = ""
-            elif signals[target].get("value_type") == "boolean":
-                target_row[target] = parse_boolean(raw, target, row_index)
-            else:
-                target_row[target] = f"{parse_float(raw, target, row_index):.12g}"
+            target_row[target] = (
+                "" if not raw
+                else normalize_typed_value(raw, target, signals[target], row_index)
+            )
 
         for target, source in dynamic_sources.items():
             raw = (source_row.get(source) or "").strip()
@@ -265,6 +345,7 @@ def main() -> int:
     review = {
         "schema_version": specification.get("schema_version", "2.0"),
         "processbus_contract_version": "2.0",
+        "tag_alias_contract": alias_contract,
         "input_file": args.input.name,
         "scenario_id": args.scenario_id,
         "reference_event_time_s": event_time,

@@ -46,6 +46,11 @@ Alarm rule, ECMS Cause & Effect를 적용한다.
 ProcessBus는 알람이 아니다. ECMS 로직이나 필요한 전기 입력이 없으면 ECMS 사건을
 추측하지 않고 미생성/보류한다. 예제용 합성 규칙은 Blind 실행과 분리한다.
 
+현재 기준 구현은 `scripts/convert_raw_observations.py`이며 RAW SHA-256을 전후
+비교한다. `config/tag_alias_contract.csv`로 명칭·소유권을 정규화하고 1 ms 논리
+timer에는 source sample zero-order hold를 적용한다. 공통 GT/ST Trip은
+`config/common_trip_matrix.csv`를 실행한다.
+
 ## 3. 알람발생기 — 운전 화면 재생
 
 - DCS1, DCS2, ECMS는 각 콘솔의 알람·이벤트로 시간순 재생한다.
@@ -65,10 +70,9 @@ TripLens는 시간정렬, 변화량 분석, 알람 축약, 상관관계, 원인 
 | 계층 | 확정 목표 | 현재 단계 |
 |---|---|---|
 | GitHub Action | RAW-only | GT 및 전 펌프 물리 Workflow에 적용 |
-| 웹 RAW 변환부 | RAW → ProcessBus/DCS1/DCS2/ECMS | 다음 변경 대상 |
+| 웹 RAW 변환부 | RAW → ProcessBus/DCS1/DCS2/ECMS | 기준 Python 구현 및 회귀시험 완료; 웹 이관 대기 |
 | 알람발생기 | 3개 알람 + 별도 Process Trend | 다음 변경 대상 |
-| TripLens | 4종 관측 입력 | 다음 변경 대상 |
+| TripLens | 4종 관측 입력 | 입력 계약 확정; 제품 연결 대기 |
 
-Action 저장소에 남아 있는 변환·DCS·ECMS Python 파일은 웹 변환부 이관을 위한
-기존 구현 참고자료일 뿐이다. 두 Action 실행 경로에서는 호출하거나 업로드하지
-않는다.
+Action 저장소의 변환·DCS·ECMS Python 파일은 웹 변환부 이관을 위한 검증된 기준
+구현이다. 두 RAW Action 실행 경로에서는 계속 호출하거나 업로드하지 않는다.

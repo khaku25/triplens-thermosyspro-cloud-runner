@@ -25,7 +25,7 @@ TripLens
 ## Contract rules
 
 1. `time_s` is the only universally required process source.
-2. Known source aliases are mapped to stable canonical names from `config/signal_map.json`.
+2. Known source aliases are mapped to stable canonical names from `config/signal_map.json` and the ownership-aware `config/tag_alias_contract.csv`.
 3. Canonical signals that are absent from a source remain blank; their absence does not prevent ProcessBus creation.
 4. Every unmapped source column whose non-empty values are finite numeric values is preserved automatically as a dynamic ProcessBus signal.
 5. Dynamic signal names use the deterministic `raw__...` namespace. The exact original source header is recorded in `signal-mapping-review.json`.
@@ -34,6 +34,8 @@ TripLens
 8. Accident type is not part of the core ProcessBus schema. A generic `event_marker` may be added when a reference event time is supplied.
 9. `gt_trip_cmd` is a legacy compatibility field only. It is generated automatically only when the legacy `--trip-time` path is used or when explicitly requested.
 10. Dynamic ProcessBus signals are automatically included in persistent-deviation analysis by `extract_incident_window.py`.
+11. REAL values may be interpolated for an engineering trend; BOOL/ENUM state and DCS timer inputs use zero-order hold. No intermediate digital edge is fabricated.
+12. `quality` is metadata, not a plant signal, and is propagated to derived observations.
 
 ## Alarm policy
 
@@ -43,6 +45,13 @@ A newly discovered numeric process signal is preserved and analyzed automaticall
 
 ## Scenario independence
 
-GT Trip, BFP Trip and future incidents use the same normalization engine. The historical `normalize_bfp_processbus.py` entry point is retained only as a compatibility adapter and delegates to `normalize_processbus.py`.
+GT Trip, FWP Trip and future incidents use the same normalization engine. The historical `normalize_bfp_processbus.py` entry point is retained only as a compatibility adapter and delegates to `normalize_processbus.py`.
 
 This allows a future raw CSV to add previously unseen process variables without changing the parser first. If the input CSV contains a new numeric column, ProcessBus retains it, records its exact source header, and makes it available to TripLens change detection.
+
+## Naming and ownership boundary
+
+- Canonical project term: `VPP` (`VVP` is legacy only).
+- Canonical pump equipment: `FWP-HP/IP/LP` (`BFP` is a display/legacy alias).
+- ThermoSysPro native `MP/BP` headers remain unchanged in immutable RAW and map to canonical `IP/LP` only here.
+- Command inputs, DCS/MCC state, ECMS electrical state, protection latch, process physics and metadata remain distinct owners even when they share one timestamp.

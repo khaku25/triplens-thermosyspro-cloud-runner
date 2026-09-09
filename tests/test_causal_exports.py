@@ -110,10 +110,7 @@ class CausalExportTests(unittest.TestCase):
             trip = next(row for row in dcs1 if row["tag"] == "GT.TRIP.CMD")
             self.assertEqual(trip["source_time_ms"], "5000")
             self.assertEqual(trip["provenance"], "SCENARIO_INPUT")
-            self.assertTrue(any(
-                row["provenance"] == "PHYSICS_ABSOLUTE_THRESHOLD"
-                for row in dcs1
-            ))
+            self.assertTrue(any(row["provenance"] == "PHYSICS_THRESHOLD_DERIVED" for row in dcs1))
             self.assertEqual(
                 [int(row["source_time_ms"]) for row in dcs1],
                 sorted(int(row["source_time_ms"]) for row in dcs1),
@@ -147,7 +144,9 @@ class CausalExportTests(unittest.TestCase):
             static_files = [
                 "config/ecms_a_settings.csv", "config/ecms_a_equipment.csv",
                 "config/ecms_command_catalog.csv", "config/fault_presets.json",
-                "config/signal_map.json", "config/dcs_alarm_rules.csv",
+                "config/vpp_baseline_v1.json",
+                "config/signal_map.json", "config/common_trip_matrix.csv",
+                "config/tag_alias_contract.csv", "config/dcs_alarm_rules.csv",
                 "examples/bfp_trip_commands.csv", "data/ecms_m_links.csv",
                 "data/ecms_tag_catalog.csv", "data/thermo_vpp_m_locked_tags.csv",
                 "data/m_layer_manifest.json", "topology/triplens_ecms_vpp.svg",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate physics continuity and the three-source BFP blind-test contract."""
+"""Validate physics continuity and the three-source FWP blind-test contract."""
 
 from __future__ import annotations
 
@@ -28,6 +28,14 @@ def finite(value: str, label: str) -> float:
     return result
 
 
+def available_field(rows: list[dict[str, str]], canonical: str, legacy: str) -> str:
+    if canonical in rows[0] and any(row.get(canonical, "").strip() for row in rows):
+        return canonical
+    if legacy in rows[0] and any(row.get(legacy, "").strip() for row in rows):
+        return legacy
+    raise ValueError(f"neither canonical {canonical} nor legacy {legacy} is available")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, required=True)
@@ -53,14 +61,16 @@ def main() -> int:
     post = [row for row in process if finite(row["time_s"], "time_s") >= args.trip_time + 5]
     if not pre or not post:
         raise ValueError("pre/post incident physics windows are missing")
-    initial_rpm = finite(pre[-1]["bfp_hp_speed_rpm"], "pre-trip RPM")
-    final_rpm = finite(post[-1]["bfp_hp_speed_rpm"], "final RPM")
+    speed_field = available_field(process, "fwp_hp_speed_rpm", "bfp_hp_speed_rpm")
+    flow_field = available_field(process, "fwp_hp_mass_flow_kg_s", "bfp_hp_mass_flow_kg_s")
+    initial_rpm = finite(pre[-1][speed_field], "pre-trip RPM")
+    final_rpm = finite(post[-1][speed_field], "final RPM")
     if initial_rpm < 1300 or abs(final_rpm - args.final_rpm) > 1e-3:
         raise ValueError("BFP speed adapter did not reach the declared states")
     exhaust = [finite(row["gt_exhaust_mass_flow_kg_s"], "GT exhaust flow") for row in process]
     if max(exhaust) - min(exhaust) > 1e-6:
         raise ValueError("GT exhaust changed during the isolated BFP incident")
-    feedwater = [finite(row["bfp_hp_mass_flow_kg_s"], "HP feedwater flow") for row in process]
+    feedwater = [finite(row[flow_field], "HP feedwater flow") for row in process]
     if max(feedwater) - min(feedwater) < max(1.0, abs(feedwater[0]) * 0.05):
         raise ValueError("BFP disturbance did not materially change HP feedwater flow")
 
@@ -70,8 +80,8 @@ def main() -> int:
         raise ValueError("blind-input must contain exactly DCS1.csv, DCS2.csv, and ECMS.csv")
     events = {system: read_csv(blind / f"{system}.csv") for system in ("DCS1", "DCS2", "ECMS")}
     required = {
-        "DCS1": {"BFP-HP.SPEED_LOW", "HP.FW.FLOW_LOW"},
-        "ECMS": {"50BFP-HP.PICKUP", "52BFP-HP.CLOSED", "BFP-HP.MOTOR.CURRENT_A"},
+        "DCS2": {"FWP-HP.SPEED_LOW", "HP.FW.FLOW_LOW"},
+        "ECMS": {"50FWP-HP.PICKUP", "VCB-A01.CLOSED", "FWP-HP.MOTOR.CURRENT_A"},
     }
     for system, tags in required.items():
         actual = {row["tag"] for row in events[system]}
@@ -85,7 +95,7 @@ def main() -> int:
     if "GT.TRIP.CMD" in all_blind_text or "expected_root_cause" in all_blind_text:
         raise ValueError("blind input leaks a scenario answer label")
     answer = json.loads((args.output_dir / "ground-truth" / "answer-key.json").read_text(encoding="utf-8"))
-    if answer["expected_root_cause"] != "HP boiler feed pump electrical trip":
+    if answer["expected_root_cause"] != "FWP-HP electrical trip (display alias: HP BFP)":
         raise ValueError("answer key root cause does not match the physical adapter")
     metadata = json.loads((args.output_dir / "run-metadata.json").read_text(encoding="utf-8"))
     if metadata["blind_upload_directory"] != "blind-input":

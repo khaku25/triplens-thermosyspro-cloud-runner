@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import csv
 import json
+import math
 import shutil
 import subprocess
 import sys
@@ -30,8 +32,8 @@ class RawOnlyActionTests(unittest.TestCase):
             "--raw-file", str(raw),
             "--output", str(target / "raw-manifest.json"),
             "--sampling-profile", "causal_100ms",
-            "--stop-time", "10",
-            "--output-intervals", "100",
+            "--stop-time", "5",
+            "--output-intervals", "50",
             "--thermosyspro-commit", "test-commit",
             "--openmodelica-image", "test-image",
         )
@@ -135,6 +137,238 @@ class RawOnlyActionTests(unittest.TestCase):
                 [line.strip() for line in upload_block.splitlines() if line.strip()],
                 ["outputs/thermosyspro-raw.csv", "outputs/raw-manifest.json"],
             )
+
+    def test_gt_physical_runner_applies_dynamic_bypass_patch(self) -> None:
+        runner = (ROOT / "scripts" / "run_pipeline.sh").read_text(encoding="utf-8")
+        model = (
+            ROOT / "modelica" / "TripLens_CombinedCycle_TripTAC.mo.tpl"
+        ).read_text(encoding="utf-8")
+        mos = (ROOT / "modelica" / "run.mos.tpl").read_text(encoding="utf-8")
+
+        self.assertIn("patch_turbine_bypass_model.py", runner)
+        self.assertIn("HPBP_LPBP_PHYSICAL_V11", runner)
+        self.assertIn("TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11", runner)
+        self.assertIn("RAW simulation ended early", (
+            ROOT / "scripts" / "build_raw_manifest.py"
+        ).read_text(encoding="utf-8"))
+        self.assertIn("resultFile = \"\"", runner)
+        self.assertIn("vppTripTime=@VPP_TRIP_TIME@", model)
+        self.assertIn("HPBypassMassFlow", mos)
+        self.assertIn("LPBypassMassFlow", mos)
+        self.assertNotIn("nlssMaxDensity=0", mos)
+        self.assertNotIn("nls=hybrid", mos)
+        self.assertNotIn("iim=none", mos)
+        self.assertNotIn("LOG_INIT", mos)
+        self.assertNotIn("LOG_NLS", mos)
+        self.assertNotIn("LOG_NLS_V", mos)
+        self.assertIn('simflags="-noEventEmit"', mos)
+        self.assertIn("CondenserPressure", mos)
+
+    def test_one_ms_dynamic_bypass_raw_meets_stroke_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            raw = target / "thermosyspro-raw.csv"
+            columns = [
+                "time",
+                "vppSTTripLatch",
+                "vppHPAdmissionPos",
+                "vppIPAdmissionPos",
+                "vppLPDrumAdmissionMultiplier",
+                "vppHPBypassCmd",
+                "vppLPBypassCmd",
+                "vppHPBypassPos",
+                "vppLPBypassPos",
+                "vppHPSprayPos",
+                "vppLPSprayPos",
+                "vppHPBypassOpenLS",
+                "vppHPBypassCloseLS",
+                "vppLPBypassOpenLS",
+                "vppLPBypassCloseLS",
+                "vppHPBypassMassFlow",
+                "vppLPBypassMassFlow",
+                "vppHPSprayMassFlow",
+                "vppLPSprayMassFlow",
+                "vppHPBypassInletPressure",
+                "vppLPBypassInletPressure",
+                "vppHPBypassOutletPressure",
+                "vppLPBypassOutletPressure",
+                "vppHPBypassInletTemperature",
+                "vppLPBypassInletTemperature",
+                "vppHPBypassOutletTemperature",
+                "vppLPBypassOutletTemperature",
+                "vppCondenserPressure",
+                "vppCondenserLevel",
+            ]
+            leakage = 0.0
+            trip_time = 0.1
+
+            def opening(elapsed: float, stroke95: float) -> float:
+                if elapsed < 0:
+                    return leakage
+                tau = stroke95 / -math.log(0.05)
+                return 1 - (1 - leakage)*math.exp(-elapsed/tau)
+
+            def closing(elapsed: float, initial: float, stroke95: float) -> float:
+                if elapsed < 0:
+                    return initial
+                tau = stroke95 / -math.log(0.05)
+                return initial*math.exp(-elapsed/tau)
+
+            with raw.open("w", encoding="utf-8", newline="") as stream:
+                writer = csv.writer(stream)
+                writer.writerow(columns)
+                for index in range(1001):
+                    time_s = index / 1000
+                    elapsed = time_s - trip_time
+                    tripped = elapsed >= 0
+                    hp_pos = opening(elapsed, 0.300)
+                    lp_pos = opening(elapsed, 0.400)
+                    spray_pos = opening(elapsed, 0.050) if tripped else 0.0
+                    hp_admission = closing(elapsed, 0.8, 0.150)
+                    lp_drum = closing(elapsed, 1.0, 0.150)
+                    writer.writerow(
+                        [
+                            time_s,
+                            tripped,
+                            hp_admission,
+                            hp_admission,
+                            lp_drum,
+                            1 if tripped else leakage,
+                            1 if tripped else leakage,
+                            hp_pos,
+                            lp_pos,
+                            spray_pos,
+                            spray_pos,
+                            hp_pos >= 0.95,
+                            hp_pos <= 0.01,
+                            lp_pos >= 0.95,
+                            lp_pos <= 0.01,
+                            hp_pos*151.696,
+                            lp_pos*176.758,
+                            spray_pos*10,
+                            spray_pos*20,
+                            12681000,
+                            2548600,
+                            2726700,
+                            6136,
+                            813,
+                            813,
+                            723,
+                            373,
+                            6136,
+                            1.5,
+                        ]
+                    )
+            build = self.run_script(
+                "build_raw_manifest.py",
+                "--raw-file", str(raw),
+                "--output", str(target / "raw-manifest.json"),
+                "--sampling-profile", "incident_1ms",
+                "--stop-time", "1",
+                "--output-intervals", "1000",
+                "--thermosyspro-commit", "test-commit",
+                "--openmodelica-image", "test-image",
+                "--model-variant", "HPBP_LPBP_PHYSICAL_V11",
+                "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11",
+                "--patched-model-sha256", "a"*64,
+            )
+            self.assertEqual(build.returncode, 0, build.stderr)
+            validate = self.run_script(
+                "validate_raw_outputs.py", "--output-dir", str(target)
+            )
+            self.assertEqual(validate.returncode, 0, validate.stderr)
+            self.assertIn("DYNAMIC_BYPASS_VALIDATION_PASS", validate.stdout)
+
+    def test_three_minute_normal_raw_meets_reliability_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            raw = target / "thermosyspro-raw.csv"
+            columns = [
+                "time", "vppSTTripLatch", "vppHPAdmissionPos",
+                "vppIPAdmissionPos", "vppLPDrumAdmissionMultiplier",
+                "vppHPBypassCmd", "vppLPBypassCmd", "vppHPBypassPos",
+                "vppLPBypassPos", "vppHPSprayPos", "vppLPSprayPos",
+                "vppHPBypassOpenLS", "vppHPBypassCloseLS",
+                "vppLPBypassOpenLS", "vppLPBypassCloseLS",
+                "vppHPBypassMassFlow", "vppLPBypassMassFlow",
+                "vppHPSprayMassFlow", "vppLPSprayMassFlow",
+                "vppHPBypassInletPressure", "vppLPBypassInletPressure",
+                "vppHPBypassOutletPressure", "vppLPBypassOutletPressure",
+                "vppHPBypassInletTemperature", "vppLPBypassInletTemperature",
+                "vppHPBypassOutletTemperature", "vppLPBypassOutletTemperature",
+                "vppCondenserPressure", "vppCondenserLevel",
+                "Alternateur.Welec", "BallonHP.yLevel.signal",
+                "BallonMP.yLevel.signal", "BallonBP.yLevel.signal",
+                "BallonHP.P", "BallonMP.P", "BallonBP.P",
+                "TurbineHP.Q", "TurbineMP.Q", "TurbineBP.Q",
+            ]
+            row = [
+                0, False, 0.8, 0.8, 1.0, 0, 0, 0, 0, 0, 0,
+                False, True, False, True, 0, 0, 1e-4, 1e-4,
+                12681000, 2548600, 2726700, 6136, 813, 813, 723, 373,
+                6136, 1.5, 129400000, 1.05, 1.05, 1.75,
+                12681000, 2548600, 563775, 151.769, 176.789, 196.652,
+            ]
+            with raw.open("w", encoding="utf-8", newline="") as stream:
+                writer = csv.writer(stream)
+                writer.writerow(columns)
+                writer.writerow(row)
+                final = list(row)
+                final[0] = 180
+                writer.writerow(final)
+            build = self.run_script(
+                "build_raw_manifest.py",
+                "--raw-file", str(raw),
+                "--output", str(target / "raw-manifest.json"),
+                "--sampling-profile", "normal_3min",
+                "--stop-time", "180",
+                "--output-intervals", "1800",
+                "--thermosyspro-commit", "test-commit",
+                "--openmodelica-image", "test-image",
+                "--model-variant", "HPBP_LPBP_PHYSICAL_V11",
+                "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11",
+                "--patched-model-sha256", "b"*64,
+            )
+            self.assertEqual(build.returncode, 0, build.stderr)
+            validate = self.run_script(
+                "validate_raw_outputs.py", "--output-dir", str(target)
+            )
+            self.assertEqual(validate.returncode, 0, validate.stderr)
+            self.assertIn("NORMAL_OPERATION_RELIABILITY_PASS", validate.stdout)
+
+    def test_partial_raw_run_is_rejected_before_manifest_creation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            raw = target / "thermosyspro-raw.csv"
+            raw.write_text('"time","x"\n0,1\n0.5,2\n', encoding="utf-8")
+            result = self.run_script(
+                "build_raw_manifest.py",
+                "--raw-file", str(raw),
+                "--output", str(target / "raw-manifest.json"),
+                "--sampling-profile", "standard",
+                "--stop-time", "1",
+                "--output-intervals", "2",
+                "--thermosyspro-commit", "test-commit",
+                "--openmodelica-image", "test-image",
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("RAW simulation ended early", result.stderr)
+
+    def test_validator_rejects_tampered_requested_stop_time(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            self.build_bundle(target)
+            manifest_path = target / "raw-manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["sampling"]["requested_stop_time_s"] = 11
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+            )
+            result = self.run_script(
+                "validate_raw_outputs.py", "--output-dir", str(target)
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("RAW simulation ended early", result.stderr)
 
     def test_raw_validator_rejects_answer_metadata_column(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

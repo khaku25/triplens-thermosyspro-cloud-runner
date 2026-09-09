@@ -1,0 +1,214 @@
+{
+  "schema_version": "1.0",
+  "baseline_id": "VPP_BASELINE_V1",
+  "version": "1.0.0",
+  "status": "VPP_DESIGN_BASELINE",
+  "effective_date": "2026-09-09",
+  "authority": {
+    "vpp_design_status": "LOCKED",
+    "plant_approval_status": "NOT_APPLICABLE",
+    "statement": "Authoritative public virtual-plant design basis; not a replica of plant settings."
+  },
+  "naming": {
+    "canonical_plant_acronym": "VPP",
+    "legacy_aliases": ["VVP"],
+    "canonical_feedwater_pumps": ["FWP-HP", "FWP-IP", "FWP-LP"]
+  },
+  "ratings": {
+    "gt_power_mw": 160.0,
+    "st_power_mw": 250.0,
+    "gt_speed_rpm": 3600.0,
+    "st_speed_rpm": 3600.0,
+    "frequency_hz": 60.0,
+    "grid_voltage_kv": 154.0,
+    "generator_terminal_voltage_kv": {
+      "GTG": 13.8,
+      "STG": 13.8
+    },
+    "auxiliary_bus_voltage_kv": 6.9,
+    "active_power_mw": {
+      "GTG": 160.0,
+      "STG": 250.0,
+      "combined_cycle_reference": 410.0
+    },
+    "nominal_speed_rpm": {
+      "GTG": 3600.0,
+      "STG": 3600.0,
+      "FWP-HP": 1400.0,
+      "FWP-IP": 1400.0,
+      "FWP-LP": 1400.0
+    }
+  },
+  "timing": {
+    "trip_receive_delay_ms": 20,
+    "lockout_operate_delay_ms": 35,
+    "gt_breaker_open_delay_ms": 80,
+    "st_breaker_open_delay_ms": 100,
+    "fwp_breaker_open_delay_ms": 80
+  },
+  "dynamics": {
+    "gt_power_decay_s": 0.35,
+    "st_power_decay_s": 0.8,
+    "gt_coastdown_tau_s": 1.2,
+    "st_coastdown_tau_s": 2.5
+  },
+  "trip_latch_and_reset": {
+    "GTG": {
+      "set_condition": "RESOLVED_GT_TRIP_REQUEST",
+      "reset_condition": "EXPLICIT_RESET",
+      "reset_closes_breaker": false,
+      "reclose_requires_separate_close": true
+    },
+    "STG": {
+      "set_condition": "RESOLVED_ST_TRIP_REQUEST",
+      "reset_condition": "EXPLICIT_RESET",
+      "reset_closes_breaker": false,
+      "reclose_requires_separate_close": true
+    },
+    "FWP": {
+      "applies_to": ["FWP-HP", "FWP-IP", "FWP-LP"],
+      "set_condition": "TRIP_COMMAND",
+      "reset_condition": "EXPLICIT_RESET",
+      "stop_sets_trip_latch": false,
+      "stop_opens_breaker": false,
+      "reset_closes_breaker": false,
+      "reclose_requires_separate_close": true
+    }
+  },
+  "turbine_bypass": {
+    "design_status": "TOPOLOGY_LOCKED_CV_CALIBRATION_PENDING",
+    "model_naming": {
+      "HP": "HP",
+      "IP": "MP",
+      "LP": "BP"
+    },
+    "systems": {
+      "HPBP": {
+        "installed": true,
+        "source": "HP_MAIN_STEAM_HEADER_UPSTREAM_HP_TURBINE_STOP_CONTROL_VALVE",
+        "destination": "COLD_REHEAT_HEADER_DOWNSTREAM_HP_TURBINE",
+        "bypassed_turbines": ["HP"],
+        "nominal_steam_flow_kg_s": 151.696,
+        "nominal_inlet_pressure_pa": 12681000.0,
+        "nominal_outlet_pressure_pa": 2726700.0,
+        "stroke_time_ms": 300,
+        "trip_action": "OPEN",
+        "fail_position": "TBD_AFTER_FAILURE_MODE_REVIEW"
+      },
+      "IPBP": {
+        "installed": false,
+        "reason": "HOT_REHEAT_LPBP_BYPASSES_THE_IP_AND_LP_TURBINE_TRAIN"
+      },
+      "LPBP": {
+        "installed": true,
+        "source": "HOT_REHEAT_HEADER_UPSTREAM_IP_TURBINE_STOP_CONTROL_VALVE",
+        "destination": "CONDENSER_STEAM_INLET_HEADER",
+        "bypassed_turbines": ["IP", "LP"],
+        "nominal_steam_flow_kg_s": 176.758,
+        "nominal_inlet_pressure_pa": 2548600.0,
+        "nominal_outlet_pressure_pa": 6136.0,
+        "stroke_time_ms": 400,
+        "trip_action": "OPEN",
+        "fail_position": "TBD_AFTER_FAILURE_MODE_REVIEW",
+        "not_lp_drum_steam_dump": true
+      },
+      "LP_DRUM_STEAM_DUMP": {
+        "installed": false,
+        "reason": "NOT_INCLUDED_IN_THIS_VPP_DESIGN"
+      }
+    },
+    "trip_sequence": {
+      "trigger": "ST_TRIP_LATCH",
+      "turbine_admission_close_time_ms": 150,
+      "bypass_open_command_delay_ms": 0,
+      "open_limit_percent": 95.0,
+      "lp_drum_admission_isolation": true,
+      "power_decay_is_trip_consequence": true
+    },
+    "calibration": {
+      "cv_status": "OPENMODELICA_CALIBRATION_REQUIRED",
+      "spray_flow_status": "ENERGY_BALANCE_PRELIMINARY_ONLY",
+      "condenser_acceptance_status": "TRANSIENT_VERIFICATION_REQUIRED"
+    }
+  },
+  "relay": {
+    "measurement": "RMS",
+    "fault_current_a": 12000.0,
+    "fault_residual_voltage_pu": 0.20,
+    "element_50": {
+      "pickup_a": 8000.0,
+      "operate_delay_ms": 15
+    },
+    "element_51": {
+      "pickup_a": 1200.0,
+      "curve": "IEC_STANDARD_INVERSE",
+      "time_multiplier": 0.10,
+      "equation": "t_s=TMS*0.14/((I/Ip)^0.02-1)"
+    },
+    "scope": "VPP_RMS_SCENARIO_MODEL"
+  },
+  "alarms": {
+    "evaluation_period_ms": 1,
+    "timer_policy": "ZERO_ORDER_HOLD",
+    "quality_gate": "GOOD_ONLY",
+    "transition_output": "STATE_CHANGE_ONLY",
+    "rule_catalog": "config/dcs_alarm_rules.csv",
+    "catalog_adoption": "ALL_ROWS_ARE_VPP_BASELINE_V1",
+    "threshold_families": ["H", "HH", "L", "LL"],
+    "rule_count": 30,
+    "required_rule_ids": [
+      "D1-001", "D1-010", "D1-011", "D1-020", "D1-021",
+      "D2-001", "D2-101", "D2-102", "D2-103", "D2-104",
+      "D2-111", "D2-112", "D2-113", "D2-114",
+      "D2-121", "D2-122", "D2-123", "D2-124",
+      "D2-201", "D2-202", "D2-211", "D2-212", "D2-221", "D2-222",
+      "D2-301", "D2-302", "D2-311", "D2-312", "D2-321", "D2-322"
+    ],
+    "rule_fields_locked_by_catalog": [
+      "direction", "threshold_mode", "threshold_value", "hysteresis_value", "delay_s", "severity", "unit"
+    ]
+  },
+  "common_trip": {
+    "matrix_source": "config/common_trip_matrix.csv",
+    "matrix_adoption": "ALL_ROWS_ARE_VPP_BASELINE_V1",
+    "rules": {
+      "DIRECT_GT_TRIP": {"gt_trip": true, "st_trip": true},
+      "DIRECT_ST_TRIP": {"gt_trip": false, "st_trip": true},
+      "HP_DRUM_HH": {"gt_trip": false, "st_trip": true},
+      "IP_DRUM_HH": {"gt_trip": false, "st_trip": true},
+      "LP_DRUM_HH": {"gt_trip": false, "st_trip": true},
+      "HP_DRUM_LL": {"gt_trip": true, "st_trip": true},
+      "IP_DRUM_LL": {"gt_trip": true, "st_trip": true},
+      "LP_DRUM_LL": {"gt_trip": true, "st_trip": true}
+    },
+    "causal_constraints": [
+      "POWER_DECAY_IS_A_TRIP_RESULT_NOT_A_TRIP_CAUSE",
+      "GT_TRIP_INTERTRIPS_ST",
+      "DIRECT_ST_TRIP_DOES_NOT_TRIP_GT",
+      "FWP_TRIP_DOES_NOT_TRIP_GT_OR_ST"
+    ]
+  },
+  "source_configs": {
+    "strategy": "BASELINE_JSON_IS_ENTRYPOINT_CSV_FILES_ARE_VALIDATED_EXECUTION_TABLES",
+    "ratings_and_protection": "config/ecms_a_settings.csv",
+    "fwp_equipment": "config/ecms_a_equipment.csv",
+    "alarm_rules": "config/dcs_alarm_rules.csv",
+    "trip_coupling": "config/common_trip_matrix.csv"
+  },
+  "setting_paths": {
+    "ratings.grid_voltage_kv": "config/ecms_a_settings.csv#GRID_VOLTAGE_KV",
+    "ratings.generator_terminal_voltage_kv.GTG": "config/ecms_a_settings.csv#GT_TERMINAL_VOLTAGE_KV",
+    "ratings.generator_terminal_voltage_kv.STG": "config/ecms_a_settings.csv#ST_TERMINAL_VOLTAGE_KV",
+    "ratings.auxiliary_bus_voltage_kv": "config/ecms_a_settings.csv#AUX_BUS_VOLTAGE_KV",
+    "ratings.gt_power_mw": "config/ecms_a_settings.csv#GTG_PRETRIP_POWER_MW",
+    "timing.trip_receive_delay_ms": "config/ecms_a_settings.csv#TRIP_RECEIVE_DELAY_MS",
+    "timing.lockout_operate_delay_ms": "config/ecms_a_settings.csv#LOCKOUT_OPERATE_DELAY_MS",
+    "timing.gt_breaker_open_delay_ms": "config/ecms_a_settings.csv#GT_BREAKER_OPEN_DELAY_MS",
+    "timing.st_breaker_open_delay_ms": "config/ecms_a_settings.csv#ST_BREAKER_OPEN_DELAY_MS",
+    "timing.fwp_breaker_open_delay_ms": "config/ecms_a_settings.csv#MOTOR_BREAKER_OPEN_DELAY_MS",
+    "dynamics.gt_power_decay_s": "config/ecms_a_settings.csv#GT_POWER_DECAY_MS/1000",
+    "relay": "config/ecms_a_settings.csv#FEEDER_*",
+    "alarms": "config/dcs_alarm_rules.csv#ALL_ROWS",
+    "common_trip": "config/common_trip_matrix.csv#ALL_ROWS"
+  }
+}

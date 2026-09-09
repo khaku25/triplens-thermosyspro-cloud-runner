@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0",
+  "equipment_id": "FWP-HP",
+  "scope": "competition_raw_boundary_only",
+  "source_of_truth": {
+    "repository": "khaku25/triplens-matlab-cosim-runner",
+    "plant_model": "TripLens Plant Model v2",
+    "native_component": "PompeAlimHP",
+    "physics_input": "fwpHpSpeedCmd",
+    "operation_adapter": "ecms_pump_logic/build_fwp_hp_operation.m",
+    "validated_rnd_main_commit": "817b1ef463a2bf58ca317fe3d683165875ab586f",
+    "validation_evidence": {
+      "physical_source_run_id": 34366779559,
+      "canonical_raw_revalidation_run_id": 34374439526,
+      "plant_model_contract_run_id": 34375127982,
+      "normal_100_run_id": 34375132429,
+      "fmi_contract_run_id": 34375441337,
+      "canonical_raw_start_s": 300,
+      "canonical_raw_end_s": 420,
+      "canonical_raw_rows": 1201,
+      "canonical_physics_interval_s": 0.1,
+      "scenario_answer_label_present": false
+    }
+  },
+  "commands": {
+    "run": "FWP_HP_RUN",
+    "stop": "FWP_HP_RUN=0",
+    "trip": "FWP_HP_TRIP",
+    "reset": "FWP_HP_RESET"
+  },
+  "trip_contract": {
+    "request_active_value": 1,
+    "breaker_feedback": "VCB-A01.CLOSED",
+    "success_value": 0,
+    "physics_after_trip": "motor torque removed -> RPM coastdown -> fwpHpSpeedCmd -> native PompeAlimHP response",
+    "reset_behavior": "clear latch only; no breaker reclose and no automatic restart",
+    "breaker_feedback_canonical": "fwp_hp_vcb_closed",
+    "breaker_feedback_aliases": [
+      "VCB-A01.CLOSED",
+      "ECMS.VCB-A01.CLOSED",
+      "fwp_hp_vcb_closed"
+    ]
+  },
+  "normal_stop_contract": {
+    "breaker_feedback": "VCB-A01.CLOSED",
+    "breaker_value": 1,
+    "physics": "run disable -> RPM coastdown",
+    "breaker_feedback_canonical": "fwp_hp_vcb_closed"
+  },
+  "raw_contract": {
+    "physics_interval_s": 0.1,
+    "scenario_answer_labels_allowed": false,
+    "native_speed_aliases": [
+      "PompeAlimHP.Vr",
+      "arretPomesHP.y.signal",
+      "fwp_hp_speed_rpm",
+      "bfp_hp_speed_rpm"
+    ],
+    "native_flow_aliases": [
+      "PompeAlimHP.Q",
+      "CapteurDebitEauHP.Measure.signal",
+      "fwp_hp_mass_flow_kg_s",
+      "bfp_hp_mass_flow_kg_s"
+    ],
+    "canonical_speed": "fwp_hp_speed_rpm",
+    "canonical_mass_flow": "fwp_hp_mass_flow_kg_s"
+  },
+  "logic_contract": {
+    "logic_step_s": 0.001,
+    "alarm_delay_method": "current_simulation_time - threshold_crossing_time",
+    "sample_count_delay_forbidden": true
+  },
+  "excluded_physics": [
+    "CW-PUMP",
+    "COND-PUMP"
+  ],
+  "guardrails": [
+    "Do not copy MATLAB or Simulink validation code into the Competition repository.",
+    "Do not synthesize motor/check-valve ThermoSysPro components in the RAW runner.",
+    "Do not add scenario-answer labels to Blind RAW.",
+    "Motor and breaker timing values remain virtual-model R&D settings until plant/OEM approval."
+  ]
+}

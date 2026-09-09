@@ -27,33 +27,58 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Filter catalogue to simulation-grounded logic
+
+      - name: Filter raw Thermo tags to model-backed Core
+        run: |
+          python3 logic_db/filter_core_model_tags.py \
+            --input data/thermo_vpp_full_tag_list.csv \
+            --output outputs/core_model_tags.csv \
+            --excluded-report outputs/excluded_non_model_tags.csv
+
+      - name: Filter A-L catalogue to first-order H HH L LL Core
         run: |
           python3 logic_db/filter_simulation_grounded.py \
             --input data/triplens_A-L_alarm_logic_master_absolute_v2.csv \
-            --output outputs/simulation_grounded_logic.csv \
-            --excluded-report outputs/excluded_non_simulation_logic.csv
-      - name: Build normalized SQLite logic master
+            --output outputs/core_first_order_logic.csv \
+            --excluded-report outputs/excluded_non_core_logic.csv
+
+      - name: Filter runtime alarms to first-order H HH L LL Core
+        run: |
+          python3 logic_db/filter_core_runtime_rules.py \
+            --input config/dcs_alarm_rules.csv \
+            --output outputs/core_runtime_alarm_rules.csv \
+            --excluded-report outputs/excluded_non_core_runtime_rules.csv
+
+      - name: Build normalized SQLite Logic Core
         run: |
           python3 logic_db/build_simulation_grounded_db.py \
-            --logic outputs/simulation_grounded_logic.csv \
+            --logic outputs/core_first_order_logic.csv \
+            --dcs outputs/core_runtime_alarm_rules.csv \
+            --thermo-tags outputs/core_model_tags.csv \
             --source-commit "$GITHUB_SHA"
+
       - name: Query smoke test
         run: |
-          python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --platform ECMS --limit 5
+          python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --limit 5
           python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --tag-id TSP.DRUM.HP.LEVEL --limit 5
+
       - name: Export visual traceability viewer
         run: |
           python3 logic_db/export_traceability.py outputs/triplens_logic_master_v2.sqlite --output-dir outputs
-      - name: Upload logic database
+
+      - name: Upload Logic Core database
         uses: actions/upload-artifact@v4
         with:
-          name: triplens-logic-db-${{ github.run_number }}
+          name: triplens-logic-core-${{ github.run_number }}
           path: |
             outputs/triplens_logic_master_v2.sqlite
             outputs/logic_db_manifest.json
-            outputs/simulation_grounded_logic.csv
-            outputs/excluded_non_simulation_logic.csv
+            outputs/core_model_tags.csv
+            outputs/core_first_order_logic.csv
+            outputs/core_runtime_alarm_rules.csv
+            outputs/excluded_non_model_tags.csv
+            outputs/excluded_non_core_logic.csv
+            outputs/excluded_non_core_runtime_rules.csv
             outputs/active_logic_trace.json
             outputs/active_logic_trace.csv
             outputs/logic_traceability.html

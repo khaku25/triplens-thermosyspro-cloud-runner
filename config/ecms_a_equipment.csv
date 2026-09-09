@@ -1,4 +1,4 @@
-equipment_id,label_ko,bus,feeder_id,voltage_kv,rated_kw,normal_breaker_state,priority,status,editable,notes
-FWP-HP,HP 급수펌프,BUS-A,VCB-A01,6.9,,CLOSED,ESSENTIAL,PROVISIONAL,true,원본 ThermoSysPro PompeAlimHP 객체 확인; 명칭 정합화는 별도 수행
-FWP-IP,IP 급수펌프,BUS-B,VCB-B01,6.9,,CLOSED,ESSENTIAL,PROVISIONAL,true,원본 ThermoSysPro PompeAlimMP 객체에 대응; IP/MP 명칭 정합화는 별도 수행
-FWP-LP,LP 급수펌프,BUS-A,VCB-A02,6.9,,CLOSED,ESSENTIAL,PROVISIONAL,true,원본 ThermoSysPro PompeAlimBP 객체에 대응; LP/BP 명칭 정합화는 별도 수행
+equipment_id,label_ko,bus,feeder_id,voltage_kv,rated_kw,normal_breaker_state,normal_run_state,priority,status,editable,notes
+FWP-HP,HP 급수펌프,BUS-A,VCB-A01,6.9,,CLOSED,RUNNING,ESSENTIAL,PROVISIONAL,true,Canonical FWP-HP; display alias HP BFP; native ThermoSysPro object PompeAlimHP
+FWP-IP,IP 급수펌프,BUS-B,VCB-B01,6.9,,CLOSED,RUNNING,ESSENTIAL,PROVISIONAL,true,Canonical FWP-IP; native MP name is preserved only at the ThermoSysPro RAW boundary
+FWP-LP,LP 급수펌프,BUS-A,VCB-A02,6.9,,CLOSED,RUNNING,ESSENTIAL,PROVISIONAL,true,Canonical FWP-LP; native BP name is preserved only at the ThermoSysPro RAW boundary

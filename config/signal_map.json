@@ -9,10 +9,25 @@
     "time_s": {
       "required": true,
       "unit": "s",
+      "data_type": "REAL",
       "aliases": [
         "time",
         "Time",
         "time_s"
+      ]
+    },
+    "quality": {
+      "required": false,
+      "unit": "-",
+      "data_type": "ENUM",
+      "allowed_values": [
+        "GOOD",
+        "BAD",
+        "STALE"
+      ],
+      "aliases": [
+        "quality",
+        "QUALITY"
       ]
     },
     "stg_power_w": {
@@ -138,7 +153,68 @@
         "lp_feedwater_valve_pu"
       ]
     },
-    "bfp_hp_speed_rpm": {
+    "fwp_hp_trip_input": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "SIM.FWP_HP_TRIP",
+        "CMD.FWP-HP.TRIP",
+        "fwp_hp_trip_input"
+      ]
+    },
+    "fwp_hp_run_enable": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "FWP_HP.RUN_ENABLE",
+        "DCS.FWP-HP.RUN_ENABLE",
+        "fwp_hp_run_enable"
+      ]
+    },
+    "fwp_hp_vcb_trip_cmd": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "VCB_A01_TRIP_CMD",
+        "ECMS.VCB-A01.TRIP_CMD",
+        "fwp_hp_vcb_trip_cmd"
+      ]
+    },
+    "fwp_hp_vcb_closed": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "VCB-A01.CLOSED",
+        "ECMS.VCB-A01.CLOSED",
+        "fwp_hp_vcb_closed"
+      ]
+    },
+    "fwp_hp_trip_latch": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "FWP_HP.TRIP_LATCH",
+        "CTRL.FWP-HP.TRIP_LATCH",
+        "fwp_hp_trip_latch"
+      ]
+    },
+    "fwp_hp_run_cmd_feedback": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "FWP_HP.RUN_FB",
+        "FWP_HP.RUN_CMD_FB",
+        "DCS.FWP-HP.RUN_CMD_FB",
+        "fwp_hp_run_cmd_feedback"
+      ]
+    },
+    "fwp_hp_speed_rpm": {
       "required": false,
       "unit": "rpm",
       "aliases": [
@@ -146,24 +222,67 @@
         "PompeAlimHP.VRot",
         "PompeAlimHP.Vr",
         "arretPomesHP.y.signal",
+        "FWP_HP.SPEED_RPM",
+        "fwp_hp_speed_rpm",
         "bfp_hp_speed_rpm"
       ]
     },
-    "bfp_hp_mass_flow_kg_s": {
+    "fwp_hp_speed_proven": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "FWP_HP.SPEED_PROVEN",
+        "DCS.FWP-HP.SPEED_PROVEN",
+        "fwp_hp_speed_proven"
+      ]
+    },
+    "fwp_hp_state_code": {
+      "required": false,
+      "unit": "code",
+      "data_type": "INTEGER",
+      "aliases": [
+        "FWP_HP.STATE_CODE",
+        "TWIN.FWP-HP.STATE_CODE",
+        "fwp_hp_state_code"
+      ]
+    },
+    "fwp_hp_tripped": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "FWP_HP.TRIPPED",
+        "CTRL.FWP-HP.TRIPPED",
+        "fwp_hp_tripped"
+      ]
+    },
+    "ecms_bus_a_voltage_kv": {
+      "required": false,
+      "unit": "kV",
+      "data_type": "REAL",
+      "aliases": [
+        "ECMS.BUS-A.VOLTAGE",
+        "ecms_bus_a_voltage_kv"
+      ]
+    },
+    "fwp_hp_mass_flow_kg_s": {
       "required": false,
       "unit": "kg/s",
       "aliases": [
         "CapteurDebitEauHP.Q",
         "CapteurDebitEauHP.Measure.signal",
         "PompeAlimHP.Q",
+        "fwp_hp_mass_flow_kg_s",
         "bfp_hp_mass_flow_kg_s"
       ]
     },
-    "bfp_hp_mechanical_power_w": {
+    "fwp_hp_mechanical_power_w": {
       "required": false,
       "unit": "W",
       "aliases": [
         "PompeAlimHP.Wm",
+        "fwp_hp_mechanical_power_w",
         "bfp_hp_mechanical_power_w"
       ]
     },

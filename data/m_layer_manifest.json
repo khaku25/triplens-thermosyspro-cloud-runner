@@ -1,11 +1,11 @@
 {
   "schema_version": "1.0",
   "source_file": "thermo_vpp_full_tag_list.csv",
-  "source_sha256": "cc49c98ca05e3d10aa047fb692abd2507c2b4470ecf2b05f87b83b71bf2e2429",
-  "source_row_count": 522,
+  "source_sha256": "3bb28a9d94fc0fb0d1f9ad9037f393c331fe5c481ce4d0cf60d7c9372ac0f2d7",
+  "source_row_count": 509,
   "m_file": "thermo_vpp_m_locked_tags.csv",
   "m_sha256": "10efc003138e853be3a4f508887985a1889410dfcde6d200bfaa94041b63e5e0",
   "m_row_count": 201,
-  "ecms_m_link_count": 10,
+  "ecms_m_link_count": 5,
   "lock_policy": "M tag_id, unit, tag_class, value_basis and model_mapping are read-only"
 }

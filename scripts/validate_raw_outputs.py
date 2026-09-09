@@ -39,6 +39,53 @@ FORBIDDEN_METADATA_COLUMNS = {
     "expected_result",
 }
 
+PHYSICAL_BYPASS_VARIANTS = {
+    "HPBP_LPBP_DYNAMIC_V11",
+    "HPBP_LPBP_PHYSICAL_V11",
+}
+DYNAMIC_BYPASS_COLUMNS = {
+    "vppSTTripLatch",
+    "vppHPAdmissionPos",
+    "vppIPAdmissionPos",
+    "vppLPDrumAdmissionMultiplier",
+    "vppHPBypassCmd",
+    "vppLPBypassCmd",
+    "vppHPBypassPos",
+    "vppLPBypassPos",
+    "vppHPSprayPos",
+    "vppLPSprayPos",
+    "vppHPBypassOpenLS",
+    "vppHPBypassCloseLS",
+    "vppLPBypassOpenLS",
+    "vppLPBypassCloseLS",
+    "vppHPBypassMassFlow",
+    "vppLPBypassMassFlow",
+    "vppHPSprayMassFlow",
+    "vppLPSprayMassFlow",
+    "vppHPBypassInletPressure",
+    "vppLPBypassInletPressure",
+    "vppHPBypassOutletPressure",
+    "vppLPBypassOutletPressure",
+    "vppHPBypassInletTemperature",
+    "vppLPBypassInletTemperature",
+    "vppHPBypassOutletTemperature",
+    "vppLPBypassOutletTemperature",
+    "vppCondenserPressure",
+    "vppCondenserLevel",
+}
+NORMAL_RELIABILITY_COLUMNS = DYNAMIC_BYPASS_COLUMNS | {
+    "Alternateur.Welec",
+    "BallonHP.yLevel.signal",
+    "BallonMP.yLevel.signal",
+    "BallonBP.yLevel.signal",
+    "BallonHP.P",
+    "BallonMP.P",
+    "BallonBP.P",
+    "TurbineHP.Q",
+    "TurbineMP.Q",
+    "TurbineBP.Q",
+}
+
 
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
@@ -50,6 +97,290 @@ def sha256(path: Path) -> str:
 
 def normalized(value: str) -> str:
     return value.strip().lower().replace("-", "_").replace(" ", "_")
+
+
+def parse_boolean(value: str, *, column: str, row_number: int) -> bool:
+    key = value.strip().lower()
+    if key in {"true", "1", "1.0"}:
+        return True
+    if key in {"false", "0", "0.0"}:
+        return False
+    raise ValueError(f"RAW CSV row {row_number} {column} is not Boolean")
+
+
+def validate_dynamic_bypass(path: Path, nominal_period_ms: float) -> dict[str, float]:
+    with path.open("r", encoding="utf-8-sig", newline="") as stream:
+        reader = csv.DictReader(stream)
+        columns = set(reader.fieldnames or [])
+        missing = sorted(DYNAMIC_BYPASS_COLUMNS.difference(columns))
+        if missing:
+            raise ValueError(
+                "dynamic bypass RAW is missing columns: " + ", ".join(missing)
+            )
+        rows = list(reader)
+
+    numeric_columns = DYNAMIC_BYPASS_COLUMNS.difference(
+        {
+            "vppSTTripLatch",
+            "vppHPBypassOpenLS",
+            "vppHPBypassCloseLS",
+            "vppLPBypassOpenLS",
+            "vppLPBypassCloseLS",
+        }
+    )
+    numeric: dict[str, list[float]] = {column: [] for column in numeric_columns}
+    times: list[float] = []
+    latch: list[bool] = []
+    booleans: dict[str, list[bool]] = {
+        column: []
+        for column in DYNAMIC_BYPASS_COLUMNS
+        if column not in numeric_columns
+    }
+    for row_number, row in enumerate(rows, start=2):
+        try:
+            current_time = float(row["time"])
+        except (KeyError, ValueError) as exc:
+            raise ValueError(f"RAW CSV row {row_number} has invalid time") from exc
+        times.append(current_time)
+        for column in numeric_columns:
+            try:
+                value = float(row[column])
+            except ValueError as exc:
+                raise ValueError(
+                    f"RAW CSV row {row_number} {column} is not numeric"
+                ) from exc
+            if not math.isfinite(value):
+                raise ValueError(
+                    f"RAW CSV row {row_number} {column} is not finite"
+                )
+            numeric[column].append(value)
+        for column in booleans:
+            booleans[column].append(
+                parse_boolean(row[column], column=column, row_number=row_number)
+            )
+        latch.append(booleans["vppSTTripLatch"][-1])
+
+    try:
+        trip_index = latch.index(True)
+    except ValueError as exc:
+        raise ValueError("dynamic bypass RAW never asserts vppSTTripLatch") from exc
+    if trip_index == 0 or any(latch[:trip_index]) or not all(latch[trip_index:]):
+        raise ValueError("vppSTTripLatch must make one false-to-true transition")
+
+    final_limits = {
+        "vppHPBypassOpenLS": True,
+        "vppHPBypassCloseLS": False,
+        "vppLPBypassOpenLS": True,
+        "vppLPBypassCloseLS": False,
+    }
+    for column, expected in final_limits.items():
+        if booleans[column][-1] is not expected:
+            raise ValueError(f"dynamic bypass final state is wrong for {column}")
+    for column in ("vppHPBypassPos", "vppLPBypassPos"):
+        if numeric[column][-1] < 0.95:
+            raise ValueError(f"dynamic bypass did not reach open limit: {column}")
+    for column in (
+        "vppHPAdmissionPos",
+        "vppIPAdmissionPos",
+        "vppLPDrumAdmissionMultiplier",
+    ):
+        if numeric[column][-1] > 0.01:
+            raise ValueError(f"Trip isolation did not reach closed state: {column}")
+    for column in ("vppHPBypassMassFlow", "vppLPBypassMassFlow"):
+        if max(numeric[column][trip_index:]) <= 0:
+            raise ValueError(f"no positive physical bypass flow was produced: {column}")
+    for column in (
+        "vppHPBypassInletPressure",
+        "vppLPBypassInletPressure",
+        "vppHPBypassOutletPressure",
+        "vppLPBypassOutletPressure",
+        "vppCondenserPressure",
+    ):
+        if min(numeric[column]) <= 0:
+            raise ValueError(f"non-positive pressure in dynamic bypass RAW: {column}")
+
+    crossings: dict[str, float] = {}
+    if nominal_period_ms <= 20.0:
+        trip_time = times[trip_index]
+        targets = {
+            "vppHPAdmissionPos": (lambda value: value <= 0.04, 0.150),
+            "vppIPAdmissionPos": (lambda value: value <= 0.04, 0.150),
+            "vppLPDrumAdmissionMultiplier": (lambda value: value <= 0.05, 0.150),
+            "vppHPBypassPos": (lambda value: value >= 0.95, 0.300),
+            "vppLPBypassPos": (lambda value: value >= 0.95, 0.400),
+            "vppHPSprayPos": (lambda value: value >= 0.95, 0.050),
+            "vppLPSprayPos": (lambda value: value >= 0.95, 0.050),
+        }
+        tolerance_s = max(0.005, 2*nominal_period_ms/1000)
+        for column, (crossed, expected_s) in targets.items():
+            crossing_time = next(
+                (times[index] for index in range(trip_index, len(times))
+                 if crossed(numeric[column][index])),
+                None,
+            )
+            if crossing_time is None:
+                raise ValueError(f"dynamic response never crosses target: {column}")
+            elapsed = crossing_time - trip_time
+            if abs(elapsed - expected_s) > tolerance_s:
+                raise ValueError(
+                    f"dynamic response timing mismatch for {column}: "
+                    f"{elapsed:.6g}s, expected {expected_s:.6g}s"
+                )
+            crossings[column] = elapsed
+    return crossings
+
+
+def validate_normal_operation(path: Path) -> dict[str, float]:
+    with path.open("r", encoding="utf-8-sig", newline="") as stream:
+        reader = csv.DictReader(stream)
+        columns = set(reader.fieldnames or [])
+        missing = sorted(NORMAL_RELIABILITY_COLUMNS.difference(columns))
+        if missing:
+            raise ValueError(
+                "normal-operation RAW is missing columns: " + ", ".join(missing)
+            )
+        rows = list(reader)
+
+    boolean_columns = {
+        "vppSTTripLatch",
+        "vppHPBypassOpenLS",
+        "vppHPBypassCloseLS",
+        "vppLPBypassOpenLS",
+        "vppLPBypassCloseLS",
+    }
+    numeric_columns = NORMAL_RELIABILITY_COLUMNS.difference(boolean_columns)
+    numeric: dict[str, list[float]] = {column: [] for column in numeric_columns}
+    boolean: dict[str, list[bool]] = {column: [] for column in boolean_columns}
+    for row_number, row in enumerate(rows, start=2):
+        for column in numeric_columns:
+            try:
+                value = float(row[column])
+            except ValueError as exc:
+                raise ValueError(
+                    f"RAW CSV row {row_number} {column} is not numeric"
+                ) from exc
+            if not math.isfinite(value):
+                raise ValueError(
+                    f"RAW CSV row {row_number} {column} is not finite"
+                )
+            numeric[column].append(value)
+        for column in boolean_columns:
+            boolean[column].append(
+                parse_boolean(row[column], column=column, row_number=row_number)
+            )
+
+    if any(boolean["vppSTTripLatch"]):
+        raise ValueError("normal-operation RAW asserts vppSTTripLatch")
+    expected_limits = {
+        "vppHPBypassOpenLS": False,
+        "vppHPBypassCloseLS": True,
+        "vppLPBypassOpenLS": False,
+        "vppLPBypassCloseLS": True,
+    }
+    for column, expected in expected_limits.items():
+        if any(value is not expected for value in boolean[column]):
+            raise ValueError(f"normal-operation limit switch changed: {column}")
+
+    for column in (
+        "vppHPBypassCmd",
+        "vppLPBypassCmd",
+        "vppHPBypassPos",
+        "vppLPBypassPos",
+        "vppHPSprayPos",
+        "vppLPSprayPos",
+    ):
+        if max(abs(value) for value in numeric[column]) > 1e-8:
+            raise ValueError(f"normal-operation command/position changed: {column}")
+    for column in ("vppHPBypassMassFlow", "vppLPBypassMassFlow"):
+        if max(abs(value) for value in numeric[column]) > 1e-6:
+            raise ValueError(f"normal-operation bypass produced steam flow: {column}")
+    for column in ("vppHPSprayMassFlow", "vppLPSprayMassFlow"):
+        if min(numeric[column]) < 0 or max(numeric[column]) > 1e-3:
+            raise ValueError(f"normal-operation spray seat leakage is invalid: {column}")
+
+    admission_setpoints = {
+        "vppHPAdmissionPos": 0.8,
+        "vppIPAdmissionPos": 0.8,
+        "vppLPDrumAdmissionMultiplier": 1.0,
+    }
+    for column, setpoint in admission_setpoints.items():
+        maximum_error = max(abs(value - setpoint) for value in numeric[column])
+        if maximum_error > 1e-5:
+            raise ValueError(
+                f"normal-operation admission drift for {column}: {maximum_error:.6g}"
+            )
+
+    positive_columns = {
+        "Alternateur.Welec",
+        "BallonHP.P",
+        "BallonMP.P",
+        "BallonBP.P",
+        "TurbineHP.Q",
+        "TurbineMP.Q",
+        "TurbineBP.Q",
+        "vppHPBypassInletPressure",
+        "vppLPBypassInletPressure",
+        "vppHPBypassOutletPressure",
+        "vppLPBypassOutletPressure",
+        "vppCondenserPressure",
+        "vppHPBypassInletTemperature",
+        "vppLPBypassInletTemperature",
+        "vppHPBypassOutletTemperature",
+        "vppLPBypassOutletTemperature",
+    }
+    for column in positive_columns:
+        if min(numeric[column]) <= 0:
+            raise ValueError(f"normal-operation value is non-positive: {column}")
+
+    level_columns = (
+        "BallonHP.yLevel.signal",
+        "BallonMP.yLevel.signal",
+        "BallonBP.yLevel.signal",
+        "vppCondenserLevel",
+    )
+    for column in level_columns:
+        if min(numeric[column]) <= 0 or max(numeric[column]) >= 3:
+            raise ValueError(f"normal-operation level leaves physical bounds: {column}")
+        drift = abs(numeric[column][-1] - numeric[column][0])
+        if drift > 0.25:
+            raise ValueError(f"normal-operation level drift for {column}: {drift:.6g} m")
+
+    relative_drift_columns = (
+        "Alternateur.Welec",
+        "BallonHP.P",
+        "BallonMP.P",
+        "BallonBP.P",
+        "TurbineHP.Q",
+        "TurbineMP.Q",
+        "TurbineBP.Q",
+        "vppCondenserPressure",
+    )
+    relative_drift: dict[str, float] = {}
+    for column in relative_drift_columns:
+        initial = numeric[column][0]
+        drift = abs(numeric[column][-1] - initial) / abs(initial)
+        relative_drift[column] = drift
+        limit = 0.15 if column == "Alternateur.Welec" else 0.20
+        if drift > limit:
+            raise ValueError(
+                f"normal-operation relative drift for {column}: {drift:.3%}"
+            )
+    return {
+        "generator_relative_drift": relative_drift["Alternateur.Welec"],
+        "maximum_level_drift_m": max(
+            abs(numeric[column][-1] - numeric[column][0])
+            for column in level_columns
+        ),
+        "maximum_pressure_or_flow_relative_drift": max(
+            drift
+            for column, drift in relative_drift.items()
+            if column != "Alternateur.Welec"
+        ),
+        "maximum_bypass_steam_flow_kg_s": max(
+            max(abs(value) for value in numeric[column])
+            for column in ("vppHPBypassMassFlow", "vppLPBypassMassFlow")
+        ),
+    }
 
 
 def validate_raw_csv(path: Path) -> dict[str, object]:
@@ -174,6 +505,53 @@ def main() -> int:
         raise ValueError("scenario labels must not be included")
     if boundary.get("root_cause_label_included") is not False:
         raise ValueError("root-cause labels must not be included")
+    runtime = manifest.get("runtime")
+    if not isinstance(runtime, dict):
+        raise ValueError("raw-manifest.json is missing runtime metadata")
+    sampling = manifest.get("sampling")
+    if not isinstance(sampling, dict):
+        raise ValueError("raw-manifest.json is missing sampling metadata")
+    try:
+        requested_start_s = float(sampling["requested_start_time_s"])
+        requested_stop_s = float(sampling["requested_stop_time_s"])
+        nominal_period_ms = float(sampling["nominal_csv_period_ms"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("raw-manifest.json has invalid simulation boundaries") from exc
+    if not all(
+        math.isfinite(value)
+        for value in (requested_start_s, requested_stop_s, nominal_period_ms)
+    ) or requested_stop_s <= requested_start_s or nominal_period_ms <= 0:
+        raise ValueError("raw-manifest.json has invalid simulation boundaries")
+    completion_tolerance_s = max(1e-9, nominal_period_ms / 2000.0)
+    if abs(float(raw_summary["first_time_s"]) - requested_start_s) > completion_tolerance_s:
+        raise ValueError("RAW simulation does not reach the requested start boundary")
+    if abs(float(raw_summary["last_time_s"]) - requested_stop_s) > completion_tolerance_s:
+        raise ValueError(
+            "RAW simulation ended early: "
+            f"last_time={raw_summary['last_time_s']} s, "
+            f"requested_stop_time={requested_stop_s} s"
+        )
+    if runtime.get("model_variant") in PHYSICAL_BYPASS_VARIANTS:
+        transform = runtime.get("source_transform")
+        if not isinstance(transform, dict):
+            raise ValueError("dynamic bypass manifest is missing source-transform proof")
+        if transform.get("marker") != "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11":
+            raise ValueError("dynamic bypass manifest has the wrong patch marker")
+        digest = transform.get("patched_model_sha256")
+        if not isinstance(digest, str) or len(digest) != 64:
+            raise ValueError("dynamic bypass manifest has an invalid patched-model hash")
+        if sampling.get("profile") == "normal_3min":
+            reliability = validate_normal_operation(raw_path)
+            print(
+                "NORMAL_OPERATION_RELIABILITY_PASS "
+                + json.dumps(reliability, sort_keys=True)
+            )
+        else:
+            crossings = validate_dynamic_bypass(raw_path, nominal_period_ms)
+            print(
+                "DYNAMIC_BYPASS_VALIDATION_PASS "
+                + json.dumps(crossings, sort_keys=True)
+            )
     return 0
 
 

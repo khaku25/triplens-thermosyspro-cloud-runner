@@ -42,22 +42,50 @@ def main() -> int:
     parser.add_argument("--trip-ramp-duration", type=positive_float, default=5.0)
     parser.add_argument("--stop-time", type=positive_float, default=1000.0)
     parser.add_argument("--intervals", type=int, default=1000)
+    parser.add_argument("--normal-operation", action="store_true")
     parser.add_argument("--template-dir", type=Path, default=PROJECT_ROOT / "modelica")
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "build")
     args = parser.parse_args()
 
     if args.intervals < 10:
         parser.error("--intervals must be at least 10")
-    if args.trip_time >= args.stop_time:
-        parser.error("--trip-time must be earlier than --stop-time")
-    if args.trip_time + args.trip_ramp_duration > args.stop_time:
-        parser.error("trip ramp must end no later than --stop-time")
+    if not args.normal_operation:
+        if args.trip_time >= args.stop_time:
+            parser.error("--trip-time must be earlier than --stop-time")
+        if args.trip_time + args.trip_ramp_duration > args.stop_time:
+            parser.error("trip ramp must end no later than --stop-time")
 
     output_interval = args.stop_time / args.intervals
+    stop_time = f"{args.stop_time:.12g}"
+    if args.normal_operation:
+        vpp_trip_time = f"{args.stop_time + 1:.12g}"
+        exhaust_flow_table = (
+            f"[0,exhaustFlowNormal; {stop_time},exhaustFlowNormal]"
+        )
+        exhaust_temperature_table = (
+            f"[0,exhaustTemperatureNormal; {stop_time},exhaustTemperatureNormal]"
+        )
+    else:
+        vpp_trip_time = f"{args.trip_time:.12g}"
+        exhaust_flow_table = (
+            "[0,exhaustFlowNormal; "
+            "tripTime,exhaustFlowNormal; "
+            "tripTime + tripRampDuration,exhaustFlowTripped; "
+            f"{stop_time},exhaustFlowTripped]"
+        )
+        exhaust_temperature_table = (
+            "[0,exhaustTemperatureNormal; "
+            "tripTime,exhaustTemperatureNormal; "
+            "tripTime + tripRampDuration,exhaustTemperatureTripped; "
+            f"{stop_time},exhaustTemperatureTripped]"
+        )
     replacements = {
         "TRIP_TIME": f"{args.trip_time:.12g}",
         "TRIP_RAMP_DURATION": f"{args.trip_ramp_duration:.12g}",
-        "STOP_TIME": f"{args.stop_time:.12g}",
+        "STOP_TIME": stop_time,
+        "VPP_TRIP_TIME": vpp_trip_time,
+        "EXHAUST_FLOW_TABLE": exhaust_flow_table,
+        "EXHAUST_TEMPERATURE_TABLE": exhaust_temperature_table,
         "NUMBER_OF_INTERVALS": str(args.intervals),
         "OUTPUT_INTERVAL": f"{output_interval:.12g}",
     }

@@ -4,8 +4,9 @@ GitHub Actions에서 ThermoSysPro/OpenModelica 물리 원천을 생성하는 저
 Action의 공식 산출물은 `thermosyspro-raw.csv`와 `raw-manifest.json`뿐입니다.
 ProcessBus 변환, DCS 알람 판정, ECMS 사건 생성과 원인 추론은 수행하지 않습니다.
 
-저장소에 함께 있는 MATLAB ECMS VPP와 기존 Python 변환기는 웹 변환부 이관 및
-예제 검증을 위한 참고 구현입니다. Action 실행 경로와는 분리되어 있습니다.
+저장소에 함께 있는 MATLAB ECMS VPP와 Python 변환기는 웹 변환부 이관 및
+예제 검증을 위한 실행 가능한 기준 구현입니다. Action 실행 경로와는 분리되어
+있으며, RAW를 변경하지 않고 네 관측 계층으로 변환합니다.
 확정된 전체 책임 경계는
 [`docs/TRIPLENS_WORKFLOW_BOUNDARY.md`](docs/TRIPLENS_WORKFLOW_BOUNDARY.md)를
 기준으로 합니다.
@@ -45,8 +46,8 @@ ECMSVPP
 - `전체 배선 자동 정리`로 대각선 없는 직각 배선 재배치
 - BUS-A/B를 눌러 6.9 kV 피더 상세 열기
 - A 설정·설비 BUS·피더·정격·정상 차단기 상태 편집
-- 잠긴 M 물리 연결 201개와 ECMS 연결 10개 조회
-- 26개 설비의 Command 94개를 버튼으로 시간 예약
+- 잠긴 M 물리 태그 201개와 실행 설비 M 연결 5개 조회
+- 24개 설비 ID의 Command 87개를 버튼으로 시간 예약
 - Command 큐 CSV 불러오기·저장
 - 화면의 저장하지 않은 A/Command 값으로 바로 MATLAB VPP 실행
 - 현재 화면값으로 Overview/6.9 kV 상세 SVG 생성
@@ -77,6 +78,10 @@ UAT와 6.9 kV 모선에 전원을 공급할 수 있습니다. 승인된 동기�
 - **E(Event/ECMS)**: 차단기·Relay·SOE·통신품질
 - **CommandBus**: 시각·설비·명령·값·실행계층·피드백 태그
 
+표준 소유권은 `CommandBus → 보호/제어`, `ECMS → 차단기·Relay·전기상태`,
+`DCS1/DCS2 → 운전·공정 알람`, `ProcessBus → RPM·유량·압력·수위`입니다.
+공정 물리량을 `ECMS.*.PHYS`로 복제하지 않습니다.
+
 M은 읽기 전용입니다. A와 Command를 바꾸면 C/E만 새 Run에 계산되며 기존
 Run은 덮어쓰지 않습니다.
 
@@ -99,6 +104,13 @@ ECMS_RUN("SamplingProfile","incident_1ms")
 MATLAB 합성 fallback에서도 마지막 명령처럼 사고 전·후 1 ms 구간을 추가할 수
 있습니다. 이 결과는 계속 `MATLAB_NATIVE_SYNTHETIC_FALLBACK`으로 표시되며,
 ThermoSysPro 물리 실행으로 취급되지 않습니다.
+
+공통 Trip은 `config/common_trip_matrix.csv`가 실행 원본입니다. GT Trip은 GT와
+ST를 함께 요청하고, Drum HH는 ST만, Drum LL은 GT와 ST를 함께 요청합니다.
+STG Active Power는 추세·전류계산용 측정값만 유지하며 H/HH/L/LL 및
+`stg_low_state`를 만들지 않습니다. FWP 정상 STOP은
+VCB를 닫힌 상태로 유지하고, TRIP만 latch와 VCB 개방을 발생시키며 RESET만으로는
+재투입되지 않습니다.
 
 ### ThermoSysPro Cloud Action (RAW-only)
 
@@ -146,14 +158,71 @@ CSV를 0.1 s 간격으로 출력합니다. BFP 및 전 펌프 물리 실행은
 | `raw-manifest.json` | SHA-256, 행·열·시간범위, 엔진·표본 설정, RAW-only 경계 |
 
 기존 `processbus.csv`, `DCS1.csv`, `DCS2.csv`, `ECMS.csv`, 사고창과 정답 파일은
-Action artifact가 아니다. 관련 Python 코드는 다음 웹 변환부 구현 때 검토·이관할
-참고자료로만 남겨 두었다.
+Action artifact가 아니다. 관련 Python 코드는 웹 변환부가 그대로 이관·대조할 수
+있는 실행 가능한 기준 구현으로 유지한다.
+
+Action에서 내려받은 RAW는 로컬 기준 변환기로 다음처럼 분리할 수 있습니다.
+
+```bash
+python3 scripts/convert_raw_observations.py \
+  --input svgBFP_TRIP_ECMS_RAW_5s_1ms.csv \
+  --event-time 1 \
+  --output-dir outputs/fwp_hp_observations
+```
+
+출력은 `ProcessBus.csv`, `DCS1.csv`, `DCS2.csv`, `ECMS.csv`와 추세·피더·매핑
+검토·manifest입니다. 원본 SHA-256을 전후 비교하며 사고명이나 원인 정답을 넣지
+않습니다. 1 ms DCS timer는 RAW 표본 사이를 선형보간하지 않고 zero-order hold로
+평가합니다.
 
 현재 GT 어댑터는 독립적인 GT 내부고장을 계산하는 모델이 아니라 배기 경계가
 변하는 물리 예제다. 펌프 어댑터는 정적 RPM 경계를 제거하고 ThermoSysPro의
 원심펌프 곡선을 동적 차단기 토크·회전축 관성·토출 체크밸브 및 기존 공정망에
 연결한다.
 정확한 설비별 적용 범위와 원본 모델의 단순화는 `docs/PUMP_PHYSICS.md`에 기록한다.
+
+## 등록된 VPP Baseline 및 GT Trip 통합 실행
+
+`config/vpp_baseline_v1.json`은 특정 발전소 복제가 아닌 공개 가능한 가상플랜트
+`VPP_BASELINE_V1`의 잠긴 설계 기준입니다. 기존 CSV 설정표는 MATLAB/Python 실행
+테이블로 계속 사용하며, JSON은 정격·동작시간·알람 규칙·공통 Trip 관계가 서로
+갈라지지 않았는지 실행 전에 검증하는 단일 진입점입니다. `LOCKED`는 VPP 설계값을
+고정했다는 뜻이고, CSV의 `PROVISIONAL`은 현장 승인값이 아니라는 뜻이므로 서로
+충돌하지 않습니다.
+
+GT Trip 생성과 내장 알람/Event 계층은 한 명령으로 실행합니다.
+
+```bash
+python3 scripts/run_vpp_gt_trip.py --output-dir outputs/GT_TRIP_01
+```
+
+기본 실행은 사고 전 1초·사고 후 4초·1 ms로 5,001행을 생성합니다. 장시간
+프로필은 다음처럼 선택합니다.
+
+```bash
+python3 scripts/run_vpp_gt_trip.py \
+  --output-dir outputs/GT_TRIP_01_LONG \
+  --pre-seconds 300 --post-seconds 120 --step-ms 1
+```
+
+한 번의 실행으로 `VPP.RAW.csv`, `ProcessBus.csv`, `VPP.EVENT.csv`, `DCS1.csv`,
+`DCS2.csv`, `ECMS.csv`, 추세·피더 및 `VPP.MANIFEST.json`을 만듭니다. 요청한
+TripLens·알람표시기 입력용 `ECMS_EVENT.csv`와 `VPP_EVENT.csv`도 생성합니다.
+전자는 ECMS 사건/알람만, 후자는 DCS1·DCS2·ECMS 사건/알람을 시간순으로 모은
+희소 이벤트 파일이며 연속 RAW·추세 표본은 포함하지 않습니다. RAW에는
+시나리오명·원인·정답 열을 넣지 않으며, 자동검증용 `GT_TRIP_01.expected.json`은
+별도 파일로 격리합니다. GitHub Actions의 `Run VPP GT Trip Scenario`에서도 같은
+진입점을 실행하며 Blind 재생 묶음과 검증 Oracle을 서로 다른 artifact로 게시합니다.
+
+## 표준 명칭
+
+- 프로젝트명은 `VPP`; `VVP`는 legacy alias입니다.
+- 설비 ID는 `FWP-HP`, `FWP-IP`, `FWP-LP`; “HP BFP”는 화면 표시명으로만 허용합니다.
+- ThermoSysPro native `MP`/`BP`는 RAW에서 보존하고 ProcessBus 경계에서 `IP`/`LP`로 바꿉니다.
+- 차단기 표준 태그는 `ECMS.52GT.CLOSED`, `ECMS.CB-IN-A.CLOSED`,
+  `ECMS.VCB-A01.CLOSED` 형식입니다.
+
+전체 alias와 소유권은 `config/tag_alias_contract.csv`가 기준입니다.
 
 ## 실행 오류 복구
 
@@ -184,6 +253,7 @@ ECMSVPP
 ```bash
 python3 -m unittest discover -s tests -v
 python3 scripts/validate_commands.py --commands examples/bfp_trip_commands.csv
+python3 config/audit_trip_semantics.py
 ```
 
 Python 회귀시험은 A 설정 반영, 모든 FaultBus, Command 계약, 피더 출력,
@@ -195,7 +265,9 @@ Python 회귀시험은 A 설정 반영, 모든 FaultBus, Command 계약, 피더 
 ## 제한
 
 현재 A값은 `PROVISIONAL`이며 승인된 보호정정치나 발전소 SLD가 아닙니다.
-이 VPP는 EMT/RMS 전력계통 해석기나 운전·정비·LOTO 도구가 아닙니다.
+피더 50/51은 설정 가능한 단순 RMS 모델일 뿐 실제 단락용량·임피던스·계전기
+정정자료가 반영된 EMT/보호협조 해석이 아닙니다. 이 VPP는 운전·정비·LOTO
+도구가 아닙니다.
 MATLAB 합성 Run, ThermoSysPro Run, 현장 Raw Data를 서로 바꾸어 표기하면 안 됩니다.
 
 고정 실행 기반:

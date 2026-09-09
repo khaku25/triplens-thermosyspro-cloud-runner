@@ -45,14 +45,14 @@
   <path class="wire69" d="M1040 468 V555"/><rect class="closed" x="1025" y="540" width="30" height="30" rx="3"/><text class="tag" x="1040" y="598">IN-B · 인커밍</text>
 
   <g class="click" data-view="BUS-A"><line class="bus69" x1="145" y1="650" x2="620" y2="650"/><rect x="145" y="615" width="475" height="80" fill="none"/>
-    <text class="label" x="380" y="625">6.9 kV BUS-A — 클릭하여 피더 상세</text><text class="tag" x="380" y="684">M 연결: HP/LP 급수, IP 순환, 복수계통</text></g>
+    <text class="label" x="380" y="625">6.9 kV BUS-A — 클릭하여 피더 상세</text><text class="tag" x="380" y="684">실행 피더: FWP-HP / FWP-LP</text></g>
   <g class="click" data-view="BUS-B"><line class="bus69" x1="780" y1="650" x2="1255" y2="650"/><rect x="780" y="615" width="475" height="80" fill="none"/>
-    <text class="label" x="1018" y="625">6.9 kV BUS-B — 클릭하여 피더 상세</text><text class="tag" x="1018" y="684">M 연결: IP 급수, HP/LP 순환, 순환수계통</text></g>
+    <text class="label" x="1018" y="625">6.9 kV BUS-B — 클릭하여 피더 상세</text><text class="tag" x="1018" y="684">실행 피더: FWP-IP</text></g>
   <path class="wire69" d="M360 570 V650 M1040 570 V650 M620 650 H660"/><rect class="open" x="660" y="635" width="80" height="30" rx="3"/><path class="wire69" d="M740 650 H780"/>
   <text class="tag" x="700" y="700">TIE-AB · 기본 OPEN · A</text>
 
   <rect class="cardM" x="70" y="747" width="585" height="72" rx="10"/><text class="label" x="362" y="774">M — 변경 금지</text>
-  <text class="note" x="95" y="801">STG 유효전력, 드럼 급수·순환유량, 복수·순환수 유량은 ThermoSysPro 물리 원본</text>
+  <text class="note" x="95" y="801">STG 유효전력과 FWP 공정 연결값은 ThermoSysPro 원본; CW/COP/RECIRC는 실행 범위 제외</text>
   <rect class="cardA" x="745" y="747" width="585" height="72" rx="10"/><text class="label" x="1037" y="774">A — 사용자 편집</text>
   <text class="note" x="770" y="801">버스 배치, 차단기, 정격, 보호 지연은 별도 CSV에서 변경하며 M 원본에는 영향 없음</text>
   <text class="note" x="55" y="842">가상 설계 기준도 · 운전/정비/LOTO용 아님 · 실제 설비 번호와 정정치는 승인 자료로 교체</text>

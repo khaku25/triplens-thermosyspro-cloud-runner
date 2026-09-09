@@ -80,13 +80,22 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(
         "--sampling-profile",
-        choices=("standard", "causal_100ms", "incident_1ms"),
+        choices=(
+            "standard",
+            "causal_100ms",
+            "incident_1ms",
+            "normal_3min",
+            "gt_trip_3min_10ms",
+        ),
         required=True,
     )
     parser.add_argument("--stop-time", type=float, required=True)
     parser.add_argument("--output-intervals", type=int, required=True)
     parser.add_argument("--thermosyspro-commit", required=True)
     parser.add_argument("--openmodelica-image", required=True)
+    parser.add_argument("--model-variant", default="BASE_GT_EXHAUST_ADAPTER")
+    parser.add_argument("--source-patch-marker")
+    parser.add_argument("--patched-model-sha256")
     args = parser.parse_args()
 
     if not args.raw_file.is_file() or args.raw_file.stat().st_size == 0:
@@ -95,9 +104,30 @@ def main() -> int:
         parser.error("--stop-time must be positive and finite")
     if args.output_intervals <= 0:
         parser.error("--output-intervals must be positive")
+    if bool(args.source_patch_marker) != bool(args.patched_model_sha256):
+        parser.error(
+            "--source-patch-marker and --patched-model-sha256 must be supplied together"
+        )
+    if args.patched_model_sha256 and (
+        len(args.patched_model_sha256) != 64
+        or any(character not in "0123456789abcdef" for character in args.patched_model_sha256)
+    ):
+        parser.error("--patched-model-sha256 must be a lowercase SHA-256 digest")
 
     summary = read_raw_summary(args.raw_file)
     nominal_period_ms = args.stop_time * 1000.0 / args.output_intervals
+    completion_tolerance_s = max(1e-9, nominal_period_ms / 2000.0)
+    if abs(float(summary["first_time_s"])) > completion_tolerance_s:
+        raise ValueError(
+            "RAW simulation does not start at the requested 0 s boundary: "
+            f"first_time={summary['first_time_s']} s"
+        )
+    if abs(float(summary["last_time_s"]) - args.stop_time) > completion_tolerance_s:
+        raise ValueError(
+            "RAW simulation ended early: "
+            f"last_time={summary['last_time_s']} s, "
+            f"requested_stop_time={args.stop_time} s"
+        )
     manifest = {
         "schema_version": "1.0",
         "artifact_type": "THERMOSYSPRO_RAW_ONLY",
@@ -107,10 +137,21 @@ def main() -> int:
             "thermosyspro_repository": "Dwarf-Planet-Project/ThermoSysPro",
             "thermosyspro_commit": args.thermosyspro_commit,
             "openmodelica_image": args.openmodelica_image,
+            "model_variant": args.model_variant,
+            "source_transform": (
+                {
+                    "marker": args.source_patch_marker,
+                    "patched_model_sha256": args.patched_model_sha256,
+                }
+                if args.source_patch_marker
+                else None
+            ),
             "manifest_builder_python": platform.python_version(),
         },
         "sampling": {
             "profile": args.sampling_profile,
+            "requested_start_time_s": 0.0,
+            "requested_stop_time_s": args.stop_time,
             "native_csv_output_intervals": args.output_intervals,
             "nominal_csv_period_ms": nominal_period_ms,
             "solver_step_note": "CSV output interval only; DASSL integration remains adaptive.",

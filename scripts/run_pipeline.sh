@@ -20,6 +20,8 @@ event_time_s="$requested_event_time_s"
 transition_duration_s="$requested_transition_duration_s"
 stop_time_s="$requested_stop_time_s"
 intervals="$requested_intervals"
+normal_operation=false
+operating_mode="trip-transient"
 
 case "$sampling_profile" in
   standard) ;;
@@ -44,6 +46,20 @@ PY
     stop_time_s=10
     intervals=10000
     ;;
+  normal_3min)
+    event_time_s=600
+    transition_duration_s=5
+    stop_time_s=180
+    intervals=1800
+    normal_operation=true
+    operating_mode="normal"
+    ;;
+  gt_trip_3min_10ms)
+    event_time_s=180
+    transition_duration_s=5
+    stop_time_s=190
+    intervals=19000
+    ;;
   *)
     echo "unknown sampling profile: $sampling_profile" >&2
     exit 2
@@ -52,18 +68,29 @@ esac
 
 echo "RAW-only ThermoSysPro run"
 echo "Sampling profile: $sampling_profile"
+echo "Operating mode: $operating_mode"
 echo "Effective physical run: event=${event_time_s}s transition=${transition_duration_s}s stop=${stop_time_s}s intervals=$intervals"
 
 openmodelica_image="openmodelica/openmodelica:v1.27.0-minimal"
+dependency_timeout="${OPENMODELICA_DEPENDENCY_TIMEOUT:-5m}"
+simulation_timeout="${OPENMODELICA_SIMULATION_TIMEOUT:-20m}"
+if [[ "$sampling_profile" == "gt_trip_3min_10ms" ]]; then
+  simulation_timeout="${OPENMODELICA_LONG_TRIP_TIMEOUT:-25m}"
+fi
 thermosyspro_commit="db81ae1b5a6a85f6c6c7693244cafa6087e18ff5"
 
 mkdir -p build/omhome vendor
 
-python3 scripts/render_modelica.py \
-  --trip-time "$event_time_s" \
-  --trip-ramp-duration "$transition_duration_s" \
-  --stop-time "$stop_time_s" \
+render_arguments=(
+  --trip-time "$event_time_s"
+  --trip-ramp-duration "$transition_duration_s"
+  --stop-time "$stop_time_s"
   --intervals "$intervals"
+)
+if [[ "$normal_operation" == true ]]; then
+  render_arguments+=(--normal-operation)
+fi
+python3 scripts/render_modelica.py "${render_arguments[@]}"
 
 if [[ ! -e vendor/ThermoSysPro ]]; then
   git clone --no-checkout https://github.com/Dwarf-Planet-Project/ThermoSysPro.git vendor/ThermoSysPro
@@ -83,24 +110,37 @@ if [[ ! -f vendor/ThermoSysPro/ThermoSysPro/package.mo ]]; then
   exit 1
 fi
 
+python3 scripts/patch_turbine_bypass_model.py \
+  --source vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
+patched_model_sha256="$(sha256sum vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo | cut -d' ' -f1)"
+
 # A new Action run owns these generated paths. Clear only run-generated data.
 rm -f "$project_root/build/thermosyspro_trip_tac_res.csv"
+rm -f "$project_root/build/openmodelica-run.log"
 rm -rf "$project_root/outputs"
 mkdir -p "$project_root/outputs"
 
-docker run --rm \
-  -v "$project_root/build/omhome:/root" \
-  -v "$project_root:/workspace" \
-  -w /workspace \
-  "$openmodelica_image" \
-  omc /workspace/modelica/install_dependencies.mos
+timeout --signal=TERM --kill-after=30s "$dependency_timeout" \
+  docker run --rm \
+    -v "$project_root/build/omhome:/root" \
+    -v "$project_root:/workspace" \
+    -w /workspace \
+    "$openmodelica_image" \
+    omc /workspace/modelica/install_dependencies.mos
 
-docker run --rm \
-  -v "$project_root/build/omhome:/root" \
-  -v "$project_root:/workspace" \
-  -w /workspace \
-  "$openmodelica_image" \
-  omc /workspace/build/run.mos
+timeout --signal=TERM --kill-after=30s "$simulation_timeout" \
+  docker run --rm \
+    -v "$project_root/build/omhome:/root" \
+    -v "$project_root:/workspace" \
+    -w /workspace \
+    "$openmodelica_image" \
+    omc /workspace/build/run.mos | tee "$project_root/build/openmodelica-run.log"
+
+if grep -Eq 'resultFile = ""|Failed to build model|Simulation execution failed' \
+    "$project_root/build/openmodelica-run.log"; then
+  echo "OpenModelica reported an incomplete simulation" >&2
+  exit 1
+fi
 
 if [[ ! -s build/thermosyspro_trip_tac_res.csv ]]; then
   echo "OpenModelica did not create a fresh non-empty result CSV" >&2
@@ -122,6 +162,9 @@ python3 scripts/build_raw_manifest.py \
   --stop-time "$stop_time_s" \
   --output-intervals "$intervals" \
   --thermosyspro-commit "$thermosyspro_commit" \
-  --openmodelica-image "$openmodelica_image"
+  --openmodelica-image "$openmodelica_image" \
+  --model-variant "HPBP_LPBP_PHYSICAL_V11" \
+  --source-patch-marker "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11" \
+  --patched-model-sha256 "$patched_model_sha256"
 
 python3 scripts/validate_raw_outputs.py --output-dir outputs

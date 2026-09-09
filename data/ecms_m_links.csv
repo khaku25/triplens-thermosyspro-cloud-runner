@@ -4,8 +4,3 @@ M-LINK-002,STG,TSP.GEN.MECH_POWER_IN,ST 발전기 기계입력,W,DIRECT,true,The
 M-LINK-003,FWP-HP,TSP.DRUM.HP.FW_FLOW,HP 드럼 급수유량,kg/s,PHYSICAL_ASSOCIATION,true,전동기 전력 직접값이 아니라 해당 공정부하의 물리 연결점
 M-LINK-004,FWP-IP,TSP.DRUM.IP.FW_FLOW,IP 드럼 급수유량,kg/s,PHYSICAL_ASSOCIATION,true,전동기 전력 직접값이 아니라 해당 공정부하의 물리 연결점
 M-LINK-005,FWP-LP,TSP.DRUM.LP.FW_FLOW,LP 드럼 급수유량,kg/s,PHYSICAL_ASSOCIATION,true,전동기 전력 직접값이 아니라 해당 공정부하의 물리 연결점
-M-LINK-006,RECIRC-HP,TSP.DRUM.HP.RECIRC_FLOW,HP 드럼 순환유량,kg/s,PHYSICAL_ASSOCIATION,true,실제 순환펌프 대수는 A에서 확정
-M-LINK-007,RECIRC-IP,TSP.DRUM.IP.RECIRC_FLOW,IP 드럼 순환유량,kg/s,PHYSICAL_ASSOCIATION,true,실제 순환펌프 대수는 A에서 확정
-M-LINK-008,RECIRC-LP,TSP.DRUM.LP.RECIRC_FLOW,LP 드럼 순환유량,kg/s,PHYSICAL_ASSOCIATION,true,실제 순환펌프 대수는 A에서 확정
-M-LINK-009,COND-PUMP,TSP.COND.COND_FLOW_OUT,복수 유출유량,kg/s,PHYSICAL_ASSOCIATION,true,펌프 전류는 A 정격 확보 전 계산하지 않음
-M-LINK-010,CW-PUMP,TSP.COND.CW_FLOW,순환수 유량,kg/s,PHYSICAL_ASSOCIATION,true,펌프 전류는 A 정격 확보 전 계산하지 않음
