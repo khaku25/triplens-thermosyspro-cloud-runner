@@ -3,6 +3,10 @@ set -euo pipefail
 
 # Action ownership boundary:
 #   ThermoSysPro/OpenModelica RAW physics only.
+# This runner is the validated GT DERATE process-boundary adapter. It is NOT a
+# GT Trip adapter. Canonical GT Trip is breaker-open semantics; native GT
+# thermodynamic shutdown/rundown remains a separate pending adapter.
+#
 # This script must not normalize ProcessBus, evaluate DCS rules, synthesize
 # ECMS/SOE, select an incident window, or attach a scenario/root-cause label.
 
@@ -16,8 +20,8 @@ requested_stop_time_s="${3:-1000}"
 requested_intervals="${4:-1000}"
 sampling_profile="${5:-causal_100ms}"
 
-event_time_s="$requested_event_time_s"
-transition_duration_s="$requested_transition_duration_s"
+derate_time_s="$requested_event_time_s"
+derate_duration_s="$requested_transition_duration_s"
 stop_time_s="$requested_stop_time_s"
 intervals="$requested_intervals"
 
@@ -27,7 +31,6 @@ case "$sampling_profile" in
     intervals="$(python3 - "$stop_time_s" <<'PY'
 import math
 import sys
-
 stop = float(sys.argv[1])
 intervals = stop * 10
 if not math.isfinite(stop) or stop <= 0 or not math.isclose(intervals, round(intervals), abs_tol=1e-9):
@@ -37,10 +40,8 @@ PY
 )"
     ;;
   incident_1ms)
-    # Bounded physical diagnostic profile. This changes only the native
-    # OpenModelica CSV grid; it does not create millisecond alarm events.
-    event_time_s=2
-    transition_duration_s=5
+    derate_time_s=2
+    derate_duration_s=5
     stop_time_s=10
     intervals=10000
     ;;
@@ -50,9 +51,10 @@ PY
     ;;
 esac
 
-echo "RAW-only ThermoSysPro run"
+echo "RAW-only ThermoSysPro GT DERATE run"
 echo "Sampling profile: $sampling_profile"
-echo "Effective physical run: event=${event_time_s}s transition=${transition_duration_s}s stop=${stop_time_s}s intervals=$intervals"
+echo "Effective physical run: derate=${derate_time_s}s transition=${derate_duration_s}s stop=${stop_time_s}s intervals=$intervals"
+echo "Canonical semantics: 150/550 boundary reduction = DERATE; GT Trip requires 52GT.CLOSED=0"
 
 openmodelica_image="openmodelica/openmodelica:v1.27.0-minimal"
 thermosyspro_commit="db81ae1b5a6a85f6c6c7693244cafa6087e18ff5"
@@ -60,8 +62,8 @@ thermosyspro_commit="db81ae1b5a6a85f6c6c7693244cafa6087e18ff5"
 mkdir -p build/omhome vendor
 
 python3 scripts/render_modelica.py \
-  --trip-time "$event_time_s" \
-  --trip-ramp-duration "$transition_duration_s" \
+  --derate-time "$derate_time_s" \
+  --derate-ramp-duration "$derate_duration_s" \
   --stop-time "$stop_time_s" \
   --intervals "$intervals"
 
@@ -83,7 +85,6 @@ if [[ ! -f vendor/ThermoSysPro/ThermoSysPro/package.mo ]]; then
   exit 1
 fi
 
-# A new Action run owns these generated paths. Clear only run-generated data.
 rm -f "$project_root/build/thermosyspro_trip_tac_res.csv"
 rm -rf "$project_root/outputs"
 mkdir -p "$project_root/outputs"
@@ -107,8 +108,6 @@ if [[ ! -s build/thermosyspro_trip_tac_res.csv ]]; then
   exit 1
 fi
 
-# Byte-for-byte copy of the OpenModelica CSV. No row collapse, interpolation,
-# tag rename, inferred command, alarm threshold, or ECMS event is applied.
 cp build/thermosyspro_trip_tac_res.csv outputs/thermosyspro-raw.csv
 if ! cmp -s build/thermosyspro_trip_tac_res.csv outputs/thermosyspro-raw.csv; then
   echo "RAW copy differs from the native OpenModelica result" >&2
