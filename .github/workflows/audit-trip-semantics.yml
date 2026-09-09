@@ -6,8 +6,21 @@ on:
     paths:
       - 'config/ecms_command_catalog.csv'
       - 'config/dcs_alarm_rules.csv'
+      - 'config/common_trip_matrix.csv'
+      - 'config/vpp_baseline_v1.json'
+      - 'config/tag_alias_contract.csv'
+      - 'config/ecms_a_equipment.csv'
       - 'data/ecms_tag_catalog.csv'
+      - 'data/ecms_m_links.csv'
+      - 'topology/triplens_ecms_6p9kv.svg'
       - 'config/audit_trip_semantics.py'
+      - 'scripts/generate_gt_trip_scenario.py'
+      - 'scripts/vpp_alarm_engine.py'
+      - 'scripts/run_vpp_gt_trip.py'
+      - 'tests/test_vpp_baseline_v1.py'
+      - 'tests/test_gt_trip_scenario.py'
+      - 'tests/test_vpp_alarm_engine.py'
+      - 'tests/test_vpp_gt_trip_runner.py'
       - '.github/workflows/audit-trip-semantics.yml'
   workflow_dispatch:
 
@@ -24,6 +37,13 @@ jobs:
         run: |
           python3 config/audit_trip_semantics.py | tee trip_semantics_audit.log
           grep -q 'TRIPLENS_TRIP_SEMANTICS_AUDIT_PASS' trip_semantics_audit.log
+      - name: Verify registered VPP baseline and GT Trip pipeline
+        run: |
+          python3 -m unittest \
+            tests.test_vpp_baseline_v1 \
+            tests.test_gt_trip_scenario \
+            tests.test_vpp_alarm_engine \
+            tests.test_vpp_gt_trip_runner -v
       - name: Upload audit evidence
         if: always()
         uses: actions/upload-artifact@v4
