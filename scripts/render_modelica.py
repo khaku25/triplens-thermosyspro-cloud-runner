@@ -38,22 +38,34 @@ def render(template: Path, destination: Path, replacements: dict[str, str]) -> N
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    # --trip-time / --trip-ramp-duration are retained as legacy CLI names for
+    # the exhaust-boundary event. They do not define canonical GT Trip semantics.
     parser.add_argument("--trip-time", type=nonnegative_float, default=600.0)
     parser.add_argument("--trip-ramp-duration", type=positive_float, default=5.0)
     parser.add_argument("--stop-time", type=positive_float, default=1000.0)
     parser.add_argument("--intervals", type=int, default=1000)
     parser.add_argument("--normal-operation", action="store_true")
+    parser.add_argument(
+        "--derate-only",
+        action="store_true",
+        help=(
+            "Apply the exhaust 606.94/893.75 -> 150/550 boundary reduction "
+            "without asserting the embedded ST Trip trigger."
+        ),
+    )
     parser.add_argument("--template-dir", type=Path, default=PROJECT_ROOT / "modelica")
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "build")
     args = parser.parse_args()
 
+    if args.normal_operation and args.derate_only:
+        parser.error("--normal-operation and --derate-only are mutually exclusive")
     if args.intervals < 10:
         parser.error("--intervals must be at least 10")
     if not args.normal_operation:
         if args.trip_time >= args.stop_time:
-            parser.error("--trip-time must be earlier than --stop-time")
+            parser.error("boundary event time must be earlier than --stop-time")
         if args.trip_time + args.trip_ramp_duration > args.stop_time:
-            parser.error("trip ramp must end no later than --stop-time")
+            parser.error("boundary ramp must end no later than --stop-time")
 
     output_interval = args.stop_time / args.intervals
     stop_time = f"{args.stop_time:.12g}"
@@ -66,18 +78,24 @@ def main() -> int:
             f"[0,exhaustTemperatureNormal; {stop_time},exhaustTemperatureNormal]"
         )
     else:
-        vpp_trip_time = f"{args.trip_time:.12g}"
+        # In DERATE-only mode the exhaust boundary still changes at eventTime,
+        # but the patched ThermoSysPro ST Trip trigger is moved past StopTime.
+        vpp_trip_time = (
+            f"{args.stop_time + 1:.12g}"
+            if args.derate_only
+            else f"{args.trip_time:.12g}"
+        )
         exhaust_flow_table = (
             "[0,exhaustFlowNormal; "
-            "tripTime,exhaustFlowNormal; "
-            "tripTime + tripRampDuration,exhaustFlowTripped; "
-            f"{stop_time},exhaustFlowTripped]"
+            "eventTime,exhaustFlowNormal; "
+            "eventTime + boundaryRampDuration,exhaustFlowDerated; "
+            f"{stop_time},exhaustFlowDerated]"
         )
         exhaust_temperature_table = (
             "[0,exhaustTemperatureNormal; "
-            "tripTime,exhaustTemperatureNormal; "
-            "tripTime + tripRampDuration,exhaustTemperatureTripped; "
-            f"{stop_time},exhaustTemperatureTripped]"
+            "eventTime,exhaustTemperatureNormal; "
+            "eventTime + boundaryRampDuration,exhaustTemperatureDerated; "
+            f"{stop_time},exhaustTemperatureDerated]"
         )
     replacements = {
         "TRIP_TIME": f"{args.trip_time:.12g}",
