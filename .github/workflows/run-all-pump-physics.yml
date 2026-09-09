@@ -43,6 +43,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: pump-physics-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   simulate:
     name: ${{ matrix.pump }} physical trip
