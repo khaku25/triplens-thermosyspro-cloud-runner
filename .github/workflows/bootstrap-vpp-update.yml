@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out current main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: main
 
@@ -24,7 +24,6 @@ jobs:
           gzip -dc /tmp/vpp-update.patch.gz | git apply --check
           gzip -dc /tmp/vpp-update.patch.gz | git apply
           rm -f vpp-update-98957db.patch.gz.b64.txt
-          rm -f .github/workflows/bootstrap-vpp-update.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
@@ -69,6 +68,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          git restore --source=HEAD -- .github/workflows/audit-trip-semantics.yml
+          rm -f .github/workflows/run-vpp-gt-trip.yml
           git add -A
           git diff --cached --check
           git commit -m "Register VPP baseline and GT Trip event pipeline"
