@@ -19,6 +19,20 @@ def main() -> int:
     assert contract["equipment_id"] == "FWP-HP"
     assert contract["source_of_truth"]["native_component"] == "PompeAlimHP"
     assert contract["source_of_truth"]["physics_input"] == "fwpHpSpeedCmd"
+    assert contract["source_of_truth"]["validated_rnd_main_commit"] == (
+        "817b1ef463a2bf58ca317fe3d683165875ab586f"
+    )
+    evidence = contract["source_of_truth"]["validation_evidence"]
+    assert evidence["physical_source_run_id"] == 34366779559
+    assert evidence["canonical_raw_revalidation_run_id"] == 34374439526
+    assert evidence["plant_model_contract_run_id"] == 34375127982
+    assert evidence["normal_100_run_id"] == 34375132429
+    assert evidence["fmi_contract_run_id"] == 34375441337
+    assert evidence["canonical_raw_start_s"] == 300.0
+    assert evidence["canonical_raw_end_s"] == 420.0
+    assert evidence["canonical_raw_rows"] == 1201
+    assert evidence["canonical_physics_interval_s"] == 0.1
+    assert evidence["scenario_answer_label_present"] is False
     assert contract["trip_contract"]["breaker_feedback"] == "VCB-A01.CLOSED"
     assert contract["trip_contract"]["success_value"] == 0
     assert contract["normal_stop_contract"]["breaker_value"] == 1
