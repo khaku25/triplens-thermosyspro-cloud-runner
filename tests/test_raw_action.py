@@ -146,8 +146,8 @@ class RawOnlyActionTests(unittest.TestCase):
         mos = (ROOT / "modelica" / "run.mos.tpl").read_text(encoding="utf-8")
 
         self.assertIn("patch_turbine_bypass_model.py", runner)
-        self.assertIn("HPBP_LPBP_DYNAMIC_V2", runner)
-        self.assertIn("TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V2", runner)
+        self.assertIn("HPBP_LPBP_DYNAMIC_V3", runner)
+        self.assertIn("TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V3", runner)
         self.assertIn("vppTripTime=tripTime", model)
         self.assertIn("HPBypassMassFlow", mos)
         self.assertIn("LPBypassMassFlow", mos)
@@ -258,8 +258,8 @@ class RawOnlyActionTests(unittest.TestCase):
                 "--output-intervals", "1000",
                 "--thermosyspro-commit", "test-commit",
                 "--openmodelica-image", "test-image",
-                "--model-variant", "HPBP_LPBP_DYNAMIC_V2",
-                "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V2",
+                "--model-variant", "HPBP_LPBP_DYNAMIC_V3",
+                "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V3",
                 "--patched-model-sha256", "a"*64,
             )
             self.assertEqual(build.returncode, 0, build.stderr)

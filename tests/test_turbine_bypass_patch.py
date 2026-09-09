@@ -37,34 +37,34 @@ class TurbineBypassPatchTests(unittest.TestCase):
         self.assertIn("vppLPBypassValve", patched)
         self.assertNotIn("vppIPBypass", patched)
         self.assertIn("connect(DoubleDebitHP.Cs, vppHPSplitter.Ce)", patched)
-        self.assertIn("connect(TurbineHP.Cs, vppHPColdReheatMixer.Ce1)", patched)
+        self.assertIn("connect(TurbineHP.Cs, vppHPColdReheatVolume.Ce1)", patched)
         self.assertIn(
-            "ThermoSysPro.WaterSteam.Junctions.Mixer3 vppHPColdReheatMixer",
+            "ThermoSysPro.WaterSteam.Volumes.VolumeC vppHPColdReheatVolume",
             patched,
         )
         self.assertIn(
-            "connect(vppHPBypassValve.C2, vppHPColdReheatMixer.Ce2)",
+            "connect(vppHPBypassValve.C2, vppHPColdReheatVolume.Ce2)",
             patched,
         )
         self.assertIn(
-            "connect(vppHPSpraySource.C, vppHPColdReheatMixer.Ce3)",
+            "connect(vppHPSpraySource.C, vppHPColdReheatVolume.Ce3)",
             patched,
         )
         self.assertIn("connect(DoubleDebitMP.Cs, vppLPSplitter.Ce)", patched)
         self.assertIn(
-            "ThermoSysPro.WaterSteam.Junctions.Mixer3 vppCondenserSteamMixer",
+            "ThermoSysPro.WaterSteam.Volumes.VolumeC vppCondenserSteamVolume",
             patched,
         )
         self.assertIn(
-            "connect(vppLPBypassValve.C2, vppCondenserSteamMixer.Ce2)",
+            "connect(vppLPBypassValve.C2, vppCondenserSteamVolume.Ce2)",
             patched,
         )
         self.assertIn(
-            "connect(vppLPSpraySource.C, vppCondenserSteamMixer.Ce3)",
+            "connect(vppLPSpraySource.C, vppCondenserSteamVolume.Ce3)",
             patched,
         )
-        self.assertNotIn("vppHPBypassMixer", patched)
-        self.assertNotIn("vppLPBypassMixer", patched)
+        self.assertIn("dynamic_mass_balance=true", patched)
+        self.assertIn("steady_state=false", patched)
         self.assertIn(
             "regulation_Niveau_BP.SortieReelle1.signal*"
             "vppLPDrumAdmissionMultiplier",

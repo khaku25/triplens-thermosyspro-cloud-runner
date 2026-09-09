@@ -16,7 +16,7 @@ import tempfile
 from pathlib import Path
 
 
-MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V2"
+MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V3"
 
 
 PARAMETERS = f'''  // {MARKER}
@@ -32,6 +32,10 @@ PARAMETERS = f'''  // {MARKER}
     "Spray-water actuator 95 percent opening time";
   parameter Real vppValveLeak = 1e-4
     "Closed-valve leakage position for the physical bypass valves";
+  parameter Modelica.SIunits.Volume vppHPHeaderVolume = 1
+    "Preliminary cold-reheat mixing volume";
+  parameter Modelica.SIunits.Volume vppLPHeaderVolume = 50
+    "Preliminary condenser-inlet steam mixing volume";
   parameter ThermoSysPro.Units.Cv vppHPBypassCvmax = 4000
     "Initial HPBP Cv calibration value";
   parameter ThermoSysPro.Units.Cv vppLPBypassCvmax = 50000
@@ -84,9 +88,10 @@ COMPONENTS = '''
   Modelica.SIunits.Length vppCondenserLevel;
 
   ThermoSysPro.WaterSteam.Junctions.Splitter2 vppHPSplitter(
-    P(start=12681000), h(start=3450835));
+    mode=2, P(start=12681000), h(start=3450835));
   ThermoSysPro.WaterSteam.PressureLosses.ControlValve vppHPBypassValve(
     Cvmax=vppHPBypassCvmax,
+    mode=2,
     continuous_flow_reversal=true,
     Q(start=0.01),
     Cv(start=vppValveLeak*vppHPBypassCvmax),
@@ -98,16 +103,23 @@ COMPONENTS = '''
     Q0=0, h0=1396866);
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
     vppHPSprayFlowCommand;
-  ThermoSysPro.WaterSteam.Junctions.Mixer3 vppHPColdReheatMixer(
+  ThermoSysPro.WaterSteam.Volumes.VolumeC vppHPColdReheatVolume(
+    V=vppHPHeaderVolume,
+    dynamic_mass_balance=true,
+    steady_state=false,
+    P0=2726700,
+    h0=3046260,
     P(start=2726700), h(start=3046260),
-    Ce1(h_vol(start=3046260)),
-    Ce2(h_vol(start=3450835)),
-    Ce3(h_vol(start=1396866)));
+    Ce1(h(start=3046260), h_vol(start=3046260)),
+    Ce2(h(start=3450835), h_vol(start=3450835)),
+    Ce3(h(start=1396866), h_vol(start=1396866)),
+    Cs(h(start=3046260), h_vol(start=3046260)));
 
   ThermoSysPro.WaterSteam.Junctions.Splitter2 vppLPSplitter(
-    P(start=2548600), h(start=3523910));
+    mode=2, P(start=2548600), h(start=3523910));
   ThermoSysPro.WaterSteam.PressureLosses.ControlValve vppLPBypassValve(
     Cvmax=vppLPBypassCvmax,
+    mode=2,
     continuous_flow_reversal=true,
     Q(start=0.01),
     Cv(start=vppValveLeak*vppLPBypassCvmax),
@@ -119,11 +131,17 @@ COMPONENTS = '''
     Q0=0, h0=550000);
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
     vppLPSprayFlowCommand;
-  ThermoSysPro.WaterSteam.Junctions.Mixer3 vppCondenserSteamMixer(
-    P(start=10053), h(start=2401030),
-    Ce1(h_vol(start=2401030)),
-    Ce2(h_vol(start=3523910)),
-    Ce3(h_vol(start=550000)));
+  ThermoSysPro.WaterSteam.Volumes.VolumeC vppCondenserSteamVolume(
+    V=vppLPHeaderVolume,
+    dynamic_mass_balance=true,
+    steady_state=false,
+    P0=6136,
+    h0=2401030,
+    P(start=6136), h(start=2401030),
+    Ce1(h(start=2401030), h_vol(start=2401030)),
+    Ce2(h(start=3523910), h_vol(start=3523910)),
+    Ce3(h(start=550000), h_vol(start=550000)),
+    Cs(h(start=2401030), h_vol(start=2401030)));
 '''
 
 
@@ -161,12 +179,12 @@ EQUATIONS = '''
   vppLPSprayMassFlow = vppLPSpraySource.Q;
   vppHPBypassInletPressure = vppHPSplitter.P;
   vppLPBypassInletPressure = vppLPSplitter.P;
-  vppHPBypassOutletPressure = vppHPColdReheatMixer.P;
-  vppLPBypassOutletPressure = vppCondenserSteamMixer.P;
+  vppHPBypassOutletPressure = vppHPColdReheatVolume.P;
+  vppLPBypassOutletPressure = vppCondenserSteamVolume.P;
   vppHPBypassInletTemperature = vppHPSplitter.T;
   vppLPBypassInletTemperature = vppLPSplitter.T;
-  vppHPBypassOutletTemperature = vppHPColdReheatMixer.T;
-  vppLPBypassOutletTemperature = vppCondenserSteamMixer.T;
+  vppHPBypassOutletTemperature = vppHPColdReheatVolume.T;
+  vppLPBypassOutletTemperature = vppCondenserSteamVolume.T;
   vppCondenserPressure = Condenseur.P;
   vppCondenserLevel = Condenseur.yNiveau.signal;
 
@@ -182,11 +200,11 @@ EQUATIONS = '''
     *vppLPSprayRatio*vppLPSprayPos;
 
   connect(vppHPSprayFlowCommand, vppHPSpraySource.IMassFlow);
-  connect(vppHPBypassValve.C2, vppHPColdReheatMixer.Ce2);
-  connect(vppHPSpraySource.C, vppHPColdReheatMixer.Ce3);
+  connect(vppHPBypassValve.C2, vppHPColdReheatVolume.Ce2);
+  connect(vppHPSpraySource.C, vppHPColdReheatVolume.Ce3);
   connect(vppLPSprayFlowCommand, vppLPSpraySource.IMassFlow);
-  connect(vppLPBypassValve.C2, vppCondenserSteamMixer.Ce2);
-  connect(vppLPSpraySource.C, vppCondenserSteamMixer.Ce3);
+  connect(vppLPBypassValve.C2, vppCondenserSteamVolume.Ce2);
+  connect(vppLPSpraySource.C, vppCondenserSteamVolume.Ce3);
 '''
 
 
@@ -252,8 +270,8 @@ def patch_model(source: str) -> str:
     source = replace_connect_statement(
         source,
         "TurbineHP.Cs, MoitieDebitHP.Ce",
-        "  connect(TurbineHP.Cs, vppHPColdReheatMixer.Ce1);\n"
-        "  connect(vppHPColdReheatMixer.Cs, MoitieDebitHP.Ce);",
+        "  connect(TurbineHP.Cs, vppHPColdReheatVolume.Ce1);\n"
+        "  connect(vppHPColdReheatVolume.Cs, MoitieDebitHP.Ce);",
     )
     source = replace_connect_statement(
         source,
@@ -265,8 +283,8 @@ def patch_model(source: str) -> str:
     source = replace_connect_statement(
         source,
         "perteChargeK1.C2, CapteurDebitVapCondenseur.C1",
-        "  connect(perteChargeK1.C2, vppCondenserSteamMixer.Ce1);\n"
-        "  connect(vppCondenserSteamMixer.Cs, CapteurDebitVapCondenseur.C1);",
+        "  connect(perteChargeK1.C2, vppCondenserSteamVolume.Ce1);\n"
+        "  connect(vppCondenserSteamVolume.Cs, CapteurDebitVapCondenseur.C1);",
     )
 
     required = (
@@ -274,8 +292,8 @@ def patch_model(source: str) -> str:
         "vppLPBypassValve",
         "vppHPSplitter",
         "vppLPSplitter",
-        "vppHPColdReheatMixer",
-        "vppCondenserSteamMixer",
+        "vppHPColdReheatVolume",
+        "vppCondenserSteamVolume",
         "der(vppHPBypassPos)",
         "der(vppLPBypassPos)",
     )
