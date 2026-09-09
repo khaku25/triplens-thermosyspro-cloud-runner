@@ -118,20 +118,6 @@ def main() -> int:
         if key != "process"
     }
     process_fields = [resolve(headers, item) for item in fields["process"]]
-    st_fields = {}
-    if args.pump_id == "CW-PUMP":
-        st_fields = {
-            key: resolve(headers, value)
-            for key, value in {
-                "pickup": "stBackpressureTripPickup",
-                "trip": "stTripLatched",
-                "breaker": "st52GClosed",
-                "grid_power": "stGridElectricalPower",
-                "internal_power": "Alternateur.Welec",
-                "timer": "stBackpressureProtection.persistenceTimer",
-                "setpoint": "stBackpressureProtection.tripSetpoint",
-            }.items()
-        }
 
     pre = [row for row in rows if number(row, time_field) < args.trip_time]
     post = [row for row in rows if number(row, time_field) >= args.trip_time]
@@ -186,6 +172,18 @@ def main() -> int:
         raise ValueError("pump trip did not materially reduce process flow")
 
     if args.pump_id == "CW-PUMP":
+        st_fields = {
+            key: resolve(headers, value)
+            for key, value in {
+                "pickup": "stBackpressureTripPickup",
+                "trip": "stTripLatched",
+                "breaker": "st52GClosed",
+                "grid_power": "stGridElectricalPower",
+                "internal_power": "Alternateur.Welec",
+                "timer": "stBackpressureProtection.persistenceTimer",
+                "setpoint": "stBackpressureProtection.tripSetpoint",
+            }.items()
+        }
         if number(after, resolved["valve"]) > 0.1:
             raise ValueError("CW boundary check valve did not close")
 
