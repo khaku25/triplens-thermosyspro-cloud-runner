@@ -154,6 +154,7 @@ class RawOnlyActionTests(unittest.TestCase):
         ).read_text(encoding="utf-8"))
         self.assertIn("resultFile = \"\"", runner)
         self.assertIn("vppTripTime=@VPP_TRIP_TIME@", model)
+        self.assertIn("Condenseur(steady_state=true)", model)
         self.assertEqual(model.count("regularizePressureCrossover=true"), 3)
         self.assertIn("HPBypassMassFlow", mos)
         self.assertIn("LPBypassMassFlow", mos)

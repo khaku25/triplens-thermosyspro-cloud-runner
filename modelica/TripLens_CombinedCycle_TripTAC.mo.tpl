@@ -13,6 +13,10 @@ model TripLens_CombinedCycle_TripTAC
 
   extends ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC(
     vppTripTime=@VPP_TRIP_TIME@,
+    // Let the condenser solve a mass/energy-balanced initial phase state.
+    // The upstream fixed saturated-vapor seed starts with zero condensation
+    // and drains the hotwell even during otherwise steady normal operation.
+    Condenseur(steady_state=true),
     // Seed the routed steam path from the last verified normal operating
     // point. These are initialization guesses only; the fluid equations own
     // every value after initialization and throughout the Trip transient.
