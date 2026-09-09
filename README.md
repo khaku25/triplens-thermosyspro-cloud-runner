@@ -1,14 +1,35 @@
-# TripLens ThermoSysPro RAW Runner / ECMS VPP Reference
+# TripLens VPP / EVENT.csv Runner
 
-GitHub Actions에서 ThermoSysPro/OpenModelica 물리 원천을 생성하는 저장소입니다.
-Action의 공식 산출물은 `thermosyspro-raw.csv`와 `raw-manifest.json`뿐입니다.
-ProcessBus 변환, DCS 알람 판정, ECMS 사건 생성과 원인 추론은 수행하지 않습니다.
+TripLens 가상발전소의 물리·ECMS 실행과 외부 Event 계약을 관리하는 저장소입니다.
+최종 외부 인터페이스는 `TRIPLENS_EVENT_V1` 형식의 **`EVENT.csv` 한 파일**입니다.
 
-저장소에 함께 있는 MATLAB ECMS VPP와 기존 Python 변환기는 웹 변환부 이관 및
-예제 검증을 위한 참고 구현입니다. Action 실행 경로와는 분리되어 있습니다.
-확정된 전체 책임 경계는
+- VPP 내부: ThermoSysPro RAW, ECMS RAW, 결정론적 Logic과 검증 증빙
+- VPP 외부: `public/EVENT.csv`
+- 알람발생기: `EVENT.csv`만 재생
+- TripLens AI: 동일한 `EVENT.csv`만 분석
+- 시나리오명·원인·정답 열: 외부 Event에 금지
+
+기존 RAW-only Workflow는 물리 진실원을 생성하는 VPP 내부 단계로 유지됩니다.
+완성된 Run은 Event Observer를 거쳐 public Event와 internal evidence를 분리합니다.
+확정 구조는
+[`docs/VPP_EVENT_ARCHITECTURE_V1.md`](docs/VPP_EVENT_ARCHITECTURE_V1.md),
+요약 경계는
 [`docs/TRIPLENS_WORKFLOW_BOUNDARY.md`](docs/TRIPLENS_WORKFLOW_BOUNDARY.md)를
 기준으로 합니다.
+
+## 최종 Event 계약 빠른 검증
+
+```bash
+python3 -m unittest tests.test_vpp_event_contract -v
+python3 scripts/build_vpp_event_bundle.py \
+  --bundle-dir outputs/vpp-final \
+  --run-id LOCAL-CHECK \
+  --ecms-raw tests/fixtures/ecms_fwp_hp_actual_trip_transitions.csv
+python3 scripts/validate_vpp_event_bundle.py --bundle-dir outputs/vpp-final
+```
+
+이 실행의 `public/`에는 `EVENT.csv`만 생깁니다. RAW와 manifest는
+`internal/`에만 남으며, 두 소비자용 공용 reader는 다른 파일명을 거부합니다.
 
 ## MATLAB Online에서 가장 빠른 시작
 
@@ -100,7 +121,7 @@ MATLAB 합성 fallback에서도 마지막 명령처럼 사고 전·후 1 ms 구�
 있습니다. 이 결과는 계속 `MATLAB_NATIVE_SYNTHETIC_FALLBACK`으로 표시되며,
 ThermoSysPro 물리 실행으로 취급되지 않습니다.
 
-### ThermoSysPro Cloud Action (RAW-only)
+### ThermoSysPro Cloud Action (VPP 내부 물리 단계)
 
 두 Workflow가 현재 등록되어 있습니다.
 
@@ -112,7 +133,8 @@ ThermoSysPro 물리 실행으로 취급되지 않습니다.
 두 Workflow 모두 고정 ThermoSysPro commit과 OpenModelica 이미지를 사용합니다.
 OpenModelica 결과를 바이트 그대로 복사한 뒤 해시와 구조를 검증하며, 실패한
 실행은 artifact를 게시하지 않습니다. `fault_preset`, ECMS Command, DCS 규칙,
-사고 정답은 Action 입력 또는 산출물에 포함하지 않습니다.
+사고 정답은 물리 RAW 산출물에 포함하지 않습니다. 이 RAW는 최종 구조에서 VPP
+내부 증빙이며 알람발생기나 AI로 직접 전달하지 않습니다.
 
 ### CSV 시간 해상도 선택
 
@@ -126,27 +148,28 @@ GT 물리 어댑터의 `sampling_profile`에서 세 RAW 출력 방식을 선택�
 
 `causal_100ms`는 기본 입력인 사건시각 600 s, 종료 1000 s를 유지하면서 물리
 CSV를 0.1 s 간격으로 출력합니다. BFP 어댑터는 `stop_time_s / output_intervals`
-간격의 표준 RAW를 출력합니다. 어떤 프로필도 알람 시각이나 ECMS 사건을 만들지
-않습니다.
+간격의 표준 RAW를 출력합니다. 이 개별 물리 Workflow 자체는 알람 시각이나 ECMS
+사건을 만들지 않으며, 전체 VPP Run의 결정론적 Logic/Event Observer가 이후
+`EVENT.csv`를 만듭니다.
 
 `incident_1ms`는 사건시각 2 s, 경계 변화 5 s, 종료 10 s, 출력구간 10,000개인
 제한된 진단용 실행입니다.
 
 여기서 1 ms는 **CSV 출력 시각 간격**입니다. OpenModelica의 DASSL 적분기는
 정확도 조건에 따라 내부 계산 간격을 자동 조절하므로 “솔버가 항상 1 ms 고정
-스텝으로 계산했다”는 뜻은 아닙니다. 알람/SOE의 밀리초 시각은 이후 웹 변환부가
-승인된 논리와 실제 RAW crossing을 적용해 별도로 생성해야 합니다.
+스텝으로 계산했다”는 뜻은 아닙니다. 알람/SOE의 밀리초 시각은 VPP 내부의
+결정론적 Logic/Event Observer가 승인된 논리와 실제 RAW crossing으로 생성합니다.
 
-## Action 결과 파일
+## 내부 물리 단계 결과 파일
 
 | 파일 | 역할 |
 |---|---|
 | `thermosyspro-raw.csv` | OpenModelica native 결과의 바이트 단위 복사본 |
 | `raw-manifest.json` | SHA-256, 행·열·시간범위, 엔진·표본 설정, RAW-only 경계 |
 
-기존 `processbus.csv`, `DCS1.csv`, `DCS2.csv`, `ECMS.csv`, 사고창과 정답 파일은
-Action artifact가 아니다. 관련 Python 코드는 다음 웹 변환부 구현 때 검토·이관할
-참고자료로만 남겨 두었다.
+과거의 외부 `ProcessBus.csv + DCS1.csv + DCS2.csv + ECMS.csv` 계약은 폐기한다.
+분할 자료가 필요하면 VPP 내부 증빙으로만 보존하고, 외부에는 병합·검증된
+`EVENT.csv`만 게시한다.
 
 현재 GT 어댑터는 독립적인 GT 내부고장을 계산하는 모델이 아니라 배기 경계가
 변하는 물리 예제이고, BFP 어댑터도 HP BFP 속도 경계 변화 예제다. 따라서 어느
