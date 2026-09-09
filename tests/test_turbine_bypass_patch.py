@@ -11,6 +11,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from patch_turbine_bypass_model import MARKER, patch_model  # noqa: E402
+from package_turbine_bypass_design import (  # noqa: E402
+    load_connections,
+    validate_model_and_svg,
+)
 
 
 UPSTREAM_STUB = """within ThermoSysPro.Examples.CombinedCyclePowerPlant;
@@ -137,6 +141,25 @@ class TurbineBypassPatchTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn(MARKER, result.stdout)
             self.assertEqual(source.read_text(encoding="utf-8"), UPSTREAM_STUB)
+
+    def test_final_svg_traces_every_patch_owned_connection(self) -> None:
+        patched = patch_model(UPSTREAM_STUB)
+        rows = load_connections(
+            ROOT / "config" / "turbine_bypass_connections_v1.csv"
+        )
+        patch_owned = [
+            row for row in rows if row["status"] != "UPSTREAM_PRESERVED"
+        ]
+        svg = (ROOT / "topology" / "turbine_bypass_vpp.svg").read_text(
+            encoding="utf-8"
+        )
+
+        validate_model_and_svg(patched, svg, patch_owned)
+        self.assertEqual(len(rows), 31)
+        self.assertEqual(sum(row["diagram_required"] == "1" for row in rows), 27)
+        self.assertIn('viewBox="0 0 1920 1080"', svg)
+        self.assertIn('font-family:"Malgun Gothic","맑은 고딕"', svg)
+        self.assertNotIn("vppIPBypass", svg)
 
 
 if __name__ == "__main__":

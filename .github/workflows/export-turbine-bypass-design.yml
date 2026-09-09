@@ -1,0 +1,66 @@
+name: Export TripTAC turbine bypass model and circuit
+
+on:
+  push:
+    branches:
+      - 'codex/triptac-bypass-*'
+    paths:
+      - '.github/workflows/export-turbine-bypass-design.yml'
+      - 'config/turbine_bypass_connections_v1.csv'
+      - 'docs/TURBINE_BYPASS_DESIGN_BASIS_V1.md'
+      - 'modelica/TripLens_CombinedCycle_TripTAC.mo.tpl'
+      - 'scripts/package_turbine_bypass_design.py'
+      - 'scripts/patch_turbine_bypass_model.py'
+      - 'scripts/render_modelica.py'
+      - 'tests/test_turbine_bypass_patch.py'
+      - 'topology/turbine_bypass_vpp.svg'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: triptac-bypass-design-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out VPP design source
+        uses: actions/checkout@v4
+
+      - name: Verify bypass patch and traceable SVG
+        run: python3 -m unittest tests.test_turbine_bypass_patch -v
+
+      - name: Check out pinned ThermoSysPro source
+        run: |
+          git clone --filter=blob:none --no-checkout \
+            https://github.com/Dwarf-Planet-Project/ThermoSysPro.git \
+            vendor/ThermoSysPro
+          git -C vendor/ThermoSysPro checkout --detach \
+            db81ae1b5a6a85f6c6c7693244cafa6087e18ff5
+          test "$(git -C vendor/ThermoSysPro rev-parse HEAD)" = \
+            "db81ae1b5a6a85f6c6c7693244cafa6087e18ff5"
+
+      - name: Build final editable model and circuit package
+        run: |
+          python3 scripts/render_modelica.py \
+            --trip-time 600 \
+            --trip-ramp-duration 5 \
+            --stop-time 1000 \
+            --intervals 10000
+          python3 scripts/package_turbine_bypass_design.py \
+            --upstream-source \
+              vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo \
+            --wrapper build/TripLens_CombinedCycle_TripTAC.mo \
+            --output-dir build/turbine-bypass-design
+
+      - name: Upload editable Modelica and SVG package
+        uses: actions/upload-artifact@v4
+        with:
+          name: triptac-turbine-bypass-model-${{ github.run_number }}
+          path: build/turbine-bypass-design/
+          if-no-files-found: error
+          retention-days: 30

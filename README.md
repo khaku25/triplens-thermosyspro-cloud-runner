@@ -114,17 +114,25 @@ VCB를 닫힌 상태로 유지하고, TRIP만 latch와 VCB 개방을 발생시�
 
 ### ThermoSysPro Cloud Action (RAW-only)
 
-두 Workflow가 현재 등록되어 있습니다.
+RAW 물리계산 Workflow 두 개와 편집 가능한 설계 패키지 Workflow 한 개가
+등록되어 있습니다.
 
 | Workflow | 물리 어댑터 | Action 산출물 |
 |---|---|---|
 | `Generate ThermoSysPro RAW (GT physical adapter)` | GT 배기 유량·온도 경계 변화 | RAW CSV + 무라벨 manifest |
 | `Generate ThermoSysPro RAW (BFP physical adapter)` | FWP-HP 회전속도 경계 변화(Workflow명은 legacy) | RAW CSV + 무라벨 manifest |
+| `Export TripTAC turbine bypass model and circuit` | TripTAC HPBP/LPBP 모델·배선 추적 | 전체 Modelica `.mo` + 1920×1080 SVG + 연결 CSV |
 
-두 Workflow 모두 고정 ThermoSysPro commit과 OpenModelica 이미지를 사용합니다.
+RAW 두 Workflow 모두 고정 ThermoSysPro commit과 OpenModelica 이미지를 사용합니다.
 OpenModelica 결과를 바이트 그대로 복사한 뒤 해시와 구조를 검증하며, 실패한
 실행은 artifact를 게시하지 않습니다. `fault_preset`, ECMS Command, DCS 규칙,
 사고 정답은 Action 입력 또는 산출물에 포함하지 않습니다.
+
+터빈 바이패스 설계 패키지는 물리계산 결과가 아니라 편집·검토용 모델 원본이다.
+HPBP는 HP 주증기에서 Cold Reheat로, LPBP는 Hot Reheat에서 복수기로 연결하며
+별도 IPBP와 LP Drum Steam Dump는 만들지 않는다. 상세 설계근거와 최종 회로도는
+[`docs/TURBINE_BYPASS_DESIGN_BASIS_V1.md`](docs/TURBINE_BYPASS_DESIGN_BASIS_V1.md)를
+참조한다.
 
 ### CSV 시간 해상도 선택
 

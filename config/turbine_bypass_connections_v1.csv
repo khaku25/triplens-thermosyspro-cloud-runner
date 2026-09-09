@@ -1,0 +1,32 @@
+connection_id,domain,route,source_component,source_port,destination_component,destination_port,medium,modelica_evidence,diagram_required,status,notes
+P-HP-01,PROCESS,HP_MAIN,DoubleDebitHP,Cs,vppHPSplitter,Ce,MAIN_STEAM,"connect(DoubleDebitHP.Cs, vppHPSplitter.Ce);",1,MODEL_BOUND,HP main-steam take-off enters the VPP splitter
+P-HP-02,PROCESS,HP_TURBINE,vppHPSplitter,Cs1,vanne_entree_TurbineHP,C1,MAIN_STEAM,"connect(vppHPSplitter.Cs1, vanne_entree_TurbineHP.C1);",1,MODEL_BOUND,Normal HP turbine admission path
+P-HP-03,PROCESS,HP_BYPASS,vppHPSplitter,Cs2,vppHPBypassValve,C1,MAIN_STEAM,"connect(vppHPSplitter.Cs2, vppHPBypassValve.C1);",1,MODEL_BOUND,HP bypass branch upstream of HP turbine
+P-HP-04,PROCESS,HP_BYPASS,vppHPBypassValve,C2,vppHPColdReheatVolume,Ce2,HP_BYPASS_STEAM,"connect(vppHPBypassValve.C2, vppHPColdReheatVolume.Ce2);",1,MODEL_BOUND,HPBP discharge to cold-reheat mixing header
+P-HP-05,PROCESS,HP_SPRAY,vppHPSpraySource,C,vppHPColdReheatVolume,Ce3,SPRAY_WATER,"connect(vppHPSpraySource.C, vppHPColdReheatVolume.Ce3);",1,MODEL_BOUND,HPBP desuperheating-water injection
+P-HP-06,PROCESS,HP_EXHAUST,TurbineHP,Cs,vppHPColdReheatVolume,Ce1,COLD_REHEAT,"connect(TurbineHP.Cs, vppHPColdReheatVolume.Ce1);",1,MODEL_BOUND,HP turbine exhaust enters cold-reheat mixing header
+P-HP-07,PROCESS,COLD_REHEAT,vppHPColdReheatVolume,Cs,MoitieDebitHP,Ce,COLD_REHEAT,"connect(vppHPColdReheatVolume.Cs, MoitieDebitHP.Ce);",1,MODEL_BOUND,Combined cold-reheat stream returns to inherited reheater path
+P-LP-01,PROCESS,HOT_REHEAT,DoubleDebitMP,Cs,vppLPSplitter,Ce,HOT_REHEAT,"connect(DoubleDebitMP.Cs, vppLPSplitter.Ce);",1,MODEL_BOUND,Hot-reheat take-off enters the VPP splitter
+P-LP-02,PROCESS,IP_TURBINE,vppLPSplitter,Cs1,vanne_entree_TurbineMP,C1,HOT_REHEAT,"connect(vppLPSplitter.Cs1, vanne_entree_TurbineMP.C1);",1,MODEL_BOUND,Normal IP and LP turbine-train admission path
+P-LP-03,PROCESS,LP_BYPASS,vppLPSplitter,Cs2,vppLPBypassValve,C1,HOT_REHEAT,"connect(vppLPSplitter.Cs2, vppLPBypassValve.C1);",1,MODEL_BOUND,LPBP branches from hot reheat and bypasses IP plus LP turbines
+P-LP-04,PROCESS,LP_BYPASS,vppLPBypassValve,C2,vppCondenserSteamVolume,Ce2,LP_BYPASS_STEAM,"connect(vppLPBypassValve.C2, vppCondenserSteamVolume.Ce2);",1,MODEL_BOUND,LPBP discharge to condenser inlet header
+P-LP-05,PROCESS,LP_SPRAY,vppLPSpraySource,C,vppCondenserSteamVolume,Ce3,SPRAY_WATER,"connect(vppLPSpraySource.C, vppCondenserSteamVolume.Ce3);",1,MODEL_BOUND,LPBP desuperheating-water injection
+P-LP-06,PROCESS,LP_EXHAUST,perteChargeK1,C2,vppCondenserSteamVolume,Ce1,LP_EXHAUST,"connect(perteChargeK1.C2, vppCondenserSteamVolume.Ce1);",1,MODEL_BOUND,Normal LP turbine exhaust enters condenser inlet header
+P-LP-07,PROCESS,CONDENSER_INLET,vppCondenserSteamVolume,Cs,CapteurDebitVapCondenseur,C1,MIXED_STEAM,"connect(vppCondenserSteamVolume.Cs, CapteurDebitVapCondenseur.C1);",1,MODEL_BOUND,Mixed steam passes the inherited condenser flow sensor
+P-LP-08,PROCESS,CONDENSER_INLET,CapteurDebitVapCondenseur,C2,Condenseur,Cv,MIXED_STEAM,"connect(CapteurDebitVapCondenseur.C2, Condenseur.Cv)",1,UPSTREAM_PRESERVED,Final steam connection to condenser
+P-DR-01,PROCESS,LP_DRUM_STEAM,BallonBP,Cv,vanne_vapeurBP,C1,LP_DRUM_STEAM,"connect(vanne_vapeurBP.C1, BallonBP.Cv)",1,UPSTREAM_PRESERVED,LP drum steam admission is separate from LPBP
+P-DR-02,PROCESS,LP_DRUM_STEAM,vanne_vapeurBP,C2,CapteurDebitVapBP,C1,LP_DRUM_STEAM,"connect(CapteurDebitVapBP.C1, vanne_vapeurBP.C2)",1,UPSTREAM_PRESERVED,LP drum steam flow measurement path
+P-DR-03,PROCESS,LP_DRUM_STEAM,DoubleDebitBP,Cs,PerteChargeZero2,C1,LP_DRUM_STEAM,"connect(DoubleDebitBP.Cs, PerteChargeZero2.C1)",1,UPSTREAM_PRESERVED,LP drum steam joins downstream turbine path
+P-DR-04,PROCESS,LP_TURBINE,MelangeurPostTMP1,Cs,TurbineBP,Ce,IP_EXHAUST_PLUS_LP_DRUM,"connect(MelangeurPostTMP1.Cs, TurbineBP.Ce)",1,UPSTREAM_PRESERVED,IP exhaust and LP drum steam enter LP turbine
+C-TRIP-01,CONTROL,TRIP_INIT,time,,vppSTTripLatch,,BOOLEAN,"vppSTTripLatch = time >= vppTripTime;",1,PROVISIONAL_SCENARIO,Time source stands in for a resolved ST Trip input
+C-HP-ADM,CONTROL,TRIP_CLOSE,vppSTTripLatch,,vanne_entree_TurbineHP,Ouv.signal,REAL,"vanne_entree_TurbineHP.Ouv.signal = vppHPAdmissionPos;",1,MODEL_BOUND,HP admission first-order close action
+C-IP-ADM,CONTROL,TRIP_CLOSE,vppSTTripLatch,,vanne_entree_TurbineMP,Ouv.signal,REAL,"vanne_entree_TurbineMP.Ouv.signal = vppIPAdmissionPos;",1,MODEL_BOUND,IP admission first-order close action
+C-LPDR-ADM,CONTROL,TRIP_CLOSE,vppSTTripLatch,,vanne_vapeurBP,Ouv.signal,REAL,"vanne_vapeurBP.Ouv.signal = regulation_Niveau_BP.SortieReelle1.signal*vppLPDrumAdmissionMultiplier;",1,MODEL_BOUND,LP drum level demand multiplied by Trip isolation position
+C-HPBP,CONTROL,TRIP_OPEN,vppSTTripLatch,,vppHPBypassValve,Ouv.signal,REAL,"vppHPBypassValve.Ouv.signal = vppHPBypassPos;",1,MODEL_BOUND,HPBP first-order open action
+C-LPBP,CONTROL,TRIP_OPEN,vppSTTripLatch,,vppLPBypassValve,Ouv.signal,REAL,"vppLPBypassValve.Ouv.signal = vppLPBypassPos;",1,MODEL_BOUND,LPBP first-order open action
+C-HPSPRAY,CONTROL,SPRAY_ENABLE,vppHPSprayFlowCommand,,vppHPSpraySource,IMassFlow,REAL,"connect(vppHPSprayFlowCommand, vppHPSpraySource.IMassFlow);",1,MODEL_BOUND,HP spray command follows measured HPBP steam flow
+C-LPSPRAY,CONTROL,SPRAY_ENABLE,vppLPSprayFlowCommand,,vppLPSpraySource,IMassFlow,REAL,"connect(vppLPSprayFlowCommand, vppLPSpraySource.IMassFlow);",1,MODEL_BOUND,LP spray command follows measured LPBP steam flow
+M-HP-FLOW,MEASUREMENT,RAW,vppHPBypassValve,Q,vppHPBypassMassFlow,,REAL,"vppHPBypassMassFlow = vppHPBypassValve.Q;",0,MODEL_BOUND,HPBP native Modelica mass-flow output
+M-LP-FLOW,MEASUREMENT,RAW,vppLPBypassValve,Q,vppLPBypassMassFlow,,REAL,"vppLPBypassMassFlow = vppLPBypassValve.Q;",0,MODEL_BOUND,LPBP native Modelica mass-flow output
+M-COND-P,MEASUREMENT,RAW,Condenseur,P,vppCondenserPressure,,REAL,"vppCondenserPressure = Condenseur.P;",0,MODEL_BOUND,Condenser pressure output
+M-COND-L,MEASUREMENT,RAW,Condenseur,yNiveau.signal,vppCondenserLevel,,REAL,"vppCondenserLevel = Condenseur.yNiveau.signal;",0,MODEL_BOUND,Condenser level output
