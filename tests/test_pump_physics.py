@@ -201,20 +201,13 @@ class PumpPhysicsTests(unittest.TestCase):
             "commonTripProtection.hpDrumLevel = BallonHP.yLevel.signal",
             hp_model,
         )
+        self.assertNotIn("protectedExhaust", hp_model)
+        self.assertNotIn("stTripValveHP", hp_model)
+        self.assertIn("connect(Debit.y,SourceFumees. IMassFlow)", hp_model)
         self.assertIn(
-            "protectedExhaust.gtTripLatched = gtTripLatched", hp_model
-        )
-        self.assertIn(
-            "connect(protectedExhaust.effectiveMassFlow, SourceFumees.IMassFlow)",
+            "connect(ConstantVanneTurbineHP.y, vanne_entree_TurbineHP.Ouv)",
             hp_model,
         )
-        self.assertIn(
-            "stTripValveHP.trip.signal = stTripLatched", hp_model
-        )
-        self.assertNotIn(
-            "protectedExhaust.gtTripLatched = not breakerHPClosed", hp_model
-        )
-        self.assertNotIn("connect(Debit.y,SourceFumees. IMassFlow)", hp_model)
         self.assertNotIn("cwPumpDrive", hp_model)
         self.assertNotIn("TripLens_RegularizedCondenser", hp_model)
 
