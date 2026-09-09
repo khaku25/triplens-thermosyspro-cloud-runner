@@ -7,7 +7,20 @@
     "plant_model": "TripLens Plant Model v2",
     "native_component": "PompeAlimHP",
     "physics_input": "fwpHpSpeedCmd",
-    "operation_adapter": "ecms_pump_logic/build_fwp_hp_operation.m"
+    "operation_adapter": "ecms_pump_logic/build_fwp_hp_operation.m",
+    "validated_rnd_main_commit": "817b1ef463a2bf58ca317fe3d683165875ab586f",
+    "validation_evidence": {
+      "physical_source_run_id": 34366779559,
+      "canonical_raw_revalidation_run_id": 34374439526,
+      "plant_model_contract_run_id": 34375127982,
+      "normal_100_run_id": 34375132429,
+      "fmi_contract_run_id": 34375441337,
+      "canonical_raw_start_s": 300,
+      "canonical_raw_end_s": 420,
+      "canonical_raw_rows": 1201,
+      "canonical_physics_interval_s": 0.1,
+      "scenario_answer_label_present": false
+    }
   },
   "commands": {
     "run": "FWP_HP_RUN",
@@ -30,8 +43,14 @@
   "raw_contract": {
     "physics_interval_s": 0.1,
     "scenario_answer_labels_allowed": false,
-    "native_speed_aliases": ["PompeAlimHP.Vr", "arretPomesHP.y.signal"],
-    "native_flow_aliases": ["PompeAlimHP.Q", "CapteurDebitEauHP.Measure.signal"],
+    "native_speed_aliases": [
+      "PompeAlimHP.Vr",
+      "arretPomesHP.y.signal"
+    ],
+    "native_flow_aliases": [
+      "PompeAlimHP.Q",
+      "CapteurDebitEauHP.Measure.signal"
+    ],
     "canonical_speed": "bfp_hp_speed_rpm",
     "canonical_mass_flow": "bfp_hp_mass_flow_kg_s"
   },
@@ -40,7 +59,10 @@
     "alarm_delay_method": "current_simulation_time - threshold_crossing_time",
     "sample_count_delay_forbidden": true
   },
-  "excluded_physics": ["CW-PUMP", "COND-PUMP"],
+  "excluded_physics": [
+    "CW-PUMP",
+    "COND-PUMP"
+  ],
   "guardrails": [
     "Do not copy MATLAB or Simulink validation code into the Competition repository.",
     "Do not synthesize motor/check-valve ThermoSysPro components in the RAW runner.",
