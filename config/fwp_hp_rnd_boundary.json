@@ -33,26 +33,37 @@
     "breaker_feedback": "VCB-A01.CLOSED",
     "success_value": 0,
     "physics_after_trip": "motor torque removed -> RPM coastdown -> fwpHpSpeedCmd -> native PompeAlimHP response",
-    "reset_behavior": "clear latch only; no breaker reclose and no automatic restart"
+    "reset_behavior": "clear latch only; no breaker reclose and no automatic restart",
+    "breaker_feedback_canonical": "fwp_hp_vcb_closed",
+    "breaker_feedback_aliases": [
+      "VCB-A01.CLOSED",
+      "ECMS.VCB-A01.CLOSED",
+      "fwp_hp_vcb_closed"
+    ]
   },
   "normal_stop_contract": {
     "breaker_feedback": "VCB-A01.CLOSED",
     "breaker_value": 1,
-    "physics": "run disable -> RPM coastdown"
+    "physics": "run disable -> RPM coastdown",
+    "breaker_feedback_canonical": "fwp_hp_vcb_closed"
   },
   "raw_contract": {
     "physics_interval_s": 0.1,
     "scenario_answer_labels_allowed": false,
     "native_speed_aliases": [
       "PompeAlimHP.Vr",
-      "arretPomesHP.y.signal"
+      "arretPomesHP.y.signal",
+      "fwp_hp_speed_rpm",
+      "bfp_hp_speed_rpm"
     ],
     "native_flow_aliases": [
       "PompeAlimHP.Q",
-      "CapteurDebitEauHP.Measure.signal"
+      "CapteurDebitEauHP.Measure.signal",
+      "fwp_hp_mass_flow_kg_s",
+      "bfp_hp_mass_flow_kg_s"
     ],
-    "canonical_speed": "bfp_hp_speed_rpm",
-    "canonical_mass_flow": "bfp_hp_mass_flow_kg_s"
+    "canonical_speed": "fwp_hp_speed_rpm",
+    "canonical_mass_flow": "fwp_hp_mass_flow_kg_s"
   },
   "logic_contract": {
     "logic_step_s": 0.001,
