@@ -160,6 +160,8 @@ package TripLens_PumpPhysics
       "Fast hydraulic actuator closing time";
     parameter Real reopenTime(unit="s")=1
       "Reset/reopening time used outside a latched trip";
+    parameter Real minimumOpening=0.005
+      "Small internal steam-flow floor for Stodola/IF97 regularization";
 
     ThermoSysPro.InstrumentationAndControl.Connectors.InputReal
       normalOpening;
@@ -167,17 +169,21 @@ package TripLens_PumpPhysics
     ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
       effectiveOpening;
 
-    Real position(start=1, fixed=false, min=0, max=1);
-    Real target(min=0, max=1);
+    Real position(start=1, fixed=false, min=minimumOpening, max=1);
+    Real target(min=minimumOpening, max=1);
 
   initial equation
-    position = max(0, min(1, normalOpening.signal));
+    position = max(minimumOpening, min(1, normalOpening.signal));
 
   equation
-    assert(closeTime > 0 and reopenTime > 0,
-      "FastSteamTripValve time constants must be positive");
-    target = if trip.signal then 0 else
-      max(0, min(1, normalOpening.signal));
+    assert(closeTime > 0 and reopenTime > 0 and minimumOpening > 0 and
+      minimumOpening < 1,
+      "FastSteamTripValve requires positive time constants and 0 < minimumOpening < 1");
+    // The electrical trip remains instantaneous at 52G. This small hydraulic
+    // floor applies only to the internal turbine steam path: the simplified
+    // Stodola/IF97 equations are singular at exactly zero mass flow.
+    target = if trip.signal then minimumOpening else
+      max(minimumOpening, min(1, normalOpening.signal));
     der(position) = (target - position)/noEvent(if target < position then
       closeTime else reopenTime);
     effectiveOpening.signal = position;
