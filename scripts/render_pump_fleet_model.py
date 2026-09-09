@@ -246,6 +246,8 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
         declarations.append('''
   // Condenseur.P is the physical ST-backpressure source.
   TripLens_PumpPhysics.BackpressureTurbineTrip stBackpressureProtection;
+  TripLens_PumpPhysics.FastSteamTripValve stTripValveHP;
+  TripLens_PumpPhysics.FastSteamTripValve stTripValveMP;
   Boolean stBackpressureHigh;
   Boolean stBackpressureTripPickup;
   Boolean stTripLatched;
@@ -263,10 +265,15 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
   // A protection trip disconnects grid power immediately. Alternateur.Welec
   // remains the internal pre-breaker electrical quantity during coastdown.
   stGridElectricalPower = if st52GClosed then Alternateur.Welec else 0;
-  vanne_entree_TurbineHP.Ouv.signal = if stTripLatched then 0 else
-    ConstantVanneTurbineHP.y.signal;
-  vanne_entree_TurbineMP.Ouv.signal = if stTripLatched then 0 else
-    ConstantVanneTurbineMP.y.signal;
+  // The generator breaker opens algebraically at the protection trip.
+  // Steam stop valves retain their finite actuator stroke, avoiding an
+  // unphysical zero-flow discontinuity inside the Stodola turbine equations.
+  connect(ConstantVanneTurbineHP.y, stTripValveHP.normalOpening);
+  connect(ConstantVanneTurbineMP.y, stTripValveMP.normalOpening);
+  stTripValveHP.trip.signal = stTripLatched;
+  stTripValveMP.trip.signal = stTripLatched;
+  connect(stTripValveHP.effectiveOpening, vanne_entree_TurbineHP.Ouv);
+  connect(stTripValveMP.effectiveOpening, vanne_entree_TurbineMP.Ouv);
 ''')
         declarations.append('''
   Boolean breakerCWClosed;
