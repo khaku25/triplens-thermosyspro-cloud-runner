@@ -1,8 +1,10 @@
 # TripLens ThermoSysPro RAW Runner / ECMS VPP Reference
 
 GitHub Actions에서 ThermoSysPro/OpenModelica 물리 원천을 생성하는 저장소입니다.
-Action의 공식 산출물은 `thermosyspro-raw.csv`와 `raw-manifest.json`뿐입니다.
-ProcessBus 변환, DCS 알람 판정, ECMS 사건 생성과 원인 추론은 수행하지 않습니다.
+기존 검증 경로의 공식 산출물은 `thermosyspro-raw.csv`와
+`raw-manifest.json`뿐입니다. 별도 `VPP Modelica Event Engine` 경로에서는
+알람·Trip Boolean을 모델 내부에서 계산하고 `VPP_EVENT.csv`로 직렬화합니다.
+두 경로 모두 원인 추론이나 사고 정답은 만들지 않습니다.
 
 저장소에 함께 있는 MATLAB ECMS VPP와 기존 Python 변환기는 웹 변환부 이관 및
 예제 검증을 위한 참고 구현입니다. Action 실행 경로와는 분리되어 있습니다.
@@ -100,19 +102,25 @@ MATLAB 합성 fallback에서도 마지막 명령처럼 사고 전·후 1 ms 구�
 있습니다. 이 결과는 계속 `MATLAB_NATIVE_SYNTHETIC_FALLBACK`으로 표시되며,
 ThermoSysPro 물리 실행으로 취급되지 않습니다.
 
-### ThermoSysPro Cloud Action (RAW-only)
+### ThermoSysPro Cloud Action
 
-두 Workflow가 현재 등록되어 있습니다.
+기존 RAW-only Workflow와 별도의 Modelica Event Workflow가 등록되어 있습니다.
 
 | Workflow | 물리 어댑터 | Action 산출물 |
 |---|---|---|
 | `Generate ThermoSysPro RAW (GT physical adapter)` | GT 배기 유량·온도 경계 변화 | RAW CSV + 무라벨 manifest |
 | `Generate ThermoSysPro RAW (BFP physical adapter)` | HP BFP 회전속도 경계 변화 | RAW CSV + 무라벨 manifest |
+| `Generate VPP RAW and Modelica-owned events` | FWP 물리 Trip + 모델 내부 알람·보호 | VPP RAW + VPP/DCS1/DCS2 Event |
 
-두 Workflow 모두 고정 ThermoSysPro commit과 OpenModelica 이미지를 사용합니다.
+각 Workflow는 고정 ThermoSysPro commit과 OpenModelica 이미지를 사용합니다.
 OpenModelica 결과를 바이트 그대로 복사한 뒤 해시와 구조를 검증하며, 실패한
 실행은 artifact를 게시하지 않습니다. `fault_preset`, ECMS Command, DCS 규칙,
 사고 정답은 Action 입력 또는 산출물에 포함하지 않습니다.
+
+VPP Event Workflow의 구조·39개 임시 규칙·교체 방법은
+[`docs/VPP_EVENT_ENGINE_PROVISIONAL.md`](docs/VPP_EVENT_ENGINE_PROVISIONAL.md)를
+참조합니다. 이 경로에서 CSV 변환기는 임계값을 계산하지 않고 Modelica Boolean
+상태 변화만 기록하므로 알람 화면을 모니터 전용으로 연결할 수 있습니다.
 
 ### CSV 시간 해상도 선택
 

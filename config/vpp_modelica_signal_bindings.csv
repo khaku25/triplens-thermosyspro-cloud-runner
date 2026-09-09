@@ -1,0 +1,15 @@
+source_signal,input_type,pump_model_expression,unit,status,notes
+gt_trip_cmd,BOOLEAN,false,BOOL,MODEL_BOUND,Direct GT Trip command is false in an FWP-initiated run
+st_trip_cmd,BOOLEAN,false,BOOL,MODEL_BOUND,Direct ST Trip command is false in an FWP-initiated run
+gt_exhaust_mass_flow_kg_s,REAL,Debit.y.signal,kg/s,MODEL_BOUND,Native ThermoSysPro GT exhaust boundary
+gt_exhaust_temperature_k,REAL,Temperature.y.signal,K,MODEL_BOUND,Native ThermoSysPro GT exhaust boundary
+stg_power_w,REAL,Alternateur.Welec,W,MODEL_BOUND,Native steam-turbine generator electrical power
+hp_drum_level_m,REAL,BallonHP.yLevel.signal,m,MODEL_BOUND,Native HP drum level
+ip_drum_level_m,REAL,BallonMP.yLevel.signal,m,MODEL_BOUND,Native IP drum level
+lp_drum_level_m,REAL,BallonBP.yLevel.signal,m,MODEL_BOUND,Native LP drum level
+hp_drum_pressure_pa,REAL,BallonHP.P,Pa,MODEL_BOUND,Native HP drum pressure
+ip_drum_pressure_pa,REAL,BallonMP.P,Pa,MODEL_BOUND,Native IP drum pressure
+lp_drum_pressure_pa,REAL,BallonBP.P,Pa,MODEL_BOUND,Native LP drum pressure
+hp_steam_flow_kg_s,REAL,TurbineHP.Q,kg/s,MODEL_BOUND,Native HP turbine steam mass flow
+ip_steam_flow_kg_s,REAL,TurbineMP.Q,kg/s,MODEL_BOUND,Native IP turbine steam mass flow
+lp_steam_flow_kg_s,REAL,TurbineBP.Q,kg/s,MODEL_BOUND,Native LP turbine steam mass flow

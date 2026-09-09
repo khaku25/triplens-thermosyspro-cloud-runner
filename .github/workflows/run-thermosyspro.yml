@@ -1,4 +1,4 @@
-name: Generate ThermoSysPro RAW (GT physical adapter)
+name: Generate ThermoSysPro RAW (GT DERATE physical adapter)
 
 on:
   workflow_dispatch:
@@ -13,11 +13,11 @@ on:
           - standard
           - incident_1ms
       event_time_s:
-        description: Physical exhaust-boundary change start time in seconds
+        description: GT DERATE exhaust-boundary change start time in seconds; this is not GT Trip
         required: true
         default: "600"
       transition_duration_s:
-        description: Physical exhaust-boundary transition duration in seconds
+        description: GT DERATE exhaust-boundary transition duration in seconds
         required: true
         default: "5"
       stop_time_s:
@@ -33,7 +33,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: thermosyspro-raw-gt-${{ github.ref }}
+  group: thermosyspro-raw-gt-derate-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -44,10 +44,12 @@ jobs:
       - name: Check out physical-model runner
         uses: actions/checkout@v4
 
-      - name: Verify RAW-only boundary
-        run: python3 -m unittest tests.test_raw_action -v
+      - name: Verify RAW-only and Trip-semantic boundaries
+        run: |
+          python3 -m unittest tests.test_raw_action -v
+          python3 config/audit_trip_semantics.py
 
-      - name: Run ThermoSysPro RAW-only simulation
+      - name: Run GT DERATE ThermoSysPro RAW-only simulation
         env:
           SAMPLING_PROFILE: ${{ inputs.sampling_profile }}
           EVENT_TIME_S: ${{ inputs.event_time_s }}
@@ -67,7 +69,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: thermosyspro-raw-${{ github.run_number }}
+          name: thermosyspro-raw-gt-derate-${{ github.run_number }}
           path: |
             outputs/thermosyspro-raw.csv
             outputs/raw-manifest.json

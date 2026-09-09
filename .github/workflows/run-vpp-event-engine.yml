@@ -1,0 +1,113 @@
+name: Generate VPP RAW and Modelica-owned events
+
+on:
+  push:
+    branches:
+      - 'codex/vpp-event-engine-*'
+    paths:
+      - '.github/workflows/run-vpp-event-engine.yml'
+      - 'config/common_trip_matrix.csv'
+      - 'config/vpp_event_logic_provisional.csv'
+      - 'config/vpp_modelica_signal_bindings.csv'
+      - 'config/vpp_trip_timing_provisional.csv'
+      - 'modelica/TripLens_PumpPhysics.mo'
+      - 'modelica/TripLens_VPPLogicBlocks.mo'
+      - 'modelica/run_vpp_event.mos.tpl'
+      - 'scripts/export_vpp_events.py'
+      - 'scripts/generate_vpp_modelica_logic.py'
+      - 'scripts/render_pump_fleet_model.py'
+      - 'scripts/render_vpp_event_model.py'
+      - 'scripts/run_vpp_event_pipeline.sh'
+      - 'scripts/validate_vpp_event_bundle.py'
+      - 'tests/test_vpp_event_engine.py'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/run-vpp-event-engine.yml'
+      - 'config/common_trip_matrix.csv'
+      - 'config/vpp_event_logic_provisional.csv'
+      - 'config/vpp_modelica_signal_bindings.csv'
+      - 'config/vpp_trip_timing_provisional.csv'
+      - 'modelica/TripLens_PumpPhysics.mo'
+      - 'modelica/TripLens_VPPLogicBlocks.mo'
+      - 'modelica/run_vpp_event.mos.tpl'
+      - 'scripts/export_vpp_events.py'
+      - 'scripts/generate_vpp_modelica_logic.py'
+      - 'scripts/render_pump_fleet_model.py'
+      - 'scripts/render_vpp_event_model.py'
+      - 'scripts/run_vpp_event_pipeline.sh'
+      - 'scripts/validate_vpp_event_bundle.py'
+      - 'tests/test_vpp_event_engine.py'
+  workflow_dispatch:
+    inputs:
+      pump_id:
+        description: Physical FWP breaker initiator
+        required: true
+        type: choice
+        default: FWP-HP
+        options:
+          - FWP-HP
+          - FWP-IP
+          - FWP-LP
+      event_time_s:
+        description: Pump breaker opening time in seconds
+        required: true
+        default: '300'
+      stop_time_s:
+        description: Simulation stop time in seconds
+        required: true
+        default: '420'
+      output_intervals:
+        description: Native CSV interval count
+        required: true
+        default: '4200'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vpp-event-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  simulate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out latest integration source
+        uses: actions/checkout@v4
+
+      - name: Verify logic generator and transition-only serializer
+        run: python3 -m unittest tests.test_vpp_event_engine -v
+
+      - name: Run VPP internal alarm and Trip logic
+        env:
+          PUMP_ID: ${{ inputs.pump_id || 'FWP-HP' }}
+          EVENT_TIME_S: ${{ inputs.event_time_s || '300' }}
+          STOP_TIME_S: ${{ inputs.stop_time_s || '420' }}
+          OUTPUT_INTERVALS: ${{ inputs.output_intervals || '4200' }}
+        run: |
+          chmod +x scripts/run_vpp_event_pipeline.sh
+          scripts/run_vpp_event_pipeline.sh \
+            "$PUMP_ID" \
+            "$EVENT_TIME_S" \
+            "$STOP_TIME_S" \
+            "$OUTPUT_INTERVALS"
+
+      - name: Upload monitor-ready VPP bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vpp-modelica-events-${{ github.run_number }}
+          path: |
+            outputs/vpp-event/VPP_RAW.csv
+            outputs/vpp-event/VPP_EVENT.csv
+            outputs/vpp-event/DCS1_EVENT.csv
+            outputs/vpp-event/DCS2_EVENT.csv
+            outputs/vpp-event/VPP_LOGIC_SNAPSHOT.csv
+            outputs/vpp-event/vpp-event-manifest.json
+            build/TripLens_VPPAlarmRuntime.mo
+            build/TripLens_CombinedCycle_AllPumps.mo
+            build/vpp_event.log
+          if-no-files-found: warn
+          retention-days: 30

@@ -73,7 +73,13 @@ def replace_statement(text: str, marker: str, replacement: str, label: str) -> s
     return text[:start] + replacement + text[end:]
 
 
-def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
+def transform(
+    upstream: str,
+    *,
+    trip_target: int,
+    trip_time: float,
+    vpp_runtime_bindings: dict[str, str] | None = None,
+) -> str:
     text = replace_once(
         upstream,
         "within ThermoSysPro.Examples.CombinedCyclePowerPlant;",
@@ -209,9 +215,18 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
     closeFlow={selected["close_flow"]},
     closedResistance={selected["closed_resistance"]});
 ''')
-        declarations.append("""
-  // Protection is driven by native drum states, never directly by the pump breaker.
-  TripLens_PumpPhysics.CommonDrumTripProtection commonTripProtection;
+        if vpp_runtime_bindings is None:
+            protection_declaration = (
+                "  TripLens_PumpPhysics.CommonDrumTripProtection "
+                "commonTripProtection;"
+            )
+        else:
+            protection_declaration = (
+                "  TripLens_VPPAlarmRuntime.VPPAlarmRuntime alarmRuntime;"
+            )
+        declarations.append(f"""
+  // Protection is driven by native process states, never directly by the pump breaker.
+{protection_declaration}
   Boolean hpDrumLevelHHPickup;
   Boolean hpDrumLevelLLPickup;
   Boolean ipDrumLevelHHPickup;
@@ -235,7 +250,8 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
   drive{axis}.pumpPower.signal = {name}.Wm;
   connect(drive{axis}.speedCommand, {name}.rpm_or_mpower);
 ''')
-        equations.append("""
+        if vpp_runtime_bindings is None:
+            equations.append("""
   commonTripProtection.hpDrumLevel = BallonHP.yLevel.signal;
   commonTripProtection.ipDrumLevel = BallonMP.yLevel.signal;
   commonTripProtection.lpDrumLevel = BallonBP.yLevel.signal;
@@ -254,6 +270,32 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
   relay86GTOperated = commonTripProtection.relay86GTOperated;
   gt52GClosed = commonTripProtection.breaker52GTClosed;
   st52GClosed = commonTripProtection.breaker52STClosed;
+  gtGridElectricalPower = if gt52GClosed then 160e6 else 0;
+  stGridElectricalPower = if st52GClosed then Alternateur.Welec else 0;
+
+""")
+        else:
+            runtime_assignments = "\n".join(
+                f"  alarmRuntime.{source} = {expression};"
+                for source, expression in vpp_runtime_bindings.items()
+            )
+            equations.append(f"""
+{runtime_assignments}
+
+  hpDrumLevelHHPickup = alarmRuntime.alarm_D2_102;
+  hpDrumLevelLLPickup = alarmRuntime.alarm_D2_104;
+  ipDrumLevelHHPickup = alarmRuntime.alarm_D2_112;
+  ipDrumLevelLLPickup = alarmRuntime.alarm_D2_114;
+  lpDrumLevelHHPickup = alarmRuntime.alarm_D2_122;
+  lpDrumLevelLLPickup = alarmRuntime.alarm_D2_124;
+  gtTripRequest = alarmRuntime.gtTripRequest;
+  stTripRequest = alarmRuntime.stTripRequest;
+  gtTripLatched = alarmRuntime.gtTripLatched;
+  stTripLatched = alarmRuntime.stTripLatched;
+  relay86GTTripReceived = alarmRuntime.relay86GTTripReceived;
+  relay86GTOperated = alarmRuntime.relay86GTOperated;
+  gt52GClosed = alarmRuntime.breaker52GTClosed;
+  st52GClosed = alarmRuntime.breaker52STClosed;
   gtGridElectricalPower = if gt52GClosed then 160e6 else 0;
   stGridElectricalPower = if st52GClosed then Alternateur.Welec else 0;
 

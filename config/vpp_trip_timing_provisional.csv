@@ -1,0 +1,5 @@
+parameter,value_s,status,calibration_basis
+gt_receive_delay,0.020,PROVISIONAL_NOT_PLANT_APPROVED,Current common protection draft
+gt_lockout_delay,0.035,PROVISIONAL_NOT_PLANT_APPROVED,Current common protection draft
+gt_breaker_delay,0.080,PROVISIONAL_NOT_PLANT_APPROVED,Current common protection draft
+st_breaker_delay,0.100,PROVISIONAL_NOT_PLANT_APPROVED,Current common protection draft

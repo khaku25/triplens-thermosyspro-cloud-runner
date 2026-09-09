@@ -1,0 +1,64 @@
+name: Generate ThermoSysPro RAW (ST Trip physical adapter)
+
+on:
+  push:
+    branches: [integration/validated-stack-20260909]
+    paths:
+      - 'scripts/build_st_trip_modelica.py'
+      - 'scripts/run_st_trip_pipeline.sh'
+      - '.github/workflows/run-st-trip-raw.yml'
+  workflow_dispatch:
+    inputs:
+      event_time_s:
+        description: ST Trip thermodynamic shutdown start time in seconds
+        required: true
+        default: "10"
+      stop_time_s:
+        description: Simulation stop time in seconds
+        required: true
+        default: "70"
+      output_intervals:
+        description: OpenModelica output interval count
+        required: true
+        default: "700"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: thermosyspro-raw-st-trip-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify RAW-only and Trip-semantic boundaries
+        run: |
+          python3 -m unittest tests.test_raw_action -v
+          python3 config/audit_trip_semantics.py
+
+      - name: Run ST Trip thermodynamic RAW adapter
+        env:
+          EVENT_TIME_S: ${{ inputs.event_time_s || '10' }}
+          STOP_TIME_S: ${{ inputs.stop_time_s || '70' }}
+          OUTPUT_INTERVALS: ${{ inputs.output_intervals || '700' }}
+        run: |
+          chmod +x scripts/run_st_trip_pipeline.sh
+          scripts/run_st_trip_pipeline.sh "$EVENT_TIME_S" "$STOP_TIME_S" "$OUTPUT_INTERVALS"
+
+      - name: Upload blind-test RAW
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: thermosyspro-raw-st-trip-${{ github.run_number }}
+          path: |
+            outputs/thermosyspro-raw.csv
+            outputs/raw-manifest.json
+            build/st_trip.log
+            build/TripLens_CombinedCycle_STTrip.mo
+          if-no-files-found: error
+          retention-days: 30
