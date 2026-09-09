@@ -41,6 +41,8 @@ model CombinedCycle_TripTAC
 equation
   connect(ConstantVanneTurbineHP.y, vanne_entree_TurbineHP.Ouv);
   connect(ConstantVanneTurbineMP.y, vanne_entree_TurbineMP.Ouv);
+  connect(Debit.y,SourceFumees. IMassFlow);
+  connect(Temperature.y,SourceFumees. ITemperature);
   connect(Vanne_alimentationMPHP1.C1, PompeAlimHP.C2);
   connect(PompeAlimMP.C2, Vanne_alimentationMPHP2.C1);
   connect(PompeAlimBP.C2, vanne_extraction.C1);
@@ -225,6 +227,22 @@ class PumpPhysicsTests(unittest.TestCase):
         )
         self.assertNotIn("TripLens_RegularizedCondenser Condenseur(", hp_model)
         self.assertNotIn("BackpressureTurbineTrip stBackpressureProtection", hp_model)
+        self.assertIn(
+            "EmergencyExhaustGasRamp hpFeedwaterTripRundown", hp_model
+        )
+        self.assertIn(
+            "hpFeedwaterTripRundown.trip.signal = not breakerHPClosed", hp_model
+        )
+        self.assertIn(
+            "connect(hpFeedwaterTripRundown.effectiveMassFlow,",
+            hp_model,
+        )
+        self.assertNotIn(
+            "connect(Debit.y,SourceFumees. IMassFlow)", hp_model
+        )
+        self.assertNotIn(
+            "connect(Temperature.y,SourceFumees. ITemperature)", hp_model
+        )
 
     def test_cw_validator_requires_real_st_breaker_trip(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
