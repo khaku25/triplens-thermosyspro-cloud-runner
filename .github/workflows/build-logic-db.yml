@@ -27,14 +27,20 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Filter catalogue to simulation-grounded logic
+        run: |
+          python3 logic_db/filter_simulation_grounded.py \
+            --input data/triplens_A-L_alarm_logic_master_absolute_v2.csv \
+            --output outputs/simulation_grounded_logic.csv \
+            --excluded-report outputs/excluded_non_simulation_logic.csv
       - name: Build normalized SQLite logic master
         run: |
-          python3 logic_db/build_logic_db.py --source-commit "$GITHUB_SHA"
+          python3 logic_db/build_simulation_grounded_db.py \
+            --logic outputs/simulation_grounded_logic.csv \
+            --source-commit "$GITHUB_SHA"
       - name: Query smoke test
         run: |
-          # Default query scope must remain active-only.
           python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --platform ECMS --limit 5
-          # Logic DB -> Tag Master foreign-key lookup.
           python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --tag-id TSP.DRUM.HP.LEVEL --limit 5
       - name: Export visual traceability viewer
         run: |
@@ -46,6 +52,8 @@ jobs:
           path: |
             outputs/triplens_logic_master_v2.sqlite
             outputs/logic_db_manifest.json
+            outputs/simulation_grounded_logic.csv
+            outputs/excluded_non_simulation_logic.csv
             outputs/active_logic_trace.json
             outputs/active_logic_trace.csv
             outputs/logic_traceability.html
