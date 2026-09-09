@@ -100,7 +100,7 @@ class PumpPhysicsTests(unittest.TestCase):
                 self.assertIn(f"tripTarget = {target}", model)
                 self.assertIn("pumpTripTime(unit=\"s\") = 300", model)
 
-    def test_stodola_pressure_crossover_is_regularized_at_zero_flow(self) -> None:
+    def test_stodola_pressure_crossover_has_smooth_one_way_leakage(self) -> None:
         source = '''model StodolaTurbine
   parameter Integer mode_ps=0;
 protected
