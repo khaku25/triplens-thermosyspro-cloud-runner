@@ -228,6 +228,31 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
             f"  connect(checkValve{axis}.C2, {selected['downstream']});\n",
             f"{axis} discharge check valve",
         )
+        # In this single-train model, loss of any selected feedwater path
+        # is a total feedwater-loss event. Run down GT/HRSG heat input instead
+        # of continuing to heat stagnant water beyond the IF97 domain.
+        declarations.append("""
+  TripLens_PumpPhysics.EmergencyExhaustGasRamp feedwaterTripRundown;
+""")
+        equations.append(f"""
+  connect(Debit.y, feedwaterTripRundown.normalMassFlow);
+  connect(Temperature.y, feedwaterTripRundown.normalTemperature);
+  feedwaterTripRundown.trip.signal = not breaker{axis}Closed;
+  connect(feedwaterTripRundown.effectiveMassFlow, SourceFumees.IMassFlow);
+  connect(feedwaterTripRundown.effectiveTemperature, SourceFumees.ITemperature);
+""")
+        text = replace_statement(
+            text,
+            "  connect(Debit.y,SourceFumees. IMassFlow)",
+            "",
+            "original flue-gas mass-flow boundary",
+               )
+        text = replace_statement(
+            text,
+            "  connect(Temperature.y,SourceFumees. ITemperature)",
+            "",
+            "original flue-gas temperature boundary",
+        )
         if f"{name}.rpm_or_mpower" in text:
             raise ValueError(f"legacy prescribed-speed connection remains for {name}")
     elif trip_target != 0:
