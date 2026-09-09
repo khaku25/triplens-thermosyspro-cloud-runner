@@ -11,7 +11,7 @@ A display convenience, scenario label, derived flow, or boundary signal is not e
 
 ## Core v1 scope — frozen
 
-For the current phase, the authoritative TripLens Core contains only two layers:
+The authoritative signal foundation contains two layers, with one explicitly separated common protection layer above them.
 
 ### Layer 0 — RAW / model-backed tags
 
@@ -28,26 +28,43 @@ Only a **single RAW model quantity** compared against an **absolute engineering-
 - `L`
 - `LL`
 
-No first-order state tag may directly execute a plant/protection action in Core v1.
+Layer 1 only declares the state. It does not itself contain breaker/relay sequences.
 
-### Deferred beyond Core v1
+### Layer 2 — common GT/ST protection matrix
 
-The following are deliberately outside the current Core:
+The common plant trip relationships are intentionally separated from Layer 1 and are now explicit in `config/common_trip_matrix.csv` and the ECMS Simulink A-logic interface.
 
-- `TRIP` command/action logic
-- Master Trip / Unit Trip / ESD
-- 86 relay and breaker-opening sequences
-- permissives / interlocks
+- Direct `GT Trip` → `GT Trip request` + `ST Trip request`
+- Direct `ST Trip` → `ST Trip request` only
+- Any HP/IP/LP Drum `HH` → `ST Trip request` only
+- Any HP/IP/LP Drum `LL` → `GT Trip request` + `ST Trip request`
+
+Equivalent equations:
+
+```text
+GT_REQ = GT_TRIP_CMD OR HP_LL OR IP_LL OR LP_LL
+ST_REQ = ST_TRIP_CMD OR GT_TRIP_CMD OR HP_HH OR IP_HH OR LP_HH OR HP_LL OR IP_LL OR LP_LL
+```
+
+`stg_low_state` / low ST MW indication is **not** a Trip source. GT→ST Trip linkage is signal-based, not an indirect consequence of ST output rundown.
+
+Layer 3 actuation remains separate from the matrix: resolved GT request feeds the existing 86GT→52GT path; resolved ST request feeds the 52ST trip latch. The current breaker timing values are virtual-model provisional values, not plant-approved C&E settings.
+
+### Deferred beyond the common matrix
+
+The following remain outside the current validated common protection scope unless separately model-grounded and tested:
+
+- other Master Trip / Unit Trip / ESD causes
+- additional 86/lockout schemes not present in the current model
+- permissives / interlocks beyond the implemented trip paths
 - automatic bus transfer sequences
-- operator events / command events
+- operator event analytics
 - communication alarms
 - ratio-to-baseline logic
 - rate-of-change logic
-- multi-signal calculations used only to create alarms
+- multi-signal inferred alarms
 - scenario-only sensors
 - virtual equipment logic
-
-These may be added later as clearly separated Layer 2+ logic after the raw/first-order foundation is complete.
 
 ## ThermoSysPro native-state inspection
 
@@ -120,8 +137,10 @@ The current build produces separate Core artifacts:
 - `core_first_order_logic.csv` — Layer 1 H/HH/L/LL rules
 - `core_runtime_alarm_rules.csv` — runtime H/HH/L/LL rules
 
+The common trip relationship is maintained separately in `config/common_trip_matrix.csv` so Layer 1 alarm generation and Layer 2 protection action cannot be confused.
+
 Excluded rows are emitted into separate reports so nothing is silently lost.
 
 ## ECMS electrical exception
 
-Electrical equipment such as 52GT/52ST, GT/ST main transformers, UAT-A/UAT-B, 6.9 kV incoming breakers and bus tie are retained when they are explicit objects in the ECMS electrical simulation topology. They do not need to be ThermoSysPro process objects, but their higher-order protection/sequence logic remains outside Core v1 until the Layer 0/1 foundation is complete.
+Electrical equipment such as 52GT/52ST, GT/ST main transformers, UAT-A/UAT-B, 6.9 kV incoming breakers and bus tie are retained when they are explicit objects in the ECMS electrical simulation topology. They do not need to be ThermoSysPro process objects, but any higher-order protection/sequence logic must remain explicitly separated from Layer 0/1 and be backed by a reviewed matrix or model state.
