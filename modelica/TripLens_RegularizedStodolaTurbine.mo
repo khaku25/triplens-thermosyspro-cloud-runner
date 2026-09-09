@@ -60,10 +60,10 @@ public
   ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph pros
     annotation (Placement(transformation(extent={{-60,80},{-40,100}}, rotation=
             0)));
-  Connectors.FluidInlet Ce
+  ThermoSysPro.WaterSteam.Connectors.FluidInlet Ce
     annotation (Placement(transformation(extent={{-111,-10},{-91,10}}, rotation
           =0)));
-  Connectors.FluidOutlet Cs                annotation (Placement(transformation(
+  ThermoSysPro.WaterSteam.Connectors.FluidOutlet Cs annotation (Placement(transformation(
           extent={{91,-10},{111,10}}, rotation=0)));
   ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ps props
     annotation (Placement(transformation(extent={{-100,-100},{-80,-80}},

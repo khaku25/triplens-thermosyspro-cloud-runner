@@ -130,7 +130,7 @@ class PumpPhysicsTests(unittest.TestCase):
             target = Path(directory)
             raw = target / "raw.csv"
             raw.write_text(
-                "time,breakerHPClosed,driveHP.motorTorque,PompeAlimHP.VRot\n"
+                "time,breakerHPClosed,fwp_hp_motor_torque_nm,PompeAlimHP.VRot\n"
                 "0,true,8000,1400\n"
                 "1,false,0,1300\n",
                 encoding="utf-8",

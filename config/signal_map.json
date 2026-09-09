@@ -218,7 +218,6 @@
       "required": false,
       "unit": "rpm",
       "aliases": [
-        "driveHP.speedRpm",
         "PompeAlimHP.VRot",
         "PompeAlimHP.Vr",
         "arretPomesHP.y.signal",
@@ -299,7 +298,6 @@
       "required": false,
       "unit": "N.m",
       "aliases": [
-        "driveHP.motorTorque",
         "fwp_hp_motor_torque_nm"
       ]
     },
@@ -308,7 +306,6 @@
       "unit": "bool",
       "value_type": "boolean",
       "aliases": [
-        "checkValveHP.ouvert",
         "fwp_hp_check_valve_open"
       ]
     },
@@ -316,7 +313,6 @@
       "required": false,
       "unit": "rpm",
       "aliases": [
-        "driveIP.speedRpm",
         "PompeAlimMP.VRot",
         "PompeAlimMP.Vr",
         "fwp_ip_speed_rpm"
@@ -336,7 +332,6 @@
       "required": false,
       "unit": "N.m",
       "aliases": [
-        "driveIP.motorTorque",
         "fwp_ip_motor_torque_nm"
       ]
     },
@@ -354,7 +349,6 @@
       "unit": "bool",
       "value_type": "boolean",
       "aliases": [
-        "checkValveIP.ouvert",
         "fwp_ip_check_valve_open"
       ]
     },
@@ -362,7 +356,6 @@
       "required": false,
       "unit": "rpm",
       "aliases": [
-        "driveLP.speedRpm",
         "PompeAlimBP.VRot",
         "PompeAlimBP.Vr",
         "lp_condensate_pump_speed_rpm"
@@ -382,7 +375,6 @@
       "required": false,
       "unit": "N.m",
       "aliases": [
-        "driveLP.motorTorque",
         "lp_condensate_pump_motor_torque_nm"
       ]
     },
@@ -400,7 +392,6 @@
       "unit": "bool",
       "value_type": "boolean",
       "aliases": [
-        "checkValveLP.ouvert",
         "lp_condensate_pump_check_valve_open"
       ]
     },
