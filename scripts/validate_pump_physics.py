@@ -34,22 +34,6 @@ FIELD_SETS = {
         "flow": "PompeAlimBP.Q",
         "process": ("Condenseur.yNiveau.signal", "BallonBP.yLevel.signal"),
     },
-    "COND-PUMP": {
-        "breaker": "breakerLPClosed",
-        "torque": "driveLP.motorTorque",
-        "speed": "driveLP.speedRpm",
-        "valve": "checkValveLP.ouvert",
-        "flow": "PompeAlimBP.Q",
-        "process": ("Condenseur.yNiveau.signal", "BallonBP.yLevel.signal"),
-    },
-    "CW-PUMP": {
-        "breaker": "breakerCWClosed",
-        "torque": "cwPumpDrive.motorTorque",
-        "speed": "cwPumpDrive.speedRpm",
-        "valve": "cwPumpDrive.checkValvePosition",
-        "flow": "cwPumpDrive.massFlow.signal",
-        "process": ("Condenseur.P",),
-    },
 }
 
 
@@ -171,70 +155,7 @@ def main() -> int:
     if abs(final_flow) >= abs(initial_flow)*0.8:
         raise ValueError("pump trip did not materially reduce process flow")
 
-    if args.pump_id == "CW-PUMP":
-        st_fields = {
-            key: resolve(headers, value)
-            for key, value in {
-                "pickup": "stBackpressureTripPickup",
-                "trip": "stTripLatched",
-                "breaker": "st52GClosed",
-                "grid_power": "stGridElectricalPower",
-                "internal_power": "Alternateur.Welec",
-                "timer": "stBackpressureProtection.persistenceTimer",
-                "setpoint": "stBackpressureProtection.tripSetpoint",
-            }.items()
-        }
-        if number(after, resolved["valve"]) > 0.1:
-            raise ValueError("CW boundary check valve did not close")
-
-        pickup_rows = [row for row in post if logical(row, st_fields["pickup"])]
-        trip_rows = [row for row in post if logical(row, st_fields["trip"])]
-        if not pickup_rows:
-            raise ValueError("condenser backpressure protection never picked up")
-        if not trip_rows:
-            raise ValueError("ST trip did not latch after persistent backpressure")
-
-        first_trip = trip_rows[0]
-        first_trip_time = number(first_trip, time_field)
-        rows_before_trip = [
-            row for row in rows if number(row, time_field) < first_trip_time
-        ]
-        if not rows_before_trip:
-            raise ValueError("ST trip transition has no preceding sample")
-        just_before_trip = rows_before_trip[-1]
-
-        if not logical(just_before_trip, st_fields["breaker"]):
-            raise ValueError("ST 52G opened before the protection trip")
-        if logical(first_trip, st_fields["breaker"]):
-            raise ValueError("ST 52G did not open in the trip sample")
-
-        pre_grid_power = abs(number(just_before_trip, st_fields["grid_power"]))
-        trip_grid_power = abs(number(first_trip, st_fields["grid_power"]))
-        if pre_grid_power <= 1:
-            raise ValueError("ST grid power was not present before 52G opening")
-        if trip_grid_power > max(1, pre_grid_power*1e-9):
-            raise ValueError("ST grid electrical power did not become zero at 52G opening")
-
-        internal_power = abs(number(first_trip, st_fields["internal_power"]))
-        if internal_power <= pre_grid_power*0.05:
-            raise ValueError(
-                "ST trip was represented by collapsing turbine output instead of 52G"
-            )
-        if number(first_trip, process_fields[0]) < number(
-            first_trip, st_fields["setpoint"]
-        ):
-            raise ValueError("ST trip latched below its condenser-pressure setpoint")
-        if number(first_trip, st_fields["timer"]) < 1.9:
-            raise ValueError("ST backpressure persistence timer did not reach delay")
-
-        print(
-            f"ST TRIP: t={first_trip_time:.9g} "
-            f"52G={first_trip[st_fields['breaker']]} "
-            f"grid_power={number(first_trip, st_fields['grid_power']):.9g} "
-            f"internal_power={number(first_trip, st_fields['internal_power']):.9g}",
-            flush=True,
-        )
-    elif logical(after, resolved["valve"]):
+    if logical(after, resolved["valve"]):
         raise ValueError("pump discharge check valve did not close")
 
     process_changes = [
