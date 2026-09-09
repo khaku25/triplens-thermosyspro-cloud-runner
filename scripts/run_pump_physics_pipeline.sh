@@ -57,6 +57,9 @@ if [[ ! -f vendor/ThermoSysPro/ThermoSysPro/package.mo ]]; then
   exit 1
 fi
 
+python3 scripts/patch_stodola_turbine.py \
+  vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
+
 python3 scripts/render_pump_fleet_model.py \
   --pump-id "$pump_id" \
   --trip-time "$event_time_s" \

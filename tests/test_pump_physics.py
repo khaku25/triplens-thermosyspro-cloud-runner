@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 from scripts.render_pump_fleet_model import PUMP_TARGETS, transform
+from scripts.patch_stodola_turbine import MARKER, patch_text
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -72,7 +73,10 @@ class PumpPhysicsTests(unittest.TestCase):
                 model = transform(MINIMAL_UPSTREAM, trip_target=target, trip_time=300)
                 self.assertNotIn("DynamicCentrifugalPump PompeAlim", model)
                 self.assertEqual(model.count("StaticCentrifugalPump PompeAlim"), 3)
-                self.assertEqual(model.count("TripLens_RegularizedStodolaTurbine Turbine"), 3)
+                self.assertEqual(
+                    model.count("ThermoSysPro.WaterSteam.Machines.StodolaTurbine Turbine"),
+                    3,
+                )
                 self.assertIn(f"StaticCentrifugalPump {component}", model)
                 self.assertIn(
                     f"connect(drive{axis}.speedCommand, {component}.rpm_or_mpower)",
@@ -97,16 +101,23 @@ class PumpPhysicsTests(unittest.TestCase):
                 self.assertIn("pumpTripTime(unit=\"s\") = 300", model)
 
     def test_stodola_pressure_crossover_is_regularized_at_zero_flow(self) -> None:
-        source = (ROOT / "modelica" / "TripLens_RegularizedStodolaTurbine.mo").read_text()
-        self.assertIn(
-            "regularizedPressureSquare = noEvent(max(pressureSquareDifference, 0))",
-            source,
-        )
-        self.assertIn(
-            "sqrt(regularizedPressureSquare + pressureDifferenceRegularization^2)",
-            source,
-        )
-        self.assertNotIn("sqrt((Pe^2 - Ps^2)", source)
+        source = '''model StodolaTurbine
+  parameter Integer mode_ps=0;
+protected
+equation
+  if noEvent((Pe > pcrit) or (Te > Tcrit)) then
+    Q = sqrt((Pe^2 - Ps^2)/(Cst*Te));
+  else
+    Q = sqrt((Pe^2 - Ps^2)/(Cst*Te*proe.x));
+  end if;
+end StodolaTurbine;
+'''
+        patched = patch_text(source)
+        self.assertEqual(patched.count(MARKER), 1)
+        self.assertIn("max(Pe^2 - Ps^2, 0)", patched)
+        self.assertIn("- pressureDifferenceRegularization", patched)
+        self.assertNotIn("sqrt((Pe^2 - Ps^2)", patched)
+        self.assertEqual(patch_text(patched), patched)
 
     def test_registry_covers_active_ecms_pumps_and_marks_non_ecms_paths(self) -> None:
         with (ROOT / "config" / "ecms_a_equipment.csv").open(
