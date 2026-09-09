@@ -25,7 +25,8 @@ Action은 다음 작업을 하지 않는다.
 실제로 출력한 명령·상태·`when` 변수는 정답 라벨이 아니라 원본 관측이므로
 이름과 값을 바꾸지 않고 보존한다.
 
-현재 등록된 물리 어댑터는 GT 배기경계 변화와 HP BFP 속도경계 변화 두 개다.
+현재 등록된 물리 어댑터는 GT 배기경계 변화와 FWP-HP 속도경계 변화 두 개다.
+기존 Workflow/파일명의 BFP는 legacy 표시 alias이며 실행 설비 ID는 FWP-HP다.
 이들은 각각 특정 물리 모델이며 임의 사고를 자동 생성하는 범용 모델은 아니다.
 새 사고는 해당 설비의 물리 어댑터를 추가한 뒤 같은 RAW-only 출력 계약을 쓴다.
 
@@ -43,6 +44,11 @@ Alarm rule, ECMS Cause & Effect를 적용한다.
 
 ProcessBus는 알람이 아니다. ECMS 로직이나 필요한 전기 입력이 없으면 ECMS 사건을
 추측하지 않고 미생성/보류한다. 예제용 합성 규칙은 Blind 실행과 분리한다.
+
+현재 기준 구현은 `scripts/convert_raw_observations.py`이며 RAW SHA-256을 전후
+비교한다. `config/tag_alias_contract.csv`로 명칭·소유권을 정규화하고 1 ms 논리
+timer에는 source sample zero-order hold를 적용한다. 공통 GT/ST Trip은
+`config/common_trip_matrix.csv`를 실행한다.
 
 ## 3. 알람발생기 — 운전 화면 재생
 
@@ -62,11 +68,10 @@ TripLens는 시간정렬, 변화량 분석, 알람 축약, 상관관계, 원인 
 
 | 계층 | 확정 목표 | 현재 단계 |
 |---|---|---|
-| GitHub Action | RAW-only | GT·BFP Workflow에 적용 |
-| 웹 RAW 변환부 | RAW → ProcessBus/DCS1/DCS2/ECMS | 다음 변경 대상 |
+| GitHub Action | RAW-only | GT·FWP-HP Workflow에 적용 |
+| 웹 RAW 변환부 | RAW → ProcessBus/DCS1/DCS2/ECMS | 기준 Python 구현 및 회귀시험 완료; 웹 이관 대기 |
 | 알람발생기 | 3개 알람 + 별도 Process Trend | 다음 변경 대상 |
-| TripLens | 4종 관측 입력 | 다음 변경 대상 |
+| TripLens | 4종 관측 입력 | 입력 계약 확정; 제품 연결 대기 |
 
-Action 저장소에 남아 있는 변환·DCS·ECMS Python 파일은 웹 변환부 이관을 위한
-기존 구현 참고자료일 뿐이다. 두 Action 실행 경로에서는 호출하거나 업로드하지
-않는다.
+Action 저장소의 변환·DCS·ECMS Python 파일은 웹 변환부 이관을 위한 검증된 기준
+구현이다. 두 RAW Action 실행 경로에서는 계속 호출하거나 업로드하지 않는다.

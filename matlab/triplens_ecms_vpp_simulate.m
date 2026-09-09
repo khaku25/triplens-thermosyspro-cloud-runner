@@ -96,6 +96,10 @@ commands = validateCommands(commandTable,packageRoot);
 resolvedCommandTable = commandsToTable(commands);
 faultPreset = lower(strtrim(char(string(options.FaultPreset))));
 fault = loadFaultPreset(fullfile(packageRoot,"config","fault_presets.json"),faultPreset);
+commonTripFile = fullfile(packageRoot,"config","common_trip_matrix.csv");
+assert(isfile(commonTripFile),"TripLens:MissingCommonTripMatrix", ...
+    "Common Trip matrix does not exist: %s",commonTripFile);
+commonTripMatrix = validateCommonTripMatrix(readCsv(commonTripFile));
 
 tripTime = double(options.TripTime);
 stopTime = double(options.StopTime);
@@ -128,6 +132,8 @@ tripTime = round(tripTime*1000)/1000;
 stopTime = round(stopTime*1000)/1000;
 assert(stopTime>tripTime,"TripLens:InvalidTimeResolution", ...
     "TripTime and StopTime must remain distinct at 1 ms resolution.");
+feederProtection = resolveFeederProtection(fault,equipment,settings, ...
+    round(tripTime*1000));
 
 periodMs = round(settings.TREND_PERIOD_MS);
 assert(periodMs > 0,"TripLens:InvalidTrendPeriod","TREND_PERIOD_MS must be positive.");
@@ -160,8 +166,9 @@ timeSeconds = timeMs./1000;
 processBus = makeSyntheticProcessBus(timeSeconds,tripTime);
 [trend,events] = simulateElectrical(processBus,timeMs,tripTime,settings, ...
     configStatus,fault,faultPreset,commands,samplingProfile,incidentPeriodMs, ...
-    incidentStartMs,incidentStopMs);
-feeders = makeFeederTrend(trend,equipment,commands,settings,packageRoot);
+    incidentStartMs,incidentStopMs,commonTripMatrix,feederProtection);
+feeders = makeFeederTrend(trend,equipment,commands,settings,packageRoot, ...
+    feederProtection);
 events = addFeederTransitionRows(events,feeders);
 
 outputRoot = char(string(options.OutputRoot));
@@ -355,6 +362,10 @@ required = ["GRID_VOLTAGE_KV","GT_TERMINAL_VOLTAGE_KV", ...
     "GTG_PRETRIP_POWER_MW","TRIP_RECEIVE_DELAY_MS", ...
     "LOCKOUT_OPERATE_DELAY_MS","GT_BREAKER_OPEN_DELAY_MS", ...
     "GT_POWER_DECAY_MS","ST_TRIP_POWER_PU","ST_BREAKER_OPEN_DELAY_MS", ...
+    "MOTOR_BREAKER_OPEN_DELAY_MS", ...
+    "FEEDER_FAULT_CURRENT_A","FEEDER_FAULT_RESIDUAL_VOLTAGE_PU", ...
+    "FEEDER_50_PICKUP_A","FEEDER_50_DELAY_MS","FEEDER_51_PICKUP_A", ...
+    "FEEDER_51_TIME_MULTIPLIER", ...
     "UNDERVOLTAGE_PICKUP_PU","UNDERVOLTAGE_DELAY_MS", ...
     "TREND_PERIOD_MS","CLOCK_OFFSET_MS","AUTO_BUS_TIE_TRANSFER", ...
     "ALLOW_SOURCE_PARALLEL"];
@@ -379,7 +390,8 @@ for index = 1:numel(required)
 end
 positive = ["GRID_VOLTAGE_KV","GT_TERMINAL_VOLTAGE_KV", ...
     "ST_TERMINAL_VOLTAGE_KV","AUX_BUS_VOLTAGE_KV","POWER_FACTOR", ...
-    "TREND_PERIOD_MS"];
+    "TREND_PERIOD_MS","FEEDER_FAULT_CURRENT_A","FEEDER_50_PICKUP_A", ...
+    "FEEDER_51_PICKUP_A","FEEDER_51_TIME_MULTIPLIER"];
 for index = 1:numel(positive)
     assert(settings.(char(positive(index)))>0,"TripLens:InvalidASetting", ...
         "%s must be greater than zero.",positive(index));
@@ -392,10 +404,15 @@ assert(settings.POWER_FACTOR<=1,"TripLens:InvalidASetting", ...
     "POWER_FACTOR must be in (0,1].");
 assert(settings.ST_TRIP_POWER_PU>=0 && settings.ST_TRIP_POWER_PU<=1, ...
     "TripLens:InvalidASetting","ST_TRIP_POWER_PU must be in [0,1].");
+assert(settings.FEEDER_FAULT_RESIDUAL_VOLTAGE_PU>=0 && ...
+    settings.FEEDER_FAULT_RESIDUAL_VOLTAGE_PU<=1, ...
+    "TripLens:InvalidASetting", ...
+    "FEEDER_FAULT_RESIDUAL_VOLTAGE_PU must be in [0,1].");
 delayNames = ["TRIP_RECEIVE_DELAY_MS","LOCKOUT_OPERATE_DELAY_MS", ...
     "GT_BREAKER_OPEN_DELAY_MS","GT_POWER_DECAY_MS", ...
-    "ST_BREAKER_OPEN_DELAY_MS","CLOCK_OFFSET_MS"];
-for index = 1:numel(delayNames)-1
+    "ST_BREAKER_OPEN_DELAY_MS","MOTOR_BREAKER_OPEN_DELAY_MS", ...
+    "FEEDER_50_DELAY_MS"];
+for index = 1:numel(delayNames)
     assert(settings.(char(delayNames(index)))>=0,"TripLens:InvalidASetting", ...
         "%s must be non-negative.",delayNames(index));
 end
@@ -419,7 +436,7 @@ end
 
 function [equipment,configStatus] = validateEquipment(inputTable)
 required = {"equipment_id","label_ko","bus","feeder_id","voltage_kv", ...
-    "rated_kw","normal_breaker_state","priority","status"};
+    "rated_kw","normal_breaker_state","normal_run_state","priority","status"};
 requireColumns(inputTable,required,"A equipment");
 assert(height(inputTable)>0,"TripLens:InvalidAEquipment", ...
     "A equipment is empty.");
@@ -431,6 +448,7 @@ equipment.feeder = strtrim(string(inputTable.feeder_id));
 equipment.voltage_kv = toNumeric(inputTable.voltage_kv);
 equipment.rated_kw = toNumeric(inputTable.rated_kw);
 equipment.normal_closed = upper(strtrim(string(inputTable.normal_breaker_state)))=="CLOSED";
+equipment.normal_running = upper(strtrim(string(inputTable.normal_run_state)))=="RUNNING";
 equipment.priority = strtrim(string(inputTable.priority));
 equipment.status = strtrim(string(inputTable.status));
 textFields = {"id","label","bus","feeder","priority","status"};
@@ -448,6 +466,12 @@ assert(numel(unique(equipment.feeder))==height(inputTable), ...
     "TripLens:DuplicateFeeder","feeder_id values must be unique.");
 assert(all(equipment.bus=="BUS-A" | equipment.bus=="BUS-B"), ...
     "TripLens:InvalidEquipmentBus","Equipment bus must be BUS-A or BUS-B.");
+normalBreakerStates = upper(strtrim(string(inputTable.normal_breaker_state)));
+normalRunStates = upper(strtrim(string(inputTable.normal_run_state)));
+assert(all(ismember(normalBreakerStates,["OPEN","CLOSED"])), ...
+    "TripLens:InvalidEquipmentState","normal_breaker_state must be OPEN or CLOSED.");
+assert(all(ismember(normalRunStates,["RUNNING","STOPPED"])), ...
+    "TripLens:InvalidEquipmentState","normal_run_state must be RUNNING or STOPPED.");
 assert(all(isfinite(equipment.voltage_kv) & equipment.voltage_kv>0), ...
     "TripLens:InvalidEquipmentVoltage","Equipment voltage_kv must be positive.");
 validRated = isnan(equipment.rated_kw) | ...
@@ -655,6 +679,121 @@ fieldName = char(string(name));
 value = isfield(fault,fieldName) && logical(fault.(fieldName));
 end
 
+function protection = resolveFeederProtection(fault,equipment,settings,faultStartMs)
+% Deliberately simple RMS protection model.  It is not an EMT or short-circuit
+% network solution; every setting remains PROVISIONAL until the approved SLD,
+% system impedance and relay setting sheet are supplied.
+protection = struct("enabled",false,"equipment_id","","feeder_id","", ...
+    "fault_start_ms",inf,"fault_current_a",0,"residual_voltage_pu",1, ...
+    "relay_50_operate_ms",inf,"relay_51_operate_ms",inf, ...
+    "trip_command_ms",inf,"breaker_open_ms",inf);
+if ~isfield(fault,"feeder_fault")
+    return;
+end
+equipmentId = upper(strtrim(string(fault.feeder_fault)));
+equipmentIndex = find(equipment.id==equipmentId);
+assert(numel(equipmentIndex)==1,"TripLens:UnknownFeederFaultTarget", ...
+    "Fault preset references unknown feeder equipment %s.",equipmentId);
+faultCurrent = settings.FEEDER_FAULT_CURRENT_A;
+if isfield(fault,"feeder_fault_current_a")
+    faultCurrent = double(fault.feeder_fault_current_a);
+end
+assert(isfinite(faultCurrent) && faultCurrent>0, ...
+    "TripLens:InvalidFeederFaultCurrent", ...
+    "Feeder fault current must be a positive finite RMS value.");
+relay50Ms = inf;
+if faultCurrent>=settings.FEEDER_50_PICKUP_A
+    relay50Ms = faultStartMs+round(settings.FEEDER_50_DELAY_MS);
+end
+relay51Ms = inf;
+multiple = faultCurrent/settings.FEEDER_51_PICKUP_A;
+if multiple>1
+    delayMs = ceil(settings.FEEDER_51_TIME_MULTIPLIER*0.14/ ...
+        (multiple^0.02-1)*1000);
+    relay51Ms = faultStartMs+max(delayMs,1);
+end
+tripCommandMs = min(relay50Ms,relay51Ms);
+breakerOpenMs = inf;
+if isfinite(tripCommandMs)
+    breakerOpenMs = tripCommandMs+round(settings.MOTOR_BREAKER_OPEN_DELAY_MS);
+end
+protection = struct("enabled",true,"equipment_id",equipmentId, ...
+    "feeder_id",equipment.feeder(equipmentIndex), ...
+    "fault_start_ms",faultStartMs,"fault_current_a",faultCurrent, ...
+    "residual_voltage_pu",settings.FEEDER_FAULT_RESIDUAL_VOLTAGE_PU, ...
+    "relay_50_operate_ms",relay50Ms,"relay_51_operate_ms",relay51Ms, ...
+    "trip_command_ms",tripCommandMs,"breaker_open_ms",breakerOpenMs);
+end
+
+function matrix = validateCommonTripMatrix(inputTable)
+requireColumns(inputTable,{"cause_id","source_signal","source_layer", ...
+    "source_event_tag","gt_trip_request","st_trip_request"},"common Trip matrix");
+assert(height(inputTable)>0,"TripLens:InvalidCommonTripMatrix", ...
+    "Common Trip matrix is empty.");
+matrix = struct();
+matrix.cause_id = upper(strtrim(string(inputTable.cause_id)));
+matrix.source_signal = strtrim(string(inputTable.source_signal));
+matrix.source_layer = upper(strtrim(string(inputTable.source_layer)));
+matrix.source_event_tag = upper(strtrim(string(inputTable.source_event_tag)));
+matrix.gt_trip_request = toNumeric(inputTable.gt_trip_request)~=0;
+matrix.st_trip_request = toNumeric(inputTable.st_trip_request)~=0;
+assert(numel(unique(matrix.cause_id))==height(inputTable), ...
+    "TripLens:DuplicateCommonTripCause","Common Trip cause_id values must be unique.");
+assert(all(ismember(matrix.source_layer,["COMMAND","LAYER1_ALARM"])), ...
+    "TripLens:InvalidCommonTripLayer","Unsupported common Trip source layer.");
+end
+
+function [gtRequestMs,stRequestMs,gtCauses,stCauses] = ...
+        resolveCommonTripRequests(processBus,commands,scenarioTripMs,matrix)
+gtRequestMs = inf;
+stRequestMs = inf;
+gtCauses = strings(0,1);
+stCauses = strings(0,1);
+processNames = string(processBus.Properties.VariableNames);
+for index = 1:numel(matrix.cause_id)
+    candidates = zeros(0,1);
+    signal = matrix.source_signal(index);
+    if signal=="gt_trip_cmd"
+        candidates(end+1,1) = scenarioTripMs; %#ok<AGROW>
+        commandTimes = commands.time_s(commands.equipment_id=="GTG" & ...
+            commands.command=="TRIP");
+        candidates = [candidates;round(commandTimes*1000)]; %#ok<AGROW>
+    elseif signal=="st_trip_cmd"
+        commandTimes = commands.time_s(commands.equipment_id=="STG" & ...
+            commands.command=="TRIP");
+        candidates = [candidates;round(commandTimes*1000)]; %#ok<AGROW>
+    end
+    signalIndex = find(processNames==signal,1);
+    if ~isempty(signalIndex)
+        values = toNumeric(processBus.(char(signal)));
+        asserted = find(values>=0.5,1);
+        if ~isempty(asserted)
+            candidates(end+1,1) = round(processBus.time_s(asserted)*1000); %#ok<AGROW>
+        end
+    end
+    if isempty(candidates)
+        continue;
+    end
+    requestMs = min(candidates);
+    if matrix.gt_trip_request(index)
+        if requestMs<gtRequestMs
+            gtRequestMs = requestMs;
+            gtCauses = matrix.cause_id(index);
+        elseif requestMs==gtRequestMs
+            gtCauses(end+1,1) = matrix.cause_id(index); %#ok<AGROW>
+        end
+    end
+    if matrix.st_trip_request(index)
+        if requestMs<stRequestMs
+            stRequestMs = requestMs;
+            stCauses = matrix.cause_id(index);
+        elseif requestMs==stRequestMs
+            stCauses(end+1,1) = matrix.cause_id(index); %#ok<AGROW>
+        end
+    end
+end
+end
+
 function processBus = makeSyntheticProcessBus(timeSeconds,tripTime)
 progress = min(max((timeSeconds-tripTime)./3,0),1);
 exhaustProgress = min(max((timeSeconds-tripTime)./1,0),1);
@@ -687,26 +826,19 @@ end
 
 function [trend,eventTable] = simulateElectrical(processBus,timeMs,tripTime,settings, ...
         configStatus,fault,faultPreset,commands,samplingProfile, ...
-        incidentPeriodMs,incidentStartMs,incidentStopMs)
+        incidentPeriodMs,incidentStartMs,incidentStopMs,commonTripMatrix, ...
+        feederProtection)
 n = numel(timeMs);
 tripMs = round(tripTime*1000);
-relayTripMs = tripMs + round(settings.TRIP_RECEIVE_DELAY_MS);
+[gtRequestMs,stRequestMs,gtCauses,stCauses] = resolveCommonTripRequests( ...
+    processBus,commands,tripMs,commonTripMatrix);
+relayTripMs = gtRequestMs + round(settings.TRIP_RECEIVE_DELAY_MS);
 lockoutMs = relayTripMs + round(settings.LOCKOUT_OPERATE_DELAY_MS);
-gtOpenMs = tripMs + round(settings.GT_BREAKER_OPEN_DELAY_MS);
+gtOpenMs = gtRequestMs + round(settings.GT_BREAKER_OPEN_DELAY_MS);
 relayOperates = ~faultEnabled(fault,"relay_fail");
 gtBreakerOpens = relayOperates && ~faultEnabled(fault,"gtg_breaker_fail");
-
+stOpenMs = stRequestMs + round(settings.ST_BREAKER_OPEN_DELAY_MS);
 stReference = max(abs(processBus.stg_power_w(1)),1);
-lowIndex = find(abs(processBus.stg_power_w) < stReference*settings.ST_TRIP_POWER_PU,1);
-if isempty(lowIndex)
-    stOpenMs = inf;
-else
-    stOpenMs = timeMs(lowIndex)+round(settings.ST_BREAKER_OPEN_DELAY_MS);
-end
-stTripCommands = commands.time_s(commands.equipment_id=="STG" & commands.command=="TRIP");
-if ~isempty(stTripCommands)
-    stOpenMs = min(stOpenMs,round(min(stTripCommands)*1000)+round(settings.ST_BREAKER_OPEN_DELAY_MS));
-end
 
 ecmsTime = timeMs + round(settings.CLOCK_OFFSET_MS);
 quality = repmat("GOOD",n,1);
@@ -717,6 +849,12 @@ if samplingProfile=="incident_1ms"
     samplingResolution(incidentRows) = "INCIDENT_"+string(incidentPeriodMs)+"MS";
 end
 gtTrip = double(timeMs>=tripMs);
+gtTripRequest = double(timeMs>=gtRequestMs);
+stTripRequest = double(timeMs>=stRequestMs);
+cb52gtTripCmd = double(timeMs>=lockoutMs & relayOperates);
+cb52stTripCmd = double(timeMs>=stRequestMs);
+stLowState = double(abs(processBus.stg_power_w) < ...
+    stReference*settings.ST_TRIP_POWER_PU);
 relay86 = zeros(n,1);
 cb52gt = ones(n,1);
 cb52st = ones(n,1);
@@ -739,6 +877,7 @@ for index = 1:n
     currentMs = timeMs(index);
     currentS = currentMs/1000;
     afterTrip = currentMs>=tripMs;
+    afterGtRequest = currentMs>=gtRequestMs;
     gridLive = ~afterTrip || ~faultEnabled(fault,"grid_loss");
     gridLive = applyAvailabilityCommand(gridLive,commands,"GRID-154KV",currentS);
     gtTransformer = ~afterTrip || ~faultEnabled(fault,"gt_transformer_receive_fail");
@@ -763,12 +902,12 @@ for index = 1:n
         commands,"CB-52ST");
 
     decay = 1;
-    if afterTrip
+    if afterGtRequest
         duration = settings.GT_POWER_DECAY_MS;
-        if duration<=0 || currentMs>=tripMs+duration
+        if duration<=0 || currentMs>=gtRequestMs+duration
             decay = 0;
         else
-            decay = max(0,1-(currentMs-tripMs)/duration);
+            decay = max(0,1-(currentMs-gtRequestMs)/duration);
         end
     end
     gtPower = settings.GTG_PRETRIP_POWER_MW*decay*double(gtClosed);
@@ -846,12 +985,14 @@ busBKv = busBPu.*settings.AUX_BUS_VOLTAGE_KV;
 gridKv = gridPu.*settings.GRID_VOLTAGE_KV;
 parallelAllowed = repmat(double(settings.ALLOW_SOURCE_PARALLEL),n,1);
 trend = table(ecmsTime,timeMs,quality,config,samplingResolution, ...
-    gtTrip,relay86,cb52gt,cb52st, ...
+    gtTrip,gtTripRequest,stTripRequest,stLowState,relay86, ...
+    cb52gtTripCmd,cb52stTripCmd,cb52gt,cb52st, ...
     cbInA,cbInB,cbTie,gtDirection,stDirection,gtMw,gtCurrent,stMw,stCurrent, ...
     gridPu,frequency,busAPu,busAKv,busBPu,busBKv,gridKv,parallelAllowed, ...
     sourceParallelActive, ...
     'VariableNames',{'ecms_time_ms','source_time_ms','quality','a_config_status', ...
-    'sampling_resolution','gt_trip_cmd','relay_86gt_operated', ...
+    'sampling_resolution','gt_trip_cmd','gt_trip_request','st_trip_request', ...
+    'stg_low_state','relay_86gt_operated','cb_52gt_trip_cmd','cb_52st_trip_cmd', ...
     'cb_52gt_closed','cb_52st_closed', ...
     'cb_in_a_closed','cb_in_b_closed','cb_tie_ab_closed', ...
     'gt_main_transformer_direction','st_main_transformer_direction', ...
@@ -860,8 +1001,10 @@ trend = table(ecmsTime,timeMs,quality,config,samplingResolution, ...
     'bus_b_voltage_pu','bus_b_voltage_kv','grid_voltage_kv', ...
     'source_parallel_allowed','source_parallel_active'});
 
-events = baseEvents(tripMs,relayTripMs,lockoutMs,gtOpenMs,stOpenMs, ...
-    relayOperates,gtBreakerOpens,fault,faultPreset,commands,settings.CLOCK_OFFSET_MS);
+events = baseEvents(tripMs,gtRequestMs,stRequestMs,gtCauses,stCauses, ...
+    relayTripMs,lockoutMs,gtOpenMs,stOpenMs,relayOperates,gtBreakerOpens, ...
+    fault,faultPreset,commands,settings.CLOCK_OFFSET_MS);
+events = addFeederProtectionEvents(events,feederProtection);
 events = addTrendTransitionEvents(events,trend);
 events = addUndervoltageEvents(events,trend,settings.UNDERVOLTAGE_PICKUP_PU, ...
     round(settings.UNDERVOLTAGE_DELAY_MS));
@@ -919,18 +1062,102 @@ for commandIndex = indices.'
     action = commands.command(commandIndex);
     if action=="RESET"
         latched = false;
-    elseif any(action==["OPEN","TRIP","STOP","OUT_OF_SERVICE","LOSS"])
+    elseif any(action==["OPEN","TRIP","OUT_OF_SERVICE","LOSS"])
         state = false;
         if action=="TRIP"
             latched = true;
         end
-    elseif any(action==["CLOSE","START","IN_SERVICE","RESTORE"]) && ~latched
+    elseif any(action==["CLOSE","IN_SERVICE","RESTORE"]) && ~latched
         state = true;
     end
 end
 if ~automaticApplied && automaticTripMs<=currentMs
     state = false;
 end
+end
+
+function state = motorFeederState(initialBreakerClosed,initialRunning,currentMs, ...
+        commands,equipmentId,feederId,breakerOpenDelayMs,automaticTripCommandMs)
+% Normal motor STOP/START controls the run command only.  TRIP latches and
+% opens the VCB after its configured delay.  RESET clears the latch but never
+% recloses the VCB; a subsequent feeder CLOSE is required.
+breakerClosed = logical(initialBreakerClosed);
+runEnable = logical(initialRunning);
+runCommandFeedback = logical(initialRunning);
+tripLatched = false;
+tripCommanded = false;
+pendingOpenMs = inf;
+
+indices = find((commands.equipment_id==equipmentId | ...
+    commands.equipment_id==feederId) & round(commands.time_s*1000)<=currentMs);
+eventTimes = round(commands.time_s(indices)*1000);
+eventTargets = commands.equipment_id(indices);
+eventActions = commands.command(indices);
+if isfinite(automaticTripCommandMs) && automaticTripCommandMs<=currentMs
+    eventTimes(end+1,1) = automaticTripCommandMs;
+    eventTargets(end+1,1) = feederId;
+    eventActions(end+1,1) = "TRIP";
+end
+if ~isempty(eventTimes)
+    ordinals = (1:numel(eventTimes)).';
+    [~,order] = sortrows([eventTimes,ordinals],[1 2]);
+    eventTimes = eventTimes(order);
+    eventTargets = eventTargets(order);
+    eventActions = eventActions(order);
+end
+
+for index = 1:numel(eventTimes)
+    commandMs = eventTimes(index);
+    if pendingOpenMs<=commandMs
+        breakerClosed = false;
+        pendingOpenMs = inf;
+    end
+    target = eventTargets(index);
+    action = eventActions(index);
+    isMotorCommand = target==equipmentId;
+    if action=="RESET"
+        tripLatched = false;
+        tripCommanded = false;
+    elseif action=="TRIP"
+        tripLatched = true;
+        tripCommanded = true;
+        runEnable = false;
+        runCommandFeedback = false;
+        pendingOpenMs = min(pendingOpenMs,commandMs+breakerOpenDelayMs);
+    elseif target==feederId && any(action==["OPEN","OUT_OF_SERVICE","LOSS"])
+        breakerClosed = false;
+        runEnable = false;
+        runCommandFeedback = false;
+    elseif target==feederId && any(action==["CLOSE","IN_SERVICE","RESTORE"])
+        if ~tripLatched
+            breakerClosed = true;
+        end
+    elseif isMotorCommand && action=="STOP"
+        runEnable = false;
+        runCommandFeedback = false;
+    elseif isMotorCommand && action=="START" && ~tripLatched && breakerClosed
+        runEnable = true;
+        runCommandFeedback = true;
+    end
+end
+if pendingOpenMs<=currentMs
+    breakerClosed = false;
+end
+runFeedback = runCommandFeedback && breakerClosed;
+speedProven = runFeedback;
+if tripLatched
+    stateCode = 5;
+elseif runFeedback
+    stateCode = 3;
+elseif breakerClosed
+    stateCode = 2;
+else
+    stateCode = 1;
+end
+state = struct("breaker_closed",breakerClosed,"run_enable",runEnable, ...
+    "run_command_feedback",runCommandFeedback,"run_feedback",runFeedback, ...
+    "speed_proven",speedProven,"trip_latched",tripLatched, ...
+    "trip_commanded",tripCommanded,"state_code",stateCode);
 end
 
 function state = lockoutState(relayOperates,lockoutMs,currentMs,commands)
@@ -954,22 +1181,38 @@ else
 end
 end
 
-function events = baseEvents(tripMs,relayTripMs,lockoutMs,gtOpenMs,stOpenMs, ...
-        relayOperates,gtBreakerOpens,fault,faultPreset,commands,clockOffset)
+function events = baseEvents(tripMs,gtRequestMs,stRequestMs,gtCauses,stCauses, ...
+        relayTripMs,lockoutMs,gtOpenMs,stOpenMs,relayOperates,gtBreakerOpens, ...
+        fault,faultPreset,commands,clockOffset)
 events = repmat(newEvent(0,"","","","","",""),0,1);
 tripProvenance = "SYNTHETIC_SCENARIO";
 if any(commands.equipment_id=="GTG" & commands.command=="TRIP" & ...
         round(commands.time_s*1000)==tripMs)
     tripProvenance = "USER_COMMAND";
 end
-events(end+1) = newEvent(tripMs,"GT.TRIP.CMD","0","1","TRIP", ...
-    "Synthetic MATLAB fallback GT Trip asserted",tripProvenance);
-if relayOperates
+if isfinite(gtRequestMs)
+    events(end+1) = newEvent(gtRequestMs,"GT.TRIP.CMD","0","1","TRIP", ...
+        "Synthetic MATLAB fallback GT Trip asserted",tripProvenance);
+    events(end+1) = newEvent(gtRequestMs,"GT.TRIP.REQUEST","0","1", ...
+        "TRIP_REQUEST","Resolved GT Trip request from "+join(gtCauses,", "), ...
+        "COMMON_TRIP_MATRIX");
+end
+if isfinite(stRequestMs)
+    events(end+1) = newEvent(stRequestMs,"ST.TRIP.REQUEST","0","1", ...
+        "TRIP_REQUEST","Resolved ST Trip request from "+join(stCauses,", "), ...
+        "COMMON_TRIP_MATRIX");
+    events(end+1) = newEvent(stRequestMs,"52ST.TRIP.CMD","0","1", ...
+        "TRIP_COMMAND","52ST Trip command latched from resolved ST Trip request", ...
+        "COMMON_TRIP_MATRIX");
+end
+if relayOperates && isfinite(relayTripMs)
     events(end+1) = newEvent(relayTripMs,"86GT.TRIP.RECEIVED","0","1", ...
         "PICKUP","GT Trip received","E_DERIVED");
     events(end+1) = newEvent(lockoutMs,"86GT.OPERATE","0","1", ...
         "OPERATE","GT lockout relay operated","E_DERIVED");
-else
+    events(end+1) = newEvent(lockoutMs,"52GT.TRIP.CMD","0","1", ...
+        "TRIP_COMMAND","52GT Trip command latched","E_DERIVED");
+elseif isfinite(gtRequestMs)
     events(end+1) = newEvent(relayTripMs,"86GT.FAIL","0","1", ...
         "ALARM","GT protection failed","FAULTBUS");
 end
@@ -1006,7 +1249,7 @@ if isfinite(stOpenMs)
         stPostDirection = "DEAD";
     end
     events(end+1) = newEvent(stOpenMs,"52ST.CLOSED","1","0", ...
-        "POSITION","ST generator breaker opened after rundown","E_DERIVED");
+        "POSITION","ST generator breaker opened by resolved Trip command","E_DERIVED");
     events(end+1) = newEvent(stOpenMs,"TR-ST.DIRECTION","EXPORT",stPostDirection, ...
         "STATE","ST main transformer post-trip direction: "+stPostDirection,"E_DERIVED");
 end
@@ -1062,6 +1305,46 @@ event = struct("time_ms",double(timeMs),"tag",string(tag), ...
     "old_value",string(oldValue),"new_value",string(newValue), ...
     "event_class",string(eventClass),"quality","GOOD", ...
     "provenance",string(provenance),"description",string(description));
+end
+
+function events = addFeederProtectionEvents(events,protection)
+if ~protection.enabled
+    return;
+end
+source = "A_CONFIGURED_RMS_FAULT_MODEL";
+events(end+1) = newEvent(protection.fault_start_ms, ...
+    protection.equipment_id+".FEEDER.FAULT","0","1","FAULT", ...
+    "Provisional RMS feeder fault asserted at "+ ...
+    string(protection.fault_current_a)+" A",source);
+if protection.fault_current_a>0 && isfinite(protection.relay_50_operate_ms)
+    events(end+1) = newEvent(protection.fault_start_ms, ...
+        "50"+protection.equipment_id+".PICKUP","0","1","PICKUP", ...
+        "Instantaneous overcurrent element picked up",source);
+    events(end+1) = newEvent(protection.relay_50_operate_ms, ...
+        "50"+protection.equipment_id+".OPERATE","0","1","OPERATE", ...
+        "Instantaneous overcurrent element operated",source);
+end
+if isfinite(protection.relay_51_operate_ms)
+    events(end+1) = newEvent(protection.fault_start_ms, ...
+        "51"+protection.equipment_id+".PICKUP","0","1","PICKUP", ...
+        "IEC standard-inverse overcurrent element picked up",source);
+    if ~isfinite(protection.breaker_open_ms) || ...
+            protection.relay_51_operate_ms<=protection.breaker_open_ms
+        events(end+1) = newEvent(protection.relay_51_operate_ms, ...
+            "51"+protection.equipment_id+".OPERATE","0","1","OPERATE", ...
+            "IEC standard-inverse overcurrent element operated",source);
+    end
+end
+if isfinite(protection.trip_command_ms)
+    events(end+1) = newEvent(protection.trip_command_ms, ...
+        protection.feeder_id+".TRIP.CMD","0","1","TRIP_COMMAND", ...
+        "Feeder protection issued VCB Trip command",source);
+end
+if isfinite(protection.breaker_open_ms)
+    events(end+1) = newEvent(protection.breaker_open_ms, ...
+        protection.feeder_id+".CLOSED","1","0","POSITION", ...
+        "Feeder VCB opened and interrupted fault current",source);
+end
 end
 
 function events = addTrendTransitionEvents(events,trend)
@@ -1184,7 +1467,8 @@ output = table(eventTime,sourceTime,system,tag,oldValue,newValue,eventClass, ...
     'old_value','new_value','event_class','quality','provenance','description'});
 end
 
-function feederTrend = makeFeederTrend(trend,equipment,commands,settings,packageRoot)
+function feederTrend = makeFeederTrend(trend,equipment,commands,settings,packageRoot, ...
+        feederProtection)
 nTime = height(trend);
 nEquipment = numel(equipment.id);
 n = nTime*nEquipment;
@@ -1199,8 +1483,20 @@ feederId = strings(n,1);
 configuredKv = zeros(n,1);
 ratedKw = strings(n,1);
 breakerClosed = zeros(n,1);
+runEnable = zeros(n,1);
+runCommandFeedback = zeros(n,1);
+runFeedback = zeros(n,1);
+speedProven = zeros(n,1);
+tripLatched = zeros(n,1);
+tripCommanded = zeros(n,1);
+stateCode = zeros(n,1);
+faultPresent = zeros(n,1);
+faultCurrentA = strings(n,1);
+relay50Operated = zeros(n,1);
+relay51Operated = zeros(n,1);
 energized = zeros(n,1);
 busVoltageKv = zeros(n,1);
+terminalVoltageKv = zeros(n,1);
 currentA = strings(n,1);
 priority = strings(n,1);
 equipmentStatus = strings(n,1);
@@ -1211,18 +1507,34 @@ provenance = repmat("A_CONFIGURED_E_DERIVED",n,1);
 
 row = 0;
 for timeIndex = 1:nTime
+    currentMs = trend.source_time_ms(timeIndex);
     for equipmentIndex = 1:nEquipment
         row = row+1;
-        closed = breakerWithAutomaticTrip(equipment.normal_closed(equipmentIndex), ...
-            inf,trend.source_time_ms(timeIndex),commands,equipment.id(equipmentIndex));
+        isProtected = feederProtection.enabled && ...
+            equipment.id(equipmentIndex)==feederProtection.equipment_id;
+        automaticTripMs = inf;
+        if isProtected
+            automaticTripMs = feederProtection.trip_command_ms;
+        end
+        motor = motorFeederState(equipment.normal_closed(equipmentIndex), ...
+            equipment.normal_running(equipmentIndex),currentMs,commands, ...
+            equipment.id(equipmentIndex),equipment.feeder(equipmentIndex), ...
+            round(settings.MOTOR_BREAKER_OPEN_DELAY_MS),automaticTripMs);
         if equipment.bus(equipmentIndex)=="BUS-A"
             voltage = trend.bus_a_voltage_kv(timeIndex);
         else
             voltage = trend.bus_b_voltage_kv(timeIndex);
         end
-        live = closed && voltage>0;
+        live = motor.breaker_closed && voltage>0;
+        hasFault = isProtected && currentMs>=feederProtection.fault_start_ms;
+        faultEnergized = hasFault && live;
+        terminalVoltage = voltage*double(motor.breaker_closed);
+        if faultEnergized
+            terminalVoltage = voltage*feederProtection.residual_voltage_pu;
+        end
+
         ecmsTime(row) = trend.ecms_time_ms(timeIndex);
-        sourceTime(row) = trend.source_time_ms(timeIndex);
+        sourceTime(row) = currentMs;
         quality(row) = trend.quality(timeIndex);
         configStatus(row) = trend.a_config_status(timeIndex);
         equipmentId(row) = equipment.id(equipmentIndex);
@@ -1232,19 +1544,46 @@ for timeIndex = 1:nTime
         configuredKv(row) = equipment.voltage_kv(equipmentIndex);
         if isnan(equipment.rated_kw(equipmentIndex))
             ratedKw(row) = "";
-            currentA(row) = "";
         else
             ratedKw(row) = string(equipment.rated_kw(equipmentIndex));
+        end
+        breakerClosed(row) = double(motor.breaker_closed);
+        runEnable(row) = double(motor.run_enable);
+        runCommandFeedback(row) = double(motor.run_command_feedback);
+        runFeedback(row) = double(motor.run_feedback);
+        speedProven(row) = double(motor.speed_proven);
+        tripLatched(row) = double(motor.trip_latched);
+        tripCommanded(row) = double(motor.trip_commanded);
+        stateCode(row) = motor.state_code;
+        faultPresent(row) = double(hasFault);
+        relay50Operated(row) = double(isProtected && ...
+            isfinite(feederProtection.relay_50_operate_ms) && ...
+            currentMs>=feederProtection.relay_50_operate_ms);
+        relay51Operated(row) = double(isProtected && ...
+            isfinite(feederProtection.relay_51_operate_ms) && ...
+            currentMs>=feederProtection.relay_51_operate_ms && ...
+            (~isfinite(feederProtection.breaker_open_ms) || ...
+            feederProtection.relay_51_operate_ms<=feederProtection.breaker_open_ms));
+        if isProtected
+            amps = feederProtection.fault_current_a*double(faultEnergized);
+            faultCurrentA(row) = string(amps);
+            currentA(row) = string(amps);
+        elseif isnan(equipment.rated_kw(equipmentIndex))
+            faultCurrentA(row) = "";
+            currentA(row) = "";
+        else
+            faultCurrentA(row) = "";
             if live
-                amps = equipment.rated_kw(equipmentIndex)/(sqrt(3)*voltage*settings.POWER_FACTOR);
+                amps = equipment.rated_kw(equipmentIndex)/ ...
+                    (sqrt(3)*voltage*settings.POWER_FACTOR);
             else
                 amps = 0;
             end
             currentA(row) = string(amps);
         end
-        breakerClosed(row) = double(closed);
         energized(row) = double(live);
         busVoltageKv(row) = voltage;
+        terminalVoltageKv(row) = terminalVoltage;
         priority(row) = equipment.priority(equipmentIndex);
         equipmentStatus(row) = equipment.status(equipmentIndex);
         mLinkId(row) = linkIds(equipmentIndex);
@@ -1252,12 +1591,18 @@ for timeIndex = 1:nTime
     end
 end
 feederTrend = table(ecmsTime,sourceTime,quality,configStatus,equipmentId,label, ...
-    bus,feederId,configuredKv,ratedKw,breakerClosed,energized,busVoltageKv, ...
-    currentA,priority,equipmentStatus,mLinkId,sourceMTag,provenance, ...
+    bus,feederId,configuredKv,ratedKw,breakerClosed,runEnable, ...
+    runCommandFeedback,runFeedback,speedProven,tripLatched,tripCommanded, ...
+    stateCode,faultPresent,faultCurrentA,relay50Operated,relay51Operated, ...
+    energized,busVoltageKv,terminalVoltageKv,currentA,priority,equipmentStatus, ...
+    mLinkId,sourceMTag,provenance, ...
     'VariableNames',{'ecms_time_ms','source_time_ms','quality','a_config_status', ...
     'equipment_id','label_ko','bus','feeder_id','configured_voltage_kv', ...
-    'rated_kw','breaker_closed','energized','bus_voltage_kv','current_a', ...
-    'priority','equipment_status','m_link_id','source_m_tag_id','provenance'});
+    'rated_kw','breaker_closed','run_enable','run_command_feedback', ...
+    'run_feedback','speed_proven','trip_latched','trip_commanded','state_code', ...
+    'fault_present','fault_current_a','relay_50_operated','relay_51_operated', ...
+    'energized','bus_voltage_kv','terminal_voltage_kv','current_a','priority', ...
+    'equipment_status','m_link_id','source_m_tag_id','provenance'});
 end
 
 function eventTable = addFeederTransitionRows(eventTable,feeders)
@@ -1340,7 +1685,9 @@ for folder = ["topology","data"]
     end
 end
 configFolder = fullfile(stagingFolder,"config");
-for fileName = ["fault_presets.json","ecms_command_catalog.csv","signal_map.json"]
+for fileName = ["fault_presets.json","ecms_command_catalog.csv","signal_map.json", ...
+        "common_trip_matrix.csv","tag_alias_contract.csv","dcs_alarm_rules.csv", ...
+        "vpp_baseline_v1.json"]
     source = fullfile(packageRoot,"config",char(fileName));
     if isfile(source)
         copyfile(source,fullfile(configFolder,char(fileName)));
@@ -1504,6 +1851,11 @@ events = readCsv(fullfile(stagingFolder,"ecms-events.csv"));
 feeders = readCsv(fullfile(stagingFolder,"ecms-feeders.csv"));
 requireColumns(processBus,{"time_s","gt_trip_cmd","data_origin"},"processbus.csv");
 requireColumns(trend,{"source_time_ms","sampling_resolution"},"ecms-trend.csv");
+requireColumns(feeders,{"source_time_ms","equipment_id","feeder_id", ...
+    "breaker_closed","run_enable","run_command_feedback","run_feedback", ...
+    "trip_latched","trip_commanded","fault_present","fault_current_a", ...
+    "relay_50_operated","relay_51_operated","terminal_voltage_kv"}, ...
+    "ecms-feeders.csv");
 assert(all(string(processBus.data_origin)== ...
     "SYNTHETIC_MATLAB_FALLBACK_NOT_THERMOSYSPRO"), ...
     "TripLens:FalseProvenance", ...

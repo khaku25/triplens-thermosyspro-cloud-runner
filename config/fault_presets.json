@@ -9,5 +9,7 @@
   "bus_b_fault": {"bus_b_fault": true},
   "grid_loss": {"grid_loss": true},
   "relay_fail": {"relay_fail": true},
-  "ecms_comms_loss": {"ecms_comms_loss": true}
+  "ecms_comms_loss": {"ecms_comms_loss": true},
+  "fwp_hp_feeder_fault": {"feeder_fault": "FWP-HP", "feeder_fault_current_a": 12000},
+  "fwp_hp_feeder_overcurrent": {"feeder_fault": "FWP-HP", "feeder_fault_current_a": 4000}
 }

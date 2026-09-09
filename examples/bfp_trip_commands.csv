@@ -1,2 +1,2 @@
 sequence,time_s,equipment_id,equipment_label,command,command_value,unit,execution_layer,model_input,feedback_tag,status,note
-1,100,FWP-HP,HP 급수펌프,TRIP,0,BOOL,THERMO_ADAPTER_REQUIRED,FWP_HP_TRIP,TSP.DRUM.HP.FW_FLOW,QUEUED,BFP Trip 입력 예제
+1,100,FWP-HP,HP 급수펌프,TRIP,1,BOOL,ELECTRICAL_ENGINE,FWP_HP_TRIP,ECMS.VCB-A01.CLOSED,QUEUED,HP BFP display alias; canonical equipment FWP-HP

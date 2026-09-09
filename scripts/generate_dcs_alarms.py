@@ -108,6 +108,11 @@ def event_phase(time_s: float, trip_time_s: float) -> str:
     return "POST_TRIP"
 
 
+def quantize_logic_time_ms(time_s: float, period_ms: int) -> int:
+    raw_ms = time_s * 1000.0
+    return int(math.ceil((raw_ms - 1e-9) / period_ms) * period_ms)
+
+
 def write_events(path: Path, events: list[dict[str, str]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as stream:
@@ -122,9 +127,17 @@ def main() -> int:
     parser.add_argument("--metadata", type=Path, required=True)
     parser.add_argument("--rules", type=Path, required=True)
     parser.add_argument("--trip-time", type=float, required=True)
+    parser.add_argument(
+        "--logic-period-ms",
+        type=int,
+        default=1,
+        help="Logic evaluation/timer clock; physical inputs are held between source samples.",
+    )
     parser.add_argument("--dcs1-output", type=Path, required=True)
     parser.add_argument("--dcs2-output", type=Path, required=True)
     args = parser.parse_args()
+    if args.logic_period_ms <= 0:
+        raise ValueError("--logic-period-ms must be greater than zero")
 
     fields, rows = read_csv(args.incident_raw)
     if len(rows) < 2 or "time_s" not in fields:
@@ -160,6 +173,8 @@ def main() -> int:
         active = False
         announced = False
         pending_since: float | None = None
+        pending_value: float | None = None
+        pending_quality = "GOOD"
         first_valid = True
         for row in rows:
             raw = row.get(rule.signal, "").strip()
@@ -175,6 +190,41 @@ def main() -> int:
                 pending_since = None
                 continue
             time_s = float(row["time_s"])
+            time_ms = round(time_s * 1000)
+            if pending_since is not None and not active:
+                due_ms = quantize_logic_time_ms(
+                    pending_since + rule.delay_s, args.logic_period_ms
+                )
+                if due_ms < time_ms:
+                    due_s = due_ms / 1000.0
+                    active = True
+                    announced = True
+                    events.append({
+                        "_rule_order": rule_order,
+                        "event_time_ms": due_ms,
+                        "source_time_ms": due_ms,
+                        "time_s": f"{due_s:.9f}",
+                        "relative_to_trip_s": f"{due_s - args.trip_time:.9f}",
+                        "phase": event_phase(due_s, args.trip_time),
+                        "system": rule.system,
+                        "tag": rule.tag,
+                        "alarm_state": "ACTIVE",
+                        "event_class": "ALARM",
+                        "severity": rule.severity,
+                        "source_signal": rule.signal,
+                        "value": f"{pending_value:.12g}",
+                        "threshold": f"{threshold:.12g}",
+                        "unit": rule.unit,
+                        "quality": pending_quality,
+                        "provenance": (
+                            "SCENARIO_INPUT" if rule.mode == "BOOLEAN"
+                            else "PHYSICS_THRESHOLD_DERIVED"
+                        ),
+                        "rule_status": rule.status,
+                        "description": rule.description,
+                    })
+                    pending_since = None
+                    pending_value = None
             condition = asserted(value)
             if first_valid:
                 active = condition
@@ -183,36 +233,47 @@ def main() -> int:
             if not active:
                 if condition:
                     pending_since = time_s if pending_since is None else pending_since
-                    if time_s + 1e-12 >= pending_since + rule.delay_s:
+                    if pending_value is None:
+                        pending_value = value
+                        pending_quality = (row.get("quality") or "GOOD").strip().upper()
+                    due_ms = quantize_logic_time_ms(
+                        pending_since + rule.delay_s, args.logic_period_ms
+                    )
+                    if time_ms >= due_ms:
+                        due_s = due_ms / 1000.0
                         active = True
                         announced = True
                         pending_since = None
+                        event_value = pending_value if pending_value is not None else value
+                        event_quality = pending_quality
+                        pending_value = None
                         events.append({
                             "_rule_order": rule_order,
-                            "event_time_ms": round(time_s * 1000),
-                            "source_time_ms": round(time_s * 1000),
-                            "time_s": f"{time_s:.9f}",
-                            "relative_to_trip_s": f"{time_s - args.trip_time:.9f}",
-                            "phase": event_phase(time_s, args.trip_time),
+                            "event_time_ms": due_ms,
+                            "source_time_ms": due_ms,
+                            "time_s": f"{due_s:.9f}",
+                            "relative_to_trip_s": f"{due_s - args.trip_time:.9f}",
+                            "phase": event_phase(due_s, args.trip_time),
                             "system": rule.system,
                             "tag": rule.tag,
                             "alarm_state": "ACTIVE",
                             "event_class": "ALARM",
                             "severity": rule.severity,
                             "source_signal": rule.signal,
-                            "value": f"{value:.12g}",
+                            "value": f"{event_value:.12g}",
                             "threshold": f"{threshold:.12g}",
                             "unit": rule.unit,
-                            "quality": "GOOD",
+                            "quality": event_quality,
                             "provenance": (
                                 "SCENARIO_INPUT" if rule.mode == "BOOLEAN"
-                                else "PHYSICS_ABSOLUTE_THRESHOLD"
+                                else "PHYSICS_THRESHOLD_DERIVED"
                             ),
                             "rule_status": rule.status,
                             "description": rule.description,
                         })
                 else:
                     pending_since = None
+                    pending_value = None
             elif cleared(value):
                 active = False
                 pending_since = None
@@ -233,10 +294,10 @@ def main() -> int:
                         "value": f"{value:.12g}",
                         "threshold": f"{threshold:.12g}",
                         "unit": rule.unit,
-                        "quality": "GOOD",
+                        "quality": (row.get("quality") or "GOOD").strip().upper(),
                         "provenance": (
                             "SCENARIO_INPUT" if rule.mode == "BOOLEAN"
-                            else "PHYSICS_ABSOLUTE_THRESHOLD"
+                            else "PHYSICS_THRESHOLD_DERIVED"
                         ),
                         "rule_status": rule.status,
                         "description": rule.description,
@@ -256,7 +317,10 @@ def main() -> int:
 
     metadata["alarm_summary"] = {
         "rules_file": args.rules.name,
-        "rule_status": "MODEL_ABSOLUTE_NOT_PLANT_APPROVED",
+        "rule_status": sorted({rule.status for rule in rules}),
+        "logic_period_ms": args.logic_period_ms,
+        "input_timing_policy": "ZERO_ORDER_HOLD_BETWEEN_SOURCE_SAMPLES",
+        "crossing_time_limit": "A threshold crossing is known no earlier than its source sample; delay timers run on the logic clock.",
         "dcs1_event_count": len(dcs1),
         "dcs2_event_count": len(dcs2),
         "pretrip_event_count": sum(row["phase"] == "PRE_TRIP" for row in clean_events),

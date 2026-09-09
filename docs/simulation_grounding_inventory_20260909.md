@@ -115,17 +115,30 @@ Their START/STOP/TRIP/RESET command rows were also removed from `config/ecms_com
 - What was removed is the invented standalone `CW-PUMP` / `COND-PUMP` equipment and command logic.
 - `CEP` scenario-only logic in the legacy A-L catalogue is not part of the executable Core.
 
-## Equipment retained pending naming cleanup
+## Equipment retained with canonical naming
 
 The following remain because they correspond to real ThermoSysPro pump objects:
 
 | TripLens current name | Native ThermoSysPro object | Status |
 |---|---|---|
 | `FWP-HP` | `PompeAlimHP` | KEEP |
-| `FWP-IP` | `PompeAlimMP` | KEEP; naming cleanup required |
-| `FWP-LP` | `PompeAlimBP` | KEEP; naming cleanup required |
+| `FWP-IP` | `PompeAlimMP` | KEEP; MP is a native RAW boundary alias only |
+| `FWP-LP` | `PompeAlimBP` | KEEP; BP is a native RAW boundary alias only |
 
-Naming normalization (HP/IP/LP vs HP/MP/BP, FWP vs BFP) is deliberately separated from grounding/deletion.
+Naming normalization is now executable through `config/tag_alias_contract.csv`: VPP,
+FWP-HP/IP/LP and IP/LP are canonical; VVP, BFP and native MP/BP are aliases with an
+explicit boundary. The alias operation remains separate from grounding/deletion.
+
+## FWP motor feeder state contract
+
+- Normal `STOP` removes the run command and keeps the corresponding VCB closed.
+- `TRIP` immediately sets the Trip latch and Trip command, then opens the VCB after the configured motor-breaker delay.
+- `RESET` clears the latch but never recloses the VCB.
+- Re-energization requires explicit `VCB CLOSE`, followed by `FWP START`.
+
+The optional feeder-fault presets use a provisional RMS current plus configurable 50
+and IEC standard-inverse 51 elements. They demonstrate the protection sequence but are
+not a solved network fault, EMT waveform, approved protection study or plant setting.
 
 ## Legacy catalogue policy
 

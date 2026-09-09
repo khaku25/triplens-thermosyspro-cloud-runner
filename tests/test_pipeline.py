@@ -73,7 +73,10 @@ class PipelineTests(unittest.TestCase):
             "config/ecms_a_equipment.csv",
             "config/ecms_command_catalog.csv",
             "config/fault_presets.json",
+            "config/vpp_baseline_v1.json",
             "config/signal_map.json",
+            "config/common_trip_matrix.csv",
+            "config/tag_alias_contract.csv",
             "examples/bfp_trip_commands.csv",
             "data/ecms_m_links.csv",
             "data/ecms_tag_catalog.csv",
@@ -324,7 +327,7 @@ class PipelineTests(unittest.TestCase):
             )
             self.assertEqual(actual_times, expected_times)
             self.assertEqual(len(trend_rows), 382)
-            self.assertEqual(len(self.read_csv(feeders)), len(trend_rows) * 8)
+            self.assertEqual(len(self.read_csv(feeders)), len(trend_rows) * 3)
             by_time = {int(row["source_time_ms"]): row for row in trend_rows}
             self.assertEqual(by_time[2002]["gt_trip_cmd"], "0")
             self.assertEqual(by_time[2003]["gt_trip_cmd"], "1")
@@ -465,7 +468,7 @@ class PipelineTests(unittest.TestCase):
             self.assertTrue(all(row["tag_class"] == "M" and row["value_basis"] == "M" for row in rows))
             metadata = json.loads(manifest.read_text())
             self.assertEqual(metadata["m_row_count"], len(rows))
-            self.assertEqual(metadata["ecms_m_link_count"], 10)
+            self.assertEqual(metadata["ecms_m_link_count"], 5)
 
     def test_unknown_fault_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -520,7 +523,11 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(feeder_fields, [
                 "ecms_time_ms", "source_time_ms", "quality", "a_config_status",
                 "equipment_id", "label_ko", "bus", "feeder_id", "configured_voltage_kv",
-                "rated_kw", "breaker_closed", "energized", "bus_voltage_kv", "current_a",
+                "rated_kw", "breaker_closed", "run_enable", "run_command_feedback",
+                "run_feedback", "speed_proven", "trip_latched", "trip_commanded",
+                "state_code", "fault_present", "fault_current_a", "relay_50_operated",
+                "relay_51_operated", "energized", "bus_voltage_kv", "terminal_voltage_kv",
+                "current_a",
                 "priority", "equipment_status", "m_link_id", "source_m_tag_id", "provenance",
             ])
             feeder_rows = self.read_csv(feeder_path)
@@ -771,15 +778,19 @@ class PipelineTests(unittest.TestCase):
     def test_command_catalog_and_example_queue_are_valid_from_any_folder(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             catalog_rows = self.read_csv(ROOT / "config/ecms_command_catalog.csv")
-            self.assertGreaterEqual(len(catalog_rows), 90)
+            self.assertEqual(len(catalog_rows), 87)
             registered = {(row["equipment_id"], row["command"]) for row in catalog_rows}
             for equipment_id in ("CB-52GT", "CB-52ST", "CB-IN-A", "CB-IN-B", "CB-TIE-AB"):
                 self.assertIn((equipment_id, "OPEN"), registered)
                 self.assertIn((equipment_id, "CLOSE"), registered)
-            for equipment_id in ("FWP-HP", "FWP-IP", "FWP-LP", "COND-PUMP", "CW-PUMP"):
+            for equipment_id in ("FWP-HP", "FWP-IP", "FWP-LP"):
                 self.assertIn((equipment_id, "START"), registered)
                 self.assertIn((equipment_id, "STOP"), registered)
                 self.assertIn((equipment_id, "TRIP"), registered)
+            self.assertFalse(
+                {"CW-PUMP", "COND-PUMP", "RECIRC-HP", "RECIRC-IP", "RECIRC-LP"}
+                & {row["equipment_id"] for row in catalog_rows}
+            )
             result = self.run_script(
                 "validate_commands.py",
                 "--commands", str(ROOT / "examples/bfp_trip_commands.csv"),
@@ -848,8 +859,12 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(trend_rows["500"]["bus_a_voltage_kv"], "0.000000")
             feeder_rows = self.read_csv(feeders)
             before = next(row for row in feeder_rows if row["equipment_id"] == "FWP-HP" and row["source_time_ms"] == "980")
-            after = next(row for row in feeder_rows if row["equipment_id"] == "FWP-HP" and row["source_time_ms"] == "1000")
+            commanded = next(row for row in feeder_rows if row["equipment_id"] == "FWP-HP" and row["source_time_ms"] == "1000")
+            after = next(row for row in feeder_rows if row["equipment_id"] == "FWP-HP" and row["source_time_ms"] == "1080")
             self.assertEqual(before["breaker_closed"], "1")
+            self.assertEqual(commanded["breaker_closed"], "1")
+            self.assertEqual(commanded["trip_latched"], "1")
+            self.assertEqual(commanded["trip_commanded"], "1")
             self.assertEqual(after["breaker_closed"], "0")
             event_rows = self.read_csv(events)
             command_tags = {row["tag"] for row in event_rows if row["event_class"] == "COMMAND"}
@@ -857,7 +872,7 @@ class PipelineTests(unittest.TestCase):
                 "COMMAND.CB-IN-A.OPEN", "COMMAND.FWP-HP.TRIP", "COMMAND.GTG.TRIP",
             })
             fwp_event = next(row for row in event_rows if row["tag"] == "COMMAND.FWP-HP.TRIP")
-            self.assertIn("electrical indication only", fwp_event["description"])
+            self.assertNotIn("electrical indication only", fwp_event["description"])
             gt_trip = next(row for row in event_rows if row["tag"] == "GT.TRIP.CMD")
             self.assertEqual(gt_trip["provenance"], "USER_COMMAND")
 
@@ -1029,7 +1044,10 @@ class PipelineTests(unittest.TestCase):
             )
             self.assertEqual(validate.returncode, 0, validate.stderr)
             self.assertEqual(len(self.read_csv(target / "ecms-trend.csv")), 7151)
-            self.assertEqual(len(self.read_csv(target / "ecms-feeders.csv")), 57208)
+            self.assertEqual(
+                len(self.read_csv(target / "ecms-feeders.csv")),
+                len(self.read_csv(target / "ecms-trend.csv")) * 3,
+            )
 
     def test_matlab_public_function_and_authoritative_topology_contracts(self) -> None:
         public_files = [

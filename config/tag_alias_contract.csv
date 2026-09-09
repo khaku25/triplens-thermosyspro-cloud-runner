@@ -1,0 +1,34 @@
+kind,canonical_name,alias,owner,processbus_field,status,notes
+TERM,VPP,VVP,PROJECT,,CANONICAL,VVP is accepted only as a legacy spelling
+EQUIPMENT,FWP-HP,BFP-HP,HRSG,,CANONICAL,HP boiler feed pump display alias
+EQUIPMENT,FWP-HP,FWP_HP,HRSG,,CANONICAL,Code-style equipment alias
+EQUIPMENT,FWP-HP,BFP_HP,HRSG,,LEGACY,Legacy code-style equipment alias
+EQUIPMENT,FWP-IP,BFP-IP,HRSG,,CANONICAL,IP boiler feed pump display alias
+EQUIPMENT,FWP-LP,BFP-LP,HRSG,,CANONICAL,LP boiler feed pump display alias
+PRESSURE_LEVEL,IP,MP,THERMOSYSPRO,,BOUNDARY_ALIAS,Preserve MP in native RAW and translate only at the ProcessBus boundary
+PRESSURE_LEVEL,LP,BP,THERMOSYSPRO,,BOUNDARY_ALIAS,Preserve BP in native RAW and translate only at the ProcessBus boundary
+TAG,CMD.FWP-HP.TRIP,SIM.FWP_HP_TRIP,COMMANDBUS,fwp_hp_trip_input,CANONICAL_ALIAS,Scenario input is not an ECMS measurement
+TAG,DCS.FWP-HP.RUN_ENABLE,FWP_HP.RUN_ENABLE,DCS_MCC,fwp_hp_run_enable,CANONICAL_ALIAS,Control permission state
+TAG,ECMS.VCB-A01.TRIP_CMD,VCB_A01_TRIP_CMD,ECMS,fwp_hp_vcb_trip_cmd,CANONICAL_ALIAS,Protection output command
+TAG,ECMS.VCB-A01.CLOSED,VCB-A01.CLOSED,ECMS,fwp_hp_vcb_closed,CANONICAL_ALIAS,Breaker position feedback
+TAG,CTRL.FWP-HP.TRIP_LATCH,FWP_HP.TRIP_LATCH,PROTECTION,fwp_hp_trip_latch,CANONICAL_ALIAS,Latched protection state
+TAG,DCS.FWP-HP.RUN_CMD_FB,FWP_HP.RUN_FB,DCS_MCC,fwp_hp_run_cmd_feedback,SEMANTIC_RENAME,RAW changes before breaker open so it is treated as command feedback rather than motor-current feedback
+TAG,PROCESS.FWP-HP.SPEED_RPM,FWP_HP.SPEED_RPM,PROCESSBUS,fwp_hp_speed_rpm,CANONICAL_ALIAS,Physical shaft speed
+TAG,DCS.FWP-HP.SPEED_PROVEN,FWP_HP.SPEED_PROVEN,DCS_MCC,fwp_hp_speed_proven,CANONICAL_ALIAS,Derived sequence status
+TAG,TWIN.FWP-HP.STATE_CODE,FWP_HP.STATE_CODE,TWIN_INTERNAL,fwp_hp_state_code,CANONICAL_ALIAS,Diagnostic state only
+TAG,CTRL.FWP-HP.TRIPPED,FWP_HP.TRIPPED,PROTECTION,fwp_hp_tripped,CANONICAL_ALIAS,Derived summary and never a causal source
+TAG,ECMS.BUS-A.VOLTAGE,ECMS.BUS-A.VOLTAGE,ECMS,ecms_bus_a_voltage_kv,CANONICAL_ALIAS,Electrical trend value in kV
+TAG,META.QUALITY,quality,METADATA,quality,CANONICAL_ALIAS,Row quality metadata and not a plant tag
+TAG,CMD.GTG.TRIP,GT.TRIP.CMD,COMMANDBUS,,CANONICAL_ALIAS,Direct GT Trip input
+TAG,CMD.STG.TRIP,ST.TRIP.CMD,COMMANDBUS,,CANONICAL_ALIAS,Direct ST Trip input
+TAG,CMD.FWP-HP.TRIP,FWP-HP.TRIP.INPUT,COMMANDBUS,,CANONICAL_ALIAS,Observed HP FWP Trip input
+TAG,ECMS.VCB-A01.TRIP_CMD,VCB-A01.TRIP.CMD,ECMS,,CANONICAL_ALIAS,Normalized ECMS event spelling
+TAG,CTRL.FWP-HP.TRIP_LATCH,FWP-HP.TRIP.LATCH,PROTECTION,,CANONICAL_ALIAS,Normalized latch event spelling
+TAG,ECMS.52GT.CLOSED,52GT.CLOSED,ECMS,,CANONICAL_ALIAS,Generator breaker feedback
+TAG,ECMS.52ST.CLOSED,52ST.CLOSED,ECMS,,CANONICAL_ALIAS,Generator breaker feedback
+TAG,ECMS.CB-IN-A.CLOSED,ECMS.IN-A.CLOSED,ECMS,,LEGACY_ALIAS,Full equipment ID is canonical
+TAG,ECMS.CB-IN-A.CLOSED,CB-IN-A.CLOSED,ECMS,,CANONICAL_ALIAS,Incoming breaker feedback
+TAG,ECMS.CB-IN-B.CLOSED,ECMS.IN-B.CLOSED,ECMS,,LEGACY_ALIAS,Full equipment ID is canonical
+TAG,ECMS.CB-IN-B.CLOSED,CB-IN-B.CLOSED,ECMS,,CANONICAL_ALIAS,Incoming breaker feedback
+TAG,ECMS.CB-TIE-AB.CLOSED,ECMS.TIE-AB.CLOSED,ECMS,,LEGACY_ALIAS,Full equipment ID is canonical
+TAG,ECMS.CB-TIE-AB.CLOSED,CB-TIE-AB.CLOSED,ECMS,,CANONICAL_ALIAS,Tie breaker feedback

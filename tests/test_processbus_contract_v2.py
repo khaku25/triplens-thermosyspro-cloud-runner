@@ -152,9 +152,9 @@ class ProcessBusContractV2Tests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             rows = self.read_csv(processbus)
-            self.assertEqual(rows[0]["bfp_hp_speed_rpm"], "1400")
-            self.assertEqual(rows[0]["bfp_hp_mass_flow_kg_s"], "100")
-            self.assertEqual(rows[0]["bfp_hp_mechanical_power_w"], "1000000")
+            self.assertEqual(rows[0]["fwp_hp_speed_rpm"], "1400")
+            self.assertEqual(rows[0]["fwp_hp_mass_flow_kg_s"], "100")
+            self.assertEqual(rows[0]["fwp_hp_mechanical_power_w"], "1000000")
             self.assertIn("raw__pompe_alim_hp_delta_p", rows[0])
 
     def test_legacy_trip_time_keeps_gt_trip_command_for_existing_pipeline(self) -> None:

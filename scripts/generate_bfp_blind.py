@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Create three-source blind incident CSVs from a ThermoSysPro BFP run.
+"""Create three-source blind incident CSVs from a ThermoSysPro FWP run.
 
 The blind-input directory intentionally contains observations only. Ground
 truth and provisional alarm thresholds are written outside that directory.
+The filename keeps the historical BFP spelling; executable tags use canonical
+FWP equipment IDs and the VCB feeder ID from the alias contract.
 """
 
 from __future__ import annotations
@@ -35,7 +37,7 @@ def load_rows(path: Path) -> list[dict[str, str]]:
     with path.open("r", encoding="utf-8-sig", newline="") as stream:
         rows = list(csv.DictReader(stream))
     if len(rows) < 2:
-        raise ValueError("BFP ProcessBus must contain at least two rows")
+        raise ValueError("FWP ProcessBus must contain at least two rows")
     return rows
 
 
@@ -54,6 +56,14 @@ def baseline(rows: list[dict[str, str]], field: str, trip_s: float) -> float:
     if not samples:
         raise ValueError(f"no pre-incident baseline samples for {field}")
     return fmean(samples)
+
+
+def available_field(rows: list[dict[str, str]], canonical: str, legacy: str) -> str:
+    if canonical in rows[0] and any(row.get(canonical, "").strip() for row in rows):
+        return canonical
+    if legacy in rows[0] and any(row.get(legacy, "").strip() for row in rows):
+        return legacy
+    raise ValueError(f"neither canonical {canonical} nor legacy {legacy} is available")
 
 
 def first_after(
@@ -127,8 +137,10 @@ def main() -> int:
 
     rows = load_rows(args.processbus)
     trip_ms = round(args.trip_time * 1000)
-    b_speed = baseline(rows, "bfp_hp_speed_rpm", args.trip_time)
-    b_flow = baseline(rows, "bfp_hp_mass_flow_kg_s", args.trip_time)
+    speed_field = available_field(rows, "fwp_hp_speed_rpm", "bfp_hp_speed_rpm")
+    flow_field = available_field(rows, "fwp_hp_mass_flow_kg_s", "bfp_hp_mass_flow_kg_s")
+    b_speed = baseline(rows, speed_field, args.trip_time)
+    b_flow = baseline(rows, flow_field, args.trip_time)
     b_level = baseline(rows, "hp_drum_level_m", args.trip_time)
     b_pressure = baseline(rows, "hp_drum_pressure_pa", args.trip_time)
     b_steam = baseline(rows, "hp_steam_flow_kg_s", args.trip_time)
@@ -136,9 +148,9 @@ def main() -> int:
     b_valve = baseline(rows, "hp_feedwater_valve_pu", args.trip_time)
 
     events: list[Event] = [
-        Event(trip_ms + 15, "ECMS", "50BFP-HP.PICKUP", "0", "1", "PICKUP", "HP feedwater-pump motor protection pickup", "E_ELECTRICAL_MODEL"),
-        Event(trip_ms + 60, "ECMS", "52BFP-HP.CLOSED", "1", "0", "POSITION", "HP feedwater-pump breaker opened", "E_ELECTRICAL_MODEL"),
-        Event(trip_ms + 80, "ECMS", "BFP-HP.MOTOR.CURRENT_A", "RUNNING", "0", "STATE", "HP feedwater-pump motor current lost", "E_ELECTRICAL_MODEL"),
+        Event(trip_ms + 15, "ECMS", "50FWP-HP.PICKUP", "0", "1", "PICKUP", "HP feedwater-pump motor protection pickup", "E_ELECTRICAL_MODEL"),
+        Event(trip_ms + 60, "ECMS", "VCB-A01.CLOSED", "1", "0", "POSITION", "HP feedwater-pump breaker opened", "E_ELECTRICAL_MODEL"),
+        Event(trip_ms + 80, "ECMS", "FWP-HP.MOTOR.CURRENT_A", "RUNNING", "0", "STATE", "HP feedwater-pump motor current lost", "E_ELECTRICAL_MODEL"),
     ]
 
     speed_low = b_speed * 0.90
@@ -151,9 +163,9 @@ def main() -> int:
     steam_low = abs(b_steam) * 0.95
     power_low = abs(b_power) * 0.98
 
-    add_crossing(events, rows, args.trip_time, system="DCS1", field="bfp_hp_speed_rpm", tag="BFP-HP.SPEED_LOW", threshold=speed_low, predicate=lambda x: x < speed_low, event_class="ALARM", description="HP BFP speed below 90% of pre-incident baseline")
-    add_crossing(events, rows, args.trip_time, system="DCS1", field="bfp_hp_mass_flow_kg_s", tag="HP.FW.FLOW_LOW", threshold=flow_low, predicate=lambda x: abs(x) < flow_low, event_class="ALARM", description="HP feedwater flow low")
-    add_crossing(events, rows, args.trip_time, system="DCS1", field="bfp_hp_mass_flow_kg_s", tag="HP.FW.FLOW_LOW_LOW", threshold=flow_low_low, predicate=lambda x: abs(x) < flow_low_low, event_class="TRIP", description="HP feedwater flow low-low")
+    add_crossing(events, rows, args.trip_time, system="DCS2", field=speed_field, tag="FWP-HP.SPEED_LOW", threshold=speed_low, predicate=lambda x: x < speed_low, event_class="ALARM", description="HP BFP speed below 90% of pre-incident baseline")
+    add_crossing(events, rows, args.trip_time, system="DCS2", field=flow_field, tag="HP.FW.FLOW_LOW", threshold=flow_low, predicate=lambda x: abs(x) < flow_low, event_class="ALARM", description="HP feedwater flow low")
+    add_crossing(events, rows, args.trip_time, system="DCS2", field=flow_field, tag="HP.FW.FLOW_LOW_LOW", threshold=flow_low_low, predicate=lambda x: abs(x) < flow_low_low, event_class="ALARM", description="HP feedwater flow low-low indication; protection action requires the common C&E matrix")
     add_crossing(events, rows, args.trip_time, system="DCS1", field="hp_feedwater_valve_pu", tag="HP.FWV.DEMAND_HIGH", threshold=valve_high, predicate=lambda x: x > valve_high, event_class="ALARM", description="HP drum level controller increased feedwater-valve demand")
     add_crossing(events, rows, args.trip_time, system="DCS1", field="hp_drum_level_m", tag="HP.DRUM.LEVEL_LOW", threshold=level_low, predicate=lambda x: x < level_low, event_class="ALARM", description="HP drum level low")
     add_crossing(events, rows, args.trip_time, system="DCS1", field="hp_drum_level_m", tag="HP.DRUM.LEVEL_LOW_LOW", threshold=level_low_low, predicate=lambda x: x < level_low_low, event_class="TRIP", description="HP drum level low-low")
@@ -169,7 +181,7 @@ def main() -> int:
 
     thresholds = {
         "basis": "PROVISIONAL_RELATIVE_TO_LAST_10S_PRE_INCIDENT",
-        "bfp_speed_low_rpm": speed_low,
+        "fwp_hp_speed_low_rpm": speed_low,
         "hp_feedwater_flow_low_kg_s": flow_low,
         "hp_feedwater_flow_low_low_kg_s": flow_low_low,
         "hp_drum_level_low_m": level_low,
@@ -184,7 +196,7 @@ def main() -> int:
     (truth / "answer-key.json").write_text(json.dumps({
         "warning": "Do not upload this directory to TripLens during the blind test.",
         "incident_id": "BLIND-INCIDENT-001",
-        "expected_root_cause": "HP boiler feed pump electrical trip",
+        "expected_root_cause": "FWP-HP electrical trip (display alias: HP BFP)",
         "physical_adapter": {
             "thermosyspro_component": "PompeAlimHP",
             "normal_speed_rpm": b_speed,
