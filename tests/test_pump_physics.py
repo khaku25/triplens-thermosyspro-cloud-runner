@@ -61,7 +61,7 @@ class PumpPhysicsTests(unittest.TestCase):
         )
         for pressure in ("HP", "IP", "LP"):
             self.assertIn(f"BreakerTorqueDrive drive{pressure}", model)
-            self.assertIn(f"CheckValve checkValve{pressure}", model)
+            self.assertIn(f"IdealCheckValve checkValve{pressure}", model)
             self.assertIn(f"checkValve{pressure}.C1", model)
             self.assertIn(f"checkValve{pressure}.C2", model)
         self.assertIn("connect(cwPumpDrive.massFlow, SourceCaloporteur.IMassFlow)", model)

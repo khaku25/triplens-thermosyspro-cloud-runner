@@ -11,7 +11,7 @@ Each connected motor pump follows this causal chain:
 2. the connected drive sets electromagnetic motor torque to zero;
 3. the combined rotating inertia decelerates against hydraulic load;
 4. pump head and mass flow change through the native pump curve;
-5. the discharge `CheckValve` closes from reverse differential pressure;
+5. the discharge `IdealCheckValve` closes when forward flow is lost;
 6. the existing drum, condenser, valve, economizer, and turbine equations
    calculate the downstream process response.
 

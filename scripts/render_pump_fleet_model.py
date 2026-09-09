@@ -168,15 +168,12 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
     coastdownTime=8,
     valveTimeConstant=0.25);
 
-  ThermoSysPro.WaterSteam.PressureLosses.CheckValve checkValveHP(
-    dPOuvert=10, dPFerme=0, k=1e-4, Qmin=1e-6,
-    continuous_flow_reversal=true, mode=1);
-  ThermoSysPro.WaterSteam.PressureLosses.CheckValve checkValveIP(
-    dPOuvert=10, dPFerme=0, k=1e-4, Qmin=1e-6,
-    continuous_flow_reversal=true, mode=1);
-  ThermoSysPro.WaterSteam.PressureLosses.CheckValve checkValveLP(
-    dPOuvert=10, dPFerme=0, k=1e-4, Qmin=1e-6,
-    continuous_flow_reversal=true, mode=1);
+  ThermoSysPro.WaterSteam.PressureLosses.IdealCheckValve checkValveHP(
+    dPOuvert=0.01, Qmin=1e-6, continuous_flow_reversal=true);
+  ThermoSysPro.WaterSteam.PressureLosses.IdealCheckValve checkValveIP(
+    dPOuvert=0.01, Qmin=1e-6, continuous_flow_reversal=true);
+  ThermoSysPro.WaterSteam.PressureLosses.IdealCheckValve checkValveLP(
+    dPOuvert=0.01, Qmin=1e-6, continuous_flow_reversal=true);
 '''
     text = replace_once(text, "\nequation\n", declarations + "\nequation\n", "equation section")
 
