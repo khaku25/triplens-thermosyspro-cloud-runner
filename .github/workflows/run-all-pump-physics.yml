@@ -22,6 +22,7 @@ on:
       - ".github/workflows/run-all-pump-physics.yml"
       - "modelica/**"
       - "scripts/render_pump_fleet_model.py"
+      - "scripts/normalize_processbus.py"
       - "scripts/run_pump_physics_pipeline.sh"
       - "scripts/validate_pump_physics.py"
       - "config/pump_physics_registry.csv"
