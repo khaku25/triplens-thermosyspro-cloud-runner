@@ -942,6 +942,7 @@ class PipelineTests(unittest.TestCase):
         self.assertIn("intervals=1800", script)
         self.assertIn("intervals=19000", script)
         self.assertIn("--normal-operation", script)
+        self.assertIn("OPENMODELICA_LONG_TRIP_TIMEOUT:-25m", script)
 
         unknown_profile = subprocess.run(
             [

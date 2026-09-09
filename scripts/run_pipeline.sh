@@ -74,6 +74,9 @@ echo "Effective physical run: event=${event_time_s}s transition=${transition_dur
 openmodelica_image="openmodelica/openmodelica:v1.27.0-minimal"
 dependency_timeout="${OPENMODELICA_DEPENDENCY_TIMEOUT:-5m}"
 simulation_timeout="${OPENMODELICA_SIMULATION_TIMEOUT:-20m}"
+if [[ "$sampling_profile" == "gt_trip_3min_10ms" ]]; then
+  simulation_timeout="${OPENMODELICA_LONG_TRIP_TIMEOUT:-25m}"
+fi
 thermosyspro_commit="db81ae1b5a6a85f6c6c7693244cafa6087e18ff5"
 
 mkdir -p build/omhome vendor
