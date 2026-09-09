@@ -212,9 +212,6 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
         declarations.append("""
   // Protection is driven by native drum states, never directly by the pump breaker.
   TripLens_PumpPhysics.CommonDrumTripProtection commonTripProtection;
-  TripLens_PumpPhysics.ProtectedExhaustGasBoundary protectedExhaust;
-  TripLens_PumpPhysics.FastSteamTripValve stTripValveHP;
-  TripLens_PumpPhysics.FastSteamTripValve stTripValveMP;
   Boolean hpDrumLevelHHPickup;
   Boolean hpDrumLevelLLPickup;
   Boolean ipDrumLevelHHPickup;
@@ -260,19 +257,6 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
   gtGridElectricalPower = if gt52GClosed then 160e6 else 0;
   stGridElectricalPower = if st52GClosed then Alternateur.Welec else 0;
 
-  connect(Debit.y, protectedExhaust.normalMassFlow);
-  connect(Temperature.y, protectedExhaust.normalTemperature);
-  protectedExhaust.gtTripLatched = gtTripLatched;
-  protectedExhaust.gtTripElapsed = commonTripProtection.gtSequenceTimer;
-  connect(protectedExhaust.effectiveMassFlow, SourceFumees.IMassFlow);
-  connect(protectedExhaust.effectiveTemperature, SourceFumees.ITemperature);
-
-  connect(ConstantVanneTurbineHP.y, stTripValveHP.normalOpening);
-  connect(ConstantVanneTurbineMP.y, stTripValveMP.normalOpening);
-  stTripValveHP.trip.signal = stTripLatched;
-  stTripValveMP.trip.signal = stTripLatched;
-  connect(stTripValveHP.effectiveOpening, vanne_entree_TurbineHP.Ouv);
-  connect(stTripValveMP.effectiveOpening, vanne_entree_TurbineMP.Ouv);
 """)
         text = replace_statement(
             text,
@@ -287,17 +271,6 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
             f"  connect(checkValve{axis}.C2, {selected['downstream']});\n",
             f"{axis} discharge check valve",
         )
-        for marker, label in (
-            ("  connect(Debit.y,SourceFumees. IMassFlow)",
-             "original flue-gas mass-flow boundary"),
-            ("  connect(Temperature.y,SourceFumees. ITemperature)",
-             "original flue-gas temperature boundary"),
-            ("  connect(ConstantVanneTurbineHP.y, vanne_entree_TurbineHP.Ouv)",
-             "original HP turbine valve command"),
-            ("  connect(ConstantVanneTurbineMP.y, vanne_entree_TurbineMP.Ouv)",
-             "original IP turbine valve command"),
-        ):
-            text = replace_statement(text, marker, "", label)
         # Protection/actuation is added from drum state below; the pump
         # breaker must never bypass the common trip matrix.
         if f"{name}.rpm_or_mpower" in text:
