@@ -168,6 +168,7 @@ class PumpPhysicsTests(unittest.TestCase):
             )
             self.assertNotEqual(completed.returncode, 0)
             self.assertIn("RAW CSV stopped early", completed.stderr)
+            self.assertIn("METRICS CW-PUMP: final_time=304", completed.stdout)
 
 
 if __name__ == "__main__":

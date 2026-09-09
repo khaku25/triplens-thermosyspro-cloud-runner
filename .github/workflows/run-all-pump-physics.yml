@@ -8,13 +8,13 @@ on:
         required: true
         default: "300"
       stop_time_s:
-        description: Simulation stop time in seconds
-        required: true
-        default: "420"
+        description: Optional common stop time; blank uses each path's validated transient window
+        required: false
+        default: ""
       output_intervals:
-        description: OpenModelica output interval count
-        required: true
-        default: "4200"
+        description: Optional common interval count; blank preserves 0.1 s output
+        required: false
+        default: ""
   pull_request:
     branches:
       - main
@@ -55,12 +55,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pump:
-          - FWP-HP
-          - FWP-IP
-          - FWP-LP
-          - COND-PUMP
-          - CW-PUMP
+        include:
+          - pump: FWP-HP
+            stop_time_s: "305"
+            output_intervals: "3050"
+          - pump: FWP-IP
+            stop_time_s: "308"
+            output_intervals: "3080"
+          - pump: FWP-LP
+            stop_time_s: "315"
+            output_intervals: "3150"
+          - pump: COND-PUMP
+            stop_time_s: "315"
+            output_intervals: "3150"
+          - pump: CW-PUMP
+            stop_time_s: "308"
+            output_intervals: "3080"
     steps:
       - name: Check out physical-model runner
         uses: actions/checkout@v4
@@ -72,8 +82,8 @@ jobs:
         env:
           PUMP_ID: ${{ matrix.pump }}
           EVENT_TIME_S: ${{ inputs.event_time_s || '300' }}
-          STOP_TIME_S: ${{ inputs.stop_time_s || '420' }}
-          OUTPUT_INTERVALS: ${{ inputs.output_intervals || '4200' }}
+          STOP_TIME_S: ${{ inputs.stop_time_s || matrix.stop_time_s }}
+          OUTPUT_INTERVALS: ${{ inputs.output_intervals || matrix.output_intervals }}
         run: |
           chmod +x scripts/run_pump_physics_pipeline.sh
           scripts/run_pump_physics_pipeline.sh \
@@ -83,12 +93,12 @@ jobs:
             "$OUTPUT_INTERVALS"
 
       - name: Upload native RAW and unlabeled manifest
-        if: success()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pump-physics-${{ matrix.pump }}-${{ github.run_number }}
           path: |
             outputs/pumps/**/thermosyspro-raw.csv
             outputs/pumps/**/raw-manifest.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30

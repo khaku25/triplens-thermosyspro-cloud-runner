@@ -112,13 +112,6 @@ def main() -> int:
 
     fields = FIELD_SETS[args.pump_id]
     time_field = resolve(headers, "time")
-    final_time = number(rows[-1], time_field)
-    time_tolerance = max(1e-6, abs(args.stop_time)*1e-8)
-    if final_time + time_tolerance < args.stop_time:
-        raise ValueError(
-            f"RAW CSV stopped early at {final_time:.9g}s; "
-            f"expected {args.stop_time:.9g}s"
-        )
     resolved = {
         key: resolve(headers, value)
         for key, value in fields.items()
@@ -133,6 +126,29 @@ def main() -> int:
 
     before = pre[-1]
     after = post[-1]
+    final_time = number(after, time_field)
+    process_diagnostics = ",".join(
+        f"{canonical(field)}={number(after, field):.9g}"
+        for field in process_fields
+    )
+    print(
+        f"METRICS {args.pump_id}: final_time={final_time:.9g} "
+        f"breaker={after[resolved['breaker']]} "
+        f"torque={number(after, resolved['torque']):.9g} "
+        f"speed={number(after, resolved['speed']):.9g} "
+        f"valve={after[resolved['valve']]} "
+        f"flow={number(after, resolved['flow']):.9g} "
+        f"process=[{process_diagnostics}]",
+        flush=True,
+    )
+
+    time_tolerance = max(1e-6, abs(args.stop_time)*1e-8)
+    if final_time + time_tolerance < args.stop_time:
+        raise ValueError(
+            f"RAW CSV stopped early at {final_time:.9g}s; "
+            f"expected {args.stop_time:.9g}s"
+        )
+
     if not logical(before, resolved["breaker"]):
         raise ValueError("selected pump breaker was not closed before trip")
     if logical(after, resolved["breaker"]):

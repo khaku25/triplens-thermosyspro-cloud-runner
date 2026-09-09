@@ -143,7 +143,6 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
             "initial_torque": 36000,
             "torque_limit": "1e5",
             "close_flow": 7,
-            "reopen_pressure": "1e6",
             "speed_marker": "  connect(PompeAlimHP.rpm_or_mpower, arretPomesHP.y)",
             "discharge_marker": "  connect(Vanne_alimentationMPHP1.C1, PompeAlimHP.C2)",
             "downstream": "Vanne_alimentationMPHP1.C1",
@@ -156,7 +155,6 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
             "initial_torque": 5000,
             "torque_limit": "2e4",
             "close_flow": 2,
-            "reopen_pressure": "2e5",
             "speed_marker": "  connect(PompeAlimMP.rpm_or_mpower, arretPomesMp.y)",
             "discharge_marker": "  connect(PompeAlimMP.C2, Vanne_alimentationMPHP2.C1)",
             "downstream": "Vanne_alimentationMPHP2.C1",
@@ -169,7 +167,6 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
             "initial_torque": 4200,
             "torque_limit": "6e4",
             "close_flow": 20,
-            "reopen_pressure": "2.5e5",
             "speed_marker": "  connect(PompeAlimBP.rpm_or_mpower, arretPomesBP.y)",
             "discharge_marker": "  connect(PompeAlimBP.C2, vanne_extraction.C1)",
             "downstream": "vanne_extraction.C1",
@@ -199,8 +196,7 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
     initialTorque={initial_torque},
     torqueLimit={selected["torque_limit"]});
   TripLens_PumpPhysics.SpringLoadedCheckValve checkValve{axis}(
-    closeFlow={selected["close_flow"]},
-    reopenPressure={selected["reopen_pressure"]});
+    closeFlow={selected["close_flow"]});
 ''')
         equations.append(f'''
   breaker{axis}Closed = not (time >= pumpTripTime);
@@ -229,8 +225,8 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
   TripLens_PumpPhysics.BoundaryMotorPump cwPumpDrive(
     nominalSpeedRpm=600,
     nominalMassFlow=29804.5,
-    coastdownTime=8,
-    valveTimeConstant=0.25);
+    coastdownTime=2,
+    valveTimeConstant=0.1);
 ''')
         equations.append('''
   breakerCWClosed = not (time >= pumpTripTime);

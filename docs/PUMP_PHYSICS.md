@@ -14,8 +14,8 @@ Each connected motor pump follows this causal chain:
 3. the combined rotating inertia follows `J*der(w) = motor torque - pump load
    torque - friction torque`;
 4. pump head and mass flow change through the native pump curve;
-5. the spring-loaded finite-resistance discharge check valve closes before
-   forward flow reverses;
+5. the spring-loaded discharge check valve's flap and hydraulic resistance
+   move continuously to the closed position before sustained reverse flow;
 6. the existing drum, condenser, valve, economizer, and turbine equations
    calculate the downstream process response.
 
@@ -42,12 +42,15 @@ be separated only after the plant P&ID and equipment ratings are supplied.
 ## Run
 
 ```bash
-scripts/run_pump_physics_pipeline.sh FWP-HP 300 420 4200
-scripts/run_pump_physics_pipeline.sh FWP-IP 300 420 4200
-scripts/run_pump_physics_pipeline.sh FWP-LP 300 420 4200
-scripts/run_pump_physics_pipeline.sh COND-PUMP 300 420 4200
-scripts/run_pump_physics_pipeline.sh CW-PUMP 300 420 4200
+scripts/run_pump_physics_pipeline.sh FWP-HP 300 305 3050
+scripts/run_pump_physics_pipeline.sh FWP-IP 300 308 3080
+scripts/run_pump_physics_pipeline.sh FWP-LP 300 315 3150
+scripts/run_pump_physics_pipeline.sh COND-PUMP 300 315 3150
+scripts/run_pump_physics_pipeline.sh CW-PUMP 300 308 3080
 ```
 
-The output sampling interval is 0.1 s in these examples. DASSL still takes
-smaller internal integration steps around breaker and valve events.
+The output sampling interval is 0.1 s in these examples. Each stop time captures
+breaker opening, coastdown, check-valve closure, and the first downstream
+process response without extrapolating a full-plant shutdown beyond the pinned
+example's valid transient envelope. DASSL still takes smaller internal
+integration steps around the transient.
