@@ -203,6 +203,14 @@ class PumpPhysicsTests(unittest.TestCase):
             model,
         )
 
+        hp_model = transform(MINIMAL_UPSTREAM, trip_target=1, trip_time=300)
+        self.assertIn(
+            "ThermoSysPro.WaterSteam.HeatExchangers.SimpleDynamicCondenser Condenseur(",
+            hp_model,
+        )
+        self.assertNotIn("TripLens_RegularizedCondenser Condenseur(", hp_model)
+        self.assertNotIn("BackpressureTurbineTrip stBackpressureProtection", hp_model)
+
     def test_regularized_condenser_removes_zero_flow_heat_singularity(self) -> None:
         source = (ROOT / "modelica" / "TripLens_RegularizedCondenser.mo").read_text(
             encoding="utf-8"

@@ -46,7 +46,7 @@ scripts/run_pump_physics_pipeline.sh FWP-HP 300 305 3050
 scripts/run_pump_physics_pipeline.sh FWP-IP 300 308 3080
 scripts/run_pump_physics_pipeline.sh FWP-LP 300 313.5 3135
 scripts/run_pump_physics_pipeline.sh COND-PUMP 300 313.5 3135
-scripts/run_pump_physics_pipeline.sh CW-PUMP 300 305.3 3053
+scripts/run_pump_physics_pipeline.sh CW-PUMP 300 308 3080
 ```
 
 The output sampling interval is 0.1 s in these examples. Each stop time captures

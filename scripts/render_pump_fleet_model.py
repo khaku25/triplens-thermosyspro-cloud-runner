@@ -109,13 +109,6 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
     )
     text = replace_once(
         text,
-        "  ThermoSysPro.WaterSteam.HeatExchangers.SimpleDynamicCondenser Condenseur(",
-        "  TripLens_RegularizedCondenser Condenseur(\n"
-        "    regularizationStartTime=pumpTripTime,",
-        "regularized condenser model",
-    )
-    text = replace_once(
-        text,
         "  FlueGases.BoundaryConditions.SourceQ SourceFumees",
         "  ThermoSysPro.FlueGases.BoundaryConditions.SourceQ SourceFumees",
         "flue-gas source package path",
@@ -183,44 +176,8 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
         },
     }
     selected = target_specs.get(trip_target)
-    declarations: list[str] = ['''
-  // Condenseur.P is the physical ST-backpressure source.
-  TripLens_PumpPhysics.BackpressureTurbineTrip stBackpressureProtection;
-  Boolean stBackpressureHigh;
-  Boolean stBackpressureTripPickup;
-  Boolean stTripLatched;
-  Boolean st52GClosed;
-  Modelica.SIunits.Power stGridElectricalPower;
-''']
-    equations: list[str] = ['''
-  stBackpressureProtection.armed.signal = time >= pumpTripTime;
-  stBackpressureProtection.condenserPressure.signal = Condenseur.P;
-  stBackpressureHigh = stBackpressureProtection.highAlarm.signal;
-  stBackpressureTripPickup = stBackpressureProtection.tripPickup.signal;
-  stTripLatched = stBackpressureProtection.tripLatched.signal;
-  st52GClosed = stBackpressureProtection.generatorBreakerClosed.signal;
-
-  // A protection trip disconnects grid power immediately. Alternateur.Welec
-  // remains the internal pre-breaker electrical quantity during coastdown.
-  stGridElectricalPower = if st52GClosed then Alternateur.Welec else 0;
-  vanne_entree_TurbineHP.Ouv.signal = if stTripLatched then 0 else
-    ConstantVanneTurbineHP.y.signal;
-  vanne_entree_TurbineMP.Ouv.signal = if stTripLatched then 0 else
-    ConstantVanneTurbineMP.y.signal;
-''']
-
-    text = replace_statement(
-        text,
-        "  connect(ConstantVanneTurbineHP.y, vanne_entree_TurbineHP.Ouv)",
-        "",
-        "HP turbine admission control",
-    )
-    text = replace_statement(
-        text,
-        "  connect(ConstantVanneTurbineMP.y, vanne_entree_TurbineMP.Ouv)",
-        "",
-        "IP turbine admission control",
-    )
+    declarations: list[str] = []
+    equations: list[str] = []
 
     if selected:
         name = str(selected["component"])
@@ -267,6 +224,50 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
         if f"{name}.rpm_or_mpower" in text:
             raise ValueError(f"legacy prescribed-speed connection remains for {name}")
     elif trip_target == 4:
+        text = replace_once(
+            text,
+            "  ThermoSysPro.WaterSteam.HeatExchangers.SimpleDynamicCondenser Condenseur(",
+            "  TripLens_RegularizedCondenser Condenseur(\n"
+            "    regularizationStartTime=pumpTripTime,",
+            "regularized condenser model",
+        )
+        text = replace_statement(
+            text,
+            "  connect(ConstantVanneTurbineHP.y, vanne_entree_TurbineHP.Ouv)",
+            "",
+            "HP turbine admission control",
+        )
+        text = replace_statement(
+            text,
+            "  connect(ConstantVanneTurbineMP.y, vanne_entree_TurbineMP.Ouv)",
+            "",
+            "IP turbine admission control",
+        )
+        declarations.append('''
+  // Condenseur.P is the physical ST-backpressure source.
+  TripLens_PumpPhysics.BackpressureTurbineTrip stBackpressureProtection;
+  Boolean stBackpressureHigh;
+  Boolean stBackpressureTripPickup;
+  Boolean stTripLatched;
+  Boolean st52GClosed;
+  Modelica.SIunits.Power stGridElectricalPower;
+''')
+        equations.append('''
+  stBackpressureProtection.armed.signal = time >= pumpTripTime;
+  stBackpressureProtection.condenserPressure.signal = Condenseur.P;
+  stBackpressureHigh = stBackpressureProtection.highAlarm.signal;
+  stBackpressureTripPickup = stBackpressureProtection.tripPickup.signal;
+  stTripLatched = stBackpressureProtection.tripLatched.signal;
+  st52GClosed = stBackpressureProtection.generatorBreakerClosed.signal;
+
+  // A protection trip disconnects grid power immediately. Alternateur.Welec
+  // remains the internal pre-breaker electrical quantity during coastdown.
+  stGridElectricalPower = if st52GClosed then Alternateur.Welec else 0;
+  vanne_entree_TurbineHP.Ouv.signal = if stTripLatched then 0 else
+    ConstantVanneTurbineHP.y.signal;
+  vanne_entree_TurbineMP.Ouv.signal = if stTripLatched then 0 else
+    ConstantVanneTurbineMP.y.signal;
+''')
         declarations.append('''
   Boolean breakerCWClosed;
   TripLens_PumpPhysics.BoundaryMotorPump cwPumpDrive(

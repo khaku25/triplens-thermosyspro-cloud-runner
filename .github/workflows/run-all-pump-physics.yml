@@ -56,8 +56,8 @@ jobs:
             stop_time_s: "313.5"
             output_intervals: "3135"
           - pump: CW-PUMP
-            stop_time_s: "305.3"
-            output_intervals: "3053"
+            stop_time_s: "308"
+            output_intervals: "3080"
     steps:
       - name: Check out physical-model runner
         uses: actions/checkout@v4
