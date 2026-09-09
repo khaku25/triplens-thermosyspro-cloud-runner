@@ -16,7 +16,7 @@ import tempfile
 from pathlib import Path
 
 
-MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V8"
+MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V9"
 
 
 PARAMETERS = f'''  // {MARKER}
@@ -61,6 +61,8 @@ PARAMETERS = f'''  // {MARKER}
     "LPBP 95 percent opening time";
   parameter Real vppSprayStroke95(unit="s") = 0.050
     "Spray-water actuator 95 percent opening time";
+  parameter Modelica.SIunits.MassFlowRate vppSpraySeatLeak = 1e-4
+    "Numerical spray-valve seat leakage preventing a zero-flow tear";
   parameter Real vppValveLeak = 0
     "Fully closed pre-Trip bypass position";
   parameter Modelica.SIunits.Volume vppHPHeaderVolume = 1
@@ -145,7 +147,7 @@ COMPONENTS = '''
     C2(P(start=2726700), Q(start=0, nominal=200),
        h(start=3248547.5), h_vol(start=3046260)));
   ThermoSysPro.WaterSteam.BoundaryConditions.SourceQ vppHPSpraySource(
-    Q0=0, h0=1396866);
+    Q0=vppSpraySeatLeak, h0=1396866);
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
     vppHPSprayFlowCommand;
   ThermoSysPro.WaterSteam.Volumes.VolumeC vppHPColdReheatVolume(
@@ -162,7 +164,7 @@ COMPONENTS = '''
         h(start=3046260), h_vol(start=3046260)),
     Ce2(Q(start=0, nominal=200),
         h(start=3248547.5), h_vol(start=3046260)),
-    Ce3(Q(start=0, nominal=200),
+    Ce3(Q(start=vppSpraySeatLeak, nominal=200),
         h(start=1396866), h_vol(start=3046260)),
     Cs(Q(start=vppHPMainFlow0, nominal=200),
        h(start=3046260), h_vol(start=3046260)));
@@ -187,7 +189,7 @@ COMPONENTS = '''
     C2(P(start=6136), Q(start=0, nominal=200),
        h(start=2962470), h_vol(start=2401030)));
   ThermoSysPro.WaterSteam.BoundaryConditions.SourceQ vppLPSpraySource(
-    Q0=0, h0=550000);
+    Q0=vppSpraySeatLeak, h0=550000);
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
     vppLPSprayFlowCommand;
   ThermoSysPro.WaterSteam.Volumes.VolumeC vppCondenserSteamVolume(
@@ -204,7 +206,7 @@ COMPONENTS = '''
         h(start=2401030), h_vol(start=2401030)),
     Ce2(Q(start=0, nominal=200),
         h(start=2962470), h_vol(start=2401030)),
-    Ce3(Q(start=0, nominal=200),
+    Ce3(Q(start=vppSpraySeatLeak, nominal=200),
         h(start=550000), h_vol(start=2401030)),
     Cs(Q(start=vppCondenserSteamFlow0, nominal=200),
        h(start=2401030), h_vol(start=2401030)));
@@ -262,10 +264,10 @@ EQUATIONS = '''
   vppLPBypassValve.Ouv.signal = vppLPBypassPos;
   vppHPBypassValve.rhoIn = vppHPSplitter.pro.d;
   vppLPBypassValve.rhoIn = vppLPSplitter.pro.d;
-  vppHPSprayFlowCommand.signal = noEvent(max(0, vppHPBypassValve.Q))
-    *vppHPSprayRatio*vppHPSprayPos;
-  vppLPSprayFlowCommand.signal = noEvent(max(0, vppLPBypassValve.Q))
-    *vppLPSprayRatio*vppLPSprayPos;
+  vppHPSprayFlowCommand.signal = noEvent(max(vppSpraySeatLeak,
+    max(0, vppHPBypassValve.Q)*vppHPSprayRatio*vppHPSprayPos));
+  vppLPSprayFlowCommand.signal = noEvent(max(vppSpraySeatLeak,
+    max(0, vppLPBypassValve.Q)*vppLPSprayRatio*vppLPSprayPos));
 
   connect(vppHPSprayFlowCommand, vppHPSpraySource.IMassFlow);
   connect(vppHPBypassValve.C2, vppHPColdReheatVolume.Ce2);

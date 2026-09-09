@@ -101,6 +101,8 @@ class TurbineBypassPatchTests(unittest.TestCase):
         self.assertIn("vppHPBypassStroke95(unit=\"s\") = 0.300", patched)
         self.assertIn("vppLPBypassStroke95(unit=\"s\") = 0.400", patched)
         self.assertIn("vppSprayStroke95(unit=\"s\") = 0.050", patched)
+        self.assertIn("vppSpraySeatLeak = 1e-4", patched)
+        self.assertIn("max(vppSpraySeatLeak", patched)
         self.assertIn("vppHPBypassMassFlow = vppHPBypassValve.Q", patched)
         self.assertIn("vppHPBypassValve.rhoIn = vppHPSplitter.pro.d", patched)
         self.assertIn("vppLPBypassValve.rhoIn = vppLPSplitter.pro.d", patched)
