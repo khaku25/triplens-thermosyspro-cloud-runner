@@ -55,6 +55,8 @@ echo "Sampling profile: $sampling_profile"
 echo "Effective physical run: event=${event_time_s}s transition=${transition_duration_s}s stop=${stop_time_s}s intervals=$intervals"
 
 openmodelica_image="openmodelica/openmodelica:v1.27.0-minimal"
+dependency_timeout="${OPENMODELICA_DEPENDENCY_TIMEOUT:-5m}"
+simulation_timeout="${OPENMODELICA_SIMULATION_TIMEOUT:-20m}"
 thermosyspro_commit="db81ae1b5a6a85f6c6c7693244cafa6087e18ff5"
 
 mkdir -p build/omhome vendor
@@ -93,19 +95,21 @@ rm -f "$project_root/build/openmodelica-run.log"
 rm -rf "$project_root/outputs"
 mkdir -p "$project_root/outputs"
 
-docker run --rm \
-  -v "$project_root/build/omhome:/root" \
-  -v "$project_root:/workspace" \
-  -w /workspace \
-  "$openmodelica_image" \
-  omc /workspace/modelica/install_dependencies.mos
+timeout --signal=TERM --kill-after=30s "$dependency_timeout" \
+  docker run --rm \
+    -v "$project_root/build/omhome:/root" \
+    -v "$project_root:/workspace" \
+    -w /workspace \
+    "$openmodelica_image" \
+    omc /workspace/modelica/install_dependencies.mos
 
-docker run --rm \
-  -v "$project_root/build/omhome:/root" \
-  -v "$project_root:/workspace" \
-  -w /workspace \
-  "$openmodelica_image" \
-  omc /workspace/build/run.mos | tee "$project_root/build/openmodelica-run.log"
+timeout --signal=TERM --kill-after=30s "$simulation_timeout" \
+  docker run --rm \
+    -v "$project_root/build/omhome:/root" \
+    -v "$project_root:/workspace" \
+    -w /workspace \
+    "$openmodelica_image" \
+    omc /workspace/build/run.mos | tee "$project_root/build/openmodelica-run.log"
 
 if grep -Eq 'resultFile = ""|Failed to build model|Simulation execution failed' \
     "$project_root/build/openmodelica-run.log"; then
