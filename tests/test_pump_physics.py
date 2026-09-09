@@ -185,25 +185,24 @@ class PumpPhysicsTests(unittest.TestCase):
             self.assertIn("RAW CSV stopped early", completed.stderr)
             self.assertIn("METRICS FWP-HP: final_time=304", completed.stdout)
 
-    def test_renderer_freezes_gt_boundary_and_keeps_pump_as_only_initiator(self) -> None:
+    def test_renderer_schedules_unit_heat_rundown_without_rewiring_source(self) -> None:
         hp_model = transform(MINIMAL_UPSTREAM, trip_target=1, trip_time=300)
         self.assertIn(
-            "Table=[0,606.94; 10,606.94; 600,\n        606.94; 650,606.94]",
+            "Table=[0,606.94; 300,606.94; 305,50; 306,50]",
             hp_model,
         )
         self.assertIn(
-            "Table=[0,893.75; 10,893.75; 600,893.75; 650,893.75]",
+            "Table=[0,893.75; 300,893.75; 305,423; 306,423]",
             hp_model,
         )
-        self.assertIn("EmergencyExhaustGasRamp feedwaterTripRundown", hp_model)
-        self.assertIn("tripStartTime=pumpTripTime", hp_model)
-        self.assertIn("feedwaterTripRundown.trip.signal = not breakerHPClosed", hp_model)
-        self.assertIn("connect(Debit.y, feedwaterTripRundown.normalMassFlow)", hp_model)
-        self.assertIn("connect(feedwaterTripRundown.effectiveMassFlow, SourceFumees.IMassFlow)", hp_model)
-        self.assertNotIn("connect(Debit.y,SourceFumees. IMassFlow)", hp_model)
+        self.assertIn("connect(Debit.y,SourceFumees. IMassFlow)", hp_model)
+        self.assertIn(
+            "connect(Temperature.y,SourceFumees. ITemperature)", hp_model
+        )
+        self.assertNotIn("EmergencyExhaustGasRamp", hp_model)
+        self.assertNotIn("feedwaterTripRundown", hp_model)
         self.assertNotIn("cwPumpDrive", hp_model)
         self.assertNotIn("TripLens_RegularizedCondenser", hp_model)
-
 
 
 if __name__ == "__main__":
