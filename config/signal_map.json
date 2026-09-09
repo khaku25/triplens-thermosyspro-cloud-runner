@@ -164,6 +164,286 @@
         "PompeAlimHP.Wm",
         "bfp_hp_mechanical_power_w"
       ]
+    },
+    "fwp_hp_speed_rpm": {
+      "required": false,
+      "unit": "rpm",
+      "aliases": [
+        "driveHP.speedRpm",
+        "PompeAlimHP.VRot",
+        "PompeAlimHP.Vr",
+        "fwp_hp_speed_rpm"
+      ]
+    },
+    "fwp_hp_mass_flow_kg_s": {
+      "required": false,
+      "unit": "kg/s",
+      "aliases": [
+        "PompeAlimHP.Q",
+        "CapteurDebitEauHP.Q",
+        "CapteurDebitEauHP.Measure.signal",
+        "fwp_hp_mass_flow_kg_s"
+      ]
+    },
+    "fwp_hp_motor_torque_nm": {
+      "required": false,
+      "unit": "N.m",
+      "aliases": [
+        "driveHP.motorTorque",
+        "fwp_hp_motor_torque_nm"
+      ]
+    },
+    "fwp_hp_breaker_closed": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "breakerHPClosed",
+        "fwp_hp_breaker_closed"
+      ]
+    },
+    "fwp_hp_check_valve_open": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "checkValveHP.ouvert",
+        "fwp_hp_check_valve_open"
+      ]
+    },
+    "fwp_ip_speed_rpm": {
+      "required": false,
+      "unit": "rpm",
+      "aliases": [
+        "driveIP.speedRpm",
+        "PompeAlimMP.VRot",
+        "PompeAlimMP.Vr",
+        "fwp_ip_speed_rpm"
+      ]
+    },
+    "fwp_ip_mass_flow_kg_s": {
+      "required": false,
+      "unit": "kg/s",
+      "aliases": [
+        "PompeAlimMP.Q",
+        "CapteurDebitEauMP.Q",
+        "CapteurDebitEauMP.Measure.signal",
+        "fwp_ip_mass_flow_kg_s"
+      ]
+    },
+    "fwp_ip_motor_torque_nm": {
+      "required": false,
+      "unit": "N.m",
+      "aliases": [
+        "driveIP.motorTorque",
+        "fwp_ip_motor_torque_nm"
+      ]
+    },
+    "fwp_ip_breaker_closed": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "breakerIPClosed",
+        "fwp_ip_breaker_closed"
+      ]
+    },
+    "fwp_ip_check_valve_open": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "checkValveIP.ouvert",
+        "fwp_ip_check_valve_open"
+      ]
+    },
+    "fwp_lp_speed_rpm": {
+      "required": false,
+      "unit": "rpm",
+      "aliases": [
+        "driveLP.speedRpm",
+        "PompeAlimBP.VRot",
+        "PompeAlimBP.Vr",
+        "fwp_lp_speed_rpm"
+      ]
+    },
+    "fwp_lp_mass_flow_kg_s": {
+      "required": false,
+      "unit": "kg/s",
+      "aliases": [
+        "PompeAlimBP.Q",
+        "CapteurDebitEauBP.Q",
+        "CapteurDebitEauBP.Measure.signal",
+        "fwp_lp_mass_flow_kg_s"
+      ]
+    },
+    "fwp_lp_motor_torque_nm": {
+      "required": false,
+      "unit": "N.m",
+      "aliases": [
+        "driveLP.motorTorque",
+        "fwp_lp_motor_torque_nm"
+      ]
+    },
+    "fwp_lp_breaker_closed": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "breakerLPClosed",
+        "fwp_lp_breaker_closed"
+      ]
+    },
+    "fwp_lp_check_valve_open": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "checkValveLP.ouvert",
+        "fwp_lp_check_valve_open"
+      ]
+    },
+    "hp_drum_level_hh_pickup": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "hpDrumLevelHHPickup",
+        "hp_drum_level_hh_pickup"
+      ]
+    },
+    "hp_drum_level_ll_pickup": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "hpDrumLevelLLPickup",
+        "hp_drum_level_ll_pickup"
+      ]
+    },
+    "ip_drum_level_hh_pickup": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "ipDrumLevelHHPickup",
+        "ip_drum_level_hh_pickup"
+      ]
+    },
+    "ip_drum_level_ll_pickup": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "ipDrumLevelLLPickup",
+        "ip_drum_level_ll_pickup"
+      ]
+    },
+    "lp_drum_level_hh_pickup": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "lpDrumLevelHHPickup",
+        "lp_drum_level_hh_pickup"
+      ]
+    },
+    "lp_drum_level_ll_pickup": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "lpDrumLevelLLPickup",
+        "lp_drum_level_ll_pickup"
+      ]
+    },
+    "gt_trip_request": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "gtTripRequest",
+        "gt_trip_request"
+      ]
+    },
+    "st_trip_request": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "stTripRequest",
+        "st_trip_request"
+      ]
+    },
+    "gt_trip_latched": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "gtTripLatched",
+        "gt_trip_latched"
+      ]
+    },
+    "st_trip_latched": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "stTripLatched",
+        "st_trip_latched"
+      ]
+    },
+    "relay_86gt_trip_received": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "relay86GTTripReceived",
+        "relay_86gt_trip_received"
+      ]
+    },
+    "relay_86gt_operated": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "relay86GTOperated",
+        "relay_86gt_operated"
+      ]
+    },
+    "gt_52g_closed": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "gt52GClosed",
+        "gt_52g_closed"
+      ]
+    },
+    "st_52g_closed": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "st52GClosed",
+        "st_52g_closed"
+      ]
+    },
+    "gt_grid_electrical_power_w": {
+      "required": false,
+      "unit": "W",
+      "aliases": [
+        "gtGridElectricalPower",
+        "gt_grid_electrical_power_w"
+      ]
+    },
+    "st_grid_electrical_power_w": {
+      "required": false,
+      "unit": "W",
+      "aliases": [
+        "stGridElectricalPower",
+        "st_grid_electrical_power_w"
+      ]
     }
   }
 }
