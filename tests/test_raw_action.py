@@ -146,8 +146,8 @@ class RawOnlyActionTests(unittest.TestCase):
         mos = (ROOT / "modelica" / "run.mos.tpl").read_text(encoding="utf-8")
 
         self.assertIn("patch_turbine_bypass_model.py", runner)
-        self.assertIn("HPBP_LPBP_DYNAMIC_V10", runner)
-        self.assertIn("TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V10", runner)
+        self.assertIn("HPBP_LPBP_DYNAMIC_V11", runner)
+        self.assertIn("TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11", runner)
         self.assertIn("RAW simulation ended early", (
             ROOT / "scripts" / "build_raw_manifest.py"
         ).read_text(encoding="utf-8"))
@@ -268,8 +268,8 @@ class RawOnlyActionTests(unittest.TestCase):
                 "--output-intervals", "1000",
                 "--thermosyspro-commit", "test-commit",
                 "--openmodelica-image", "test-image",
-                "--model-variant", "HPBP_LPBP_DYNAMIC_V10",
-                "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V10",
+                "--model-variant", "HPBP_LPBP_DYNAMIC_V11",
+                "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11",
                 "--patched-model-sha256", "a"*64,
             )
             self.assertEqual(build.returncode, 0, build.stderr)

@@ -16,6 +16,12 @@ from patch_turbine_bypass_model import MARKER, patch_model  # noqa: E402
 UPSTREAM_STUB = """within ThermoSysPro.Examples.CombinedCyclePowerPlant;
 model CombinedCycle_TripTAC
   parameter Real CstHP(fixed=false,start=7618660.65374636);
+  ThermoSysPro.WaterSteam.PressureLosses.ControlValve vanne_entree_TurbineHP(
+    mode=0,
+    Cvmax=1);
+  ThermoSysPro.WaterSteam.PressureLosses.ControlValve vanne_entree_TurbineMP(
+    mode=0,
+    Cvmax=1);
 equation
   connect(ConstantVanneTurbineHP.y, vanne_entree_TurbineHP.Ouv);
   connect(ConstantVanneTurbineMP.y, vanne_entree_TurbineMP.Ouv);
@@ -69,7 +75,8 @@ class TurbineBypassPatchTests(unittest.TestCase):
         self.assertIn("model VPPPressureDrivenBypassValve", patched)
         self.assertEqual(patched.count("VPPPressureDrivenBypassValve vpp"), 2)
         self.assertIn("if noEvent(Ouv.signal <= closedEpsilon)", patched)
-        self.assertIn("Q = Cv*max(0.01, rhoIn)", patched)
+        self.assertIn("Q = Cv*rhoNom", patched)
+        self.assertNotIn("rhoIn", patched)
         self.assertNotIn("ControlValve vppHPBypassValve", patched)
         self.assertIn("vppHPMainFlow0 = 151.7690991976083", patched)
         self.assertIn("vppIPMainFlow0 = 176.7893383342879", patched)
@@ -105,12 +112,14 @@ class TurbineBypassPatchTests(unittest.TestCase):
         self.assertIn("vppAdmissionSeatLeak = 1e-3", patched)
         self.assertIn("vppHPBypassCvmax = 1890", patched)
         self.assertIn("vppLPBypassCvmax = 22000", patched)
+        self.assertIn("vppHPSteamDensity0 = 34", patched)
+        self.assertIn("vppHotReheatSteamDensity0 = 6.5", patched)
+        self.assertIn("p_rho=vppHPSteamDensity0", patched)
+        self.assertIn("p_rho=vppHotReheatSteamDensity0", patched)
         self.assertIn("then vppAdmissionSeatLeak else 0.8", patched)
         self.assertIn("then vppAdmissionSeatLeak else 1", patched)
         self.assertIn("max(vppSpraySeatLeak", patched)
         self.assertIn("vppHPBypassMassFlow = vppHPBypassValve.Q", patched)
-        self.assertIn("vppHPBypassValve.rhoIn = vppHPSplitter.pro.d", patched)
-        self.assertIn("vppLPBypassValve.rhoIn = vppLPSplitter.pro.d", patched)
         self.assertIn("vppCondenserPressure = Condenseur.P", patched)
 
     def test_patch_fails_closed_when_reapplied(self) -> None:

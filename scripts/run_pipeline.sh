@@ -138,8 +138,8 @@ python3 scripts/build_raw_manifest.py \
   --output-intervals "$intervals" \
   --thermosyspro-commit "$thermosyspro_commit" \
   --openmodelica-image "$openmodelica_image" \
-  --model-variant "HPBP_LPBP_DYNAMIC_V10" \
-  --source-patch-marker "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V10" \
+  --model-variant "HPBP_LPBP_DYNAMIC_V11" \
+  --source-patch-marker "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11" \
   --patched-model-sha256 "$patched_model_sha256"
 
 python3 scripts/validate_raw_outputs.py --output-dir outputs
