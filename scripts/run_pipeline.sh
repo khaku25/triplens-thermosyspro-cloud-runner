@@ -20,6 +20,8 @@ event_time_s="$requested_event_time_s"
 transition_duration_s="$requested_transition_duration_s"
 stop_time_s="$requested_stop_time_s"
 intervals="$requested_intervals"
+normal_operation=false
+operating_mode="trip-transient"
 
 case "$sampling_profile" in
   standard) ;;
@@ -44,6 +46,20 @@ PY
     stop_time_s=10
     intervals=10000
     ;;
+  normal_3min)
+    event_time_s=600
+    transition_duration_s=5
+    stop_time_s=180
+    intervals=1800
+    normal_operation=true
+    operating_mode="normal"
+    ;;
+  gt_trip_3min_10ms)
+    event_time_s=180
+    transition_duration_s=5
+    stop_time_s=190
+    intervals=19000
+    ;;
   *)
     echo "unknown sampling profile: $sampling_profile" >&2
     exit 2
@@ -52,6 +68,7 @@ esac
 
 echo "RAW-only ThermoSysPro run"
 echo "Sampling profile: $sampling_profile"
+echo "Operating mode: $operating_mode"
 echo "Effective physical run: event=${event_time_s}s transition=${transition_duration_s}s stop=${stop_time_s}s intervals=$intervals"
 
 openmodelica_image="openmodelica/openmodelica:v1.27.0-minimal"
@@ -61,11 +78,16 @@ thermosyspro_commit="db81ae1b5a6a85f6c6c7693244cafa6087e18ff5"
 
 mkdir -p build/omhome vendor
 
-python3 scripts/render_modelica.py \
-  --trip-time "$event_time_s" \
-  --trip-ramp-duration "$transition_duration_s" \
-  --stop-time "$stop_time_s" \
+render_arguments=(
+  --trip-time "$event_time_s"
+  --trip-ramp-duration "$transition_duration_s"
+  --stop-time "$stop_time_s"
   --intervals "$intervals"
+)
+if [[ "$normal_operation" == true ]]; then
+  render_arguments+=(--normal-operation)
+fi
+python3 scripts/render_modelica.py "${render_arguments[@]}"
 
 if [[ ! -e vendor/ThermoSysPro ]]; then
   git clone --no-checkout https://github.com/Dwarf-Planet-Project/ThermoSysPro.git vendor/ThermoSysPro
@@ -138,7 +160,7 @@ python3 scripts/build_raw_manifest.py \
   --output-intervals "$intervals" \
   --thermosyspro-commit "$thermosyspro_commit" \
   --openmodelica-image "$openmodelica_image" \
-  --model-variant "HPBP_LPBP_DYNAMIC_V11" \
+  --model-variant "HPBP_LPBP_PHYSICAL_V11" \
   --source-patch-marker "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11" \
   --patched-model-sha256 "$patched_model_sha256"
 

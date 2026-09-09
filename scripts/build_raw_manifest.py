@@ -80,7 +80,13 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(
         "--sampling-profile",
-        choices=("standard", "causal_100ms", "incident_1ms"),
+        choices=(
+            "standard",
+            "causal_100ms",
+            "incident_1ms",
+            "normal_3min",
+            "gt_trip_3min_10ms",
+        ),
         required=True,
     )
     parser.add_argument("--stop-time", type=float, required=True)

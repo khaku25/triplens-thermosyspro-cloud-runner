@@ -12,7 +12,7 @@ model TripLens_CombinedCycle_TripTAC
   parameter Real exhaustTemperatureTripped(unit="K") = 550.0;
 
   extends ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC(
-    vppTripTime=tripTime,
+    vppTripTime=@VPP_TRIP_TIME@,
     // Seed the routed steam path from the last verified normal operating
     // point. These are initialization guesses only; the fluid equations own
     // every value after initialization and throughout the Trip transient.
@@ -78,14 +78,8 @@ model TripLens_CombinedCycle_TripTAC
       C1(Q(start=196.6524916480812, nominal=200),
          h(start=2401030), h_vol(start=2401030)),
       C2(Q(start=196.6524916480812, nominal=200))),
-    Debit(Table=[0,exhaustFlowNormal;
-                 tripTime,exhaustFlowNormal;
-                 tripTime + tripRampDuration,exhaustFlowTripped;
-                 @STOP_TIME@,exhaustFlowTripped]),
-    Temperature(Table=[0,exhaustTemperatureNormal;
-                       tripTime,exhaustTemperatureNormal;
-                       tripTime + tripRampDuration,exhaustTemperatureTripped;
-                       @STOP_TIME@,exhaustTemperatureTripped]));
+    Debit(Table=@EXHAUST_FLOW_TABLE@),
+    Temperature(Table=@EXHAUST_TEMPERATURE_TABLE@));
 
   annotation(experiment(
     StartTime=0,

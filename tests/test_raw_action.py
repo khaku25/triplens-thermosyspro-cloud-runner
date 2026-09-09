@@ -146,13 +146,13 @@ class RawOnlyActionTests(unittest.TestCase):
         mos = (ROOT / "modelica" / "run.mos.tpl").read_text(encoding="utf-8")
 
         self.assertIn("patch_turbine_bypass_model.py", runner)
-        self.assertIn("HPBP_LPBP_DYNAMIC_V11", runner)
+        self.assertIn("HPBP_LPBP_PHYSICAL_V11", runner)
         self.assertIn("TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11", runner)
         self.assertIn("RAW simulation ended early", (
             ROOT / "scripts" / "build_raw_manifest.py"
         ).read_text(encoding="utf-8"))
         self.assertIn("resultFile = \"\"", runner)
-        self.assertIn("vppTripTime=tripTime", model)
+        self.assertIn("vppTripTime=@VPP_TRIP_TIME@", model)
         self.assertIn("HPBypassMassFlow", mos)
         self.assertIn("LPBypassMassFlow", mos)
         self.assertNotIn("nlssMaxDensity=0", mos)
@@ -268,7 +268,7 @@ class RawOnlyActionTests(unittest.TestCase):
                 "--output-intervals", "1000",
                 "--thermosyspro-commit", "test-commit",
                 "--openmodelica-image", "test-image",
-                "--model-variant", "HPBP_LPBP_DYNAMIC_V11",
+                "--model-variant", "HPBP_LPBP_PHYSICAL_V11",
                 "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11",
                 "--patched-model-sha256", "a"*64,
             )
@@ -278,6 +278,63 @@ class RawOnlyActionTests(unittest.TestCase):
             )
             self.assertEqual(validate.returncode, 0, validate.stderr)
             self.assertIn("DYNAMIC_BYPASS_VALIDATION_PASS", validate.stdout)
+
+    def test_three_minute_normal_raw_meets_reliability_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            raw = target / "thermosyspro-raw.csv"
+            columns = [
+                "time", "vppSTTripLatch", "vppHPAdmissionPos",
+                "vppIPAdmissionPos", "vppLPDrumAdmissionMultiplier",
+                "vppHPBypassCmd", "vppLPBypassCmd", "vppHPBypassPos",
+                "vppLPBypassPos", "vppHPSprayPos", "vppLPSprayPos",
+                "vppHPBypassOpenLS", "vppHPBypassCloseLS",
+                "vppLPBypassOpenLS", "vppLPBypassCloseLS",
+                "vppHPBypassMassFlow", "vppLPBypassMassFlow",
+                "vppHPSprayMassFlow", "vppLPSprayMassFlow",
+                "vppHPBypassInletPressure", "vppLPBypassInletPressure",
+                "vppHPBypassOutletPressure", "vppLPBypassOutletPressure",
+                "vppHPBypassInletTemperature", "vppLPBypassInletTemperature",
+                "vppHPBypassOutletTemperature", "vppLPBypassOutletTemperature",
+                "vppCondenserPressure", "vppCondenserLevel",
+                "Alternateur.Welec", "BallonHP.yLevel.signal",
+                "BallonMP.yLevel.signal", "BallonBP.yLevel.signal",
+                "BallonHP.P", "BallonMP.P", "BallonBP.P",
+                "TurbineHP.Q", "TurbineMP.Q", "TurbineBP.Q",
+            ]
+            row = [
+                0, False, 0.8, 0.8, 1.0, 0, 0, 0, 0, 0, 0,
+                False, True, False, True, 0, 0, 1e-4, 1e-4,
+                12681000, 2548600, 2726700, 6136, 813, 813, 723, 373,
+                6136, 1.5, 129400000, 1.05, 1.05, 1.75,
+                12681000, 2548600, 563775, 151.769, 176.789, 196.652,
+            ]
+            with raw.open("w", encoding="utf-8", newline="") as stream:
+                writer = csv.writer(stream)
+                writer.writerow(columns)
+                writer.writerow(row)
+                final = list(row)
+                final[0] = 180
+                writer.writerow(final)
+            build = self.run_script(
+                "build_raw_manifest.py",
+                "--raw-file", str(raw),
+                "--output", str(target / "raw-manifest.json"),
+                "--sampling-profile", "normal_3min",
+                "--stop-time", "180",
+                "--output-intervals", "1800",
+                "--thermosyspro-commit", "test-commit",
+                "--openmodelica-image", "test-image",
+                "--model-variant", "HPBP_LPBP_PHYSICAL_V11",
+                "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11",
+                "--patched-model-sha256", "b"*64,
+            )
+            self.assertEqual(build.returncode, 0, build.stderr)
+            validate = self.run_script(
+                "validate_raw_outputs.py", "--output-dir", str(target)
+            )
+            self.assertEqual(validate.returncode, 0, validate.stderr)
+            self.assertIn("NORMAL_OPERATION_RELIABILITY_PASS", validate.stdout)
 
     def test_partial_raw_run_is_rejected_before_manifest_creation(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

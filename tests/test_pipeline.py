@@ -145,6 +145,31 @@ class PipelineTests(unittest.TestCase):
             self.assertIn("Interval=0.001", model)
             self.assertIn("numberOfIntervals=10000", mos)
 
+    def test_render_modelica_supports_three_minute_normal_operation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.run_script(
+                "render_modelica.py",
+                "--trip-time", "600",
+                "--trip-ramp-duration", "5",
+                "--stop-time", "180",
+                "--intervals", "1800",
+                "--normal-operation",
+                "--output-dir", directory,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            model = (Path(directory) / "TripLens_CombinedCycle_TripTAC.mo").read_text()
+            self.assertIn("vppTripTime=181", model)
+            self.assertIn(
+                "Debit(Table=[0,exhaustFlowNormal; 180,exhaustFlowNormal])",
+                model,
+            )
+            self.assertIn(
+                "Temperature(Table=[0,exhaustTemperatureNormal; "
+                "180,exhaustTemperatureNormal])",
+                model,
+            )
+            self.assertNotIn("exhaustFlowTripped]", model)
+
     def test_normalizer_collapses_duplicate_event_times_to_last_state(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory)
@@ -909,9 +934,14 @@ class PipelineTests(unittest.TestCase):
         self.assertNotIn('"$COMMAND_SCENARIO"', workflow)
         self.assertIn("sampling_profile:", workflow)
         self.assertIn("incident_1ms", workflow)
+        self.assertIn("normal_3min", workflow)
+        self.assertIn("gt_trip_3min_10ms", workflow)
         self.assertIn('"$SAMPLING_PROFILE"', workflow)
         self.assertIn('--sampling-profile "$sampling_profile"', script)
         self.assertIn("intervals=10000", script)
+        self.assertIn("intervals=1800", script)
+        self.assertIn("intervals=19000", script)
+        self.assertIn("--normal-operation", script)
 
         unknown_profile = subprocess.run(
             [
