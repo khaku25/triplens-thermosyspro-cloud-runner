@@ -55,7 +55,10 @@ def normalize_typed_value(
     row_number: int,
 ) -> str:
     """Normalize a mapped value without changing the immutable source CSV."""
-    data_type = str(definition.get("data_type", "REAL")).strip().upper()
+    configured_type = definition.get("data_type")
+    if configured_type is None and definition.get("value_type") == "boolean":
+        configured_type = "BOOL"
+    data_type = str(configured_type or "REAL").strip().upper()
     if data_type == "REAL":
         return f"{parse_float(raw, field, row_number):.12g}"
     if data_type == "INTEGER":

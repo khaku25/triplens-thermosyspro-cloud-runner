@@ -1,0 +1,85 @@
+name: Validate all ThermoSysPro pump physics
+
+on:
+  workflow_dispatch:
+    inputs:
+      event_time_s:
+        description: Breaker opening time in seconds
+        required: true
+        default: "300"
+      stop_time_s:
+        description: Optional common stop time; blank uses each path's validated transient window
+        required: false
+        default: ""
+      output_intervals:
+        description: Optional common interval count; blank preserves 0.1 s output
+        required: false
+        default: ""
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/run-all-pump-physics.yml"
+      - "modelica/**"
+      - "scripts/render_pump_fleet_model.py"
+      - "scripts/run_pump_physics_pipeline.sh"
+      - "scripts/validate_pump_physics.py"
+      - "config/pump_physics_registry.csv"
+      - "config/signal_map.json"
+      - "tests/test_pump_physics.py"
+permissions:
+  contents: read
+
+concurrency:
+  group: pump-physics-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  simulate:
+    name: ${{ matrix.pump }} physical trip
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pump: FWP-HP
+            stop_time_s: "420"
+            output_intervals: "4200"
+          - pump: FWP-IP
+            stop_time_s: "420"
+            output_intervals: "4200"
+          - pump: FWP-LP
+            stop_time_s: "420"
+            output_intervals: "4200"
+    steps:
+      - name: Check out physical-model runner
+        uses: actions/checkout@v4
+
+      - name: Verify renderer and coverage contract
+        run: python3 -m unittest tests.test_pump_physics -v
+
+      - name: Run physical pump trip
+        env:
+          PUMP_ID: ${{ matrix.pump }}
+          EVENT_TIME_S: ${{ inputs.event_time_s || '300' }}
+          STOP_TIME_S: ${{ inputs.stop_time_s || matrix.stop_time_s }}
+          OUTPUT_INTERVALS: ${{ inputs.output_intervals || matrix.output_intervals }}
+        run: |
+          chmod +x scripts/run_pump_physics_pipeline.sh
+          scripts/run_pump_physics_pipeline.sh \
+            "$PUMP_ID" \
+            "$EVENT_TIME_S" \
+            "$STOP_TIME_S" \
+            "$OUTPUT_INTERVALS"
+
+      - name: Upload native RAW and unlabeled manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pump-physics-${{ matrix.pump }}-${{ github.run_number }}
+          path: |
+            outputs/pumps/**/thermosyspro-raw.csv
+            outputs/pumps/**/raw-manifest.json
+          if-no-files-found: warn
+          retention-days: 30

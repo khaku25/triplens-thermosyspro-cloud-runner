@@ -218,6 +218,7 @@
       "required": false,
       "unit": "rpm",
       "aliases": [
+        "PompeAlimHP.VRot",
         "PompeAlimHP.Vr",
         "arretPomesHP.y.signal",
         "FWP_HP.SPEED_RPM",
@@ -282,6 +283,210 @@
         "PompeAlimHP.Wm",
         "fwp_hp_mechanical_power_w",
         "bfp_hp_mechanical_power_w"
+      ]
+    },
+    "fwp_hp_breaker_closed": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "breakerHPClosed",
+        "fwp_hp_breaker_closed"
+      ]
+    },
+    "fwp_hp_motor_torque_nm": {
+      "required": false,
+      "unit": "N.m",
+      "aliases": [
+        "fwp_hp_motor_torque_nm"
+      ]
+    },
+    "fwp_hp_check_valve_open": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "fwp_hp_check_valve_open"
+      ]
+    },
+    "fwp_ip_speed_rpm": {
+      "required": false,
+      "unit": "rpm",
+      "aliases": [
+        "PompeAlimMP.VRot",
+        "PompeAlimMP.Vr",
+        "fwp_ip_speed_rpm"
+      ]
+    },
+    "fwp_ip_mass_flow_kg_s": {
+      "required": false,
+      "unit": "kg/s",
+      "aliases": [
+        "PompeAlimMP.Q",
+        "CapteurDebitEauMP.Q",
+        "CapteurDebitEauMP.Measure.signal",
+        "fwp_ip_mass_flow_kg_s"
+      ]
+    },
+    "fwp_ip_motor_torque_nm": {
+      "required": false,
+      "unit": "N.m",
+      "aliases": [
+        "fwp_ip_motor_torque_nm"
+      ]
+    },
+    "fwp_ip_breaker_closed": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "breakerIPClosed",
+        "fwp_ip_breaker_closed"
+      ]
+    },
+    "fwp_ip_check_valve_open": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "fwp_ip_check_valve_open"
+      ]
+    },
+    "lp_condensate_pump_speed_rpm": {
+      "required": false,
+      "unit": "rpm",
+      "aliases": [
+        "PompeAlimBP.VRot",
+        "PompeAlimBP.Vr",
+        "lp_condensate_pump_speed_rpm"
+      ]
+    },
+    "lp_condensate_pump_mass_flow_kg_s": {
+      "required": false,
+      "unit": "kg/s",
+      "aliases": [
+        "PompeAlimBP.Q",
+        "CapteurDebitEauCondenseur.Q",
+        "CapteurDebitEauCondenseur.Measure.signal",
+        "lp_condensate_pump_mass_flow_kg_s"
+      ]
+    },
+    "lp_condensate_pump_motor_torque_nm": {
+      "required": false,
+      "unit": "N.m",
+      "aliases": [
+        "lp_condensate_pump_motor_torque_nm"
+      ]
+    },
+    "lp_condensate_pump_breaker_closed": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "breakerLPClosed",
+        "lp_condensate_pump_breaker_closed"
+      ]
+    },
+    "lp_condensate_pump_check_valve_open": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "lp_condensate_pump_check_valve_open"
+      ]
+    },
+    "cw_pump_speed_rpm": {
+      "required": false,
+      "unit": "rpm",
+      "aliases": [
+        "cwPumpDrive.speedRpm",
+        "cw_pump_speed_rpm"
+      ]
+    },
+    "cw_pump_mass_flow_kg_s": {
+      "required": false,
+      "unit": "kg/s",
+      "aliases": [
+        "cwPumpDrive.massFlow.signal",
+        "cw_pump_mass_flow_kg_s"
+      ]
+    },
+    "cw_pump_motor_torque_nm": {
+      "required": false,
+      "unit": "N.m",
+      "aliases": [
+        "cwPumpDrive.motorTorque",
+        "cw_pump_motor_torque_nm"
+      ]
+    },
+    "cw_pump_breaker_closed": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "breakerCWClosed",
+        "cw_pump_breaker_closed"
+      ]
+    },
+    "cw_pump_check_valve_position": {
+      "required": false,
+      "unit": "pu",
+      "aliases": [
+        "cwPumpDrive.checkValvePosition",
+        "cw_pump_check_valve_position"
+      ]
+    },
+    "condenser_pressure_pa": {
+      "required": false,
+      "unit": "Pa",
+      "aliases": [
+        "Condenseur.P",
+        "TSP.COND.PRESS",
+        "condenser_pressure_pa"
+      ]
+    },
+    "st_backpressure_high": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "stBackpressureHigh",
+        "st_backpressure_high"
+      ]
+    },
+    "st_backpressure_trip_pickup": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "stBackpressureTripPickup",
+        "st_backpressure_trip_pickup"
+      ]
+    },
+    "st_trip_latched": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "stTripLatched",
+        "st_trip_latched"
+      ]
+    },
+    "st_52g_closed": {
+      "required": false,
+      "unit": "bool",
+      "value_type": "boolean",
+      "aliases": [
+        "st52GClosed",
+        "st_52g_closed"
+      ]
+    },
+    "st_grid_electrical_power_w": {
+      "required": false,
+      "unit": "W",
+      "aliases": [
+        "stGridElectricalPower",
+        "st_grid_electrical_power_w"
       ]
     }
   }
