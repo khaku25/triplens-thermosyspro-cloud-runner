@@ -119,40 +119,6 @@ package TripLens_PumpPhysics
     ouvert = opening > closedPosition;
   end SpringLoadedCheckValve;
 
-  model BoundaryMotorPump
-    "Motor-pump coastdown for an existing mass-flow boundary such as CW"
-    parameter Real nominalSpeedRpm(unit="rev/min") = 600;
-    parameter Modelica.SIunits.MassFlowRate nominalMassFlow = 29804.5;
-    parameter Real equivalentInertia = 1
-      "Equivalent normalized rotating inertia";
-    parameter Real coastdownTime(unit="s") = 8;
-    parameter Real restartTime(unit="s") = 2;
-    parameter Real valveCloseSpeedRatio = 0.08;
-    parameter Real valveTimeConstant(unit="s") = 0.25;
-
-    ThermoSysPro.InstrumentationAndControl.Connectors.InputLogical
-      breakerClosed;
-    ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal massFlow;
-
-    Real speedRatio(start=1, fixed=true);
-    Real checkValvePosition(start=1, fixed=true);
-    Real valveTarget;
-    Modelica.SIunits.Torque motorTorque;
-    Modelica.SIunits.Torque hydraulicTorque;
-    ThermoSysPro.Units.AngularVelocity_rpm speedRpm;
-
-  equation
-    speedRpm = nominalSpeedRpm*max(speedRatio, 0);
-    hydraulicTorque = equivalentInertia*max(speedRatio, 0)/coastdownTime;
-    motorTorque = if breakerClosed.signal then hydraulicTorque
-      + equivalentInertia*(1 - speedRatio)/restartTime else 0;
-    equivalentInertia*der(speedRatio) = motorTorque - hydraulicTorque;
-
-    valveTarget = if speedRatio > valveCloseSpeedRatio then 1 else 0;
-    der(checkValvePosition) = (valveTarget - checkValvePosition)/valveTimeConstant;
-    massFlow.signal = nominalMassFlow*max(speedRatio, 0)
-      *max(0, min(1, checkValvePosition));
-  end BoundaryMotorPump;
 
   model FastSteamTripValve
     "Finite-stroke steam trip valve; 52G opening remains instantaneous"
@@ -189,84 +155,136 @@ package TripLens_PumpPhysics
     effectiveOpening.signal = position;
   end FastSteamTripValve;
 
-  model EmergencyExhaustGasRamp
-    "Finite GT/HRSG heat-input rundown after total HP feedwater loss"
+  model ProtectedExhaustGasBoundary
+    "GT exhaust boundary controlled only by a resolved common trip request"
     parameter Modelica.SIunits.MassFlowRate minimumMassFlow=50;
     parameter Modelica.SIunits.Temperature minimumTemperature=423;
-    parameter Real tripTime(unit="s")=5;
+    parameter Real rundownTime(unit="s")=5;
 
     ThermoSysPro.InstrumentationAndControl.Connectors.InputReal normalMassFlow;
     ThermoSysPro.InstrumentationAndControl.Connectors.InputReal normalTemperature;
-    ThermoSysPro.InstrumentationAndControl.Connectors.InputLogical trip;
     ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal effectiveMassFlow;
     ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal effectiveTemperature;
-
-    Real rundown(start=0, fixed=true, min=0, max=1);
+    input Boolean gtTripLatched;
+    input Real gtTripElapsed(unit="s");
+    Real rundownFraction(min=0, max=1);
 
   equation
-    assert(minimumMassFlow >= 0 and minimumTemperature > 0 and tripTime > 0,
-      "EmergencyExhaustGasRamp parameters must be physical and positive");
-    der(rundown) = if trip.signal then (1 - rundown)/tripTime else 0;
+    assert(minimumMassFlow >= 0 and minimumTemperature > 0 and rundownTime > 0,
+      "ProtectedExhaustGasBoundary parameters must be physical and positive");
+    rundownFraction = if gtTripLatched then
+      1 - exp(-max(gtTripElapsed, 0)/rundownTime) else 0;
     effectiveMassFlow.signal = minimumMassFlow +
       (max(minimumMassFlow, normalMassFlow.signal) - minimumMassFlow)*
-      (1 - rundown);
+      (1 - rundownFraction);
     effectiveTemperature.signal = minimumTemperature +
       (max(minimumTemperature, normalTemperature.signal) - minimumTemperature)*
-      (1 - rundown);
-  end EmergencyExhaustGasRamp;
+      (1 - rundownFraction);
+  end ProtectedExhaustGasBoundary;
 
-  model BackpressureTurbineTrip
-    "Condenser-pressure protection with latched turbine and generator trip"
-    parameter Modelica.SIunits.AbsolutePressure nominalPressurePa=10000;
-    parameter Real highRatio=1.10;
-    parameter Real tripRatio=1.15;
-    parameter Real tripDelay(unit="s")=2;
-    parameter Real referenceTrackingTime(unit="s")=30;
-    parameter Real timerResetTime(unit="s")=0.1;
+  model CommonDrumTripProtection
+    "Layer 1 drum alarms, Layer 2 common matrix and Layer 3 breaker timing"
+    parameter Modelica.SIunits.Length hpHHThreshold=1.25;
+    parameter Modelica.SIunits.Length hpLLThreshold=0.85;
+    parameter Modelica.SIunits.Length ipHHThreshold=1.25;
+    parameter Modelica.SIunits.Length ipLLThreshold=0.85;
+    parameter Modelica.SIunits.Length lpHHThreshold=1.95;
+    parameter Modelica.SIunits.Length lpLLThreshold=1.55;
+    parameter Real alarmDelay(unit="s")=0.5;
+    parameter Real timerResetTime(unit="s")=0.05;
+    parameter Real gtReceiveDelay(unit="s")=0.020;
+    parameter Real gtLockoutDelay(unit="s")=0.035;
+    parameter Real gtBreakerDelay(unit="s")=0.080;
+    parameter Real stBreakerDelay(unit="s")=0.100;
 
-    ThermoSysPro.InstrumentationAndControl.Connectors.InputReal
-      condenserPressure;
-    ThermoSysPro.InstrumentationAndControl.Connectors.InputLogical armed;
-    ThermoSysPro.InstrumentationAndControl.Connectors.OutputLogical
-      highAlarm;
-    ThermoSysPro.InstrumentationAndControl.Connectors.OutputLogical
-      tripPickup;
-    ThermoSysPro.InstrumentationAndControl.Connectors.OutputLogical
-      tripLatched;
-    ThermoSysPro.InstrumentationAndControl.Connectors.OutputLogical
-      generatorBreakerClosed;
+    input Modelica.SIunits.Length hpDrumLevel;
+    input Modelica.SIunits.Length ipDrumLevel;
+    input Modelica.SIunits.Length lpDrumLevel;
 
-    Modelica.SIunits.AbsolutePressure referencePressure(
-      start=nominalPressurePa, fixed=true);
-    Modelica.SIunits.AbsolutePressure highSetpoint;
-    Modelica.SIunits.AbsolutePressure tripSetpoint;
-    Real persistenceTimer(unit="s", start=0, fixed=true);
-    discrete Boolean latched(start=false, fixed=true);
+    output Boolean hpDrumHH;
+    output Boolean hpDrumLL;
+    output Boolean ipDrumHH;
+    output Boolean ipDrumLL;
+    output Boolean lpDrumHH;
+    output Boolean lpDrumLL;
+    output Boolean hpDrumHHPickup;
+    output Boolean hpDrumLLPickup;
+    output Boolean ipDrumHHPickup;
+    output Boolean ipDrumLLPickup;
+    output Boolean lpDrumHHPickup;
+    output Boolean lpDrumLLPickup;
+    output Boolean gtTripRequest;
+    output Boolean stTripRequest;
+    output Boolean gtTripLatched(start=false, fixed=true);
+    output Boolean stTripLatched(start=false, fixed=true);
+    output Boolean relay86GTTripReceived;
+    output Boolean relay86GTOperated;
+    output Boolean breaker52GTClosed;
+    output Boolean breaker52STClosed;
+
+    Real hpHHTimer(start=0, fixed=true);
+    Real hpLLTimer(start=0, fixed=true);
+    Real ipHHTimer(start=0, fixed=true);
+    Real ipLLTimer(start=0, fixed=true);
+    Real lpHHTimer(start=0, fixed=true);
+    Real lpLLTimer(start=0, fixed=true);
+    Real gtSequenceTimer(start=0, fixed=true);
+    Real stSequenceTimer(start=0, fixed=true);
+
+  initial equation
+    gtTripLatched = false;
+    stTripLatched = false;
 
   equation
-    assert(highRatio > 1 and tripRatio > highRatio and tripDelay > 0,
-      "Backpressure trip requires 1 < highRatio < tripRatio and delay > 0");
+    assert(alarmDelay > 0 and timerResetTime > 0 and
+      gtReceiveDelay >= 0 and gtLockoutDelay >= 0 and
+      gtBreakerDelay >= 0 and stBreakerDelay >= 0,
+      "CommonDrumTripProtection delays must be non-negative");
 
-    der(referencePressure) = if armed.signal then 0 else
-      (max(condenserPressure.signal, 1000) - referencePressure)/
-      referenceTrackingTime;
-    highSetpoint = highRatio*referencePressure;
-    tripSetpoint = tripRatio*referencePressure;
-    highAlarm.signal = armed.signal and condenserPressure.signal >=
-      highSetpoint;
-    tripPickup.signal = armed.signal and condenserPressure.signal >=
-      tripSetpoint;
+    hpDrumHH = hpDrumLevel >= hpHHThreshold;
+    hpDrumLL = hpDrumLevel <= hpLLThreshold;
+    ipDrumHH = ipDrumLevel >= ipHHThreshold;
+    ipDrumLL = ipDrumLevel <= ipLLThreshold;
+    lpDrumHH = lpDrumLevel >= lpHHThreshold;
+    lpDrumLL = lpDrumLevel <= lpLLThreshold;
 
-    der(persistenceTimer) = if tripPickup.signal and not latched then 1
-      else if not tripPickup.signal then -persistenceTimer/timerResetTime
-      else 0;
+    der(hpHHTimer) = if hpDrumHH then 1 else -hpHHTimer/timerResetTime;
+    der(hpLLTimer) = if hpDrumLL then 1 else -hpLLTimer/timerResetTime;
+    der(ipHHTimer) = if ipDrumHH then 1 else -ipHHTimer/timerResetTime;
+    der(ipLLTimer) = if ipDrumLL then 1 else -ipLLTimer/timerResetTime;
+    der(lpHHTimer) = if lpDrumHH then 1 else -lpHHTimer/timerResetTime;
+    der(lpLLTimer) = if lpDrumLL then 1 else -lpLLTimer/timerResetTime;
 
-    when persistenceTimer >= tripDelay then
-      latched = true;
+    hpDrumHHPickup = hpHHTimer >= alarmDelay;
+    hpDrumLLPickup = hpLLTimer >= alarmDelay;
+    ipDrumHHPickup = ipHHTimer >= alarmDelay;
+    ipDrumLLPickup = ipLLTimer >= alarmDelay;
+    lpDrumHHPickup = lpHHTimer >= alarmDelay;
+    lpDrumLLPickup = lpLLTimer >= alarmDelay;
+
+    // common_trip_matrix.csv: any drum LL trips GT and ST; any HH trips ST.
+    gtTripRequest = hpDrumLLPickup or ipDrumLLPickup or lpDrumLLPickup;
+    stTripRequest = gtTripRequest or hpDrumHHPickup or ipDrumHHPickup or
+      lpDrumHHPickup;
+
+    when gtTripRequest then
+      gtTripLatched = true;
+    end when;
+    when stTripRequest then
+      stTripLatched = true;
     end when;
 
-    tripLatched.signal = latched;
-    generatorBreakerClosed.signal = not latched;
-  end BackpressureTurbineTrip;
+    der(gtSequenceTimer) = if gtTripLatched then 1 else 0;
+    der(stSequenceTimer) = if stTripLatched then 1 else 0;
+    relay86GTTripReceived = gtTripLatched and
+      gtSequenceTimer >= gtReceiveDelay;
+    relay86GTOperated = gtTripLatched and
+      gtSequenceTimer >= gtReceiveDelay + gtLockoutDelay;
+    breaker52GTClosed = not (gtTripLatched and gtSequenceTimer >=
+      gtReceiveDelay + gtLockoutDelay + gtBreakerDelay);
+    breaker52STClosed = not (stTripLatched and
+      stSequenceTimer >= stBreakerDelay);
+  end CommonDrumTripProtection;
+
 
 end TripLens_PumpPhysics;
