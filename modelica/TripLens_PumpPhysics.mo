@@ -2,9 +2,13 @@ within ;
 package TripLens_PumpPhysics
   "Reusable motor-breaker dynamics used by the TripLens ThermoSysPro adapters"
 
-  model BreakerTorqueDrive
-    "Ideal regulated motor while closed; zero electromagnetic torque when open"
+  model BreakerInertialPumpDrive
+    "Breaker motor and rotating inertia driving a native pump-speed input"
     parameter Real nominalSpeedRpm(unit="rev/min") = 1400;
+    parameter Modelica.SIunits.MomentOfInertia J = 100
+      "Combined motor and pump rotating inertia";
+    parameter Modelica.SIunits.Torque frictionTorqueNominal = 10
+      "Nominal positive-speed bearing and windage torque";
     parameter Real proportionalGain = 250
       "Speed controller gain in N.m/(rev/min)";
     parameter Real integralGain = 25
@@ -12,13 +16,22 @@ package TripLens_PumpPhysics
     parameter Modelica.SIunits.Torque initialTorque = 5000
       "Initial motor-torque guess used to preload the speed controller";
     parameter Modelica.SIunits.Torque torqueLimit = 1e5;
+    parameter Real torqueRegularizationSpeedRpm(unit="rev/min") = 30
+      "Low-speed regularization used to recover load torque from pump power";
 
     ThermoSysPro.InstrumentationAndControl.Connectors.InputLogical
       breakerClosed;
-    ThermoSysPro.ElectroMechanics.Connectors.MechanichalTorque shaft;
+    ThermoSysPro.InstrumentationAndControl.Connectors.InputReal pumpPower;
+    ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal speedCommand;
 
+    Modelica.SIunits.AngularVelocity angularSpeed(
+      start=nominalSpeedRpm*Modelica.Constants.pi/30,
+      fixed=true);
     ThermoSysPro.Units.AngularVelocity_rpm speedRpm;
     Modelica.SIunits.Torque motorTorque;
+    Modelica.SIunits.Torque hydraulicTorque;
+    Modelica.SIunits.Torque frictionTorque;
+    Modelica.SIunits.Torque netTorque;
     Real speedError(unit="rev/min");
     Real integralState(start=initialTorque/integralGain, fixed=false);
 
@@ -28,15 +41,28 @@ package TripLens_PumpPhysics
     integralState = initialTorque/integralGain;
 
   equation
-    speedRpm = 30/Modelica.Constants.pi*shaft.w;
+    speedRpm = 30/Modelica.Constants.pi*max(angularSpeed, 0);
+    speedCommand.signal = speedRpm;
     speedError = nominalSpeedRpm - speedRpm;
     der(integralState) = if breakerClosed.signal then speedError else 0;
 
     motorTorque = if breakerClosed.signal then noEvent(max(0, min(
       torqueLimit,
       proportionalGain*speedError + integralGain*integralState))) else 0;
-    shaft.Ctr = motorTorque;
-  end BreakerTorqueDrive;
+
+    // StaticCentrifugalPump exposes its mechanical load as Wm. Recover the
+    // opposing shaft torque smoothly so the expression remains finite at
+    // standstill, where a direct Wm/angularSpeed division would be singular.
+    hydraulicTorque = noEvent(max(pumpPower.signal, 0)*max(angularSpeed, 0)/(
+      angularSpeed^2 + (torqueRegularizationSpeedRpm*
+      Modelica.Constants.pi/30)^2));
+    frictionTorque = noEvent(if angularSpeed > 0 then
+      frictionTorqueNominal*min(1, angularSpeed/(
+      nominalSpeedRpm*Modelica.Constants.pi/30)) else 0);
+    netTorque = motorTorque - hydraulicTorque - frictionTorque;
+    der(angularSpeed) = if angularSpeed > 0 or netTorque > 0 then
+      netTorque/J else 0;
+  end BreakerInertialPumpDrive;
 
   model SpringLoadedIdealCheckValve
     "Ideal non-return valve with a spring-equivalent minimum closing flow"

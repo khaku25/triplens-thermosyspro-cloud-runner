@@ -2,15 +2,17 @@
 
 The pinned `CombinedCycle_TripTAC` model contains three static centrifugal
 pumps: `PompeAlimHP`, `PompeAlimMP`, and `PompeAlimBP`. For each isolated trip,
-TripLens renders a deterministic copy in which the selected path is replaced by
-a ThermoSysPro `DynamicCentrifugalPump`. The workflow matrix runs every path;
-the non-selected pumps retain their proven upstream steady-state definitions.
+TripLens retains the selected ThermoSysPro `StaticCentrifugalPump` hydraulic
+curve and replaces its prescribed RPM boundary with a dynamic motor-shaft state.
+The workflow matrix runs every path; the non-selected pumps retain their proven
+upstream steady-state definitions.
 
 Each connected motor pump follows this causal chain:
 
 1. the selected motor feeder breaker changes from closed to open;
 2. the connected drive sets electromagnetic motor torque to zero;
-3. the combined rotating inertia decelerates against hydraulic load;
+3. the combined rotating inertia follows `J*der(w) = motor torque - pump load
+   torque - friction torque`;
 4. pump head and mass flow change through the native pump curve;
 5. the spring-loaded ideal discharge check valve closes before forward flow
    reverses;
@@ -24,8 +26,8 @@ compatibility entry point and delegates to the dynamic runner.
 
 | Plant ID | Physical implementation |
 |---|---|
-| `FWP-HP` | `PompeAlimHP` dynamic pump, breaker drive, check valve |
-| `FWP-IP` | `PompeAlimMP` dynamic pump, breaker drive, check valve |
+| `FWP-HP` | `PompeAlimHP` native curve, dynamic shaft drive, check valve |
+| `FWP-IP` | `PompeAlimMP` native curve, dynamic shaft drive, check valve |
 | `FWP-LP` | Shared `PompeAlimBP` LP/condensate path |
 | `COND-PUMP` | Shared `PompeAlimBP` LP/condensate path |
 | `CW-PUMP` | Dynamic inertia/check-valve boundary connected to condenser cooling flow |

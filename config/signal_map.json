@@ -142,6 +142,7 @@
       "required": false,
       "unit": "rpm",
       "aliases": [
+        "driveHP.speedRpm",
         "PompeAlimHP.VRot",
         "PompeAlimHP.Vr",
         "arretPomesHP.y.signal",
@@ -196,7 +197,9 @@
       "required": false,
       "unit": "rpm",
       "aliases": [
+        "driveIP.speedRpm",
         "PompeAlimMP.VRot",
+        "PompeAlimMP.Vr",
         "fwp_ip_speed_rpm"
       ]
     },
@@ -240,7 +243,9 @@
       "required": false,
       "unit": "rpm",
       "aliases": [
+        "driveLP.speedRpm",
         "PompeAlimBP.VRot",
+        "PompeAlimBP.Vr",
         "lp_condensate_pump_speed_rpm"
       ]
     },

@@ -1,5 +1,5 @@
 equipment_id,display_name,plant_function,thermosyspro_component,trip_target,implementation_status,physical_response,notes
-FWP-HP,HP 급수펌프,HP drum feedwater,PompeAlimHP,1,DYNAMIC_CONNECTED,TSP.DRUM.HP.FW_FLOW,DynamicCentrifugalPump plus breaker torque and discharge check valve
+FWP-HP,HP 급수펌프,HP drum feedwater,PompeAlimHP,1,DYNAMIC_CONNECTED,TSP.DRUM.HP.FW_FLOW,Native pump curve plus breaker torque shaft inertia and discharge check valve
 FWP-IP,IP 급수펌프,IP drum feedwater,PompeAlimMP,2,DYNAMIC_CONNECTED,TSP.DRUM.IP.FW_FLOW,ThermoSysPro uses the French MP name for the IP pressure level
 FWP-LP,LP 급수펌프,LP feed and condensate extraction path,PompeAlimBP,3,SHARED_SIMPLIFIED_PATH,TSP.DRUM.LP.FW_FLOW,Pinned example collapses LP feed and condensate extraction into one physical pump
 COND-PUMP,복수펌프 계통,Condenser hotwell extraction,PompeAlimBP,3,SHARED_SIMPLIFIED_PATH,TSP.COND.COND_FLOW_OUT,Alias of the same simplified BP pump until plant P&ID separates the equipment

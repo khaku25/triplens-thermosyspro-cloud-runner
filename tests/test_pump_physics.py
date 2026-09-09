@@ -49,16 +49,20 @@ class PumpPhysicsTests(unittest.TestCase):
         for target, (component, axis) in pumps.items():
             with self.subTest(target=target):
                 model = transform(MINIMAL_UPSTREAM, trip_target=target, trip_time=300)
-                self.assertEqual(model.count("DynamicCentrifugalPump PompeAlim"), 1)
-                self.assertIn(f"DynamicCentrifugalPump {component}", model)
-                self.assertNotIn(f"{component}.rpm_or_mpower", model)
-                self.assertIn(f"BreakerTorqueDrive drive{axis}", model)
+                self.assertNotIn("DynamicCentrifugalPump PompeAlim", model)
+                self.assertEqual(model.count("StaticCentrifugalPump PompeAlim"), 3)
+                self.assertIn(f"StaticCentrifugalPump {component}", model)
+                self.assertIn(
+                    f"connect(drive{axis}.speedCommand, {component}.rpm_or_mpower)",
+                    model,
+                )
+                self.assertIn(
+                    f"drive{axis}.pumpPower.signal = {component}.Wm", model
+                )
+                self.assertIn(f"BreakerInertialPumpDrive drive{axis}", model)
                 self.assertIn(f"SpringLoadedIdealCheckValve checkValve{axis}", model)
                 self.assertIn(f"checkValve{axis}.C1", model)
                 self.assertIn(f"checkValve{axis}.C2", model)
-                self.assertIn("VRot0=1400", model)
-                self.assertIn("steady_state_mech=false", model)
-                self.assertIn("continuous_flow_reversal=false", model)
                 for normal_component in all_components.difference({component}):
                     self.assertIn(
                         f"StaticCentrifugalPump {normal_component}", model

@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Build a TripLens model with physical motor-pump coastdown.
 
-The pinned ThermoSysPro combined-cycle example contains three static pumps and
-one fixed cooling-water mass-flow boundary. Each run replaces the selected
-static pump with DynamicCentrifugalPump, inserts its discharge check valve, and
-connects a breaker-controlled zero-torque drive. Isolating the selected path
-preserves the upstream steady-state initialization; the workflow matrix covers
-every available path. The cooling-water boundary receives equivalent
-breaker/inertia semantics because the upstream example has no CW hydraulic loop.
+The pinned ThermoSysPro combined-cycle example contains three centrifugal pumps
+and one fixed cooling-water mass-flow boundary. Each run retains the selected
+pump's native hydraulic curve, replaces its prescribed RPM source with a
+breaker/motor/shaft-inertia state, and inserts its discharge check valve. This
+preserves the upstream hydraulic initialization while making coastdown dynamic.
+The workflow matrix covers every available path. The cooling-water boundary
+receives equivalent breaker/inertia semantics because the upstream example has
+no CW hydraulic loop.
 """
 
 from __future__ import annotations
@@ -122,7 +123,7 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
         )
 
     header = f'''model {MODEL_NAME}
-  "Combined cycle with breaker, shaft inertia, pump curve and check valves"
+  "Combined cycle with breaker, dynamic shaft inertia and check valves"
   parameter Integer tripTarget = {trip_target}
     "0:none, 1:HP FWP, 2:IP FWP, 3:LP/condensate path, 4:CW";
   parameter Real pumpTripTime(unit="s") = {trip_time:.12g};'''
@@ -185,31 +186,19 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
         name = str(selected["component"])
         axis = str(selected["axis"])
         initial_torque = int(selected["initial_torque"])
-        parameters = (
-            f"    J={selected['inertia']},\n"
-            f"    Cf0={selected['friction']},\n"
-            "    VRot0=1400,\n"
-            "    steady_state_mech=false,\n"
-            "    dynamic_energy_balance=false,\n"
-            "    continuous_flow_reversal=false,\n"
-            f"    Cm(start={initial_torque}),\n"
-            f"    Ch(start={initial_torque}),\n"
-            "    w(start=146.607657),\n"
-        )
-        old = (
+        pump_declaration = (
             "ThermoSysPro.WaterSteam.Machines.StaticCentrifugalPump "
             f"{name}(\n"
         )
-        new = (
-            "ThermoSysPro.WaterSteam.Machines.DynamicCentrifugalPump "
-            f"{name}(\n{parameters}"
-        )
-        text = replace_once(text, old, new, f"dynamic replacement for {name}")
+        if text.count(pump_declaration) != 1:
+            raise ValueError(f"native pump declaration is missing for {name}")
         declarations.append(f'''
   // The selected electrical state is visible in native RAW.
   Boolean breaker{axis}Closed;
-  TripLens_PumpPhysics.BreakerTorqueDrive drive{axis}(
+  TripLens_PumpPhysics.BreakerInertialPumpDrive drive{axis}(
     nominalSpeedRpm=1400,
+    J={selected["inertia"]},
+    frictionTorqueNominal={selected["friction"]},
     initialTorque={initial_torque},
     torqueLimit={selected["torque_limit"]});
   TripLens_PumpPhysics.SpringLoadedIdealCheckValve checkValve{axis}(
@@ -220,7 +209,8 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
         equations.append(f'''
   breaker{axis}Closed = not (time >= pumpTripTime);
   drive{axis}.breakerClosed.signal = breaker{axis}Closed;
-  connect(drive{axis}.shaft, {name}.M);
+  drive{axis}.pumpPower.signal = {name}.Wm;
+  connect(drive{axis}.speedCommand, {name}.rpm_or_mpower);
 ''')
         text = replace_statement(
             text,
@@ -262,6 +252,8 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
         declaration_text + "\nequation\n" + equation_text,
         "pump declarations and equations",
     )
+    if selected and text.count(f"{name}.rpm_or_mpower") != 1:
+        raise ValueError(f"unexpected speed connection count for {name}")
     return text
 
 

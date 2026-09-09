@@ -13,7 +13,7 @@ FIELD_SETS = {
     "FWP-HP": {
         "breaker": "breakerHPClosed",
         "torque": "driveHP.motorTorque",
-        "speed": "PompeAlimHP.VRot",
+        "speed": "driveHP.speedRpm",
         "valve": "checkValveHP.ouvert",
         "flow": "PompeAlimHP.Q",
         "process": ("BallonHP.yLevel.signal", "BallonHP.P"),
@@ -21,7 +21,7 @@ FIELD_SETS = {
     "FWP-IP": {
         "breaker": "breakerIPClosed",
         "torque": "driveIP.motorTorque",
-        "speed": "PompeAlimMP.VRot",
+        "speed": "driveIP.speedRpm",
         "valve": "checkValveIP.ouvert",
         "flow": "PompeAlimMP.Q",
         "process": ("BallonMP.yLevel.signal", "BallonMP.P"),
@@ -29,7 +29,7 @@ FIELD_SETS = {
     "FWP-LP": {
         "breaker": "breakerLPClosed",
         "torque": "driveLP.motorTorque",
-        "speed": "PompeAlimBP.VRot",
+        "speed": "driveLP.speedRpm",
         "valve": "checkValveLP.ouvert",
         "flow": "PompeAlimBP.Q",
         "process": ("Condenseur.yNiveau.signal", "BallonBP.yLevel.signal"),
@@ -37,7 +37,7 @@ FIELD_SETS = {
     "COND-PUMP": {
         "breaker": "breakerLPClosed",
         "torque": "driveLP.motorTorque",
-        "speed": "PompeAlimBP.VRot",
+        "speed": "driveLP.speedRpm",
         "valve": "checkValveLP.ouvert",
         "flow": "PompeAlimBP.Q",
         "process": ("Condenseur.yNiveau.signal", "BallonBP.yLevel.signal"),
