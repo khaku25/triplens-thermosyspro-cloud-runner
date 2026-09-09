@@ -33,6 +33,9 @@ model CombinedCycle_TripTAC
   ThermoSysPro.WaterSteam.HeatExchangers.SimpleDynamicCondenser Condenseur(
     V=1);
   ThermoSysPro.WaterSteam.Machines.Generator Alternateur;
+  ThermoSysPro.WaterSteam.Machines.StodolaTurbine TurbineHP;
+  ThermoSysPro.WaterSteam.Machines.StodolaTurbine TurbineMP;
+  ThermoSysPro.WaterSteam.Machines.StodolaTurbine TurbineBP;
   ThermoSysPro.WaterSteam.PressureLosses.ControlValve
     vanne_entree_TurbineHP;
   ThermoSysPro.WaterSteam.PressureLosses.ControlValve
@@ -69,6 +72,7 @@ class PumpPhysicsTests(unittest.TestCase):
                 model = transform(MINIMAL_UPSTREAM, trip_target=target, trip_time=300)
                 self.assertNotIn("DynamicCentrifugalPump PompeAlim", model)
                 self.assertEqual(model.count("StaticCentrifugalPump PompeAlim"), 3)
+                self.assertEqual(model.count("TripLens_RegularizedStodolaTurbine Turbine"), 3)
                 self.assertIn(f"StaticCentrifugalPump {component}", model)
                 self.assertIn(
                     f"connect(drive{axis}.speedCommand, {component}.rpm_or_mpower)",
