@@ -165,10 +165,89 @@ def main() -> int:
     if max(process_changes, default=0) <= 1e-7:
         raise ValueError("downstream ThermoSysPro process did not respond")
 
+    protection_names = {
+        "hp_hh": "hpDrumLevelHHPickup",
+        "hp_ll": "hpDrumLevelLLPickup",
+        "ip_hh": "ipDrumLevelHHPickup",
+        "ip_ll": "ipDrumLevelLLPickup",
+        "lp_hh": "lpDrumLevelHHPickup",
+        "lp_ll": "lpDrumLevelLLPickup",
+        "gt_request": "gtTripRequest",
+        "st_request": "stTripRequest",
+        "gt_latched": "gtTripLatched",
+        "st_latched": "stTripLatched",
+        "relay_received": "relay86GTTripReceived",
+        "relay_operated": "relay86GTOperated",
+        "gt_breaker": "gt52GClosed",
+        "st_breaker": "st52GClosed",
+        "gt_grid_power": "gtGridElectricalPower",
+        "st_grid_power": "stGridElectricalPower",
+    }
+    protection = {
+        key: resolve(headers, raw_name)
+        for key, raw_name in protection_names.items()
+    }
+
+    first_post = post[0]
+    if logical(first_post, protection["gt_latched"]) or logical(
+        first_post, protection["st_latched"]
+    ):
+        raise ValueError(
+            "plant trip latched directly with the pump breaker; "
+            "common drum protection was bypassed"
+        )
+
+    gt_latched = logical(after, protection["gt_latched"])
+    st_latched = logical(after, protection["st_latched"])
+    if not st_latched:
+        raise ValueError("no drum HH/LL common trip reached within the simulation")
+    ll_pickup = any(
+        logical(after, protection[key]) for key in ("hp_ll", "ip_ll", "lp_ll")
+    )
+    hh_pickup = any(
+        logical(after, protection[key]) for key in ("hp_hh", "ip_hh", "lp_hh")
+    )
+    if gt_latched and not ll_pickup:
+        raise ValueError("GT Trip latched without a persisted drum LL pickup")
+    if not (ll_pickup or hh_pickup):
+        raise ValueError("ST Trip latched without a persisted drum HH/LL pickup")
+
+    if logical(after, protection["st_breaker"]):
+        raise ValueError("52ST did not open after the resolved ST Trip")
+    if abs(number(after, protection["st_grid_power"])) > 1:
+        raise ValueError("ST grid power did not become zero after 52ST opened")
+    if gt_latched:
+        if logical(after, protection["gt_breaker"]):
+            raise ValueError("52GT did not open after the resolved GT Trip")
+        if abs(number(after, protection["gt_grid_power"])) > 1:
+            raise ValueError("GT grid power did not become zero after 52GT opened")
+        if not logical(after, protection["relay_received"]) or not logical(
+            after, protection["relay_operated"]
+        ):
+            raise ValueError("86GT receive/operate sequence did not complete")
+
+    first_trip = next(
+        row
+        for row in post
+        if logical(row, protection["gt_latched"])
+        or logical(row, protection["st_latched"])
+    )
+    trip_time = number(first_trip, time_field)
+    trip_kind = "GT+ST" if logical(first_trip, protection["gt_latched"]) else "ST"
+    print(
+        f"TRIP {args.pump_id}: kind={trip_kind} time={trip_time:.9g} "
+        f"52GT={'CLOSED' if logical(after, protection['gt_breaker']) else 'OPEN'} "
+        f"52ST={'CLOSED' if logical(after, protection['st_breaker']) else 'OPEN'} "
+        f"GT_grid_W={number(after, protection['gt_grid_power']):.9g} "
+        f"ST_grid_W={number(after, protection['st_grid_power']):.9g}",
+        flush=True,
+    )
+
     print(
         f"PASS {args.pump_id}: breaker open -> torque zero -> "
         f"speed {initial_speed:.3f}->{final_speed:.3f} -> "
-        f"flow {initial_flow:.6g}->{final_flow:.6g} -> process response"
+        f"flow {initial_flow:.6g}->{final_flow:.6g} -> process response -> "
+        f"drum protection -> {trip_kind} breaker trip"
     )
     return 0
 
