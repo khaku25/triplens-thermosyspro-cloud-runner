@@ -23,10 +23,9 @@ package TripLens_PumpPhysics
     Real integralState(start=initialTorque/integralGain, fixed=false);
 
   initial equation
-    // Solve the integrator preload from the connected pump load. This keeps
-    // the original steady-state operating point without prescribing a fake
-    // residual RPM after a trip.
-    der(integralState) = 0;
+    // Start from an estimated normal-load torque, then let the PI controller
+    // settle during the pre-trip warm-up. No post-trip residual RPM is imposed.
+    integralState = initialTorque/integralGain;
 
   equation
     speedRpm = 30/Modelica.Constants.pi*shaft.w;

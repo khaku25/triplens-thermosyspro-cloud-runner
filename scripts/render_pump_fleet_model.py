@@ -179,9 +179,10 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
         parameters = (
             f"    J={selected['inertia']},\n"
             f"    Cf0={selected['friction']},\n"
-            "    steady_state_mech=true,\n"
+            "    VRot0=1400,\n"
+            "    steady_state_mech=false,\n"
             "    dynamic_energy_balance=false,\n"
-            "    continuous_flow_reversal=true,\n"
+            "    continuous_flow_reversal=false,\n"
             f"    Cm(start={initial_torque}),\n"
             f"    Ch(start={initial_torque}),\n"
             "    w(start=146.607657),\n"
@@ -203,7 +204,7 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
     initialTorque={initial_torque},
     torqueLimit={selected["torque_limit"]});
   ThermoSysPro.WaterSteam.PressureLosses.IdealCheckValve checkValve{axis}(
-    dPOuvert=0.01, Qmin=1e-6, continuous_flow_reversal=true);
+    dPOuvert=0.01, Qmin=1e-6, continuous_flow_reversal=false);
 ''')
         equations.append(f'''
   breaker{axis}Closed = not (time >= pumpTripTime);
