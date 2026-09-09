@@ -63,11 +63,14 @@ class TurbineBypassPatchTests(unittest.TestCase):
             "connect(vppLPSpraySource.C, vppCondenserSteamVolume.Ce3)",
             patched,
         )
-        self.assertIn("dynamic_mass_balance=true", patched)
-        self.assertIn("dynamic_mass_balance=false", patched)
+        self.assertEqual(patched.count("dynamic_mass_balance=false"), 2)
         self.assertEqual(patched.count("steady_state=true"), 2)
         self.assertIn("parameter Real vppValveLeak = 0", patched)
-        self.assertEqual(patched.count("continuous_flow_reversal=true"), 2)
+        self.assertIn("model VPPPressureDrivenBypassValve", patched)
+        self.assertEqual(patched.count("VPPPressureDrivenBypassValve vpp"), 2)
+        self.assertIn("if noEvent(Ouv.signal <= closedEpsilon)", patched)
+        self.assertIn("Q = Cv*max(0.01, rhoIn)", patched)
+        self.assertNotIn("ControlValve vppHPBypassValve", patched)
         self.assertIn("vppHPMainFlow0 = 151.7690991976083", patched)
         self.assertIn("vppIPMainFlow0 = 176.7893383342879", patched)
         self.assertIn("vppCondenserSteamFlow0 =", patched)
@@ -99,6 +102,8 @@ class TurbineBypassPatchTests(unittest.TestCase):
         self.assertIn("vppLPBypassStroke95(unit=\"s\") = 0.400", patched)
         self.assertIn("vppSprayStroke95(unit=\"s\") = 0.050", patched)
         self.assertIn("vppHPBypassMassFlow = vppHPBypassValve.Q", patched)
+        self.assertIn("vppHPBypassValve.rhoIn = vppHPSplitter.pro.d", patched)
+        self.assertIn("vppLPBypassValve.rhoIn = vppLPSplitter.pro.d", patched)
         self.assertIn("vppCondenserPressure = Condenseur.P", patched)
 
     def test_patch_fails_closed_when_reapplied(self) -> None:

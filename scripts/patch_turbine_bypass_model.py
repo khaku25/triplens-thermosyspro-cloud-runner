@@ -16,10 +16,41 @@ import tempfile
 from pathlib import Path
 
 
-MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V7"
+MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V8"
 
 
 PARAMETERS = f'''  // {MARKER}
+  model VPPPressureDrivenBypassValve
+    "One-way Cv valve with a numerically isolated fully closed state"
+    parameter ThermoSysPro.Units.Cv Cvmax=8000;
+    parameter Real closedEpsilon=1e-9;
+    ThermoSysPro.InstrumentationAndControl.Connectors.InputReal Ouv;
+    ThermoSysPro.WaterSteam.Connectors.FluidInlet C1;
+    ThermoSysPro.WaterSteam.Connectors.FluidOutlet C2;
+    ThermoSysPro.Units.Cv Cv(start=0);
+    ThermoSysPro.Units.DifferentialPressure deltaP;
+    Modelica.SIunits.MassFlowRate Q(start=0);
+    Modelica.SIunits.Density rhoIn(start=10);
+  equation
+    C1.Q = C2.Q;
+    C1.h = C2.h;
+    Q = C1.Q;
+    Cv = Ouv.signal*Cvmax;
+    deltaP = C1.P - C2.P;
+
+    // A fully closed valve must not pull downstream pressure/enthalpy into
+    // the upstream IF97 initialization loop. Once it begins to open, the
+    // branch uses the same Cv pressure-flow correlation as ControlValve.
+    if noEvent(Ouv.signal <= closedEpsilon) then
+      Q = 0;
+      C1.h = 0.5*(C1.h_vol + C2.h_vol);
+    else
+      Q = Cv*max(0.01, rhoIn)
+        *sqrt(noEvent(max(0, deltaP))/1.733e12);
+      C1.h = C1.h_vol;
+    end if;
+  end VPPPressureDrivenBypassValve;
+
   parameter Real vppTripTime(unit="s") = 600
     "Resolved ST Trip time for the physical GT Trip adapter";
   parameter Real vppAdmissionStroke95(unit="s") = 0.150
@@ -104,14 +135,11 @@ COMPONENTS = '''
         h(start=3450835), h_vol(start=3450835)),
     Cs2(Q(start=0, nominal=200),
         h(start=3248547.5), h_vol(start=3450835)));
-  ThermoSysPro.WaterSteam.PressureLosses.ControlValve vppHPBypassValve(
+  VPPPressureDrivenBypassValve vppHPBypassValve(
     Cvmax=vppHPBypassCvmax,
-    mode=2,
-    continuous_flow_reversal=true,
     Q(start=0, nominal=200),
     Cv(start=vppValveLeak*vppHPBypassCvmax),
-    h(start=3248547.5, nominal=3.5e6),
-    Pm(start=7703850, nominal=1e7),
+    rhoIn(start=34),
     C1(P(start=12681000), Q(start=0, nominal=200),
        h(start=3248547.5), h_vol(start=3450835)),
     C2(P(start=2726700), Q(start=0, nominal=200),
@@ -122,7 +150,10 @@ COMPONENTS = '''
     vppHPSprayFlowCommand;
   ThermoSysPro.WaterSteam.Volumes.VolumeC vppHPColdReheatVolume(
     V=vppHPHeaderVolume,
-    dynamic_mass_balance=true,
+    // Steam-cycle storage already supplies the pressure states. This header
+    // contributes finite thermal hold-up without duplicating an ideal-node
+    // pressure state.
+    dynamic_mass_balance=false,
     steady_state=true,
     mode=0,
     P(start=2726700, nominal=3e6),
@@ -146,14 +177,11 @@ COMPONENTS = '''
         h(start=3523910), h_vol(start=3523910)),
     Cs2(Q(start=0, nominal=200),
         h(start=2962470), h_vol(start=3523910)));
-  ThermoSysPro.WaterSteam.PressureLosses.ControlValve vppLPBypassValve(
+  VPPPressureDrivenBypassValve vppLPBypassValve(
     Cvmax=vppLPBypassCvmax,
-    mode=2,
-    continuous_flow_reversal=true,
     Q(start=0, nominal=200),
     Cv(start=vppValveLeak*vppLPBypassCvmax),
-    h(start=2962470, nominal=3e6),
-    Pm(start=1277368, nominal=2e6),
+    rhoIn(start=6.5),
     C1(P(start=2548600), Q(start=0, nominal=200),
        h(start=2962470), h_vol(start=3523910)),
     C2(P(start=6136), Q(start=0, nominal=200),
@@ -232,6 +260,8 @@ EQUATIONS = '''
     regulation_Niveau_BP.SortieReelle1.signal*vppLPDrumAdmissionMultiplier;
   vppHPBypassValve.Ouv.signal = vppHPBypassPos;
   vppLPBypassValve.Ouv.signal = vppLPBypassPos;
+  vppHPBypassValve.rhoIn = vppHPSplitter.pro.d;
+  vppLPBypassValve.rhoIn = vppLPSplitter.pro.d;
   vppHPSprayFlowCommand.signal = noEvent(max(0, vppHPBypassValve.Q))
     *vppHPSprayRatio*vppHPSprayPos;
   vppLPSprayFlowCommand.signal = noEvent(max(0, vppLPBypassValve.Q))
