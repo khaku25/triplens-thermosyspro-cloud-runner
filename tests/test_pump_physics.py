@@ -195,11 +195,22 @@ class PumpPhysicsTests(unittest.TestCase):
             "Table=[0,893.75; 10,893.75; 600,893.75; 650,893.75]",
             hp_model,
         )
-        self.assertIn("connect(Debit.y,SourceFumees. IMassFlow)", hp_model)
         self.assertIn(
-            "connect(Temperature.y,SourceFumees. ITemperature)", hp_model
+            "EmergencyExhaustGasRamp feedwaterTripRundown",ันวาคม
+            hp_model,
         )
-        self.assertNotIn("EmergencyExhaustGasRamp", hp_model)
+        self.assertIn(
+            "feedwaterTripRundown.trip.signal = not breakerHPClosed", hp_model
+        )
+        self.assertIn(
+            "connect(feedwaterTripRundown.effectiveMassFlow, SourceFumees.IMassFlow)",
+            hp_model,
+        )
+        self.assertIn(
+            "connect(feedwaterTripRundown.effectiveTemperature, SourceFumees.ITemperature)",
+            hp_model,
+        )
+        self.assertNotIn("connect(Debit.y,SourceFumees. IMassFlow)", hp_model)
         self.assertNotIn("cwPumpDrive", hp_model)
         self.assertNotIn("TripLens_RegularizedCondenser", hp_model)
 
