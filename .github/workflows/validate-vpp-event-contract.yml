@@ -46,7 +46,7 @@ jobs:
       - name: Test Event Observer and external boundary
         run: python3 -m unittest tests.test_vpp_event_contract -v
 
-      - name: Build one-file public Event bundle
+      - name: Build VPP and ECMS Event outputs
         run: |
           python3 scripts/build_vpp_event_bundle.py \
             --bundle-dir outputs/vpp-final \
@@ -58,17 +58,19 @@ jobs:
       - name: Prove both consumers are Event-only
         run: |
           python3 scripts/read_event_feed.py \
-            --event outputs/vpp-final/public/EVENT.csv \
+            --event outputs/vpp-final/public/VPP_EVENT.csv \
             --consumer alarm-console
           python3 scripts/read_event_feed.py \
-            --event outputs/vpp-final/public/EVENT.csv \
+            --event outputs/vpp-final/public/ECMS_EVENT.csv \
             --consumer triplens-ai
 
       - name: Upload Alarm Console and AI input only
         uses: actions/upload-artifact@v4
         with:
           name: vpp-event-only-${{ github.run_number }}
-          path: outputs/vpp-final/public/EVENT.csv
+          path: |
+            outputs/vpp-final/public/VPP_EVENT.csv
+            outputs/vpp-final/public/ECMS_EVENT.csv
           if-no-files-found: error
           retention-days: 30
 
