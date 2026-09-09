@@ -16,7 +16,7 @@ import tempfile
 from pathlib import Path
 
 
-MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V6"
+MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V7"
 
 
 PARAMETERS = f'''  // {MARKER}
@@ -123,10 +123,8 @@ COMPONENTS = '''
   ThermoSysPro.WaterSteam.Volumes.VolumeC vppHPColdReheatVolume(
     V=vppHPHeaderVolume,
     dynamic_mass_balance=true,
-    steady_state=false,
+    steady_state=true,
     mode=0,
-    P0=2726700,
-    h0=3046260,
     P(start=2726700, nominal=3e6),
     h(start=3046260, nominal=3.2e6),
     Ce1(Q(start=vppHPMainFlow0, nominal=200),
@@ -170,9 +168,8 @@ COMPONENTS = '''
     // This header retains its own thermal hold-up without duplicating that
     // pressure state across an ideal (zero-pressure-drop) sensor connection.
     dynamic_mass_balance=false,
-    steady_state=false,
+    steady_state=true,
     mode=0,
-    h0=2401030,
     P(start=6136, nominal=1e4),
     h(start=2401030, nominal=2.5e6),
     Ce1(Q(start=vppCondenserSteamFlow0, nominal=200),
