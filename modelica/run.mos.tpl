@@ -14,10 +14,11 @@ simulate(
   tolerance=1e-3,
   method="dassl",
   outputFormat="csv",
-  // Cap KINSOL trial steps so an initialization iterate cannot leave the
-  // valid IF97 pressure/enthalpy domain. The model still uses the automatic
-  // sparse/dense nonlinear-solver selection.
-  simflags="-noEventEmit -newtonMaxStepFactor=10 -lv=LOG_NLS",
+  // The routed steam path is seeded from a previously verified normal state.
+  // Skip only the separate symbolic initialization solve, whose exploratory
+  // Newton iterates leave the valid IF97 domain; the complete DAE remains
+  // active from t=0 and throughout the Trip transient.
+  simflags="-noEventEmit -iim=none -lv=LOG_INIT,LOG_NLS",
   fileNamePrefix="thermosyspro_trip_tac",
   variableFilter="^(time|Debit\\.y\\.signal|Temperature\\.y\\.signal|Alternateur\\.Welec|Ballon(HP|MP|BP)\\.(yLevel\\.signal|zl|P)|Turbine(HP|MP|BP)\\.Q|vanne_alimentation(HP|MP|BP)\\.Ouv\\.signal|vpp(STTripLatch|HPAdmissionPos|IPAdmissionPos|LPDrumAdmissionMultiplier|HPBypassCmd|LPBypassCmd|HPBypassPos|LPBypassPos|HPSprayPos|LPSprayPos|HPBypassOpenLS|HPBypassCloseLS|LPBypassOpenLS|LPBypassCloseLS|HPBypassMassFlow|LPBypassMassFlow|HPSprayMassFlow|LPSprayMassFlow|HPBypassInletPressure|LPBypassInletPressure|HPBypassOutletPressure|LPBypassOutletPressure|HPBypassInletTemperature|LPBypassInletTemperature|HPBypassOutletTemperature|LPBypassOutletTemperature|CondenserPressure|CondenserLevel))$");
 getErrorString();

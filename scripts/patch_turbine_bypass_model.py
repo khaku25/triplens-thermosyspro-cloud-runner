@@ -16,7 +16,7 @@ import tempfile
 from pathlib import Path
 
 
-MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V5"
+MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V6"
 
 
 PARAMETERS = f'''  // {MARKER}
