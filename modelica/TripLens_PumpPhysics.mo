@@ -190,29 +190,25 @@ package TripLens_PumpPhysics
   end FastSteamTripValve;
 
   model EmergencyExhaustGasRamp
-    "Finite GT/HRSG heat-input rundown after total HP feedwater loss"
+    "Stateless GT/HRSG boundary rundown after total feedwater loss"
     parameter Modelica.SIunits.MassFlowRate minimumMassFlow=50;
     parameter Modelica.SIunits.Temperature minimumTemperature=423;
     parameter Real tripTime(unit="s")=5;
-
+    parameter Real tripStartTime(unit="s")=300;
     ThermoSysPro.InstrumentationAndControl.Connectors.InputReal normalMassFlow;
     ThermoSysPro.InstrumentationAndControl.Connectors.InputReal normalTemperature;
     ThermoSysPro.InstrumentationAndControl.Connectors.InputLogical trip;
     ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal effectiveMassFlow;
     ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal effectiveTemperature;
-
-    Real rundown(start=0, fixed=true, min=0, max=1);
-
   equation
     assert(minimumMassFlow >= 0 and minimumTemperature > 0 and tripTime > 0,
       "EmergencyExhaustGasRamp parameters must be physical and positive");
-    der(rundown) = if trip.signal then (1 - rundown)/tripTime else 0;
-    effectiveMassFlow.signal = minimumMassFlow +
+    effectiveMassFlow.signal = if trip.signal then minimumMassFlow +
       (max(minimumMassFlow, normalMassFlow.signal) - minimumMassFlow)*
-      (1 - rundown);
-    effectiveTemperature.signal = minimumTemperature +
+      exp(-max(0, time - tripStartTime)/tripTime) else normalMassFlow.signal;
+    effectiveTemperature.signal = if trip.signal then minimumTemperature +
       (max(minimumTemperature, normalTemperature.signal) - minimumTemperature)*
-      (1 - rundown);
+      exp(-max(0, time - tripStartTime)/tripTime) else normalTemperature.signal;
   end EmergencyExhaustGasRamp;
 
   model BackpressureTurbineTrip
