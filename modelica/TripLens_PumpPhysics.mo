@@ -189,28 +189,6 @@ package TripLens_PumpPhysics
     effectiveOpening.signal = position;
   end FastSteamTripValve;
 
-  model EmergencyExhaustGasRamp
-    "Stateless GT/HRSG boundary rundown after total feedwater loss"
-    parameter Modelica.SIunits.MassFlowRate minimumMassFlow=50;
-    parameter Modelica.SIunits.Temperature minimumTemperature=423;
-    parameter Real tripTime(unit="s")=5;
-    parameter Real tripStartTime(unit="s")=300;
-    ThermoSysPro.InstrumentationAndControl.Connectors.InputReal normalMassFlow;
-    ThermoSysPro.InstrumentationAndControl.Connectors.InputReal normalTemperature;
-    ThermoSysPro.InstrumentationAndControl.Connectors.InputLogical trip;
-    ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal effectiveMassFlow;
-    ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal effectiveTemperature;
-  equation
-    assert(minimumMassFlow >= 0 and minimumTemperature > 0 and tripTime > 0,
-      "EmergencyExhaustGasRamp parameters must be physical and positive");
-    effectiveMassFlow.signal = if trip.signal then minimumMassFlow +
-      (max(minimumMassFlow, normalMassFlow.signal) - minimumMassFlow)*
-      exp(-max(0, time - tripStartTime)/tripTime) else normalMassFlow.signal;
-    effectiveTemperature.signal = if trip.signal then minimumTemperature +
-      (max(minimumTemperature, normalTemperature.signal) - minimumTemperature)*
-      exp(-max(0, time - tripStartTime)/tripTime) else normalTemperature.signal;
-  end EmergencyExhaustGasRamp;
-
   model BackpressureTurbineTrip
     "Condenser-pressure protection with latched turbine and generator trip"
     parameter Modelica.SIunits.AbsolutePressure nominalPressurePa=10000;
