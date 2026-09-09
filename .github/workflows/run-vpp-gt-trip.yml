@@ -50,6 +50,17 @@ jobs:
             --post-seconds "$POST_SECONDS" \
             --step-ms "$STEP_MS"
 
+      - name: Upload TripLens and alarm-display event inputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: vpp-gt-trip-events-${{ github.run_number }}
+          path: |
+            outputs/GT_TRIP_01/ECMS_EVENT.csv
+            outputs/GT_TRIP_01/VPP_EVENT.csv
+            outputs/GT_TRIP_01/VPP.MANIFEST.json
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Upload blind replay bundle
         uses: actions/upload-artifact@v4
         with:
