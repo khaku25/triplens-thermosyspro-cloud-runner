@@ -41,6 +41,8 @@ model TripLens_RegularizedCondenser
     "Cooling-water heat capacity used for the low-flow transfer limit";
   parameter Modelica.SIunits.Power heatFlowRegularization=1e3
     "Smooth minimum scale for heat-transfer capacity";
+  parameter Real regularizationStartTime(unit="s")=300
+    "Keep the proven upstream steady-state equations before this time";
 
 protected
   constant Modelica.SIunits.Acceleration g=Modelica.Constants.g_n
@@ -220,16 +222,19 @@ equation
   coolantTemperatureDriving = noEvent(max(Tv - proe.T, 0));
   coolantHeatCapacity = coolantFlowMagnitude*coolantSpecificHeat*
     coolantTemperatureDriving;
-  effectiveHeatRemoval = noEvent(max(0, 0.5*(steamHeatDemand +
+  effectiveHeatRemoval = noEvent(if time < regularizationStartTime then
+    steamHeatDemand else max(0, 0.5*(steamHeatDemand +
     coolantHeatCapacity - sqrt((steamHeatDemand - coolantHeatCapacity)^2 +
     heatFlowRegularization^2))));
   Wout = -effectiveHeatRemoval;
 
-  /* Bounded outlet-enthalpy rise. The difference between Wout and the
-     transported coolant energy is explicit and vanishes away from the
-     regularization band instead of hiding a minimum fictitious flow. */
-  Cse.h - Cee.h = effectiveHeatRemoval*Cee.Q/(Cee.Q^2 +
-    coolantFlowRegularization^2);
+  /* Preserve the upstream nominal-flow equality during initialization.
+     Once the event begins, switch to the bounded low-flow relation. Both
+     expressions converge at normal flow, so no heat or pressure step is
+     imposed by the model change itself. */
+  Cse.h - Cee.h = noEvent(if time < regularizationStartTime then
+    effectiveHeatRemoval/Cee.Q else effectiveHeatRemoval*Cee.Q/(Cee.Q^2 +
+    coolantFlowRegularization^2));
   coolantEnergyTransport = Cee.Q*(Cse.h - Cee.h);
   heatBalanceRegularizationError = effectiveHeatRemoval -
     coolantEnergyTransport;

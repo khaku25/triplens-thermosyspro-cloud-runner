@@ -110,7 +110,8 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
     text = replace_once(
         text,
         "  ThermoSysPro.WaterSteam.HeatExchangers.SimpleDynamicCondenser Condenseur(",
-        "  TripLens_RegularizedCondenser Condenseur(",
+        "  TripLens_RegularizedCondenser Condenseur(\n"
+        "    regularizationStartTime=pumpTripTime,",
         "regularized condenser model",
     )
     text = replace_once(
