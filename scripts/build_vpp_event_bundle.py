@@ -79,7 +79,7 @@ def load_contract(path: Path) -> dict[str, object]:
     contract = json.loads(path.read_text(encoding="utf-8"))
     required = {
         "schema_version",
-        "official_output",
+        "official_outputs",
         "columns",
         "allowed_systems",
         "system_order",
@@ -101,12 +101,12 @@ def load_contract(path: Path) -> dict[str, object]:
     boundary = contract["boundary"]
     if not isinstance(boundary, dict):
         raise ValueError("event contract boundary must be an object")
-    if boundary.get("public_directory_exact_files") != ["EVENT.csv"]:
-        raise ValueError("the public VPP boundary must contain only EVENT.csv")
-    if boundary.get("alarm_console_inputs") != ["EVENT.csv"]:
-        raise ValueError("Alarm Console must consume only EVENT.csv")
-    if boundary.get("triplens_ai_inputs") != ["EVENT.csv"]:
-        raise ValueError("TripLens AI must consume only EVENT.csv")
+    if boundary.get("public_directory_exact_files") != ["ECMS_EVENT.csv", "VPP_EVENT.csv"]:
+        raise ValueError("the public boundary must contain VPP_EVENT.csv and ECMS_EVENT.csv")
+    if boundary.get("alarm_console_inputs") != ["VPP_EVENT.csv", "ECMS_EVENT.csv"]:
+        raise ValueError("Alarm Console must consume the VPP/ECMS Event pair")
+    if boundary.get("triplens_ai_inputs") != ["DCS1", "DCS2", "ECMS"]:
+        raise ValueError("TripLens AI must consume the three displayed alarm feeds")
     if boundary.get("alarm_console_raw_access") is not False:
         raise ValueError("Alarm Console RAW access must remain disabled")
     if boundary.get("triplens_ai_raw_access") is not False:
@@ -708,10 +708,15 @@ def build_bundle(
             shutil.copy2(path, evidence / path.name)
 
     final_events = finalize_events(events, contract)
-    event_path = public_dir / "EVENT.csv"
-    write_event_csv(event_path, final_events, contract)
-    fields, reread = read_csv(event_path)
-    validate_events(fields, reread, contract)
+    vpp_path = public_dir / "VPP_EVENT.csv"
+    ecms_path = public_dir / "ECMS_EVENT.csv"
+    vpp_events = finalize_events([row for row in events if row["system"] in {"DCS1", "DCS2"}], contract)
+    ecms_events = finalize_events([row for row in events if row["system"] == "ECMS"], contract)
+    write_event_csv(vpp_path, vpp_events, contract)
+    write_event_csv(ecms_path, ecms_events, contract)
+    for event_path in (vpp_path, ecms_path):
+        fields, reread = read_csv(event_path)
+        validate_events(fields, reread, contract)
 
     system_counts = {
         system: sum(row["system"] == system for row in final_events)
@@ -720,17 +725,16 @@ def build_bundle(
     manifest = {
         "schema_version": contract["schema_version"],
         "run_id": run_id,
-        "architecture": "VPP_INTERNAL_RAW_TO_SINGLE_EVENT_EXTERNAL_V1",
-        "public_output": {
-            "file": "public/EVENT.csv",
-            "sha256": sha256(event_path),
-            "row_count": len(final_events),
-            "system_counts": system_counts,
-        },
+        "architecture": "VPP_AND_ECMS_EVENT_PAIR_EXTERNAL_V1",
+        "public_outputs": [
+            {"file": "public/VPP_EVENT.csv", "sha256": sha256(vpp_path), "row_count": len(vpp_events)},
+            {"file": "public/ECMS_EVENT.csv", "sha256": sha256(ecms_path), "row_count": len(ecms_events)},
+        ],
+        "system_counts": system_counts,
         "internal_sources": sources,
         "consumer_boundary": {
-            "alarm_console_inputs": ["EVENT.csv"],
-            "triplens_ai_inputs": ["EVENT.csv"],
+            "alarm_console_inputs": ["VPP_EVENT.csv", "ECMS_EVENT.csv"],
+            "triplens_ai_inputs": ["DCS1", "DCS2", "ECMS"],
             "raw_published_to_alarm_console": False,
             "raw_published_to_triplens_ai": False,
         },
@@ -774,9 +778,10 @@ def main() -> int:
     )
     print("VPP_EVENT_BUNDLE_PASS")
     print(f"EVENT_ROWS={len(events)}")
-    print(f"PUBLIC_OUTPUT={args.bundle_dir / 'public' / 'EVENT.csv'}")
-    print("ALARM_CONSOLE_INPUTS=EVENT.csv")
-    print("TRIPLENS_AI_INPUTS=EVENT.csv")
+    print(f"VPP_EVENT_OUTPUT={args.bundle_dir / 'public' / 'VPP_EVENT.csv'}")
+    print(f"ECMS_EVENT_OUTPUT={args.bundle_dir / 'public' / 'ECMS_EVENT.csv'}")
+    print("ALARM_CONSOLE_INPUTS=VPP_EVENT.csv,ECMS_EVENT.csv")
+    print("TRIPLENS_AI_INPUTS=DCS1,DCS2,ECMS")
     print("RAW_PUBLISHED_TO_CONSUMERS=false")
     return 0
 
