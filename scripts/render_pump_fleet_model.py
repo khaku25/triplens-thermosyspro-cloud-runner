@@ -232,18 +232,15 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
         # is a total feedwater-loss event. Run down GT/HRSG heat input instead
         # of continuing to heat stagnant water beyond the IF97 domain.
         declarations.append("""
-  Modelica.SIunits.MassFlowRate feedwaterTripExhaustMassFlow;
-  Modelica.SIunits.Temperature feedwaterTripExhaustTemperature;
+  TripLens_PumpPhysics.EmergencyExhaustGasRamp feedwaterTripRundown(
+    tripStartTime=pumpTripTime);
 """)
         equations.append(f"""
-  feedwaterTripExhaustMassFlow = if breaker{axis}Closed then Debit.y.signal
-    else 50 + (Debit.y.signal - 50)*
-      exp(-(time - pumpTripTime)/5);
-  feedwaterTripExhaustTemperature = if breaker{axis}Closed then
-    Temperature.y.signal else 423 + (Temperature.y.signal - 423)*
-      exp(-(time - pumpTripTime)/5);
-  SourceFumees.IMassFlow.signal = feedwaterTripExhaustMassFlow;
-  SourceFumees.ITemperature.signal = feedwaterTripExhaustTemperature;
+  connect(Debit.y, feedwaterTripRundown.normalMassFlow);
+  connect(Temperature.y, feedwaterTripRundown.normalTemperature);
+  feedwaterTripRundown.trip.signal = not breaker{axis}Closed;
+  connect(feedwaterTripRundown.effectiveMassFlow, SourceFumees.IMassFlow);
+  connect(feedwaterTripRundown.effectiveTemperature, SourceFumees.ITemperature);
 """)
         text = replace_statement(
             text,
