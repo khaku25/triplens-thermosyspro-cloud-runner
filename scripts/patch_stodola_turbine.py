@@ -11,9 +11,23 @@ MARKER = "TRIPLENS_STODOLA_PRESSURE_CROSSOVER_V1"
 PARAMETER_ANCHOR = "protected\n"
 PARAMETER_PATCH = f'''  // {MARKER}
   parameter Modelica.SIunits.Pressure pressureDifferenceRegularization=100
-    "Finite low-flow pressure scale; does not impose turbine leakage";
+    "Finite low-flow scale for a tiny one-way numerical leakage";
 
 protected
+  function regularizedPositivePressureSquare
+    "Cancellation-safe smooth positive part for the Stodola pressure square"
+    input Real pressureSquareDifference;
+    input Modelica.SIunits.Pressure pressureScale;
+    output Real positivePressureSquare;
+  protected
+    Real discriminant;
+  algorithm
+    discriminant := sqrt(pressureSquareDifference^2 + pressureScale^4);
+    positivePressureSquare := if pressureSquareDifference >= 0 then
+      0.5*(pressureSquareDifference + discriminant) else
+      0.5*pressureScale^4/(discriminant - pressureSquareDifference);
+  end regularizedPositivePressureSquare;
+
 '''
 NATIVE_EQUATIONS = '''  if noEvent((Pe > pcrit) or (Te > Tcrit)) then
     Q = sqrt((Pe^2 - Ps^2)/(Cst*Te));
@@ -21,14 +35,12 @@ NATIVE_EQUATIONS = '''  if noEvent((Pe > pcrit) or (Te > Tcrit)) then
     Q = sqrt((Pe^2 - Ps^2)/(Cst*Te*proe.x));
   end if;'''
 REGULARIZED_EQUATIONS = '''  if noEvent((Pe > pcrit) or (Te > Tcrit)) then
-    Q = (sqrt(noEvent(max(Pe^2 - Ps^2, 0))
-      + pressureDifferenceRegularization^2)
-      - pressureDifferenceRegularization)/sqrt(Cst*Te);
+    Q = sqrt(noEvent(regularizedPositivePressureSquare(
+      Pe^2 - Ps^2, pressureDifferenceRegularization))/(Cst*Te));
   else
-    Q = (sqrt(noEvent(max(Pe^2 - Ps^2, 0))
-      + pressureDifferenceRegularization^2)
-      - pressureDifferenceRegularization)
-      /sqrt(Cst*Te*max(proe.x, 1e-6));
+    Q = sqrt(noEvent(regularizedPositivePressureSquare(
+      Pe^2 - Ps^2, pressureDifferenceRegularization))
+      /(Cst*Te*max(proe.x, 1e-6)));
   end if;'''
 
 

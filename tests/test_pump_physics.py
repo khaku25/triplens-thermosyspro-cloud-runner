@@ -114,8 +114,9 @@ end StodolaTurbine;
 '''
         patched = patch_text(source)
         self.assertEqual(patched.count(MARKER), 1)
-        self.assertIn("max(Pe^2 - Ps^2, 0)", patched)
-        self.assertIn("- pressureDifferenceRegularization", patched)
+        self.assertIn("function regularizedPositivePressureSquare", patched)
+        self.assertIn("pressureScale^4/(discriminant - pressureSquareDifference)", patched)
+        self.assertIn("Pe^2 - Ps^2, pressureDifferenceRegularization", patched)
         self.assertNotIn("sqrt((Pe^2 - Ps^2)", patched)
         self.assertEqual(patch_text(patched), patched)
 
