@@ -1,6 +1,6 @@
 {
   "schema_version": "TRIPLENS_EVENT_V1",
-  "official_output": "public/EVENT.csv",
+  "official_outputs": ["public/VPP_EVENT.csv", "public/ECMS_EVENT.csv"],
   "columns": [
     "schema_version",
     "run_id",
@@ -77,10 +77,10 @@
     "same_time_order_implies_causality": false
   },
   "boundary": {
-    "public_directory_exact_files": ["EVENT.csv"],
+    "public_directory_exact_files": ["ECMS_EVENT.csv", "VPP_EVENT.csv"],
     "internal_directory": "internal",
-    "alarm_console_inputs": ["EVENT.csv"],
-    "triplens_ai_inputs": ["EVENT.csv"],
+    "alarm_console_inputs": ["VPP_EVENT.csv", "ECMS_EVENT.csv"],
+    "triplens_ai_inputs": ["DCS1", "DCS2", "ECMS"],
     "alarm_console_raw_access": false,
     "triplens_ai_raw_access": false,
     "scenario_answer_labels_allowed": false
