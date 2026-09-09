@@ -24,6 +24,9 @@ model CombinedCycle_TripTAC
   ThermoSysPro.WaterSteam.Machines.StaticCentrifugalPump PompeAlimBP(
     a3=400);
   Control.Drum_LevelControl regulation_Niveau_BP;
+  FlueGases.BoundaryConditions.SourceQ SourceFumees;
+  InstrumentationAndControl.Blocks.Tables.Table1DTemps Debit;
+  InstrumentationAndControl.Blocks.Tables.Table1DTemps Temperature;
 equation
   connect(Vanne_alimentationMPHP1.C1, PompeAlimHP.C2);
   connect(PompeAlimMP.C2, Vanne_alimentationMPHP2.C1);
@@ -45,6 +48,16 @@ class PumpPhysicsTests(unittest.TestCase):
         self.assertIn(
             "ThermoSysPro.Examples.CombinedCyclePowerPlant.Control.Drum_LevelControl",
             model,
+        )
+        self.assertIn(
+            "ThermoSysPro.FlueGases.BoundaryConditions.SourceQ SourceFumees",
+            model,
+        )
+        self.assertEqual(
+            model.count(
+                "ThermoSysPro.InstrumentationAndControl.Blocks.Tables.Table1DTemps"
+            ),
+            2,
         )
         for pressure in ("HP", "IP", "LP"):
             self.assertIn(f"BreakerTorqueDrive drive{pressure}", model)

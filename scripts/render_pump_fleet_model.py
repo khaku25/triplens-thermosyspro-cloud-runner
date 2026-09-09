@@ -105,6 +105,20 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
         "regulation_Niveau_BP",
         "LP drum controller package path",
     )
+    text = replace_once(
+        text,
+        "  FlueGases.BoundaryConditions.SourceQ SourceFumees",
+        "  ThermoSysPro.FlueGases.BoundaryConditions.SourceQ SourceFumees",
+        "flue-gas source package path",
+    )
+    for source_name in ("Debit", "Temperature"):
+        text = replace_once(
+            text,
+            "  InstrumentationAndControl.Blocks.Tables.Table1DTemps " + source_name,
+            "  ThermoSysPro.InstrumentationAndControl.Blocks.Tables.Table1DTemps "
+            + source_name,
+            f"{source_name} table package path",
+        )
 
     header = f'''model {MODEL_NAME}
   "Combined cycle with breaker, shaft inertia, pump curve and check valves"
