@@ -52,8 +52,12 @@ class TurbineBypassPatchTests(unittest.TestCase):
             "connect(vppHPBypassValve.C2, vppHPColdReheatVolume.Ce2)",
             patched,
         )
+        self.assertIn("VPPFixedFlowInjector vppHPSprayInjector", patched)
         self.assertIn(
-            "connect(vppHPSpraySource.C, vppHPColdReheatVolume.Ce3)",
+            "connect(vppHPSpraySource.C, vppHPSprayInjector.C1)", patched
+        )
+        self.assertIn(
+            "connect(vppHPSprayInjector.C2, vppHPColdReheatVolume.Ce3)",
             patched,
         )
         self.assertIn("connect(DoubleDebitMP.Cs, vppLPSplitter.Ce)", patched)
@@ -65,8 +69,12 @@ class TurbineBypassPatchTests(unittest.TestCase):
             "connect(vppLPBypassValve.C2, vppCondenserSteamVolume.Ce2)",
             patched,
         )
+        self.assertIn("VPPFixedFlowInjector vppLPSprayInjector", patched)
         self.assertIn(
-            "connect(vppLPSpraySource.C, vppCondenserSteamVolume.Ce3)",
+            "connect(vppLPSpraySource.C, vppLPSprayInjector.C1)", patched
+        )
+        self.assertIn(
+            "connect(vppLPSprayInjector.C2, vppCondenserSteamVolume.Ce3)",
             patched,
         )
         self.assertEqual(patched.count("dynamic_mass_balance=false"), 2)
@@ -75,6 +83,7 @@ class TurbineBypassPatchTests(unittest.TestCase):
         self.assertIn("model VPPPressureDrivenBypassValve", patched)
         self.assertEqual(patched.count("VPPPressureDrivenBypassValve vpp"), 2)
         self.assertIn("if noEvent(Ouv.signal <= closedEpsilon)", patched)
+        self.assertIn("C1.h = C1.h_vol", patched)
         self.assertIn("Q = Cv*rhoNom", patched)
         self.assertNotIn("rhoIn", patched)
         self.assertNotIn("ControlValve vppHPBypassValve", patched)
@@ -108,14 +117,14 @@ class TurbineBypassPatchTests(unittest.TestCase):
         self.assertIn("vppHPBypassStroke95(unit=\"s\") = 0.300", patched)
         self.assertIn("vppLPBypassStroke95(unit=\"s\") = 0.400", patched)
         self.assertIn("vppSprayStroke95(unit=\"s\") = 0.050", patched)
-        self.assertIn("vppSpraySeatLeak = 1e-4", patched)
+        self.assertIn("vppSpraySeatLeak = 0", patched)
         self.assertIn("vppAdmissionSeatLeak = 1e-3", patched)
         self.assertIn("vppHPBypassCvmax = 1890", patched)
         self.assertIn("vppLPBypassCvmax = 22000", patched)
         self.assertIn("vppHPSteamDensity0 = 34", patched)
         self.assertIn("vppHotReheatSteamDensity0 = 6.5", patched)
-        self.assertIn("p_rho=vppHPSteamDensity0", patched)
-        self.assertIn("p_rho=vppHotReheatSteamDensity0", patched)
+        self.assertNotIn("p_rho=vppHPSteamDensity0", patched)
+        self.assertNotIn("p_rho=vppHotReheatSteamDensity0", patched)
         self.assertIn("then vppAdmissionSeatLeak else 0.8", patched)
         self.assertIn("then vppAdmissionSeatLeak else 1", patched)
         self.assertIn("max(vppSpraySeatLeak", patched)

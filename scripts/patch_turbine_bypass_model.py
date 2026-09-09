@@ -16,7 +16,7 @@ import tempfile
 from pathlib import Path
 
 
-MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11"
+MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12"
 
 
 PARAMETERS = f'''  // {MARKER}
@@ -35,6 +35,7 @@ PARAMETERS = f'''  // {MARKER}
   equation
     C1.Q = C2.Q;
     C1.h = C2.h;
+    C1.h = C1.h_vol;
     Q = C1.Q;
     Cv = Ouv.signal*Cvmax;
     deltaP = C1.P - C2.P;
@@ -44,13 +45,22 @@ PARAMETERS = f'''  // {MARKER}
     // branch uses the same Cv pressure-flow correlation as ControlValve.
     if noEvent(Ouv.signal <= closedEpsilon) then
       Q = 0;
-      C1.h = 0.5*(C1.h_vol + C2.h_vol);
     else
       Q = Cv*rhoNom
         *sqrt(noEvent(max(0, deltaP))/1.733e12);
-      C1.h = C1.h_vol;
     end if;
   end VPPPressureDrivenBypassValve;
+
+  model VPPFixedFlowInjector
+    "Ideal one-way spray injector that separates source and header states"
+    ThermoSysPro.WaterSteam.Connectors.FluidInlet C1;
+    ThermoSysPro.WaterSteam.Connectors.FluidOutlet C2;
+  equation
+    C1.P = C2.P;
+    C1.Q = C2.Q;
+    C1.h = C2.h;
+    C1.h = C1.h_vol;
+  end VPPFixedFlowInjector;
 
   parameter Real vppTripTime(unit="s") = 600
     "Resolved ST Trip time for the physical GT Trip adapter";
@@ -62,8 +72,8 @@ PARAMETERS = f'''  // {MARKER}
     "LPBP 95 percent opening time";
   parameter Real vppSprayStroke95(unit="s") = 0.050
     "Spray-water actuator 95 percent opening time";
-  parameter Modelica.SIunits.MassFlowRate vppSpraySeatLeak = 1e-4
-    "Numerical spray-valve seat leakage preventing a zero-flow tear";
+  parameter Modelica.SIunits.MassFlowRate vppSpraySeatLeak = 0
+    "Fully closed pre-Trip spray flow";
   parameter Real vppAdmissionSeatLeak = 1e-3
     "Numerical 0.1 percent turbine admission-valve seat leakage";
   parameter Real vppValveLeak = 0
@@ -155,6 +165,7 @@ COMPONENTS = '''
        h(start=3248547.5), h_vol(start=3046260)));
   ThermoSysPro.WaterSteam.BoundaryConditions.SourceQ vppHPSpraySource(
     Q0=vppSpraySeatLeak, h0=1396866);
+  VPPFixedFlowInjector vppHPSprayInjector;
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
     vppHPSprayFlowCommand;
   ThermoSysPro.WaterSteam.Volumes.VolumeC vppHPColdReheatVolume(
@@ -197,6 +208,7 @@ COMPONENTS = '''
        h(start=2962470), h_vol(start=2401030)));
   ThermoSysPro.WaterSteam.BoundaryConditions.SourceQ vppLPSpraySource(
     Q0=vppSpraySeatLeak, h0=550000);
+  VPPFixedFlowInjector vppLPSprayInjector;
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
     vppLPSprayFlowCommand;
   ThermoSysPro.WaterSteam.Volumes.VolumeC vppCondenserSteamVolume(
@@ -278,10 +290,12 @@ EQUATIONS = '''
 
   connect(vppHPSprayFlowCommand, vppHPSpraySource.IMassFlow);
   connect(vppHPBypassValve.C2, vppHPColdReheatVolume.Ce2);
-  connect(vppHPSpraySource.C, vppHPColdReheatVolume.Ce3);
+  connect(vppHPSpraySource.C, vppHPSprayInjector.C1);
+  connect(vppHPSprayInjector.C2, vppHPColdReheatVolume.Ce3);
   connect(vppLPSprayFlowCommand, vppLPSpraySource.IMassFlow);
   connect(vppLPBypassValve.C2, vppCondenserSteamVolume.Ce2);
-  connect(vppLPSpraySource.C, vppCondenserSteamVolume.Ce3);
+  connect(vppLPSpraySource.C, vppLPSprayInjector.C1);
+  connect(vppLPSprayInjector.C2, vppCondenserSteamVolume.Ce3);
 '''
 
 
@@ -314,24 +328,6 @@ def patch_model(source: str) -> str:
         "  parameter Real CstHP(fixed=false,start=7618660.65374636)",
         PARAMETERS + "  parameter Real CstHP(fixed=false,start=7618660.65374636)",
         "parameter insertion",
-    )
-    source = replace_once(
-        source,
-        "  ThermoSysPro.WaterSteam.PressureLosses.ControlValve "
-        "vanne_entree_TurbineHP(\n    mode=0,",
-        "  ThermoSysPro.WaterSteam.PressureLosses.ControlValve "
-        "vanne_entree_TurbineHP(\n    mode=0,\n"
-        "    p_rho=vppHPSteamDensity0,",
-        "HP admission normal-density insertion",
-    )
-    source = replace_once(
-        source,
-        "  ThermoSysPro.WaterSteam.PressureLosses.ControlValve "
-        "vanne_entree_TurbineMP(\n    mode=0,",
-        "  ThermoSysPro.WaterSteam.PressureLosses.ControlValve "
-        "vanne_entree_TurbineMP(\n    mode=0,\n"
-        "    p_rho=vppHotReheatSteamDensity0,",
-        "IP admission normal-density insertion",
     )
     source = replace_once(
         source,

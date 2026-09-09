@@ -146,13 +146,15 @@ class RawOnlyActionTests(unittest.TestCase):
         mos = (ROOT / "modelica" / "run.mos.tpl").read_text(encoding="utf-8")
 
         self.assertIn("patch_turbine_bypass_model.py", runner)
-        self.assertIn("HPBP_LPBP_PHYSICAL_V11", runner)
-        self.assertIn("TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11", runner)
+        self.assertIn("HPBP_LPBP_PHYSICAL_V12", runner)
+        self.assertIn("TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12", runner)
+        self.assertIn("patch_stodola_turbine.py", runner)
         self.assertIn("RAW simulation ended early", (
             ROOT / "scripts" / "build_raw_manifest.py"
         ).read_text(encoding="utf-8"))
         self.assertIn("resultFile = \"\"", runner)
         self.assertIn("vppTripTime=@VPP_TRIP_TIME@", model)
+        self.assertEqual(model.count("regularizePressureCrossover=true"), 3)
         self.assertIn("HPBypassMassFlow", mos)
         self.assertIn("LPBypassMassFlow", mos)
         self.assertNotIn("nlssMaxDensity=0", mos)
@@ -268,8 +270,8 @@ class RawOnlyActionTests(unittest.TestCase):
                 "--output-intervals", "1000",
                 "--thermosyspro-commit", "test-commit",
                 "--openmodelica-image", "test-image",
-                "--model-variant", "HPBP_LPBP_PHYSICAL_V11",
-                "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11",
+                "--model-variant", "HPBP_LPBP_PHYSICAL_V12",
+                "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12",
                 "--patched-model-sha256", "a"*64,
             )
             self.assertEqual(build.returncode, 0, build.stderr)
@@ -325,8 +327,8 @@ class RawOnlyActionTests(unittest.TestCase):
                 "--output-intervals", "1800",
                 "--thermosyspro-commit", "test-commit",
                 "--openmodelica-image", "test-image",
-                "--model-variant", "HPBP_LPBP_PHYSICAL_V11",
-                "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11",
+                "--model-variant", "HPBP_LPBP_PHYSICAL_V12",
+                "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12",
                 "--patched-model-sha256", "b"*64,
             )
             self.assertEqual(build.returncode, 0, build.stderr)

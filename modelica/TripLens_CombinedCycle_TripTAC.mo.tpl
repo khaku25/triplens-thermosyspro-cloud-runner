@@ -30,6 +30,7 @@ model TripLens_CombinedCycle_TripTAC
       C2(Q(start=151.7690991976083, nominal=200),
          h(start=3450835), h_vol(start=3450835))),
     TurbineHP(
+      regularizePressureCrossover=true,
       Q(start=151.7690991976083, nominal=200),
       Ce(Q(start=151.7690991976083, nominal=200),
          h(start=3450835), h_vol(start=3450835)),
@@ -59,12 +60,14 @@ model TripLens_CombinedCycle_TripTAC
       C2(Q(start=176.7893383342879, nominal=200),
          h(start=3523910), h_vol(start=3523910))),
     TurbineMP(
+      regularizePressureCrossover=true,
       Q(start=176.7893383342879, nominal=200),
       Ce(Q(start=176.7893383342879, nominal=200),
          h(start=3523910), h_vol(start=3523910)),
       Cs(Q(start=176.7893383342879, nominal=200),
          h(start=3029780), h_vol(start=3029780))),
     TurbineBP(
+      regularizePressureCrossover=true,
       Q(start=196.6524916480812, nominal=200),
       Ce(Q(start=196.6524916480812, nominal=200),
          h(start=2997231.36734756), h_vol(start=2997231.36734756)),

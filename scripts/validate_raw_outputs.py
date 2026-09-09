@@ -42,6 +42,7 @@ FORBIDDEN_METADATA_COLUMNS = {
 PHYSICAL_BYPASS_VARIANTS = {
     "HPBP_LPBP_DYNAMIC_V11",
     "HPBP_LPBP_PHYSICAL_V11",
+    "HPBP_LPBP_PHYSICAL_V12",
 }
 DYNAMIC_BYPASS_COLUMNS = {
     "vppSTTripLatch",
@@ -535,7 +536,12 @@ def main() -> int:
         transform = runtime.get("source_transform")
         if not isinstance(transform, dict):
             raise ValueError("dynamic bypass manifest is missing source-transform proof")
-        if transform.get("marker") != "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11":
+        expected_marker = (
+            "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12"
+            if runtime.get("model_variant") == "HPBP_LPBP_PHYSICAL_V12"
+            else "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11"
+        )
+        if transform.get("marker") != expected_marker:
             raise ValueError("dynamic bypass manifest has the wrong patch marker")
         digest = transform.get("patched_model_sha256")
         if not isinstance(digest, str) or len(digest) != 64:

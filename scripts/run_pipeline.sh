@@ -112,6 +112,8 @@ fi
 
 python3 scripts/patch_turbine_bypass_model.py \
   --source vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
+python3 scripts/patch_stodola_turbine.py \
+  vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
 patched_model_sha256="$(sha256sum vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo | cut -d' ' -f1)"
 
 # A new Action run owns these generated paths. Clear only run-generated data.
@@ -163,8 +165,8 @@ python3 scripts/build_raw_manifest.py \
   --output-intervals "$intervals" \
   --thermosyspro-commit "$thermosyspro_commit" \
   --openmodelica-image "$openmodelica_image" \
-  --model-variant "HPBP_LPBP_PHYSICAL_V11" \
-  --source-patch-marker "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11" \
+  --model-variant "HPBP_LPBP_PHYSICAL_V12" \
+  --source-patch-marker "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12" \
   --patched-model-sha256 "$patched_model_sha256"
 
 python3 scripts/validate_raw_outputs.py --output-dir outputs
