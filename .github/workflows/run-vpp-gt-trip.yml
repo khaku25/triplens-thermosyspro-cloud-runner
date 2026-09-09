@@ -1,0 +1,79 @@
+name: Run VPP GT Trip Scenario
+
+on:
+  workflow_dispatch:
+    inputs:
+      pre_seconds:
+        description: Normal operation duration before GT Trip
+        required: true
+        default: "1"
+      post_seconds:
+        description: Observation duration after GT Trip
+        required: true
+        default: "4"
+      step_ms:
+        description: VPP output period in milliseconds
+        required: true
+        default: "1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vpp-gt-trip-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-and-replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify registered VPP baseline and GT runner
+        run: |
+          python3 -m unittest \
+            tests.test_vpp_baseline_v1 \
+            tests.test_gt_trip_scenario \
+            tests.test_vpp_alarm_engine \
+            tests.test_vpp_gt_trip_runner -v
+
+      - name: Generate GT_TRIP_01 and replay all alarm layers
+        env:
+          PRE_SECONDS: ${{ inputs.pre_seconds }}
+          POST_SECONDS: ${{ inputs.post_seconds }}
+          STEP_MS: ${{ inputs.step_ms }}
+        run: |
+          python3 scripts/run_vpp_gt_trip.py \
+            --output-dir outputs/GT_TRIP_01 \
+            --pre-seconds "$PRE_SECONDS" \
+            --post-seconds "$POST_SECONDS" \
+            --step-ms "$STEP_MS"
+
+      - name: Upload blind replay bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: vpp-gt-trip-replay-${{ github.run_number }}
+          path: |
+            outputs/GT_TRIP_01/VPP.RAW.csv
+            outputs/GT_TRIP_01/ProcessBus.csv
+            outputs/GT_TRIP_01/VPP.EVENT.csv
+            outputs/GT_TRIP_01/DCS1.csv
+            outputs/GT_TRIP_01/DCS2.csv
+            outputs/GT_TRIP_01/ECMS.csv
+            outputs/GT_TRIP_01/ECMS_EVENT.csv
+            outputs/GT_TRIP_01/VPP_EVENT.csv
+            outputs/GT_TRIP_01/ECMS-trend.csv
+            outputs/GT_TRIP_01/ECMS-feeders.csv
+            outputs/GT_TRIP_01/VPP.MANIFEST.json
+            outputs/GT_TRIP_01/GT_TRIP_01.raw-manifest.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload validation oracle separately
+        uses: actions/upload-artifact@v4
+        with:
+          name: vpp-gt-trip-oracle-${{ github.run_number }}
+          path: outputs/GT_TRIP_01/GT_TRIP_01.expected.json
+          if-no-files-found: error
+          retention-days: 30
