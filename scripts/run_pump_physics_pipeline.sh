@@ -34,10 +34,15 @@ echo "pump=$pump_id event=${event_time_s}s stop=${stop_time_s}s intervals=$inter
 
 mkdir -p build/omhome vendor "$output_dir"
 
-if [[ ! -e vendor/ThermoSysPro ]]; then
+if [[ ! -d vendor/ThermoSysPro/.git ]]; then
+  if [[ -e vendor/ThermoSysPro ]]; then
+    echo "vendor/ThermoSysPro exists but is not a complete Git checkout" >&2
+    echo "Remove or relocate that incomplete directory before retrying." >&2
+    exit 1
+  fi
   git clone --no-checkout https://github.com/Dwarf-Planet-Project/ThermoSysPro.git vendor/ThermoSysPro
 fi
-if ! git -C vendor/ThermoSysPro rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+if ! git -C vendor/ThermoSysPro rev-parse --show-toplevel >/dev/null 2>&1; then
   echo "vendor/ThermoSysPro is incomplete or is not a Git checkout" >&2
   exit 1
 fi
