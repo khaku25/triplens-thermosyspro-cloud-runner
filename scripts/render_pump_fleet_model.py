@@ -98,6 +98,13 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
         f"end {MODEL_NAME};",
         "model terminator",
     )
+    text = replace_once(
+        text,
+        "  Control.Drum_LevelControl regulation_Niveau_BP",
+        "  ThermoSysPro.Examples.CombinedCyclePowerPlant.Control.Drum_LevelControl "
+        "regulation_Niveau_BP",
+        "LP drum controller package path",
+    )
 
     header = f'''model {MODEL_NAME}
   "Combined cycle with breaker, shaft inertia, pump curve and check valves"
