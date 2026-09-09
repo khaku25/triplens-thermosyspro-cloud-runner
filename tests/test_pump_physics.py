@@ -27,7 +27,19 @@ model CombinedCycle_TripTAC
   FlueGases.BoundaryConditions.SourceQ SourceFumees;
   InstrumentationAndControl.Blocks.Tables.Table1DTemps Debit;
   InstrumentationAndControl.Blocks.Tables.Table1DTemps Temperature;
+  ThermoSysPro.WaterSteam.HeatExchangers.SimpleDynamicCondenser Condenseur;
+  ThermoSysPro.WaterSteam.Machines.Generator Alternateur;
+  ThermoSysPro.WaterSteam.PressureLosses.ControlValve
+    vanne_entree_TurbineHP;
+  ThermoSysPro.WaterSteam.PressureLosses.ControlValve
+    vanne_entree_TurbineMP;
+  InstrumentationAndControl.Blocks.Tables.Table1DTemps
+    ConstantVanneTurbineHP;
+  InstrumentationAndControl.Blocks.Tables.Table1DTemps
+    ConstantVanneTurbineMP;
 equation
+  connect(ConstantVanneTurbineHP.y, vanne_entree_TurbineHP.Ouv);
+  connect(ConstantVanneTurbineMP.y, vanne_entree_TurbineMP.Ouv);
   connect(Vanne_alimentationMPHP1.C1, PompeAlimHP.C2);
   connect(PompeAlimMP.C2, Vanne_alimentationMPHP2.C1);
   connect(PompeAlimBP.C2, vanne_extraction.C1);
