@@ -196,18 +196,19 @@ class PumpPhysicsTests(unittest.TestCase):
             hp_model,
         )
         self.assertIn(
-            "EmergencyExhaustGasRamp feedwaterTripRundown",
+            "Modelica.SIunits.MassFlowRate feedwaterTripExhaustMassFlow",
             hp_model,
         )
         self.assertIn(
-            "feedwaterTripRundown.trip.signal = not breakerHPClosed", hp_model
-        )
-        self.assertIn(
-            "connect(feedwaterTripRundown.effectiveMassFlow, SourceFumees.IMassFlow)",
+            "feedwaterTripExhaustMassFlow = if breakerHPClosed then Debit.y.signal",
             hp_model,
         )
         self.assertIn(
-            "connect(feedwaterTripRundown.effectiveTemperature, SourceFumees.ITemperature)",
+            "SourceFumees.IMassFlow.signal = feedwaterTripExhaustMassFlow",
+            hp_model,
+        )
+        self.assertIn(
+            "SourceFumees.ITemperature.signal = feedwaterTripExhaustTemperature",
             hp_model,
         )
         self.assertNotIn("connect(Debit.y,SourceFumees. IMassFlow)", hp_model)
