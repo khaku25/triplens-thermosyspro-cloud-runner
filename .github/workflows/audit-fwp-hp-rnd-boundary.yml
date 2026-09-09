@@ -1,0 +1,33 @@
+name: Audit FWP-HP R&D Boundary
+
+on:
+  push:
+    branches: [integration/fwp-hp-raw-boundary-20260909]
+    paths:
+      - 'config/fwp_hp_rnd_boundary.json'
+      - 'config/ecms_command_catalog.csv'
+      - 'config/ecms_a_equipment.csv'
+      - 'config/signal_map.json'
+      - 'scripts/audit_fwp_hp_rnd_boundary.py'
+      - '.github/workflows/audit-fwp-hp-rnd-boundary.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'config/fwp_hp_rnd_boundary.json'
+      - 'config/ecms_command_catalog.csv'
+      - 'config/ecms_a_equipment.csv'
+      - 'config/signal_map.json'
+      - 'scripts/audit_fwp_hp_rnd_boundary.py'
+      - '.github/workflows/audit-fwp-hp-rnd-boundary.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit FWP-HP competition boundary
+        run: python3 scripts/audit_fwp_hp_rnd_boundary.py
