@@ -96,6 +96,18 @@ class PumpPhysicsTests(unittest.TestCase):
                 self.assertIn(f"tripTarget = {target}", model)
                 self.assertIn("pumpTripTime(unit=\"s\") = 300", model)
 
+    def test_stodola_pressure_crossover_is_regularized_at_zero_flow(self) -> None:
+        source = (ROOT / "modelica" / "TripLens_RegularizedStodolaTurbine.mo").read_text()
+        self.assertIn(
+            "regularizedPressureSquare = noEvent(max(pressureSquareDifference, 0))",
+            source,
+        )
+        self.assertIn(
+            "sqrt(regularizedPressureSquare + pressureDifferenceRegularization^2)",
+            source,
+        )
+        self.assertNotIn("sqrt((Pe^2 - Ps^2)", source)
+
     def test_registry_covers_active_ecms_pumps_and_marks_non_ecms_paths(self) -> None:
         with (ROOT / "config" / "ecms_a_equipment.csv").open(
             "r", encoding="utf-8", newline=""

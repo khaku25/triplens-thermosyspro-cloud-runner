@@ -110,11 +110,17 @@ equation
 
   /* Stodola's ellipse law */
   pressureSquareDifference = Pe^2 - Ps^2;
-  regularizedPressureSquare = noEvent(max(pressureSquareDifference, pressureDifferenceRegularization^2));
+  // Preserve the native zero-flow initialization and block reverse turbine
+  // flow when the downstream pressure crosses the inlet pressure. Moving the
+  // pressure floor inside the square root gives a finite low-flow slope while
+  // still making Q exactly zero at and below the crossover.
+  regularizedPressureSquare = noEvent(max(pressureSquareDifference, 0));
   if noEvent((Pe > pcrit) or (Te > Tcrit)) then
-    Q = sqrt(regularizedPressureSquare/(Cst*Te));
+    Q = (sqrt(regularizedPressureSquare + pressureDifferenceRegularization^2)
+      - pressureDifferenceRegularization)/sqrt(Cst*Te);
   else
-    Q = sqrt(regularizedPressureSquare/(Cst*Te*max(proe.x, 1e-6)));
+    Q = (sqrt(regularizedPressureSquare + pressureDifferenceRegularization^2)
+      - pressureDifferenceRegularization)/sqrt(Cst*Te*max(proe.x, 1e-6));
   end if;
 
   /* Fluid specific enthalpy after the expansion */
