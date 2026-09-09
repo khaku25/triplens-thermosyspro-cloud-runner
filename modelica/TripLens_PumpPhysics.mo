@@ -191,47 +191,28 @@ package TripLens_PumpPhysics
 
   model EmergencyExhaustGasRamp
     "Finite GT/HRSG heat-input rundown after total HP feedwater loss"
-    parameter Modelica.SIunits.MassFlowRate minimumMassFlow=50
-      "Stable low-load exhaust-flow boundary from the upstream example";
-    parameter Modelica.SIunits.Temperature minimumTemperature=423
-      "Stable low-load exhaust-temperature boundary from the upstream example";
-    parameter Real tripTime(unit="s")=5
-      "Equivalent gas-turbine/exhaust rundown time constant";
-    parameter Real trackingTime(unit="s")=0.05
-      "Pre-trip tracking time for the original boundary schedule";
+    parameter Modelica.SIunits.MassFlowRate minimumMassFlow=50;
+    parameter Modelica.SIunits.Temperature minimumTemperature=423;
+    parameter Real tripTime(unit="s")=5;
 
     ThermoSysPro.InstrumentationAndControl.Connectors.InputReal normalMassFlow;
-    ThermoSysPro.InstrumentationAndControl.Connectors.InputReal
-      normalTemperature;
+    ThermoSysPro.InstrumentationAndControl.Connectors.InputReal normalTemperature;
     ThermoSysPro.InstrumentationAndControl.Connectors.InputLogical trip;
-    ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
-      effectiveMassFlow;
-    ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
-      effectiveTemperature;
+    ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal effectiveMassFlow;
+    ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal effectiveTemperature;
 
-    Modelica.SIunits.MassFlowRate massFlowState(start=606.94, fixed=false);
-    Modelica.SIunits.Temperature temperatureState(start=893.75, fixed=false);
-    Modelica.SIunits.MassFlowRate massFlowTarget;
-    Modelica.SIunits.Temperature temperatureTarget;
-
-  initial equation
-    massFlowState = normalMassFlow.signal;
-    temperatureState = normalTemperature.signal;
+    Real rundown(start=0, fixed=true, min=0, max=1);
 
   equation
-    assert(minimumMassFlow >= 0 and minimumTemperature > 0 and
-      tripTime > 0 and trackingTime > 0,
+    assert(minimumMassFlow >= 0 and minimumTemperature > 0 and tripTime > 0,
       "EmergencyExhaustGasRamp parameters must be physical and positive");
-    massFlowTarget = if trip.signal then minimumMassFlow else
-      max(minimumMassFlow, normalMassFlow.signal);
-    temperatureTarget = if trip.signal then minimumTemperature else
-      max(minimumTemperature, normalTemperature.signal);
-    der(massFlowState) = (massFlowTarget - massFlowState)/
-      noEvent(if trip.signal then tripTime else trackingTime);
-    der(temperatureState) = (temperatureTarget - temperatureState)/
-      noEvent(if trip.signal then tripTime else trackingTime);
-    effectiveMassFlow.signal = max(minimumMassFlow, massFlowState);
-    effectiveTemperature.signal = max(minimumTemperature, temperatureState);
+    der(rundown) = if trip.signal then (1 - rundown)/tripTime else 0;
+    effectiveMassFlow.signal = minimumMassFlow +
+      (max(minimumMassFlow, normalMassFlow.signal) - minimumMassFlow)*
+      (1 - rundown);
+    effectiveTemperature.signal = minimumTemperature +
+      (max(minimumTemperature, normalTemperature.signal) - minimumTemperature)*
+      (1 - rundown);
   end EmergencyExhaustGasRamp;
 
   model BackpressureTurbineTrip
