@@ -40,33 +40,45 @@ end CombinedCycle_TripTAC;
 
 class PumpPhysicsTests(unittest.TestCase):
     def test_renderer_replaces_every_real_upstream_pump(self) -> None:
-        model = transform(MINIMAL_UPSTREAM, trip_target=1, trip_time=300)
-        self.assertEqual(model.count("DynamicCentrifugalPump PompeAlim"), 3)
-        self.assertNotIn("StaticCentrifugalPump PompeAlim", model)
-        self.assertNotIn("rpm_or_mpower", model)
-        self.assertNotIn("  Control.Drum_LevelControl", model)
+        pumps = {
+            1: ("PompeAlimHP", "HP"),
+            2: ("PompeAlimMP", "IP"),
+            3: ("PompeAlimBP", "LP"),
+        }
+        all_components = {component for component, _ in pumps.values()}
+        for target, (component, axis) in pumps.items():
+            with self.subTest(target=target):
+                model = transform(MINIMAL_UPSTREAM, trip_target=target, trip_time=300)
+                self.assertEqual(model.count("DynamicCentrifugalPump PompeAlim"), 1)
+                self.assertIn(f"DynamicCentrifugalPump {component}", model)
+                self.assertNotIn(f"{component}.rpm_or_mpower", model)
+                self.assertIn(f"BreakerTorqueDrive drive{axis}", model)
+                self.assertIn(f"IdealCheckValve checkValve{axis}", model)
+                self.assertIn(f"checkValve{axis}.C1", model)
+                self.assertIn(f"checkValve{axis}.C2", model)
+                for normal_component in all_components.difference({component}):
+                    self.assertIn(
+                        f"StaticCentrifugalPump {normal_component}", model
+                    )
+                self.assertIn(f"tripTarget = {target}", model)
+                self.assertIn("pumpTripTime(unit=\"s\") = 300", model)
+
+        cw_model = transform(MINIMAL_UPSTREAM, trip_target=4, trip_time=300)
+        self.assertNotIn("DynamicCentrifugalPump PompeAlim", cw_model)
+        self.assertEqual(cw_model.count("StaticCentrifugalPump PompeAlim"), 3)
+        self.assertIn(
+            "connect(cwPumpDrive.massFlow, SourceCaloporteur.IMassFlow)",
+            cw_model,
+        )
+        self.assertNotIn("  Control.Drum_LevelControl", cw_model)
         self.assertIn(
             "ThermoSysPro.Examples.CombinedCyclePowerPlant.Control.Drum_LevelControl",
-            model,
+            cw_model,
         )
         self.assertIn(
             "ThermoSysPro.FlueGases.BoundaryConditions.SourceQ SourceFumees",
-            model,
+            cw_model,
         )
-        self.assertEqual(
-            model.count(
-                "ThermoSysPro.InstrumentationAndControl.Blocks.Tables.Table1DTemps"
-            ),
-            2,
-        )
-        for pressure in ("HP", "IP", "LP"):
-            self.assertIn(f"BreakerTorqueDrive drive{pressure}", model)
-            self.assertIn(f"IdealCheckValve checkValve{pressure}", model)
-            self.assertIn(f"checkValve{pressure}.C1", model)
-            self.assertIn(f"checkValve{pressure}.C2", model)
-        self.assertIn("connect(cwPumpDrive.massFlow, SourceCaloporteur.IMassFlow)", model)
-        self.assertIn("tripTarget = 1", model)
-        self.assertIn("pumpTripTime(unit=\"s\") = 300", model)
 
     def test_registry_accounts_for_every_ecms_pump_without_inventing_recirc(self) -> None:
         with (ROOT / "config" / "ecms_a_equipment.csv").open(

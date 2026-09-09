@@ -1,9 +1,10 @@
 # TripLens pump physics
 
 The pinned `CombinedCycle_TripTAC` model contains three static centrifugal
-pumps: `PompeAlimHP`, `PompeAlimMP`, and `PompeAlimBP`. TripLens renders a
-deterministic copy in which all three are replaced by ThermoSysPro
-`DynamicCentrifugalPump` components.
+pumps: `PompeAlimHP`, `PompeAlimMP`, and `PompeAlimBP`. For each isolated trip,
+TripLens renders a deterministic copy in which the selected path is replaced by
+a ThermoSysPro `DynamicCentrifugalPump`. The workflow matrix runs every path;
+the non-selected pumps retain their proven upstream steady-state definitions.
 
 Each connected motor pump follows this causal chain:
 

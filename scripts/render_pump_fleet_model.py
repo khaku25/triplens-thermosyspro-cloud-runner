@@ -2,11 +2,12 @@
 """Build a TripLens model with physical motor-pump coastdown.
 
 The pinned ThermoSysPro combined-cycle example contains three static pumps and
-one fixed cooling-water mass-flow boundary.  This renderer makes a deterministic
-copy, replaces all three static pumps with DynamicCentrifugalPump, inserts
-discharge check valves, and connects breaker-controlled zero-torque drives.
-The cooling-water boundary receives the same breaker/inertia semantics through
-BoundaryMotorPump because the upstream example has no CW hydraulic loop.
+one fixed cooling-water mass-flow boundary. Each run replaces the selected
+static pump with DynamicCentrifugalPump, inserts its discharge check valve, and
+connects a breaker-controlled zero-torque drive. Isolating the selected path
+preserves the upstream steady-state initialization; the workflow matrix covers
+every available path. The cooling-water boundary receives equivalent
+breaker/inertia semantics because the upstream example has no CW hydraulic loop.
 """
 
 from __future__ import annotations
@@ -132,12 +133,59 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
         "TripLens parameters",
     )
 
-    dynamic_parameters = {
-        "PompeAlimMP": "    J=80,\n    Cf0=10,\n    steady_state_mech=true,\n    dynamic_energy_balance=false,\n    continuous_flow_reversal=true,\n",
-        "PompeAlimHP": "    J=500,\n    Cf0=25,\n    steady_state_mech=true,\n    dynamic_energy_balance=false,\n    continuous_flow_reversal=true,\n",
-        "PompeAlimBP": "    J=300,\n    Cf0=20,\n    steady_state_mech=true,\n    dynamic_energy_balance=false,\n    continuous_flow_reversal=true,\n",
+    target_specs = {
+        1: {
+            "component": "PompeAlimHP",
+            "axis": "HP",
+            "inertia": 500,
+            "friction": 25,
+            "initial_torque": 36000,
+            "torque_limit": "1e5",
+            "speed_marker": "  connect(PompeAlimHP.rpm_or_mpower, arretPomesHP.y)",
+            "discharge_marker": "  connect(Vanne_alimentationMPHP1.C1, PompeAlimHP.C2)",
+            "downstream": "Vanne_alimentationMPHP1.C1",
+        },
+        2: {
+            "component": "PompeAlimMP",
+            "axis": "IP",
+            "inertia": 80,
+            "friction": 10,
+            "initial_torque": 5000,
+            "torque_limit": "2e4",
+            "speed_marker": "  connect(PompeAlimMP.rpm_or_mpower, arretPomesMp.y)",
+            "discharge_marker": "  connect(PompeAlimMP.C2, Vanne_alimentationMPHP2.C1)",
+            "downstream": "Vanne_alimentationMPHP2.C1",
+        },
+        3: {
+            "component": "PompeAlimBP",
+            "axis": "LP",
+            "inertia": 300,
+            "friction": 20,
+            "initial_torque": 4200,
+            "torque_limit": "6e4",
+            "speed_marker": "  connect(PompeAlimBP.rpm_or_mpower, arretPomesBP.y)",
+            "discharge_marker": "  connect(PompeAlimBP.C2, vanne_extraction.C1)",
+            "downstream": "vanne_extraction.C1",
+        },
     }
-    for name, parameters in dynamic_parameters.items():
+    selected = target_specs.get(trip_target)
+    declarations: list[str] = []
+    equations: list[str] = []
+
+    if selected:
+        name = str(selected["component"])
+        axis = str(selected["axis"])
+        initial_torque = int(selected["initial_torque"])
+        parameters = (
+            f"    J={selected['inertia']},\n"
+            f"    Cf0={selected['friction']},\n"
+            "    steady_state_mech=true,\n"
+            "    dynamic_energy_balance=false,\n"
+            "    continuous_flow_reversal=true,\n"
+            f"    Cm(start={initial_torque}),\n"
+            f"    Ch(start={initial_torque}),\n"
+            "    w(start=146.607657),\n"
+        )
         old = (
             "ThermoSysPro.WaterSteam.Machines.StaticCentrifugalPump "
             f"{name}(\n"
@@ -147,87 +195,61 @@ def transform(upstream: str, *, trip_target: int, trip_time: float) -> str:
             f"{name}(\n{parameters}"
         )
         text = replace_once(text, old, new, f"dynamic replacement for {name}")
-
-    declarations = '''
-  // Electrical state is deliberately visible in RAW. A trip opens only the
-  // selected feeder; normal pumps remain closed and speed-regulated.
-  Boolean breakerHPClosed;
-  Boolean breakerIPClosed;
-  Boolean breakerLPClosed;
+        declarations.append(f'''
+  // The selected electrical state is visible in native RAW.
+  Boolean breaker{axis}Closed;
+  TripLens_PumpPhysics.BreakerTorqueDrive drive{axis}(
+    nominalSpeedRpm=1400,
+    initialTorque={initial_torque},
+    torqueLimit={selected["torque_limit"]});
+  ThermoSysPro.WaterSteam.PressureLosses.IdealCheckValve checkValve{axis}(
+    dPOuvert=0.01, Qmin=1e-6, continuous_flow_reversal=true);
+''')
+        equations.append(f'''
+  breaker{axis}Closed = not (time >= pumpTripTime);
+  drive{axis}.breakerClosed.signal = breaker{axis}Closed;
+  connect(drive{axis}.shaft, {name}.M);
+''')
+        text = replace_statement(
+            text,
+            str(selected["speed_marker"]),
+            "",
+            f"old {axis} speed source",
+        )
+        text = replace_statement(
+            text,
+            str(selected["discharge_marker"]),
+            f"  connect({name}.C2, checkValve{axis}.C1);\n"
+            f"  connect(checkValve{axis}.C2, {selected['downstream']});\n",
+            f"{axis} discharge check valve",
+        )
+        if f"{name}.rpm_or_mpower" in text:
+            raise ValueError(f"legacy prescribed-speed connection remains for {name}")
+    elif trip_target == 4:
+        declarations.append('''
   Boolean breakerCWClosed;
-
-  TripLens_PumpPhysics.BreakerTorqueDrive driveHP(
-    nominalSpeedRpm=1400, torqueLimit=1e5);
-  TripLens_PumpPhysics.BreakerTorqueDrive driveIP(
-    nominalSpeedRpm=1400, torqueLimit=2e4);
-  TripLens_PumpPhysics.BreakerTorqueDrive driveLP(
-    nominalSpeedRpm=1400, torqueLimit=6e4);
   TripLens_PumpPhysics.BoundaryMotorPump cwPumpDrive(
     nominalSpeedRpm=600,
     nominalMassFlow=29804.5,
     coastdownTime=8,
     valveTimeConstant=0.25);
-
-  ThermoSysPro.WaterSteam.PressureLosses.IdealCheckValve checkValveHP(
-    dPOuvert=0.01, Qmin=1e-6, continuous_flow_reversal=true);
-  ThermoSysPro.WaterSteam.PressureLosses.IdealCheckValve checkValveIP(
-    dPOuvert=0.01, Qmin=1e-6, continuous_flow_reversal=true);
-  ThermoSysPro.WaterSteam.PressureLosses.IdealCheckValve checkValveLP(
-    dPOuvert=0.01, Qmin=1e-6, continuous_flow_reversal=true);
-'''
-    text = replace_once(text, "\nequation\n", declarations + "\nequation\n", "equation section")
-
-    equations = '''
-  breakerHPClosed = not (tripTarget == 1 and time >= pumpTripTime);
-  breakerIPClosed = not (tripTarget == 2 and time >= pumpTripTime);
-  breakerLPClosed = not (tripTarget == 3 and time >= pumpTripTime);
-  breakerCWClosed = not (tripTarget == 4 and time >= pumpTripTime);
-
-  driveHP.breakerClosed.signal = breakerHPClosed;
-  driveIP.breakerClosed.signal = breakerIPClosed;
-  driveLP.breakerClosed.signal = breakerLPClosed;
+''')
+        equations.append('''
+  breakerCWClosed = not (time >= pumpTripTime);
   cwPumpDrive.breakerClosed.signal = breakerCWClosed;
-
-  connect(driveHP.shaft, PompeAlimHP.M);
-  connect(driveIP.shaft, PompeAlimMP.M);
-  connect(driveLP.shaft, PompeAlimBP.M);
   connect(cwPumpDrive.massFlow, SourceCaloporteur.IMassFlow);
-'''
-    text = replace_once(text, "\nequation\n", "\nequation\n" + equations, "pump equations")
+''')
+    elif trip_target != 0:
+        raise ValueError(f"unsupported trip target: {trip_target}")
 
-    for marker, label in (
-        ("  connect(PompeAlimMP.rpm_or_mpower, arretPomesMp.y)", "old IP speed source"),
-        ("  connect(PompeAlimHP.rpm_or_mpower, arretPomesHP.y)", "old HP speed source"),
-        ("  connect(PompeAlimBP.rpm_or_mpower, arretPomesBP.y)", "old LP speed source"),
-    ):
-        text = replace_statement(text, marker, "", label)
-
-    text = replace_statement(
+    declaration_text = "".join(declarations)
+    equation_text = "".join(equations)
+    text = replace_once(
         text,
-        "  connect(Vanne_alimentationMPHP1.C1, PompeAlimHP.C2)",
-        "  connect(PompeAlimHP.C2, checkValveHP.C1);\n"
-        "  connect(checkValveHP.C2, Vanne_alimentationMPHP1.C1);\n",
-        "HP discharge check valve",
+        "\nequation\n",
+        declaration_text + "\nequation\n" + equation_text,
+        "pump declarations and equations",
     )
-    text = replace_statement(
-        text,
-        "  connect(PompeAlimMP.C2, Vanne_alimentationMPHP2.C1)",
-        "  connect(PompeAlimMP.C2, checkValveIP.C1);\n"
-        "  connect(checkValveIP.C2, Vanne_alimentationMPHP2.C1);\n",
-        "IP discharge check valve",
-    )
-    text = replace_statement(
-        text,
-        "  connect(PompeAlimBP.C2, vanne_extraction.C1)",
-        "  connect(PompeAlimBP.C2, checkValveLP.C1);\n"
-        "  connect(checkValveLP.C2, vanne_extraction.C1);\n",
-        "LP discharge check valve",
-    )
-
-    forbidden = ("PompeAlimHP.rpm_or_mpower", "PompeAlimMP.rpm_or_mpower", "PompeAlimBP.rpm_or_mpower")
-    leftovers = [item for item in forbidden if item in text]
-    if leftovers:
-        raise ValueError("legacy prescribed-speed connections remain: " + ", ".join(leftovers))
     return text
 
 

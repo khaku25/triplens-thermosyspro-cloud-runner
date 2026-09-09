@@ -9,6 +9,8 @@ package TripLens_PumpPhysics
       "Speed controller gain in N.m/(rev/min)";
     parameter Real integralGain = 25
       "Speed controller integral gain in N.m/(rev/min.s)";
+    parameter Modelica.SIunits.Torque initialTorque = 5000
+      "Initial motor-torque guess used to preload the speed controller";
     parameter Modelica.SIunits.Torque torqueLimit = 1e5;
 
     ThermoSysPro.InstrumentationAndControl.Connectors.InputLogical
@@ -18,7 +20,7 @@ package TripLens_PumpPhysics
     ThermoSysPro.Units.AngularVelocity_rpm speedRpm;
     Modelica.SIunits.Torque motorTorque;
     Real speedError(unit="rev/min");
-    Real integralState(start=0, fixed=false);
+    Real integralState(start=initialTorque/integralGain, fixed=false);
 
   initial equation
     // Solve the integrator preload from the connected pump load. This keeps
