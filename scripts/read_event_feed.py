@@ -20,8 +20,8 @@ def read_event_feed(
     if consumer not in {"alarm-console", "triplens-ai"}:
         raise ValueError("consumer must be alarm-console or triplens-ai")
     contract = load_contract(contract_path)
-    if event_path.name != "EVENT.csv":
-        raise ValueError(f"{consumer} accepts EVENT.csv only")
+    if event_path.name not in {"VPP_EVENT.csv", "ECMS_EVENT.csv"}:
+        raise ValueError(f"{consumer} accepts VPP_EVENT.csv or ECMS_EVENT.csv only")
     fields, rows = read_csv(event_path)
     validate_events(fields, rows, contract)
     return rows
@@ -48,7 +48,7 @@ def main() -> int:
     else:
         print(json.dumps({
             "consumer": args.consumer,
-            "input": "EVENT.csv",
+            "input": args.event.name,
             "event_count": len(rows),
             "raw_access": False,
         }, ensure_ascii=False))
