@@ -95,7 +95,11 @@ def main() -> int:
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--pump-id", choices=sorted(FIELD_SETS), required=True)
     parser.add_argument("--trip-time", type=float, required=True)
+    parser.add_argument("--stop-time", type=float, required=True)
     args = parser.parse_args()
+
+    if not math.isfinite(args.stop_time) or args.stop_time <= args.trip_time:
+        parser.error("--stop-time must be finite and later than --trip-time")
 
     with args.input.open("r", encoding="utf-8-sig", newline="") as stream:
         reader = csv.DictReader(stream)
@@ -108,6 +112,13 @@ def main() -> int:
 
     fields = FIELD_SETS[args.pump_id]
     time_field = resolve(headers, "time")
+    final_time = number(rows[-1], time_field)
+    time_tolerance = max(1e-6, abs(args.stop_time)*1e-8)
+    if final_time + time_tolerance < args.stop_time:
+        raise ValueError(
+            f"RAW CSV stopped early at {final_time:.9g}s; "
+            f"expected {args.stop_time:.9g}s"
+        )
     resolved = {
         key: resolve(headers, value)
         for key, value in fields.items()

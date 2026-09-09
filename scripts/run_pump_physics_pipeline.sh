@@ -92,7 +92,8 @@ cp "$result_file" "$output_dir/thermosyspro-raw.csv"
 python3 scripts/validate_pump_physics.py \
   --input "$output_dir/thermosyspro-raw.csv" \
   --pump-id "$pump_id" \
-  --trip-time "$event_time_s"
+  --trip-time "$event_time_s" \
+  --stop-time "$stop_time_s"
 
 python3 scripts/build_raw_manifest.py \
   --raw-file "$output_dir/thermosyspro-raw.csv" \

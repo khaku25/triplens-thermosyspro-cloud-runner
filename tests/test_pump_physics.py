@@ -56,6 +56,9 @@ class PumpPhysicsTests(unittest.TestCase):
                 self.assertIn(f"IdealCheckValve checkValve{axis}", model)
                 self.assertIn(f"checkValve{axis}.C1", model)
                 self.assertIn(f"checkValve{axis}.C2", model)
+                self.assertIn("VRot0=1400", model)
+                self.assertIn("steady_state_mech=false", model)
+                self.assertIn("continuous_flow_reversal=false", model)
                 for normal_component in all_components.difference({component}):
                     self.assertIn(
                         f"StaticCentrifugalPump {normal_component}", model
@@ -131,6 +134,36 @@ class PumpPhysicsTests(unittest.TestCase):
             self.assertEqual(rows[1]["fwp_hp_motor_torque_nm"], "0")
             review = json.loads((target / "signal-mapping-review.json").read_text())
             self.assertIn("fwp_hp_breaker_closed", review["canonical_signals_present"])
+
+    def test_physics_validator_rejects_a_partial_simulation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            raw = target / "partial.csv"
+            raw.write_text(
+                "time,breakerCWClosed,cwPumpDrive.motorTorque,"
+                "cwPumpDrive.speedRpm,cwPumpDrive.checkValvePosition,"
+                "cwPumpDrive.massFlow.signal,Condenseur.P\n"
+                "0,true,1,600,1,100,100000\n"
+                "300,false,0,500,1,80,99999\n"
+                "304,false,0,400,1,60,99998\n",
+                encoding="utf-8",
+            )
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "validate_pump_physics.py"),
+                    "--input", str(raw),
+                    "--pump-id", "CW-PUMP",
+                    "--trip-time", "300",
+                    "--stop-time", "420",
+                ],
+                cwd=ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIn("RAW CSV stopped early", completed.stderr)
 
 
 if __name__ == "__main__":

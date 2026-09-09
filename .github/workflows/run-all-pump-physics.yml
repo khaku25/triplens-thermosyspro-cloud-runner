@@ -15,6 +15,18 @@ on:
         description: OpenModelica output interval count
         required: true
         default: "4200"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/run-all-pump-physics.yml"
+      - "modelica/**"
+      - "scripts/render_pump_fleet_model.py"
+      - "scripts/run_pump_physics_pipeline.sh"
+      - "scripts/validate_pump_physics.py"
+      - "config/pump_physics_registry.csv"
+      - "config/signal_map.json"
+      - "tests/test_pump_physics.py"
   push:
     branches:
       - codex/dynamic-pumps-20260908
