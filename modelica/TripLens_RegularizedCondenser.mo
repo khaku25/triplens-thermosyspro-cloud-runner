@@ -103,9 +103,9 @@ public
   ThermoSysPro.Properties.WaterSteam.Common.PropThermoSat vsat
                                            annotation (Placement(transformation(
           extent={{10,40},{30,60}}, rotation=0)));
-  Connectors.FluidInlet Cv     annotation (Placement(transformation(extent={{
+  ThermoSysPro.WaterSteam.Connectors.FluidInlet Cv     annotation (Placement(transformation(extent={{
             -10,90},{10,110}}, rotation=0)));
-  Connectors.FluidOutlet Cl     annotation (Placement(transformation(extent={{
+  ThermoSysPro.WaterSteam.Connectors.FluidOutlet Cl     annotation (Placement(transformation(extent={{
             -8,-110},{12,-90}}, rotation=0)));
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal yNiveau          annotation (Placement(
         transformation(extent={{100,-82},{120,-62}}, rotation=0)));
@@ -113,9 +113,9 @@ public
   ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph prod
     annotation (Placement(transformation(extent={{-60,20},{-40,40}}, rotation=0)));
 public
-  Connectors.FluidInlet Cee    annotation (Placement(transformation(extent={{
+  ThermoSysPro.WaterSteam.Connectors.FluidInlet Cee    annotation (Placement(transformation(extent={{
             -110,-32},{-90,-12}}, rotation=0)));
-  Connectors.FluidOutlet Cse   annotation (Placement(transformation(extent={{90,
+  ThermoSysPro.WaterSteam.Connectors.FluidOutlet Cse   annotation (Placement(transformation(extent={{90,
             -30},{110,-10}}, rotation=0)));
   ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph proe
     "Propriétés de l'eau "                   annotation (Placement(
