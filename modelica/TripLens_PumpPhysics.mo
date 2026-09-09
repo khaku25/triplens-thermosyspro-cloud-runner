@@ -135,11 +135,8 @@ package TripLens_PumpPhysics
     ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
       effectiveOpening;
 
-    Real position(start=1, fixed=false, min=minimumOpening, max=1);
+    Real position(start=0.8, fixed=true, min=minimumOpening, max=1);
     Real target(min=minimumOpening, max=1);
-
-  initial equation
-    position = max(minimumOpening, min(1, normalOpening.signal));
 
   equation
     assert(closeTime > 0 and reopenTime > 0 and minimumOpening > 0 and
@@ -174,12 +171,12 @@ package TripLens_PumpPhysics
       "ProtectedExhaustGasBoundary parameters must be physical and positive");
     rundownFraction = if gtTripLatched then
       1 - exp(-max(gtTripElapsed, 0)/rundownTime) else 0;
-    effectiveMassFlow.signal = minimumMassFlow +
-      (max(minimumMassFlow, normalMassFlow.signal) - minimumMassFlow)*
-      (1 - rundownFraction);
-    effectiveTemperature.signal = minimumTemperature +
-      (max(minimumTemperature, normalTemperature.signal) - minimumTemperature)*
-      (1 - rundownFraction);
+    effectiveMassFlow.signal = if gtTripLatched then minimumMassFlow +
+      (normalMassFlow.signal - minimumMassFlow)*(1 - rundownFraction)
+      else normalMassFlow.signal;
+    effectiveTemperature.signal = if gtTripLatched then minimumTemperature +
+      (normalTemperature.signal - minimumTemperature)*(1 - rundownFraction)
+      else normalTemperature.signal;
   end ProtectedExhaustGasBoundary;
 
   model CommonDrumTripProtection
