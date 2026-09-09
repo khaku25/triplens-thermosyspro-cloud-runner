@@ -152,6 +152,7 @@ class RawOnlyActionTests(unittest.TestCase):
         self.assertIn("HPBypassMassFlow", mos)
         self.assertIn("LPBypassMassFlow", mos)
         self.assertNotIn("nlssMaxDensity=0", mos)
+        self.assertIn("LOG_NLS,LOG_NLS_V", mos)
         self.assertIn("CondenserPressure", mos)
 
     def test_one_ms_dynamic_bypass_raw_meets_stroke_contract(self) -> None:
