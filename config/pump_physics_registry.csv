@@ -1,0 +1,7 @@
+equipment_id,display_name,plant_function,thermosyspro_component,trip_target,implementation_status,physical_response,notes
+FWP-HP,HP 급수펌프,HP drum feedwater,PompeAlimHP,1,DYNAMIC_CONNECTED,TSP.DRUM.HP.FW_FLOW,Native pump curve plus breaker torque shaft inertia and discharge check valve
+FWP-IP,IP 급수펌프,IP drum feedwater,PompeAlimMP,2,DYNAMIC_CONNECTED,TSP.DRUM.IP.FW_FLOW,ThermoSysPro uses the French MP name for the IP pressure level
+FWP-LP,LP 급수펌프,LP feed and condensate extraction path,PompeAlimBP,3,SHARED_SIMPLIFIED_PATH,TSP.DRUM.LP.FW_FLOW,Pinned example collapses LP feed and condensate extraction into one physical pump
+RECIRC-HP,HP 드럼 순환부하,HP evaporator circulation,EvaporateurHP,,NATURAL_CIRCULATION_NOT_MOTOR_PUMP,TSP.DRUM.HP.RECIRC_FLOW,Do not synthesize breaker or motor pump without P&ID evidence
+RECIRC-IP,IP 드럼 순환부하,IP evaporator circulation,EvaporateurMP,,NATURAL_CIRCULATION_NOT_MOTOR_PUMP,TSP.DRUM.IP.RECIRC_FLOW,Do not synthesize breaker or motor pump without P&ID evidence
+RECIRC-LP,LP 드럼 순환부하,LP evaporator circulation,EvaporateurBP,,NATURAL_CIRCULATION_NOT_MOTOR_PUMP,TSP.DRUM.LP.RECIRC_FLOW,Do not synthesize breaker or motor pump without P&ID evidence
