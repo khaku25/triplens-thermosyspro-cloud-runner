@@ -1,25 +1,27 @@
 within ;
 model TripLens_CombinedCycle_TripTAC
-  parameter Real tripTime(unit="s") = @TRIP_TIME@;
-  parameter Real tripRampDuration(unit="s") = @TRIP_RAMP_DURATION@;
+  "Compatibility wrapper name retained; this model performs GT DERATE, not GT Trip"
+  parameter Real derateTime(unit="s") = @DERATE_TIME@;
+  parameter Real derateRampDuration(unit="s") = @DERATE_RAMP_DURATION@;
   parameter Real exhaustFlowNormal(unit="kg/s") = 606.94;
-  // The legacy ThermoSysPro CCPP becomes singular when flue-gas flow is
-  // forced to 50 kg/s while its steam-side pumps and valves remain online.
-  // 150 kg/s is the lowest severe-trip point verified to reach 1000 s in
-  // OpenModelica 1.27 with the paired temperature floor below.
-  parameter Real exhaustFlowTripped(unit="kg/s") = 150.0;
+  // This validated process-boundary experiment is DERATING only.
+  // It must never be interpreted as GT Trip because the associated generator
+  // breaker remains CLOSED in the canonical TripLens semantics.
+  // 150 kg/s is the lowest severe derating point verified to reach 1000 s in
+  // OpenModelica 1.27 with the paired 550 K temperature boundary.
+  parameter Real exhaustFlowDerated(unit="kg/s") = 150.0;
   parameter Real exhaustTemperatureNormal(unit="K") = 893.75;
-  parameter Real exhaustTemperatureTripped(unit="K") = 550.0;
+  parameter Real exhaustTemperatureDerated(unit="K") = 550.0;
 
   extends ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC(
     Debit(Table=[0,exhaustFlowNormal;
-                 tripTime,exhaustFlowNormal;
-                 tripTime + tripRampDuration,exhaustFlowTripped;
-                 @STOP_TIME@,exhaustFlowTripped]),
+                 derateTime,exhaustFlowNormal;
+                 derateTime + derateRampDuration,exhaustFlowDerated;
+                 @STOP_TIME@,exhaustFlowDerated]),
     Temperature(Table=[0,exhaustTemperatureNormal;
-                       tripTime,exhaustTemperatureNormal;
-                       tripTime + tripRampDuration,exhaustTemperatureTripped;
-                       @STOP_TIME@,exhaustTemperatureTripped]));
+                       derateTime,exhaustTemperatureNormal;
+                       derateTime + derateRampDuration,exhaustTemperatureDerated;
+                       @STOP_TIME@,exhaustTemperatureDerated]));
 
   annotation(experiment(
     StartTime=0,
