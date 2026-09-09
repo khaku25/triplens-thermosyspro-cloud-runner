@@ -102,14 +102,15 @@ ThermoSysPro 물리 실행으로 취급되지 않습니다.
 
 ### ThermoSysPro Cloud Action (RAW-only)
 
-두 Workflow가 현재 등록되어 있습니다.
+세 Workflow가 현재 등록되어 있습니다.
 
 | Workflow | 물리 어댑터 | Action 산출물 |
 |---|---|---|
 | `Generate ThermoSysPro RAW (GT physical adapter)` | GT 배기 유량·온도 경계 변화 | RAW CSV + 무라벨 manifest |
-| `Generate ThermoSysPro RAW (BFP physical adapter)` | HP BFP 회전속도 경계 변화 | RAW CSV + 무라벨 manifest |
+| `Generate ThermoSysPro RAW (BFP physical adapter)` | HP BFP 동적 펌프 호환 실행 | RAW CSV + 무라벨 manifest |
+| `Validate all ThermoSysPro pump physics` | HP/IP/LP·복수·CW 펌프 차단기 Trip | 펌프별 RAW CSV + 무라벨 manifest |
 
-두 Workflow 모두 고정 ThermoSysPro commit과 OpenModelica 이미지를 사용합니다.
+세 Workflow 모두 고정 ThermoSysPro commit과 OpenModelica 이미지를 사용합니다.
 OpenModelica 결과를 바이트 그대로 복사한 뒤 해시와 구조를 검증하며, 실패한
 실행은 artifact를 게시하지 않습니다. `fault_preset`, ECMS Command, DCS 규칙,
 사고 정답은 Action 입력 또는 산출물에 포함하지 않습니다.
@@ -125,9 +126,9 @@ GT 물리 어댑터의 `sampling_profile`에서 세 RAW 출력 방식을 선택�
 | `incident_1ms` | 0~10 s 전체 1 ms | 짧은 물리 변화 정밀 확인 |
 
 `causal_100ms`는 기본 입력인 사건시각 600 s, 종료 1000 s를 유지하면서 물리
-CSV를 0.1 s 간격으로 출력합니다. BFP 어댑터는 `stop_time_s / output_intervals`
-간격의 표준 RAW를 출력합니다. 어떤 프로필도 알람 시각이나 ECMS 사건을 만들지
-않습니다.
+CSV를 0.1 s 간격으로 출력합니다. BFP 및 전 펌프 물리 실행은
+`stop_time_s / output_intervals` 간격의 표준 RAW를 출력합니다. 어떤 프로필도
+알람 시각이나 ECMS 사건을 만들지 않습니다.
 
 `incident_1ms`는 사건시각 2 s, 경계 변화 5 s, 종료 10 s, 출력구간 10,000개인
 제한된 진단용 실행입니다.
@@ -149,8 +150,9 @@ Action artifact가 아니다. 관련 Python 코드는 다음 웹 변환부 구�
 참고자료로만 남겨 두었다.
 
 현재 GT 어댑터는 독립적인 GT 내부고장을 계산하는 모델이 아니라 배기 경계가
-변하는 물리 예제이고, BFP 어댑터도 HP BFP 속도 경계 변화 예제다. 따라서 어느
-Workflow도 임의 사고 범용 생성기로 표시하지 않는다.
+변하는 물리 예제다. 펌프 어댑터는 정적 RPM 경계를 제거하고 ThermoSysPro의
+동적 원심펌프, 차단기 토크, 회전 관성, 토출 체크밸브와 기존 공정망을 연결한다.
+정확한 설비별 적용 범위와 원본 모델의 단순화는 `docs/PUMP_PHYSICS.md`에 기록한다.
 
 ## 실행 오류 복구
 

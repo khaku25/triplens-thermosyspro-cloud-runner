@@ -110,7 +110,10 @@ class CausalExportTests(unittest.TestCase):
             trip = next(row for row in dcs1 if row["tag"] == "GT.TRIP.CMD")
             self.assertEqual(trip["source_time_ms"], "5000")
             self.assertEqual(trip["provenance"], "SCENARIO_INPUT")
-            self.assertTrue(any(row["provenance"] == "PHYSICS_THRESHOLD_DERIVED" for row in dcs1))
+            self.assertTrue(any(
+                row["provenance"] == "PHYSICS_ABSOLUTE_THRESHOLD"
+                for row in dcs1
+            ))
             self.assertEqual(
                 [int(row["source_time_ms"]) for row in dcs1],
                 sorted(int(row["source_time_ms"]) for row in dcs1),

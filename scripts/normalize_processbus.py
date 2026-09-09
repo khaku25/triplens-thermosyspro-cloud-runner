@@ -48,6 +48,15 @@ def parse_float(value: str, field: str, row_number: int) -> float:
     return number
 
 
+def parse_boolean(value: str, field: str, row_number: int) -> int:
+    normalized = str(value).strip().lower()
+    if normalized in {"true", "1", "1.0"}:
+        return 1
+    if normalized in {"false", "0", "0.0"}:
+        return 0
+    raise ValueError(f"row {row_number}: {field} is not boolean: {value!r}")
+
+
 def numeric_source_column(rows: list[dict[str, str]], header: str) -> bool:
     """Return True when every non-empty sample is finite numeric and at least one exists."""
     seen = False
@@ -221,7 +230,12 @@ def main() -> int:
                 target_row[target] = ""
                 continue
             raw = (source_row.get(source) or "").strip()
-            target_row[target] = "" if not raw else f"{parse_float(raw, target, row_index):.12g}"
+            if not raw:
+                target_row[target] = ""
+            elif signals[target].get("value_type") == "boolean":
+                target_row[target] = parse_boolean(raw, target, row_index)
+            else:
+                target_row[target] = f"{parse_float(raw, target, row_index):.12g}"
 
         for target, source in dynamic_sources.items():
             raw = (source_row.get(source) or "").strip()
