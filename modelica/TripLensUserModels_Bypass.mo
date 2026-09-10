@@ -917,4 +917,18 @@ model CombinedCycle_TripTAC_Bypass_OMCStart
     the documented operating-point starts instead of solving the whole HRSG
     thermal network as one steady-state nonlinear block at t=0.</p></html>"));
 end CombinedCycle_TripTAC_Bypass_OMCStart;
+
+model CombinedCycle_TripTAC_Bypass_OMCStart_NoFeedwaterInertia
+  "Staged start with algebraic momentum in the first HP/MP economizers"
+  extends CombinedCycle_TripTAC_Bypass_OMCStart(
+    EconomiseurHP1(TwoPhaseFlowPipe(inertia=false)),
+    EconomiseurMP(TwoPhaseFlowPipe(inertia=false)));
+end CombinedCycle_TripTAC_Bypass_OMCStart_NoFeedwaterInertia;
+
+model CombinedCycle_TripTAC_Bypass_OMCStart_StaticFeedwaterMass
+  "Staged start with static mass balance in the first HP/MP economizers"
+  extends CombinedCycle_TripTAC_Bypass_OMCStart(
+    EconomiseurHP1(TwoPhaseFlowPipe(dynamic_mass_balance=false)),
+    EconomiseurMP(TwoPhaseFlowPipe(dynamic_mass_balance=false)));
+end CombinedCycle_TripTAC_Bypass_OMCStart_StaticFeedwaterMass;
 end TripLensUserModels_Bypass;
