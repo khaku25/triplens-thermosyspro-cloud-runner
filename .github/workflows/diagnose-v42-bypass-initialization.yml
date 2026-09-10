@@ -58,7 +58,7 @@ jobs:
             | tee build/v42/translation.log
           test -x build/v42/TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass
 
-      - name: Run dense hybrid initialization with detailed NLS log
+      - name: Run dense KINSOL initialization with detailed NLS log
         run: |
           set +e
           timeout --signal=TERM --kill-after=30s 20m \
@@ -70,12 +70,12 @@ jobs:
               ./TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass \
                 -override=startTime=0,stopTime=1,stepSize=0.1,tolerance=0.001 \
                 -s=dassl \
-                -nls=hybrid \
+                -nls=kinsol \
                 -nlssMaxDensity=0.01 \
                 -lv=LOG_STDOUT,LOG_ASSERT,LOG_STATS,LOG_INIT,LOG_NLS,LOG_NLS_V \
-            > build/v42/initialization-hybrid.log 2>&1
+            > build/v42/initialization-dense-kinsol.log 2>&1
           sim_status=$?
-          cat build/v42/initialization-hybrid.log
+          cat build/v42/initialization-dense-kinsol.log
           exit "$sim_status"
 
       - name: Upload complete initialization evidence
@@ -86,7 +86,7 @@ jobs:
           path: |
             build/v42/install.log
             build/v42/translation.log
-            build/v42/initialization-hybrid.log
+            build/v42/initialization-dense-kinsol.log
             build/v42/*_init.xml
             build/v42/*_info.json
           if-no-files-found: warn
