@@ -94,6 +94,7 @@ def validate_csv(
         if math.isclose(manual_cv, auto_cv, rel_tol=1e-5, abs_tol=1e-8):
             raise ValueError(f"{point.key}: native Cv did not change under MAN")
         value(am1, f"{all_prefix}MassFlow")
+        value(am1, f"{all_prefix}Dp")
 
 
 def validate_fmu(path: Path) -> None:
@@ -115,7 +116,7 @@ def validate_fmu(path: Path) -> None:
         expected_outputs.update({
             f"{prefix}AutoCmd", f"{prefix}Cmd", f"{prefix}Fb",
             f"{prefix}Deviation", f"{prefix}FaultActive",
-            f"{prefix}Cv", f"{prefix}MassFlow",
+            f"{prefix}Cv", f"{prefix}MassFlow", f"{prefix}Dp",
         })
         expected_starts.update({
             f"{prefix}ModeAuto": "true",
