@@ -12,8 +12,29 @@ model TripLens_CombinedCycle_TripTAC
   // electrical separation with 52GT.CLOSED=0 in the VPP/ECMS path.
   parameter Real exhaustFlowDeratedTH = 540.0
     "Published derated GT exhaust mass flow in t/h";
+  parameter Real exhaustFlowTripTH = 0.0
+    "GT Trip exhaust-flow boundary after coastdown in t/h";
   parameter Real exhaustTemperatureNormal(unit="K") = 893.75;
   parameter Real exhaustTemperatureDerated(unit="K") = 550.0;
+  parameter Real exhaustTemperatureTrip(unit="K") = 400.0;
+  parameter Boolean enableGTTrip = @GT_TRIP_ENABLED@
+    "Assert the canonical GT Trip command in the Modelica run";
+  parameter Real vppGTTripCommandDelay(unit="s") = 0.055;
+  parameter Real vppGTBreakerOpenDelay(unit="s") = 0.080;
+  parameter Real vppSTBreakerOpenDelay(unit="s") = 0.100;
+  parameter Real vppGTGPowerNormalMW(unit="MW") = 160.0;
+  parameter Real vppGTGPowerDecayTau(unit="s") = 0.35;
+  parameter Real vppGTGSpeedNormalRPM = 3600.0;
+  parameter Real vppGTGCoastdownTau(unit="s") = 1.2;
+
+  Boolean vppGTTripCmd "Modelica-produced GT Trip command";
+  Boolean vppGTTripLatch "Modelica-produced GT Trip latch";
+  Boolean vpp52GTTripCmd "Modelica-produced 52GT Trip command";
+  Boolean vpp52GTClosed "Modelica-produced 52GT auxiliary contact";
+  Boolean vpp52STTripCmd "Modelica-produced 52ST Trip command";
+  Boolean vpp52STClosed "Modelica-produced 52ST auxiliary contact";
+  Real vppGTGPowerMW(unit="MW") "Reduced-order GT electrical output";
+  Real vppGTGSpeedRPM "Reduced-order GT shaft speed in rpm";
 
   Real vppGTExhaustMassFlowTH "Published GT exhaust mass flow in t/h";
   Real vppHPTurbineSteamFlowTH "Published HP turbine steam flow in t/h";
@@ -98,6 +119,26 @@ model TripLens_CombinedCycle_TripTAC
     Temperature(Table=@EXHAUST_TEMPERATURE_TABLE@));
 
 equation
+  // The thermal plant and the reduced-order electrical boundary are solved in
+  // one Modelica result file. Downstream ECMS code must observe these outputs;
+  // it is not allowed to recreate them from Python timing constants.
+  vppGTTripCmd = enableGTTrip and time >= eventTime;
+  vppGTTripLatch = vppGTTripCmd;
+  vpp52GTTripCmd = vppGTTripLatch and
+    time >= eventTime + vppGTTripCommandDelay;
+  vpp52GTClosed = not (vppGTTripLatch and
+    time >= eventTime + vppGTBreakerOpenDelay);
+  vpp52STTripCmd = vppSTTripLatch;
+  vpp52STClosed = not (vppSTTripLatch and
+    time >= vppTripTime + vppSTBreakerOpenDelay);
+  vppGTGPowerMW = if not vppGTTripLatch then vppGTGPowerNormalMW
+    else if vpp52GTClosed then
+      vppGTGPowerNormalMW*exp(-(time - eventTime)/vppGTGPowerDecayTau)
+    else 0;
+  vppGTGSpeedRPM = if vpp52GTClosed then vppGTGSpeedNormalRPM
+    else vppGTGSpeedNormalRPM*exp(
+      -(time - eventTime - vppGTBreakerOpenDelay)/vppGTGCoastdownTau);
+
   // ThermoSysPro connectors retain their native SI balance. Only the
   // published RAW boundary is converted to the plant-facing t/h contract.
   vppGTExhaustMassFlowTH = 3.6*Debit.y.signal;
