@@ -1,6 +1,18 @@
 name: Build OMEdit Initialization MAT
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "scripts/render_modelica.py"
+      - "scripts/patch_turbine_bypass_model.py"
+      - "scripts/patch_fmu_valve_controls.py"
+      - "scripts/patch_stodola_turbine.py"
+      - "modelica/TripLens_CombinedCycle_TripTAC.mo.tpl"
+      - "modelica/TripLens_OMEdit_Init_Alias.mo"
+      - "modelica/build_omedit_initialization.mos"
+      - ".github/workflows/build-omedit-initialization.yml"
   push:
     branches:
       - codex/omedit-init-mat-20260910
