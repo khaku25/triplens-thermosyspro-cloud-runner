@@ -12,6 +12,7 @@ on:
       - "modelica/TripLens_Valve_Adapter_Smoke.mo"
       - "modelica/TripLens_Valve_Adapter_All_Smoke.mo"
       - "modelica/build_fmu_valve_adapter.mos"
+      - "modelica/build_fmu_valve_only.mos"
       - "tests/test_openmodelica_valve_adapter.py"
       - ".github/workflows/build-openmodelica-valve-fmu.yml"
   workflow_dispatch:
@@ -65,6 +66,7 @@ jobs:
       - name: Build FMU and run native physical smoke simulations
         run: |
           timeout --signal=TERM --kill-after=30s 32m             docker run --rm               -v "$PWD/build/omhome:/root"               -v "$PWD:/workspace"               -w /workspace               "$OPENMODELICA_IMAGE"               omc /workspace/modelica/build_fmu_valve_adapter.mos               | tee build/openmodelica-valve-fmu.log
+          timeout --signal=TERM --kill-after=30s 20m             docker run --rm               -v "$PWD/build/omhome:/root"               -v "$PWD:/workspace"               -w /workspace               "$OPENMODELICA_IMAGE"               omc /workspace/modelica/build_fmu_valve_only.mos               | tee -a build/openmodelica-valve-fmu.log
           if grep -Eq             'resultFile = ""|Failed to build model|Simulation execution failed|Error:'             build/openmodelica-valve-fmu.log; then
             echo "OpenModelica reported a build or simulation failure" >&2
             exit 1
