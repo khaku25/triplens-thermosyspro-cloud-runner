@@ -27,34 +27,34 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - case_name: scaled-current-hybrid
+          - case_name: scaled-current-experimental-kinsol
             build_script: build_v42_bypass_diagnostic.mos
             executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass
             tearing: omcTearing
-            nls: hybrid
+            nls: experimental-kinsol
             use_warm: false
             iim: symbolic
-          - case_name: scaled-current-homotopy
+          - case_name: scaled-current-kinsol
             build_script: build_v42_bypass_diagnostic.mos
             executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass
             tearing: omcTearing
-            nls: homotopy
+            nls: kinsol
             use_warm: false
             iim: symbolic
-          - case_name: scaled-warm-homotopy
+          - case_name: scaled-current-newton
             build_script: build_v42_bypass_diagnostic.mos
             executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass
             tearing: omcTearing
-            nls: homotopy
-            use_warm: true
+            nls: newton
+            use_warm: false
             iim: symbolic
-          - case_name: scaled-warm-no-symbolic-init
+          - case_name: scaled-current-mixed
             build_script: build_v42_bypass_diagnostic.mos
             executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass
             tearing: omcTearing
-            nls: hybrid
-            use_warm: true
-            iim: none
+            nls: mixed
+            use_warm: false
+            iim: symbolic
     steps:
       - uses: actions/checkout@v4
 
@@ -126,6 +126,11 @@ jobs:
                 -nls=${{ matrix.nls }} \
                 -nlsLS=totalpivot \
                 -nlssMaxDensity=0.01 \
+                -newton=damped_ls \
+                -newtonFTol=1e-8 \
+                -newtonXTol=1e-8 \
+                -jacobianNominalFactor=0.01 \
+                -nlsInfo \
                 -lv=LOG_STDOUT,LOG_ASSERT,LOG_STATS,LOG_INIT,LOG_NLS,LOG_NLS_V \
             > build/v42/initialization.log 2>&1
           sim_status=$?
@@ -144,5 +149,9 @@ jobs:
             build/v42/selected_init.xml
             build/v42/*_init.xml
             build/v42/*_info.json
+            build/v42/*_01exo.c
+            build/v42/*_10asr.c
+            build/v42/*_12jac.c
+            build/v42/*_nls_*.csv
           if-no-files-found: warn
           retention-days: 30
