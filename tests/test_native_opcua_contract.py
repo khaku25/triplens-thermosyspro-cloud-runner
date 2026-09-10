@@ -65,6 +65,11 @@ class NativeOPCUAContractTests(unittest.TestCase):
         self.assertIn('command_name = "vppExternalTripCommandRegister.y"', client)
         self.assertIn("ua.VariantType.Double", client)
 
+        build_script = (ROOT / "modelica/build_native_opcua.mos.tpl").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("--removeSimpleEquations=none", build_script)
+
 
 if __name__ == "__main__":
     unittest.main()

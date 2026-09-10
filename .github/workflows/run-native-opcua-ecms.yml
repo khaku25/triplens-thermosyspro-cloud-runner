@@ -79,9 +79,15 @@ jobs:
             exit 1
           fi
           test -x build/TripLens_Native_OPCUA
-          grep -n -m 1 'name="vppExternalTripCommandRegister.y"' \
+          if ! grep -n -m 1 'name="vppExternalTripCommandRegister.y"' \
             build/TripLens_Native_OPCUA_init.xml \
-            | tee build/native-opcua-input-contract.txt
+            > build/native-opcua-input-contract.txt; then
+            grep -n -E 'vppExternalTrip|TripCommandRegister' \
+              build/TripLens_Native_OPCUA_init.xml \
+              | head -n 50 || true
+            exit 1
+          fi
+          cat build/native-opcua-input-contract.txt
           test -s build/native-opcua-input-contract.txt
 
       - name: Install pinned OPC UA client
