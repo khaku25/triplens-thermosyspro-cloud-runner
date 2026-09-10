@@ -113,7 +113,7 @@ def equations() -> str:
             f"  {point.object_name}.Ouv.signal = {prefix}Fb;",
             f"  {prefix}Cv = {point.object_name}.Cv;",
             f"  {prefix}MassFlow = 3.6*{point.object_name}.Q;",
-            f"  {prefix}Dp = {point.object_name}.C1.P - {point.object_name}.C2.P;",
+            f"  {prefix}Dp = {point.object_name}.deltaP;",
             "",
         ))
     return "\n".join(lines)
@@ -211,7 +211,7 @@ def patch_model(source: str) -> str:
             f"{point.object_name}.Ouv.signal = {prefix}Fb",
             f"{prefix}Cv = {point.object_name}.Cv",
             f"{prefix}MassFlow = 3.6*{point.object_name}.Q",
-            f"{prefix}Dp = {point.object_name}.C1.P - {point.object_name}.C2.P",
+            f"{prefix}Dp = {point.object_name}.deltaP",
         )
         for token in required:
             if token not in source:
