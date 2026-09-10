@@ -82,6 +82,23 @@ def browse_nodes(client: Client) -> dict[str, object]:
     return nodes
 
 
+def wait_for_model_nodes(client, required: set[str], timeout_s: float) -> dict[str, object]:
+    deadline = time.monotonic() + timeout_s
+    nodes: dict[str, object] = {}
+    while time.monotonic() < deadline:
+        nodes = browse_nodes(client)
+        if required <= nodes.keys():
+            return nodes
+        time.sleep(0.10)
+    missing = sorted(required - nodes.keys())
+    available_vpp = sorted(name for name in nodes if name.startswith("vpp"))
+    raise ValueError(
+        "native OPC UA model nodes missing after registration wait: "
+        + ", ".join(missing)
+        + f"; available vpp nodes={available_vpp}"
+    )
+
+
 def wait_for_time(node: object, previous: float, timeout_s: float) -> float:
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
@@ -164,13 +181,13 @@ def main() -> int:
     client = connect(args.endpoint, 180.0)
     rows: list[dict[str, float | int]] = []
     try:
-        nodes = browse_nodes(client)
-        required = {"time", "step", "vppExternalTripCommand", *(s.node_name for s in SIGNALS)}
-        missing = sorted(required - nodes.keys())
-        if missing:
-            raise ValueError("native OPC UA nodes missing: " + ", ".join(missing))
-        time_node = nodes["time"]
-        step_node = nodes["step"]
+        required = {"vppExternalTripCommand", *(s.node_name for s in SIGNALS)}
+        nodes = wait_for_model_nodes(client, required, 60.0)
+        # OpenModelica 1.27 defines control nodes in namespace 0 with stable
+        # numeric IDs. Their BrowseNames are OpenModelica.step/time, unlike
+        # model variables whose BrowseNames are the Modelica names.
+        time_node = client.get_node(ua.NodeId(10004, 0))
+        step_node = client.get_node(ua.NodeId(10000, 0))
         command_node = nodes["vppExternalTripCommand"]
         signal_nodes = [nodes[signal.node_name] for signal in SIGNALS]
         current = float(time_node.get_value())

@@ -50,6 +50,12 @@ class NativeOPCUAContractTests(unittest.TestCase):
         self.assertIn('LIVE_STOP_TIME_S: "2"', workflow)
         self.assertNotIn("live_fmu_gateway.py", workflow)
 
+    def test_client_uses_stable_openmodelica_control_node_ids(self) -> None:
+        source = (ROOT / "scripts/native_ecms_opcua_client.py").read_text(encoding="utf-8")
+        self.assertIn("ua.NodeId(10000, 0)", source)
+        self.assertIn("ua.NodeId(10004, 0)", source)
+        self.assertIn("wait_for_model_nodes", source)
+
 
 if __name__ == "__main__":
     unittest.main()
