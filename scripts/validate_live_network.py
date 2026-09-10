@@ -46,12 +46,10 @@ def main() -> int:
     if gateway.get("status") != "PASS" or client.get("status") != "PASS":
         errors.append("gateway or ECMS client did not report PASS")
     runtime = gateway.get("openmodelica_runtime", {})
-    if runtime.get("mode") != "SELECTIVE_KINSOL_RUNTIME_BRIDGE":
-        errors.append("selective OpenModelica nonlinear runtime bridge was not active")
+    if runtime.get("mode") != "FULL_OPENMODELICA_RUNTIME_ABI":
+        errors.append("full OpenModelica runtime ABI was not active")
     if len(str(runtime.get("library_sha256") or "")) != 64:
         errors.append("full OpenModelica runtime library SHA-256 is missing")
-    if len(str(runtime.get("bridge_sha256") or "")) != 64:
-        errors.append("selective OpenModelica runtime bridge SHA-256 is missing")
     for report in (gateway, client):
         if report.get("protocol") != PROTOCOL:
             errors.append("wire protocol mismatch")

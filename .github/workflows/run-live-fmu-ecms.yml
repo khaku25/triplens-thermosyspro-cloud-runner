@@ -15,7 +15,6 @@ on:
       - "scripts/prepare_standard_init_fmu.py"
       - "scripts/validate_live_fmu_contract.py"
       - "scripts/run_live_fmu_ecms.sh"
-      - "scripts/openmodelica_kinsol_bridge.c"
       - "requirements-live.txt"
       - "tests/test_live_fmu_network.py"
       - ".github/workflows/run-live-fmu-ecms.yml"
@@ -55,14 +54,47 @@ jobs:
             --dir build/upstream
           test "$(sha256sum build/upstream/TripLens_Native_Valve_Control_V1.fmu | awk '{print $1}')" = "$SOURCE_FMU_SHA256"
 
+      - name: Extract the matching full OpenModelica runtime
+        run: |
+          mkdir -p build/openmodelica-runtime/omc
+          runtime_container="$(docker create "$OPENMODELICA_IMAGE")"
+          docker cp \
+            "$runtime_container:/usr/lib/x86_64-linux-gnu/omc/." \
+            build/openmodelica-runtime/omc/
+          for library in \
+            liblapack.so.3 \
+            libblas.so.3 \
+            libgfortran.so.5 \
+            libquadmath.so.0
+          do
+            docker cp -L \
+              "$runtime_container:/lib/x86_64-linux-gnu/$library" \
+              build/openmodelica-runtime/omc/
+          done
+          docker rm "$runtime_container" >/dev/null
+          runtime_library="$PWD/build/openmodelica-runtime/omc/libSimulationRuntimeC.so"
+          test -s "$runtime_library"
+          LD_LIBRARY_PATH="$PWD/build/openmodelica-runtime/omc" ldd "$runtime_library" \
+            | tee build/openmodelica-runtime/runtime-ldd.txt
+          if grep -q "not found" build/openmodelica-runtime/runtime-ldd.txt; then
+            exit 1
+          fi
+          nm -D --defined-only "$runtime_library" | grep -E \
+            " (initialization|initializeNonlinearSystemData|nlsKinsolAllocate)$" \
+            | tee build/openmodelica-runtime/runtime-symbols.txt
+          test "$(wc -l < build/openmodelica-runtime/runtime-symbols.txt)" -eq 3
+          echo "FMU_RUNTIME_LIBRARY=$runtime_library" >> "$GITHUB_ENV"
+          echo "FMU_RUNTIME_LIBRARY_PATH=$PWD/build/openmodelica-runtime/omc" >> "$GITHUB_ENV"
+          sha256sum "$runtime_library" | tee build/openmodelica-runtime/runtime-sha256.txt
+
       - name: Restore previously rebuilt runtime FMU
         id: runtime-fmu-cache
         uses: actions/cache/restore@v4
         with:
           path: build/runtime-artifact
-          key: openmodelica-standard-init-${{ env.SOURCE_FMU_SHA256 }}-v1
+          key: openmodelica-full-runtime-${{ env.SOURCE_FMU_SHA256 }}-v2
 
-      - name: Restore standard OpenModelica symbolic initialization
+      - name: Build full-runtime FMU with standard symbolic initialization
         if: steps.runtime-fmu-cache.outputs.cache-hit != 'true'
         run: |
           python3 scripts/prepare_standard_init_fmu.py \
@@ -70,10 +102,18 @@ jobs:
             --work-dir build/runtime-fmu \
             --manifest build/runtime-artifact/fmu-runtime-provenance.json
           cmake -S build/runtime-fmu/sources -B build/runtime-fmu/cmake \
-            -DRUNTIME_DEPENDENCIES_LEVEL=none
+            -DRUNTIME_DEPENDENCIES_LEVEL=none \
+            -DOPENMODELICA_RUNTIME_DIRECTORY="$PWD/build/openmodelica-runtime/omc"
           cmake --build build/runtime-fmu/cmake --target create_fmu --parallel "$(nproc)"
           test -s build/TripLens_Native_Valve_Control_V1.fmu
           mv build/TripLens_Native_Valve_Control_V1.fmu build/runtime-artifact/
+          unzip -p build/runtime-artifact/TripLens_Native_Valve_Control_V1.fmu \
+            binaries/linux64/TripLens_Native_Valve_Control_V1.so \
+            > build/runtime-artifact/TripLens_Native_Valve_Control_V1.so
+          readelf -d build/runtime-artifact/TripLens_Native_Valve_Control_V1.so \
+            | tee build/runtime-artifact/runtime-linkage.txt
+          grep -q 'Shared library: \[libSimulationRuntimeC.so\]' \
+            build/runtime-artifact/runtime-linkage.txt
           runtime_sha256="$(sha256sum build/runtime-artifact/TripLens_Native_Valve_Control_V1.fmu | awk '{print $1}')"
           python3 - "$runtime_sha256" <<'PY'
           import json
@@ -101,60 +141,6 @@ jobs:
           runtime_sha256="$(sha256sum build/runtime-artifact/TripLens_Native_Valve_Control_V1.fmu | awk '{print $1}')"
           echo "EXPECTED_FMU_SHA256=$runtime_sha256" >> "$GITHUB_ENV"
 
-      - name: Inspect native KINSOL runtime availability
-        run: |
-          docker run --rm "$OPENMODELICA_IMAGE" bash -lc '
-            runtime=/usr/lib/x86_64-linux-gnu/omc/libSimulationRuntimeC.so
-            test -s "$runtime"
-            ldd "$runtime"
-            nm -D --defined-only "$runtime" | grep -E \
-              " (initialization|initializeNonlinearSystemData|nlsKinsolAllocate)$"
-          '
-
-      - name: Extract the matching full OpenModelica runtime
-        run: |
-          mkdir -p build/openmodelica-runtime/omc
-          runtime_container="$(docker create "$OPENMODELICA_IMAGE")"
-          docker cp \
-            "$runtime_container:/usr/lib/x86_64-linux-gnu/omc/." \
-            build/openmodelica-runtime/omc/
-          for library in \
-            liblapack.so.3 \
-            libblas.so.3 \
-            libgfortran.so.5 \
-            libquadmath.so.0
-          do
-            docker cp -L \
-              "$runtime_container:/lib/x86_64-linux-gnu/$library" \
-              build/openmodelica-runtime/omc/
-          done
-          docker rm "$runtime_container" >/dev/null
-          runtime_library="$PWD/build/openmodelica-runtime/omc/libSimulationRuntimeC.so"
-          test -s "$runtime_library"
-          LD_LIBRARY_PATH="$PWD/build/openmodelica-runtime/omc" ldd "$runtime_library" \
-            | tee build/openmodelica-runtime/runtime-ldd.txt
-          if grep -q "not found" build/openmodelica-runtime/runtime-ldd.txt; then
-            exit 1
-          fi
-          echo "FMU_RUNTIME_LIBRARY=$runtime_library" >> "$GITHUB_ENV"
-          echo "FMU_RUNTIME_LIBRARY_PATH=$PWD/build/openmodelica-runtime/omc" >> "$GITHUB_ENV"
-          sha256sum "$runtime_library" | tee build/openmodelica-runtime/runtime-sha256.txt
-
-      - name: Build the selective KINSOL runtime bridge
-        run: |
-          cc -O2 -fPIC -shared -Wl,--no-undefined \
-            -o build/openmodelica-runtime/libtriplens-kinsol-bridge.so \
-            scripts/openmodelica_kinsol_bridge.c \
-            -ldl
-          bridge="$PWD/build/openmodelica-runtime/libtriplens-kinsol-bridge.so"
-          test -s "$bridge"
-          nm -D --defined-only "$bridge" | grep -E \
-            " (initializeNonlinearSystemData|solve_nonlinear_system|freeNonlinearSyst)$" \
-            | tee build/openmodelica-runtime/bridge-symbols.txt
-          test "$(wc -l < build/openmodelica-runtime/bridge-symbols.txt)" -eq 3
-          echo "FMU_RUNTIME_BRIDGE=$bridge" >> "$GITHUB_ENV"
-          sha256sum "$bridge" | tee build/openmodelica-runtime/bridge-sha256.txt
-
       - name: Install pinned FMI runtime
         run: python3 -m pip install --disable-pip-version-check -r requirements-live.txt
 
@@ -172,6 +158,5 @@ jobs:
           path: |
             outputs/live-main-fmu/**
             build/openmodelica-runtime/runtime-*.txt
-            build/openmodelica-runtime/bridge-*.txt
           if-no-files-found: warn
           retention-days: 30

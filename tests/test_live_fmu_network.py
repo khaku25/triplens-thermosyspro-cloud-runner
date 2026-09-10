@@ -23,8 +23,13 @@ from live_protocol import (  # noqa: E402
     scenario_commands,
 )
 from prepare_standard_init_fmu import (  # noqa: E402
+    CMAKE_SOURCE,
     EXPECTED_REPLACEMENTS,
     FMI_INIT_CALL,
+    FULL_DEFINITIONS,
+    FULL_LIBRARY_TARGET,
+    MINIMAL_DEFINITIONS,
+    MINIMAL_LIBRARY_TARGET,
     RUNTIME_SOURCE,
     STANDARD_INIT_CALL,
     prepare,
@@ -76,7 +81,8 @@ class LiveFMUNetworkTests(unittest.TestCase):
         self.assertIn("live_fmu_gateway.py", runner)
         self.assertIn("live_ecms_client.py", runner)
         self.assertIn("gateway_pid=$!", runner)
-        self.assertIn("LD_PRELOAD=$runtime_bridge", runner)
+        self.assertIn("LD_LIBRARY_PATH=$runtime_library_path", runner)
+        self.assertNotIn("LD_PRELOAD", runner)
         self.assertNotIn("cp build/thermosyspro", runner)
         self.assertIn('LIVE_STEP_SIZE_S: "0.01"', workflow)
         self.assertIn('LIVE_STOP_TIME_S: "2"', workflow)
@@ -85,22 +91,25 @@ class LiveFMUNetworkTests(unittest.TestCase):
         self.assertIn("actions/cache/restore@v4", workflow)
         self.assertIn("actions/cache/save@v4", workflow)
         self.assertIn("build/runtime-artifact/TripLens_Native_Valve_Control_V1.fmu", workflow)
-        self.assertIn("Inspect native KINSOL runtime availability", workflow)
         self.assertIn("Extract the matching full OpenModelica runtime", workflow)
         self.assertIn("FMU_RUNTIME_LIBRARY=", workflow)
-        self.assertIn("openmodelica_kinsol_bridge.c", workflow)
-        self.assertIn("FMU_RUNTIME_BRIDGE=", workflow)
+        self.assertIn("OPENMODELICA_RUNTIME_DIRECTORY", workflow)
+        self.assertIn("libSimulationRuntimeC.so", workflow)
         self.assertIn("liblapack.so.3", workflow)
         self.assertIn("libblas.so.3", workflow)
         self.assertIn("gh run download", workflow)
 
-    def test_fmu_preparer_changes_only_two_runtime_init_calls(self) -> None:
+    def test_fmu_preparer_changes_only_runtime_wiring(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             source = root / "source.fmu"
             runtime_text = "before\n" + (FMI_INIT_CALL + "\n") * EXPECTED_REPLACEMENTS + "after\n"
             with zipfile.ZipFile(source, "w") as archive:
                 archive.writestr(RUNTIME_SOURCE.as_posix(), runtime_text)
+                archive.writestr(
+                    CMAKE_SOURCE.as_posix(),
+                    f"before\n{MINIMAL_LIBRARY_TARGET}\nmiddle\n{MINIMAL_DEFINITIONS}\nafter\n",
+                )
                 archive.writestr("modelDescription.xml", "<fmiModelDescription/>")
             work = root / "work"
             manifest = root / "manifest.json"
@@ -108,7 +117,13 @@ class LiveFMUNetworkTests(unittest.TestCase):
             patched = (work / RUNTIME_SOURCE).read_text(encoding="utf-8")
             self.assertNotIn(FMI_INIT_CALL, patched)
             self.assertEqual(patched.count(STANDARD_INIT_CALL), EXPECTED_REPLACEMENTS)
+            cmake = (work / CMAKE_SOURCE).read_text(encoding="utf-8")
+            self.assertNotIn(MINIMAL_LIBRARY_TARGET, cmake)
+            self.assertNotIn(MINIMAL_DEFINITIONS, cmake)
+            self.assertIn(FULL_LIBRARY_TARGET, cmake)
+            self.assertIn(FULL_DEFINITIONS, cmake)
             self.assertFalse(result["physical_equations_changed"])
+            self.assertFalse(result["embedded_minimal_runtime"])
             self.assertTrue(manifest.is_file())
 
 
