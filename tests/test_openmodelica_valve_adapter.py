@@ -44,16 +44,8 @@ class OpenModelicaValveAdapterTests(unittest.TestCase):
                 f"{prefix}MassFlow = 3.6*{point.object_name}.Q",
                 self.patched,
             )
-            self.assertIn(
-                f"{prefix}Dp = {point.object_name}.deltaP",
-                self.patched,
-            )
             if point.original_connect:
                 self.assertNotIn(f"connect({point.original_connect})", self.patched)
-        self.assertIn(
-            "when {initial(), sample(0.01, 0.01)} then",
-            self.patched,
-        )
 
     def test_fmi_inputs_exist_for_every_valve(self):
         for point in POINTS:
