@@ -44,10 +44,23 @@ class OpenModelicaValveAdapterTests(unittest.TestCase):
     def test_fmi_inputs_exist_for_every_valve(self):
         for point in POINTS:
             prefix = f"fmuVlv{point.key}"
-            self.assertIn(f"input Boolean {prefix}ModeAuto", self.patched)
-            self.assertIn(f"input Real {prefix}ManualCmd", self.patched)
-            self.assertIn(f"input Boolean {prefix}FaultEnable", self.patched)
-            self.assertIn(f"input Real {prefix}FaultValue", self.patched)
+            self.assertIn(
+                f"input Boolean {prefix}ModeAuto(start=true) = true",
+                self.patched,
+            )
+            self.assertIn(
+                f"input Real {prefix}ManualCmd(min=0, max=1, "
+                f"start={point.initial:g}) = {point.initial:g}",
+                self.patched,
+            )
+            self.assertIn(
+                f"input Boolean {prefix}FaultEnable(start=false) = false",
+                self.patched,
+            )
+            self.assertIn(
+                f"input Real {prefix}FaultValue(min=0, max=1, start=0) = 0",
+                self.patched,
+            )
 
     def test_fault_override_does_not_rewrite_selected_command(self):
         for point in POINTS:
