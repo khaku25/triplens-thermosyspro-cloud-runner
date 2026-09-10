@@ -36,7 +36,8 @@ jobs:
             tests.test_physical_handoff \
             tests.test_processbus_contract_v2 \
             tests.test_trip_contract \
-            tests.test_turbine_bypass_patch -v
+            tests.test_turbine_bypass_patch \
+            tests.test_raw_action -v
 
       - name: Solve and transport physical values
         env:
