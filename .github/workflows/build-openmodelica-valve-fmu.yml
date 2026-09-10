@@ -9,6 +9,7 @@ on:
       - "scripts/patch_fmu_valve_controls.py"
       - "scripts/patch_turbine_bypass_model.py"
       - "scripts/validate_fmu_valve_smoke.py"
+      - "scripts/promote_fmu_native_valve_dp.py"
       - "modelica/TripLens_Valve_Adapter_Smoke.mo"
       - "modelica/TripLens_Valve_Adapter_All_Smoke.mo"
       - "modelica/TripLens_FMU_Valve_Export.mo"
@@ -68,6 +69,7 @@ jobs:
         run: |
           timeout --signal=TERM --kill-after=30s 32m             docker run --rm               -v "$PWD/build/omhome:/root"               -v "$PWD:/workspace"               -w /workspace               "$OPENMODELICA_IMAGE"               omc /workspace/modelica/build_fmu_valve_adapter.mos               | tee build/openmodelica-valve-fmu.log
           timeout --signal=TERM --kill-after=30s 20m             docker run --rm               -v "$PWD/build/omhome:/root"               -v "$PWD:/workspace"               -w /workspace               "$OPENMODELICA_IMAGE"               omc /workspace/modelica/build_fmu_valve_only.mos               | tee -a build/openmodelica-valve-fmu.log
+          python3 scripts/promote_fmu_native_valve_dp.py             --fmu build/TripLens_Native_Valve_Control_V1.fmu             | tee -a build/openmodelica-valve-fmu.log
           if grep -Eq             'resultFile = ""|Failed to build model|Simulation execution failed|Error:'             build/openmodelica-valve-fmu.log; then
             echo "OpenModelica reported a build or simulation failure" >&2
             exit 1
