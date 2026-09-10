@@ -280,13 +280,19 @@ def main() -> int:
         "sequence_errors": sequence_errors,
         "openmodelica_runtime": {
             "mode": (
-                "FULL_OPENMODELICA_RUNTIME_PRELOAD"
+                "SELECTIVE_KINSOL_RUNTIME_BRIDGE"
                 if os.environ.get("FMU_RUNTIME_LIBRARY")
+                and os.environ.get("FMU_RUNTIME_BRIDGE")
                 else "FMU_EMBEDDED_RUNTIME"
             ),
             "library_sha256": (
                 sha256(Path(os.environ["FMU_RUNTIME_LIBRARY"]))
                 if os.environ.get("FMU_RUNTIME_LIBRARY")
+                else None
+            ),
+            "bridge_sha256": (
+                sha256(Path(os.environ["FMU_RUNTIME_BRIDGE"]))
+                if os.environ.get("FMU_RUNTIME_BRIDGE")
                 else None
             ),
         },

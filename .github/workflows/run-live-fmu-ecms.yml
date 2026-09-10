@@ -15,6 +15,7 @@ on:
       - "scripts/prepare_standard_init_fmu.py"
       - "scripts/validate_live_fmu_contract.py"
       - "scripts/run_live_fmu_ecms.sh"
+      - "scripts/openmodelica_kinsol_bridge.c"
       - "requirements-live.txt"
       - "tests/test_live_fmu_network.py"
       - ".github/workflows/run-live-fmu-ecms.yml"
@@ -139,6 +140,21 @@ jobs:
           echo "FMU_RUNTIME_LIBRARY_PATH=$PWD/build/openmodelica-runtime/omc" >> "$GITHUB_ENV"
           sha256sum "$runtime_library" | tee build/openmodelica-runtime/runtime-sha256.txt
 
+      - name: Build the selective KINSOL runtime bridge
+        run: |
+          cc -O2 -fPIC -shared -Wl,--no-undefined \
+            -o build/openmodelica-runtime/libtriplens-kinsol-bridge.so \
+            scripts/openmodelica_kinsol_bridge.c \
+            -ldl
+          bridge="$PWD/build/openmodelica-runtime/libtriplens-kinsol-bridge.so"
+          test -s "$bridge"
+          nm -D --defined-only "$bridge" | grep -E \
+            " (initializeNonlinearSystemData|solve_nonlinear_system|freeNonlinearSyst)$" \
+            | tee build/openmodelica-runtime/bridge-symbols.txt
+          test "$(wc -l < build/openmodelica-runtime/bridge-symbols.txt)" -eq 3
+          echo "FMU_RUNTIME_BRIDGE=$bridge" >> "$GITHUB_ENV"
+          sha256sum "$bridge" | tee build/openmodelica-runtime/bridge-sha256.txt
+
       - name: Install pinned FMI runtime
         run: python3 -m pip install --disable-pip-version-check -r requirements-live.txt
 
@@ -156,5 +172,6 @@ jobs:
           path: |
             outputs/live-main-fmu/**
             build/openmodelica-runtime/runtime-*.txt
+            build/openmodelica-runtime/bridge-*.txt
           if-no-files-found: warn
           retention-days: 30

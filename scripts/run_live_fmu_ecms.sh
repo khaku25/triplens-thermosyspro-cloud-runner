@@ -17,6 +17,7 @@ output_dir="$project_root/outputs/live-main-fmu"
 ready_file="$output_dir/gateway-ready.json"
 runtime_library="${FMU_RUNTIME_LIBRARY:-}"
 runtime_library_path="${FMU_RUNTIME_LIBRARY_PATH:-}"
+runtime_bridge="${FMU_RUNTIME_BRIDGE:-}"
 
 if [[ ! -s "$fmu_path" ]]; then
   echo "FMU not found: $fmu_path" >&2
@@ -40,9 +41,13 @@ if [[ -n "$runtime_library" ]]; then
   if [[ -z "$runtime_library_path" ]]; then
     runtime_library_path="$(dirname -- "$runtime_library")"
   fi
+  if [[ ! -s "$runtime_bridge" ]]; then
+    echo "Selective KINSOL bridge not found: $runtime_bridge" >&2
+    exit 1
+  fi
   gateway_command=(env \
     "LD_LIBRARY_PATH=$runtime_library_path${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
-    "LD_PRELOAD=$runtime_library" \
+    "LD_PRELOAD=$runtime_bridge" \
     python3 scripts/live_fmu_gateway.py)
 fi
 "${gateway_command[@]}" \
