@@ -73,13 +73,13 @@ def declarations() -> str:
     for point in POINTS:
         prefix = f"fmuVlv{point.key}"
         lines.extend((
-            f"  input Boolean {prefix}ModeAuto = true",
+            f"  input Boolean {prefix}ModeAuto(start=true) = true",
             '    "FMI input: true selects the original OpenModelica automatic driver";',
-            f"  input Real {prefix}ManualCmd(min=0, max=1) = {point.initial:g}",
+            f"  input Real {prefix}ManualCmd(min=0, max=1, start={point.initial:g}) = {point.initial:g}",
             '    "FMI input: manual valve position command in pu";',
-            f"  input Boolean {prefix}FaultEnable = false",
+            f"  input Boolean {prefix}FaultEnable(start=false) = false",
             '    "FMI input: force the applied position without rewriting CMD";',
-            f"  input Real {prefix}FaultValue(min=0, max=1) = 0",
+            f"  input Real {prefix}FaultValue(min=0, max=1, start=0) = 0",
             '    "FMI input: forced applied position in pu";',
             f"  output Real {prefix}AutoCmd(min=0, max=1);",
             f"  output Real {prefix}Cmd(min=0, max=1);",
