@@ -50,14 +50,11 @@ class FmuValveContractTests(unittest.TestCase):
             self.assertNotIn(".CMD =", fault)
             self.assertIn(".CMD = if ", select)
 
-    def test_native_observables_are_not_marked_as_adapter_assumptions(self):
-        native_roles = {
-            "AUTOMATIC_COMMAND", "APPLIED_POSITION", "SOLVED_CV",
-            "SOLVED_MASS_FLOW", "SOLVED_PRESSURE_DROP",
-        }
-        for row in self.ports:
-            if row["role"] in native_roles:
-                self.assertEqual(row["grounding_status"], "NATIVE_MAPPED")
+    def test_all_ports_are_fmu_connected(self):
+        self.assertEqual(
+            {row["grounding_status"] for row in self.ports},
+            {"FMU_CONNECTED"},
+        )
 
     def test_committed_generated_files_are_current(self):
         module.main_check = True
@@ -73,7 +70,7 @@ class FmuValveContractTests(unittest.TestCase):
         self.assertEqual(len({row["logic_id"] for row in self.logic}), 72)
         self.assertEqual(
             {row["implementation_status"] for row in self.logic},
-            {"DESIGN_ONLY_UNTIL_FMU_BUILD"},
+            {"FMU_CONNECTED"},
         )
 
 
