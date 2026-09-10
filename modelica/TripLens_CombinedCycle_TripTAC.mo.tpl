@@ -12,11 +12,11 @@ model TripLens_CombinedCycle_TripTAC
   // electrical separation with 52GT.CLOSED=0 in the VPP/ECMS path.
   parameter Real exhaustFlowDeratedTH = 540.0
     "Published derated GT exhaust mass flow in t/h";
-  parameter Real exhaustFlowTripTH = 0.0
-    "GT Trip exhaust-flow boundary after coastdown in t/h";
+  parameter Real exhaustFlowTripTH = 180.0
+    "Post-Trip purge/coastdown exhaust-flow boundary in t/h";
   parameter Real exhaustTemperatureNormal(unit="K") = 893.75;
   parameter Real exhaustTemperatureDerated(unit="K") = 550.0;
-  parameter Real exhaustTemperatureTrip(unit="K") = 400.0;
+  parameter Real exhaustTemperatureTrip(unit="K") = 450.0;
   parameter Boolean enableGTTrip = @GT_TRIP_ENABLED@
     "Assert the canonical GT Trip command in the Modelica run";
   parameter Real vppGTTripCommandDelay(unit="s") = 0.055;
