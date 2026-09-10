@@ -86,11 +86,12 @@ def validate_fmu(path: Path) -> None:
     with zipfile.ZipFile(path) as archive:
         root = ET.fromstring(archive.read("modelDescription.xml"))
     variables = {
-        item.attrib["name"]: item.attrib.get("causality", "")
+        item.attrib["name"]: item
         for item in root.findall("./ModelVariables/ScalarVariable")
     }
     expected_inputs = set()
     expected_outputs = set()
+    expected_starts: dict[str, str] = {}
     for point in POINTS:
         prefix = f"fmuVlv{point.key}"
         expected_inputs.update({
@@ -101,12 +102,32 @@ def validate_fmu(path: Path) -> None:
             f"{prefix}AutoCmd", f"{prefix}Cmd", f"{prefix}Fb",
             f"{prefix}Deviation", f"{prefix}FaultActive",
         })
-    missing_inputs = sorted(name for name in expected_inputs if variables.get(name) != "input")
-    missing_outputs = sorted(name for name in expected_outputs if variables.get(name) != "output")
+        expected_starts.update({
+            f"{prefix}ModeAuto": "true",
+            f"{prefix}ManualCmd": str(float(point.initial)),
+            f"{prefix}FaultEnable": "false",
+            f"{prefix}FaultValue": "0.0",
+        })
+    missing_inputs = sorted(
+        name for name in expected_inputs
+        if name not in variables or variables[name].attrib.get("causality") != "input"
+    )
+    missing_outputs = sorted(
+        name for name in expected_outputs
+        if name not in variables or variables[name].attrib.get("causality") != "output"
+    )
     if missing_inputs:
         raise ValueError(f"FMU is missing real input causality: {missing_inputs}")
     if missing_outputs:
         raise ValueError(f"FMU is missing real output causality: {missing_outputs}")
+    bad_starts = []
+    for name, expected in expected_starts.items():
+        scalar_type = next(iter(variables[name]), None)
+        actual = None if scalar_type is None else scalar_type.attrib.get("start")
+        if actual != expected:
+            bad_starts.append(f"{name}={actual!r}, expected {expected!r}")
+    if bad_starts:
+        raise ValueError(f"FMU has unsafe valve input starts: {bad_starts}")
     print(
         f"FMU ports verified: inputs={len(expected_inputs)} "
         f"core_outputs={len(expected_outputs)}"
