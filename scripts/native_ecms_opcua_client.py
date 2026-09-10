@@ -191,16 +191,42 @@ def main() -> int:
         command_node = nodes[command_name]
         signal_nodes = [nodes[signal.node_name] for signal in SIGNALS]
         current = float(time_node.get_value())
-        for sequence in range(round(count)):
+        if current < args.step_size / 2:
+            # The server registers nodes before reaching its first pause.  Do
+            # not send a step during that short window: waitForStep() clears
+            # an early step request before it starts waiting.
+            current = wait_for_time(time_node, current, 30.0)
+
+        initial_readback = float(command_node.get_value()) >= 0.5
+        initial_values = client.get_values(signal_nodes)
+        initial_row: dict[str, float | int] = {
+            "sequence": 0,
+            "time_s": current,
+            "ecms_command_sent": 0,
+            "gt_trip_command_readback": int(initial_readback),
+            "round_trip_ms": 0.0,
+        }
+        initial_row.update(
+            {signal.field: as_number(value) for signal, value in zip(SIGNALS, initial_values)}
+        )
+        rows.append(initial_row)
+
+        command_written = initial_readback
+        while current < args.stop_time - args.step_size / 2:
             command = current >= args.command_time - args.step_size / 2
-            command_node.set_value(ua.Variant(float(command), ua.VariantType.Double))
+            # A write to a native OpenModelica state intentionally restarts
+            # the solver.  Write only on the command edge; repeating the same
+            # value every scan would force an event restart every scan.
+            if command and not command_written:
+                command_node.set_value(ua.Variant(1.0, ua.VariantType.Double))
+                command_written = True
             sent_ns = time.time_ns()
             step_node.set_value(ua.Variant(True, ua.VariantType.Boolean))
             next_time = wait_for_time(time_node, current, 30.0)
             readback = float(command_node.get_value()) >= 0.5
             values = client.get_values(signal_nodes)
             row: dict[str, float | int] = {
-                "sequence": sequence,
+                "sequence": len(rows),
                 "time_s": next_time,
                 "ecms_command_sent": int(command),
                 "gt_trip_command_readback": int(readback),
@@ -209,9 +235,16 @@ def main() -> int:
             row.update({signal.field: as_number(value) for signal, value in zip(SIGNALS, values)})
             rows.append(row)
             current = next_time
+        # Release the server from its final stop-time pause so the native
+        # executable can terminate normally after the final frame is read.
         step_node.set_value(ua.Variant(True, ua.VariantType.Boolean))
     finally:
-        client.disconnect()
+        try:
+            client.disconnect()
+        except (BrokenPipeError, ConnectionError, TimeoutError):
+            # The server is allowed to close immediately after the final
+            # release; all required physical values have already been read.
+            pass
 
     csv_path = args.output_dir / "ECMS-native-physical.csv"
     with csv_path.open("w", encoding="utf-8", newline="") as stream:

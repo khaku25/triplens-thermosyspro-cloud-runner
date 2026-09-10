@@ -108,10 +108,13 @@ jobs:
             > outputs/native-opcua/openmodelica-native.log 2>&1 &
           native_pid=$!
           trap 'kill "$native_pid" 2>/dev/null || true' EXIT
-          python3 scripts/native_ecms_opcua_client.py \
-            --stop-time "$LIVE_STOP_TIME_S" \
-            --step-size "$LIVE_STEP_SIZE_S" \
-            --output-dir outputs/native-opcua
+          if ! python3 scripts/native_ecms_opcua_client.py \
+              --stop-time "$LIVE_STOP_TIME_S" \
+              --step-size "$LIVE_STEP_SIZE_S" \
+              --output-dir outputs/native-opcua; then
+            tail -n 500 outputs/native-opcua/openmodelica-native.log || true
+            exit 1
+          fi
           wait "$native_pid"
           trap - EXIT
           python3 scripts/build_native_opcua_dashboard.py \

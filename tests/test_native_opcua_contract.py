@@ -64,6 +64,9 @@ class NativeOPCUAContractTests(unittest.TestCase):
         client = (ROOT / "scripts/native_ecms_opcua_client.py").read_text(encoding="utf-8")
         self.assertIn('command_name = "vppExternalTripCommandRegister.y"', client)
         self.assertIn("ua.VariantType.Double", client)
+        self.assertIn("command_written", client)
+        self.assertIn("while current < args.stop_time - args.step_size / 2", client)
+        self.assertIn("initial_values = client.get_values(signal_nodes)", client)
 
         build_script = (ROOT / "modelica/build_native_opcua.mos.tpl").read_text(
             encoding="utf-8"
