@@ -19,7 +19,6 @@ from live_protocol import (
     COMMAND_INPUTS,
     LIVE_SIGNALS,
     PROTOCOL,
-    command_defaults,
     contract_sha256,
     read_frame,
     write_frame,
@@ -74,7 +73,6 @@ class PhysicalFMU:
         )
         self._slave.instantiate(loggingOn=True)
         self._slave.setupExperiment(startTime=0.0, stopTime=stop_time, tolerance=tolerance)
-        self.set_inputs(command_defaults())
         self._slave.enterInitializationMode()
         self._slave.exitInitializationMode()
         self._closed = False
