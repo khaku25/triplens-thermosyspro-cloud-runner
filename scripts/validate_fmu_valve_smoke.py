@@ -87,19 +87,20 @@ def validate_csv(
     am0, am1 = all_manual[0], all_manual[-1]
     for point in POINTS:
         prefix = f"fmuVlv{point.key}"
+        all_prefix = f"plant.{prefix}"
         target = 0.95 * point.initial
-        if not math.isclose(value(am1, f"{prefix}Cmd"), target, abs_tol=1e-6):
+        if not math.isclose(value(am1, f"{all_prefix}Cmd"), target, abs_tol=1e-6):
             raise ValueError(f"{point.key}: all-valve MAN command was not selected")
         if point.dynamic_state:
-            if not value(am1, f"{prefix}Fb") < value(am0, f"{prefix}Fb"):
+            if not value(am1, f"{all_prefix}Fb") < value(am0, f"{all_prefix}Fb"):
                 raise ValueError(f"{point.key}: physical actuator did not move toward MAN")
-        elif not math.isclose(value(am1, f"{prefix}Fb"), target, abs_tol=1e-6):
+        elif not math.isclose(value(am1, f"{all_prefix}Fb"), target, abs_tol=1e-6):
             raise ValueError(f"{point.key}: MAN command did not reach native Ouv")
 
         auto_fb = value(a1, f"{prefix}Fb")
-        manual_fb = value(am1, f"{prefix}Fb")
+        manual_fb = value(am1, f"{all_prefix}Fb")
         auto_cv = value(a1, f"{prefix}Cv")
-        manual_cv = value(am1, f"{prefix}Cv")
+        manual_cv = value(am1, f"{all_prefix}Cv")
         if abs(auto_fb) < 1e-9 or abs(auto_cv) < 1e-9:
             raise ValueError(f"{point.key}: AUTO state cannot prove Cv linkage")
         if not math.isclose(
@@ -108,8 +109,8 @@ def validate_csv(
             raise ValueError(f"{point.key}: native Cv did not track applied position")
         if math.isclose(manual_cv, auto_cv, rel_tol=1e-5, abs_tol=1e-8):
             raise ValueError(f"{point.key}: native Cv did not change under MAN")
-        value(am1, f"{prefix}MassFlow")
-        value(am1, f"{prefix}Dp")
+        value(am1, f"{all_prefix}MassFlow")
+        value(am1, f"{all_prefix}Dp")
 
 
 def validate_fmu(path: Path) -> None:
