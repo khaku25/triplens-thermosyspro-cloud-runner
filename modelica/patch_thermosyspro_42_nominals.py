@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Add physically scaled attributes to ThermoSysPro 4.2 SI types.
+"""Apply OpenModelica compatibility fixes to ThermoSysPro 4.2.
 
 This is an OpenModelica numerical-conditioning patch only.  It changes no
 equation, parameter value, or connector topology.  Absolute pressure is also
 bounded just above the IF97 triple-point limit so bounded nonlinear solvers do
 not evaluate the water-property functions outside their documented domain.
+The optional integrator patch prevents permanent-mode controller states found
+by the steady initialization problem from being overwritten by the initial
+``when not reset`` event immediately after the solve.
 """
 
 from __future__ import annotations
@@ -33,6 +36,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("units_mo", type=Path)
     parser.add_argument("--if97-packages", type=Path)
+    parser.add_argument("--integrator", type=Path)
     args = parser.parse_args()
 
     text = args.units_mo.read_text(encoding="utf-8")
@@ -59,6 +63,30 @@ def main() -> None:
             if97_text.replace(old, new), encoding="utf-8"
         )
         print(f"expanded Water_Ph diagnostics in {args.if97_packages}")
+
+    if args.integrator is not None:
+        integrator_text = args.integrator.read_text(encoding="utf-8")
+        old = """  when not (reset.signal) then
+    x0 = ureset.signal/k;
+    reinit(x, x0);
+  end when;"""
+        new = """  when not (reset.signal) then
+    // In permanent mode x was determined by the steady initialization
+    // equations. Do not overwrite that consistent solution at initial().
+    if not permanent then
+      x0 = ureset.signal/k;
+      reinit(x, x0);
+    end if;
+  end when;"""
+        count = integrator_text.count(old)
+        if count != 1:
+            raise SystemExit(
+                f"expected one permanent-integrator event match, got {count}"
+            )
+        args.integrator.write_text(
+            integrator_text.replace(old, new), encoding="utf-8"
+        )
+        print(f"preserved permanent controller initialization in {args.integrator}")
 
 
 if __name__ == "__main__":
