@@ -41,8 +41,10 @@ if(NOT EXISTS "${OPENMODELICA_SIMULATION_RUNTIME}")
   message(FATAL_ERROR "Full OpenModelica SimulationRuntimeC was not found")
 endif()
 target_link_options(${FMU_NAME_HASH} PRIVATE
-                    "LINKER:--no-as-needed"
-                    "${OPENMODELICA_SIMULATION_RUNTIME}")"""
+                    "LINKER:--no-as-needed")
+target_link_libraries(${FMU_NAME_HASH} PRIVATE
+                      "-L${OPENMODELICA_RUNTIME_DIRECTORY}"
+                      "-l:libSimulationRuntimeC.so")"""
 MINIMAL_DEFINITIONS = (
     "target_compile_definitions(${FMU_NAME_HASH} PRIVATE "
     "OMC_MINIMAL_RUNTIME=1;OMC_FMI_RUNTIME=1;CMINPACK_NO_DLL${WITH_SUNDIALS})"
