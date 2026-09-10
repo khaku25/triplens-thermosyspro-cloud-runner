@@ -11,9 +11,6 @@ on:
         options:
           - gt_trip_commissioning_1ms
           - gt_trip_full_100ms
-  push:
-    branches:
-      - codex/physical-raw-ecms-handoff-20260910
   pull_request:
     branches:
       - main
