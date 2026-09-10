@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Add physically scaled nominal attributes to ThermoSysPro 4.2 SI types.
+"""Add physically scaled attributes to ThermoSysPro 4.2 SI types.
 
 This is an OpenModelica numerical-conditioning patch only.  It changes no
-equation, parameter value, or connector topology.
+equation, parameter value, or connector topology.  Absolute pressure is also
+bounded just above the IF97 triple-point limit so bounded nonlinear solvers do
+not evaluate the water-property functions outside their documented domain.
 """
 
 from __future__ import annotations
@@ -12,6 +14,8 @@ from pathlib import Path
 
 
 REPLACEMENTS = {
+    'type AbsolutePressure = Pressure(min = 0.0, nominal = 1e5);':
+        'type AbsolutePressure = Pressure(min = 612, nominal = 1e5);',
     'type Density = Real(final quantity = "Density", final unit = "kg/m3", displayUnit = "g/cm3", min = 0.0);':
         'type Density = Real(final quantity = "Density", final unit = "kg/m3", displayUnit = "g/cm3", min = 0.0, nominal = 1000);',
     'type Power = Real(final quantity = "Power", final unit = "W");':
@@ -37,7 +41,7 @@ def main() -> None:
             raise SystemExit(f"expected one exact match, got {count}: {old}")
         text = text.replace(old, new)
     args.units_mo.write_text(text, encoding="utf-8")
-    print(f"patched {len(REPLACEMENTS)} SI type nominals in {args.units_mo}")
+    print(f"patched {len(REPLACEMENTS)} SI type attributes in {args.units_mo}")
 
 
 if __name__ == "__main__":
