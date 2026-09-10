@@ -71,6 +71,7 @@ jobs:
                 -override=startTime=0,stopTime=1,stepSize=0.1,tolerance=0.001 \
                 -s=dassl \
                 -nls=hybrid \
+                -nlssMaxDensity=0.01 \
                 -lv=LOG_STDOUT,LOG_ASSERT,LOG_STATS,LOG_INIT,LOG_NLS,LOG_NLS_V \
             > build/v42/initialization-hybrid.log 2>&1
           sim_status=$?
