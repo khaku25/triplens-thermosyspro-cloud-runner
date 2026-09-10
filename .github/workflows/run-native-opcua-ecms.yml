@@ -79,6 +79,10 @@ jobs:
             exit 1
           fi
           test -x build/TripLens_Native_OPCUA
+          grep -n -m 1 'name="vppExternalTripCommand"' \
+            build/TripLens_Native_OPCUA_init.xml \
+            | tee build/native-opcua-input-contract.txt
+          test -s build/native-opcua-input-contract.txt
 
       - name: Install pinned OPC UA client
         run: python3 -m pip install --disable-pip-version-check -r requirements-live.txt
@@ -116,5 +120,6 @@ jobs:
           path: |
             outputs/native-opcua/**
             build/native-opcua-build.log
+            build/native-opcua-input-contract.txt
           if-no-files-found: warn
           retention-days: 30

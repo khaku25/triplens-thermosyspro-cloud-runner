@@ -16,10 +16,110 @@ import tempfile
 from pathlib import Path
 
 
-MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12"
+MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V13"
 
 
 PARAMETERS = f'''  // {MARKER}
+  model VPPRegularizedSplitter2
+    "Two-way steam splitter with bounded IF97 evaluation during Newton trials"
+    parameter Modelica.SIunits.AbsolutePressure pressureFloor=500
+      "IF97 evaluation floor; the connector pressure itself is not clipped";
+    parameter Integer fluid=1 "1: water/steam - 2: C3H3F5";
+    parameter Integer mode=0 "IF97 region";
+    Modelica.SIunits.AbsolutePressure P(start=10e5, min=0);
+    Modelica.SIunits.AbsolutePressure Pthermo;
+    Modelica.SIunits.SpecificEnthalpy h(start=10e5);
+    Modelica.SIunits.Temperature T;
+    Real alpha1;
+    ThermoSysPro.WaterSteam.Connectors.FluidInlet Ce;
+    ThermoSysPro.WaterSteam.Connectors.FluidOutlet Cs1;
+    ThermoSysPro.WaterSteam.Connectors.FluidOutlet Cs2;
+    ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph pro;
+  equation
+    P = Ce.P;
+    P = Cs1.P;
+    P = Cs2.P;
+    Ce.h_vol = h;
+    Cs1.h_vol = h;
+    Cs2.h_vol = h;
+    0 = Ce.Q - Cs1.Q - Cs2.Q;
+    0 = Ce.Q*Ce.h - Cs1.Q*Cs1.h - Cs2.Q*Cs2.h;
+    alpha1 = noEvent(if abs(Ce.Q) > 1e-6 then Cs1.Q/Ce.Q else 0);
+
+    // OpenModelica's nonlinear solver may probe p=0 while iterating even
+    // though the converged plant state remains positive. ThermoSysPro IF97
+    // divides by p in that trial state. Bound only the property evaluation,
+    // never the physical connector pressure or the pressure-flow equation.
+    Pthermo = noEvent(max(pressureFloor, P));
+    pro = ThermoSysPro.Properties.Fluid.Ph(Pthermo, h, mode, fluid);
+    T = pro.T;
+  end VPPRegularizedSplitter2;
+
+  model VPPRegularizedMixingVolume
+    "Three-inlet header with bounded IF97 evaluation during Newton trials"
+    parameter Modelica.SIunits.Volume V=1;
+    parameter Modelica.SIunits.AbsolutePressure P0=1e5;
+    parameter Modelica.SIunits.SpecificEnthalpy h0=1e5;
+    parameter Boolean dynamic_mass_balance=false;
+    parameter Boolean steady_state=true;
+    parameter Integer fluid=1;
+    parameter Modelica.SIunits.Density p_rho=0;
+    parameter Integer mode=0;
+    parameter Modelica.SIunits.AbsolutePressure pressureFloor=500
+      "IF97 evaluation floor; the connector pressure itself is not clipped";
+    Modelica.SIunits.Temperature T;
+    Modelica.SIunits.AbsolutePressure P(start=1e5, min=0);
+    Modelica.SIunits.AbsolutePressure Pthermo;
+    Modelica.SIunits.SpecificEnthalpy h(start=1e5);
+    Modelica.SIunits.Density rho(start=10, min=1e-6);
+    Modelica.SIunits.MassFlowRate BQ;
+    Modelica.SIunits.Power BH;
+    ThermoSysPro.WaterSteam.Connectors.FluidInlet Ce1;
+    ThermoSysPro.WaterSteam.Connectors.FluidInlet Ce2;
+    ThermoSysPro.WaterSteam.Connectors.FluidInlet Ce3;
+    ThermoSysPro.WaterSteam.Connectors.FluidOutlet Cs;
+    ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph pro;
+  initial equation
+    if steady_state then
+      if dynamic_mass_balance then
+        der(P) = 0;
+      end if;
+      der(h) = 0;
+    else
+      if dynamic_mass_balance then
+        P = P0;
+      end if;
+      h = h0;
+    end if;
+  equation
+    assert(V > 0, "Volume non-positive");
+    BQ = Ce1.Q + Ce2.Q + Ce3.Q - Cs.Q;
+    if dynamic_mass_balance then
+      V*(pro.ddph*der(P) + pro.ddhp*der(h)) = BQ;
+    else
+      0 = BQ;
+    end if;
+    P = Ce1.P;
+    P = Ce2.P;
+    P = Ce3.P;
+    P = Cs.P;
+    BH = Ce1.Q*Ce1.h + Ce2.Q*Ce2.h + Ce3.Q*Ce3.h - Cs.Q*Cs.h;
+    if dynamic_mass_balance then
+      V*((h*pro.ddph - 1)*der(P) +
+        (h*pro.ddhp + rho)*der(h)) = BH;
+    else
+      V*rho*der(h) = BH;
+    end if;
+    Ce1.h_vol = h;
+    Ce2.h_vol = h;
+    Ce3.h_vol = h;
+    Cs.h_vol = h;
+    Pthermo = noEvent(max(pressureFloor, P));
+    pro = ThermoSysPro.Properties.Fluid.Ph(Pthermo, h, mode, fluid);
+    T = pro.T;
+    rho = if p_rho > 0 then p_rho else noEvent(max(1e-6, pro.d));
+  end VPPRegularizedMixingVolume;
+
   model VPPPressureDrivenBypassValve
     "One-way Cv valve with a numerically isolated fully closed state"
     parameter ThermoSysPro.Units.Cv Cvmax=8000;
@@ -64,6 +164,14 @@ PARAMETERS = f'''  // {MARKER}
 
   parameter Real vppTripTime(unit="s") = 600
     "Resolved ST Trip time for the physical GT Trip adapter";
+  parameter Boolean vppUseExternalTripInput = false
+    "Use the inherited FMU input instead of the scheduled Trip source";
+  parameter Modelica.SIunits.MassFlowRate vppGTExhaustMassFlowNormal = 606.94;
+  parameter Modelica.SIunits.MassFlowRate vppGTExhaustMassFlowTrip = 50;
+  parameter Modelica.SIunits.Temperature vppGTExhaustTemperatureNormal = 893.75;
+  parameter Modelica.SIunits.Temperature vppGTExhaustTemperatureTrip = 450;
+  parameter Real vppGTExhaustResponseTau(unit="s") = 0.667
+    "First-order live-command GT exhaust response time constant";
   parameter Real vppAdmissionStroke95(unit="s") = 0.150
     "HP/IP and LP-drum admission 95 percent closing time";
   parameter Real vppHPBypassStroke95(unit="s") = 0.300
@@ -114,8 +222,18 @@ PARAMETERS = f'''  // {MARKER}
 
 
 COMPONENTS = '''
-  Boolean vppSTTripLatch(start=false)
+  input Boolean vppExternalTripCommand(start=false) = false
+    "Live ECMS GT Trip input exposed by the Co-Simulation FMU";
+  discrete Boolean vppSTTripLatch(start=false, fixed=true)
     "One-way resolved ST Trip latch for this physical scenario";
+  Real vppGTExhaustMassFlowState(
+    unit="kg/s", start=vppGTExhaustMassFlowNormal, fixed=true);
+  Real vppGTExhaustTemperatureState(
+    unit="K", start=vppGTExhaustTemperatureNormal, fixed=true);
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
+    vppGTExhaustMassFlowCommand;
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
+    vppGTExhaustTemperatureCommand;
   Real vppHPAdmissionPos(start=0.8, fixed=true, min=0, max=1);
   Real vppIPAdmissionPos(start=0.8, fixed=true, min=0, max=1);
   Real vppLPDrumAdmissionMultiplier(start=1, fixed=true, min=0, max=1);
@@ -144,7 +262,7 @@ COMPONENTS = '''
   Modelica.SIunits.AbsolutePressure vppCondenserPressure;
   Modelica.SIunits.Length vppCondenserLevel;
 
-  ThermoSysPro.WaterSteam.Junctions.Splitter2 vppHPSplitter(
+  VPPRegularizedSplitter2 vppHPSplitter(
     mode=2,
     P(start=12681000, nominal=1.3e7),
     h(start=3450835, nominal=3.5e6),
@@ -168,7 +286,7 @@ COMPONENTS = '''
   VPPFixedFlowInjector vppHPSprayInjector;
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
     vppHPSprayFlowCommand;
-  ThermoSysPro.WaterSteam.Volumes.VolumeC vppHPColdReheatVolume(
+  VPPRegularizedMixingVolume vppHPColdReheatVolume(
     V=vppHPHeaderVolume,
     // Steam-cycle storage already supplies the pressure states. This header
     // contributes finite thermal hold-up without duplicating an ideal-node
@@ -187,7 +305,7 @@ COMPONENTS = '''
     Cs(Q(start=vppHPMainFlow0, nominal=200),
        h(start=3046260), h_vol(start=3046260)));
 
-  ThermoSysPro.WaterSteam.Junctions.Splitter2 vppLPSplitter(
+  VPPRegularizedSplitter2 vppLPSplitter(
     mode=2,
     P(start=2548600, nominal=3e6),
     h(start=3523910, nominal=3.6e6),
@@ -211,7 +329,7 @@ COMPONENTS = '''
   VPPFixedFlowInjector vppLPSprayInjector;
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
     vppLPSprayFlowCommand;
-  ThermoSysPro.WaterSteam.Volumes.VolumeC vppCondenserSteamVolume(
+  VPPRegularizedMixingVolume vppCondenserSteamVolume(
     V=vppLPHeaderVolume,
     // Condenser pressure already supplies the LP-side mass-storage state.
     // This header retains its own thermal hold-up without duplicating that
@@ -233,7 +351,22 @@ COMPONENTS = '''
 
 
 EQUATIONS = '''
-  vppSTTripLatch = time >= vppTripTime;
+  when (vppUseExternalTripInput and vppExternalTripCommand) or
+       ((not vppUseExternalTripInput) and time >= vppTripTime) then
+    vppSTTripLatch = true;
+  end when;
+  der(vppGTExhaustMassFlowState) =
+    ((if vppSTTripLatch then vppGTExhaustMassFlowTrip
+      else vppGTExhaustMassFlowNormal) - vppGTExhaustMassFlowState)
+      /vppGTExhaustResponseTau;
+  der(vppGTExhaustTemperatureState) =
+    ((if vppSTTripLatch then vppGTExhaustTemperatureTrip
+      else vppGTExhaustTemperatureNormal) - vppGTExhaustTemperatureState)
+      /vppGTExhaustResponseTau;
+  vppGTExhaustMassFlowCommand.signal = if vppUseExternalTripInput then
+    vppGTExhaustMassFlowState else Debit.y.signal;
+  vppGTExhaustTemperatureCommand.signal = if vppUseExternalTripInput then
+    vppGTExhaustTemperatureState else Temperature.y.signal;
   vppHPBypassCmd = if vppSTTripLatch then 1 else vppValveLeak;
   vppLPBypassCmd = if vppSTTripLatch then 1 else vppValveLeak;
 
@@ -343,6 +476,16 @@ def patch_model(source: str) -> str:
     )
     source = replace_connect_statement(
         source,
+        "Temperature.y,SourceFumees. ITemperature",
+        "  connect(vppGTExhaustTemperatureCommand, SourceFumees.ITemperature);",
+    )
+    source = replace_connect_statement(
+        source,
+        "Debit.y,SourceFumees. IMassFlow",
+        "  connect(vppGTExhaustMassFlowCommand, SourceFumees.IMassFlow);",
+    )
+    source = replace_connect_statement(
+        source,
         "ConstantVanneTurbineMP.y, vanne_entree_TurbineMP.Ouv",
         "  // VPP patch owns the IP admission-valve actuator equation.",
     )
@@ -387,6 +530,8 @@ def patch_model(source: str) -> str:
         "vppCondenserSteamVolume",
         "der(vppHPBypassPos)",
         "der(vppLPBypassPos)",
+        "vppExternalTripCommand",
+        "vppGTExhaustMassFlowCommand",
     )
     for token in required:
         if token not in source:

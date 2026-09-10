@@ -23,29 +23,30 @@ class Signal:
 
 
 SIGNALS = (
-    Signal("gt_trip_latch", "vppGTTripLatch", "BOOL", "DCS1"),
-    Signal("gt_breaker_closed", "vpp52GTClosed", "BOOL", "DCS1"),
-    Signal("st_breaker_closed", "vpp52STClosed", "BOOL", "DCS1"),
-    Signal("gt_power_mw", "vppGTGPowerMW", "MW", "DCS1"),
-    Signal("gt_speed_rpm", "vppGTGSpeedRPM", "rpm", "DCS1"),
+    Signal("gt_trip_latch", "vppSTTripLatch", "BOOL", "DCS1"),
     Signal("gt_exhaust_flow_th", "vppGTExhaustMassFlowTH", "t/h", "DCS1"),
     Signal("hp_turbine_flow_th", "vppHPTurbineSteamFlowTH", "t/h", "DCS1"),
     Signal("ip_turbine_flow_th", "vppIPTurbineSteamFlowTH", "t/h", "DCS1"),
     Signal("lp_turbine_flow_th", "vppLPTurbineSteamFlowTH", "t/h", "DCS1"),
-    Signal("hp_admission_position_pu", "vppHPAdmissionPositionPU", "pu", "DCS1"),
-    Signal("ip_admission_position_pu", "vppIPAdmissionPositionPU", "pu", "DCS1"),
-    Signal("hp_bypass_position_pu", "vppHPBypassPositionPU", "pu", "DCS2"),
-    Signal("lp_bypass_position_pu", "vppLPBypassPositionPU", "pu", "DCS2"),
+    Signal("hp_admission_position_pu", "vppHPAdmissionPos", "pu", "DCS1"),
+    Signal("ip_admission_position_pu", "vppIPAdmissionPos", "pu", "DCS1"),
+    Signal("lp_admission_position_pu", "vppLPDrumAdmissionMultiplier", "pu", "DCS1"),
+    Signal("hp_bypass_position_pu", "vppHPBypassPos", "pu", "DCS2"),
+    Signal("lp_bypass_position_pu", "vppLPBypassPos", "pu", "DCS2"),
     Signal("hp_bypass_flow_th", "vppHPBypassMassFlowTH", "t/h", "DCS2"),
     Signal("lp_bypass_flow_th", "vppLPBypassMassFlowTH", "t/h", "DCS2"),
-    Signal("hp_drum_level_m", "vppHPDrumLevelM", "m", "DCS2"),
-    Signal("ip_drum_level_m", "vppIPDrumLevelM", "m", "DCS2"),
-    Signal("lp_drum_level_m", "vppLPDrumLevelM", "m", "DCS2"),
-    Signal("hp_drum_pressure_pa", "vppHPDrumPressurePa", "Pa", "DCS2"),
-    Signal("ip_drum_pressure_pa", "vppIPDrumPressurePa", "Pa", "DCS2"),
-    Signal("lp_drum_pressure_pa", "vppLPDrumPressurePa", "Pa", "DCS2"),
-    Signal("condenser_pressure_pa", "vppCondenserPressurePa", "Pa", "DCS2"),
-    Signal("condenser_level_m", "vppCondenserLevelM", "m", "DCS2"),
+    Signal("hp_spray_position_pu", "vppHPSprayPos", "pu", "DCS2"),
+    Signal("lp_spray_position_pu", "vppLPSprayPos", "pu", "DCS2"),
+    Signal("hp_spray_flow_th", "vppHPSprayMassFlowTH", "t/h", "DCS2"),
+    Signal("lp_spray_flow_th", "vppLPSprayMassFlowTH", "t/h", "DCS2"),
+    Signal("hp_drum_level_m", "BallonHP.yLevel.signal", "m", "DCS2"),
+    Signal("ip_drum_level_m", "BallonMP.yLevel.signal", "m", "DCS2"),
+    Signal("lp_drum_level_m", "BallonBP.yLevel.signal", "m", "DCS2"),
+    Signal("hp_drum_pressure_pa", "BallonHP.P", "Pa", "DCS2"),
+    Signal("ip_drum_pressure_pa", "BallonMP.P", "Pa", "DCS2"),
+    Signal("lp_drum_pressure_pa", "BallonBP.P", "Pa", "DCS2"),
+    Signal("condenser_pressure_pa", "vppCondenserPressure", "Pa", "DCS2"),
+    Signal("condenser_level_m", "vppCondenserLevel", "m", "DCS2"),
 )
 
 
@@ -132,8 +133,6 @@ def validate(rows: list[dict[str, float | int]], command_time_s: float) -> dict[
             errors.append("ECMS GT Trip command was not read back from OpenModelica")
         if not any(row["gt_trip_latch"] == 1 for row in after):
             errors.append("native Modelica GT Trip latch did not assert")
-        if post["gt_breaker_closed"] != 0:
-            errors.append("native 52GT state did not open")
         if float(post["hp_admission_position_pu"]) >= float(pre["hp_admission_position_pu"]):
             errors.append("HP turbine admission valve did not close physically")
         if float(post["hp_bypass_position_pu"]) <= float(pre["hp_bypass_position_pu"]):

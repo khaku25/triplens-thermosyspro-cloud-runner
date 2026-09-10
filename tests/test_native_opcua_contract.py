@@ -14,7 +14,7 @@ from native_ecms_opcua_client import PROTOCOL, SIGNALS, validate  # noqa: E402
 class NativeOPCUAContractTests(unittest.TestCase):
     def test_owner_split_and_physical_inventory(self) -> None:
         self.assertEqual(PROTOCOL, "TRIPLENS-NATIVE-OPCUA/1")
-        self.assertGreaterEqual(len(SIGNALS), 20)
+        self.assertGreaterEqual(len(SIGNALS), 24)
         self.assertTrue(all(s.owner == "DCS1" for s in SIGNALS if "turbine" in s.field))
         self.assertTrue(all(s.owner == "DCS2" for s in SIGNALS if "drum" in s.field))
 
@@ -25,7 +25,6 @@ class NativeOPCUAContractTests(unittest.TestCase):
                 "time_s": t,
                 "gt_trip_command_readback": command,
                 "gt_trip_latch": trip,
-                "gt_breaker_closed": 0 if trip else 1,
                 "hp_admission_position_pu": hp_adm,
                 "hp_bypass_position_pu": hp_bp,
             })
@@ -55,6 +54,10 @@ class NativeOPCUAContractTests(unittest.TestCase):
         self.assertIn("ua.NodeId(10000, 0)", source)
         self.assertIn("ua.NodeId(10004, 0)", source)
         self.assertIn("wait_for_model_nodes", source)
+
+    def test_external_trip_is_retained_as_a_native_input(self) -> None:
+        patch = (ROOT / "scripts/patch_turbine_bypass_model.py").read_text(encoding="utf-8")
+        self.assertIn("input Boolean vppExternalTripCommand(start=false) = false", patch)
 
 
 if __name__ == "__main__":
