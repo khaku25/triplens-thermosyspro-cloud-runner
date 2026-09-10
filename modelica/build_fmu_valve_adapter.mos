@@ -44,5 +44,5 @@ simulate(
   outputFormat="csv",
   simflags="-noEventEmit",
   fileNamePrefix="valve_all_manual_smoke",
-  variableFilter="^(time|plant\\.fmuVlv.*(AutoCmd|Cmd|Fb|Deviation|FaultActive|Cv|MassFlow|Dp))$");
+  variableFilter="^(time|plant\\.fmuVlv.*(AutoCmd|Cmd|Fb|Deviation|FaultActive|Cv|MassFlow)|plant\\..*\\.deltaP)$");
 getErrorString();
