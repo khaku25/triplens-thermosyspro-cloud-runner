@@ -83,9 +83,9 @@ class PhysicalFMU:
 
         OpenModelica's FMI initialization path intentionally does not call its
         normal setAllParamsToStart/setAllVarsToStart helpers. FMI permits an
-        importer to set parameters, inputs and variables with initial=exact
-        before entering initialization mode, so apply only those declared
-        values from modelDescription.xml. No guessed state is introduced.
+        importer to set parameters, inputs and declared initial estimates
+        before entering initialization mode. Apply both exact and approximate
+        starts carried in modelDescription.xml. No guessed state is introduced.
         """
         values_by_kind: dict[str, dict[int, object]] = {
             "Real": {}, "Boolean": {}, "Integer": {}, "String": {},
@@ -93,7 +93,9 @@ class PhysicalFMU:
         for variable in description.modelVariables:
             if variable.start is None:
                 continue
-            if variable.causality not in ("parameter", "input") and variable.initial != "exact":
+            if variable.causality not in ("parameter", "input") and variable.initial not in (
+                "exact", "approx"
+            ):
                 continue
             values_by_kind[variable.type][variable.valueReference] = variable.start
         if values_by_kind["Real"]:
