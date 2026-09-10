@@ -6,6 +6,7 @@ on:
       - "modelica/TripLensUserModels_Bypass.mo"
       - "modelica/install_modelica_4_0.mos"
       - "modelica/build_v42_bypass_diagnostic.mos"
+      - "modelica/build_v42_bypass_staged.mos"
       - "modelica/build_v42_baseline_diagnostic.mos"
       - "modelica/apply_combined_cycle_warm_start.py"
       - "modelica/patch_thermosyspro_42_nominals.py"
@@ -27,32 +28,25 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - case_name: scaled-current-experimental-kinsol
-            build_script: build_v42_bypass_diagnostic.mos
-            executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass
+          - case_name: staged-hybrid
+            build_script: build_v42_bypass_staged.mos
+            executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass_OMCStart
+            tearing: omcTearing
+            nls: hybrid
+            use_warm: false
+            iim: symbolic
+          - case_name: staged-homotopy
+            build_script: build_v42_bypass_staged.mos
+            executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass_OMCStart
+            tearing: omcTearing
+            nls: homotopy
+            use_warm: false
+            iim: symbolic
+          - case_name: staged-experimental-kinsol
+            build_script: build_v42_bypass_staged.mos
+            executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass_OMCStart
             tearing: omcTearing
             nls: experimental-kinsol
-            use_warm: false
-            iim: symbolic
-          - case_name: scaled-current-kinsol
-            build_script: build_v42_bypass_diagnostic.mos
-            executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass
-            tearing: omcTearing
-            nls: kinsol
-            use_warm: false
-            iim: symbolic
-          - case_name: scaled-current-newton
-            build_script: build_v42_bypass_diagnostic.mos
-            executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass
-            tearing: omcTearing
-            nls: newton
-            use_warm: false
-            iim: symbolic
-          - case_name: scaled-current-mixed
-            build_script: build_v42_bypass_diagnostic.mos
-            executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass
-            tearing: omcTearing
-            nls: mixed
             use_warm: false
             iim: symbolic
     steps:
