@@ -224,6 +224,8 @@ PARAMETERS = f'''  // {MARKER}
 COMPONENTS = '''
   input Boolean vppExternalTripCommand(start=false) = false
     "Live ECMS GT Trip input exposed by the Co-Simulation FMU";
+  Real vppExternalTripCommandRegister(start=0, fixed=true, min=0, max=1)
+    "Writable native OPC UA GT Trip command register";
   discrete Boolean vppSTTripLatch(start=false, fixed=true)
     "One-way resolved ST Trip latch for this physical scenario";
   Real vppGTExhaustMassFlowState(
@@ -351,7 +353,9 @@ COMPONENTS = '''
 
 
 EQUATIONS = '''
-  when (vppUseExternalTripInput and vppExternalTripCommand) or
+  der(vppExternalTripCommandRegister) = 0;
+  when (vppUseExternalTripInput and
+        (vppExternalTripCommand or vppExternalTripCommandRegister >= 0.5)) or
        ((not vppUseExternalTripInput) and time >= vppTripTime) then
     vppSTTripLatch = true;
   end when;

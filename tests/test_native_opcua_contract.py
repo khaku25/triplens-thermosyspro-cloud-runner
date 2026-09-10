@@ -58,6 +58,11 @@ class NativeOPCUAContractTests(unittest.TestCase):
     def test_external_trip_is_retained_as_a_native_input(self) -> None:
         patch = (ROOT / "scripts/patch_turbine_bypass_model.py").read_text(encoding="utf-8")
         self.assertIn("input Boolean vppExternalTripCommand(start=false) = false", patch)
+        self.assertIn("Real vppExternalTripCommandRegister(start=0, fixed=true", patch)
+        self.assertIn("der(vppExternalTripCommandRegister) = 0", patch)
+        client = (ROOT / "scripts/native_ecms_opcua_client.py").read_text(encoding="utf-8")
+        self.assertIn('command_name = "vppExternalTripCommandRegister"', client)
+        self.assertIn("ua.VariantType.Double", client)
 
 
 if __name__ == "__main__":

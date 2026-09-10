@@ -180,23 +180,24 @@ def main() -> int:
     client = connect(args.endpoint, 180.0)
     rows: list[dict[str, float | int]] = []
     try:
-        required = {"vppExternalTripCommand", *(s.node_name for s in SIGNALS)}
+        command_name = "vppExternalTripCommandRegister"
+        required = {command_name, *(s.node_name for s in SIGNALS)}
         nodes = wait_for_model_nodes(client, required, 60.0)
         # OpenModelica 1.27 defines control nodes in namespace 0 with stable
         # numeric IDs. Their BrowseNames are OpenModelica.step/time, unlike
         # model variables whose BrowseNames are the Modelica names.
         time_node = client.get_node(ua.NodeId(10004, 0))
         step_node = client.get_node(ua.NodeId(10000, 0))
-        command_node = nodes["vppExternalTripCommand"]
+        command_node = nodes[command_name]
         signal_nodes = [nodes[signal.node_name] for signal in SIGNALS]
         current = float(time_node.get_value())
         for sequence in range(round(count)):
             command = current >= args.command_time - args.step_size / 2
-            command_node.set_value(ua.Variant(command, ua.VariantType.Boolean))
+            command_node.set_value(ua.Variant(float(command), ua.VariantType.Double))
             sent_ns = time.time_ns()
             step_node.set_value(ua.Variant(True, ua.VariantType.Boolean))
             next_time = wait_for_time(time_node, current, 30.0)
-            readback = bool(command_node.get_value())
+            readback = float(command_node.get_value()) >= 0.5
             values = client.get_values(signal_nodes)
             row: dict[str, float | int] = {
                 "sequence": sequence,
