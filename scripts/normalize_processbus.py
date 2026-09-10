@@ -292,7 +292,17 @@ def main() -> int:
     time_source = resolved["time_s"]
     assert time_source is not None
 
-    canonical_targets = [target for target in signals if target != "time_s"]
+    # gt_trip_cmd is special: legacy --trip-time may synthesize it, while the
+    # physical path publishes it only when a real RAW column exists. Never
+    # emit a blank duplicate that can overwrite either source.
+    canonical_targets = [
+        target for target in signals
+        if target != "time_s"
+        and (
+            target != "gt_trip_cmd"
+            or (resolved.get(target) is not None and not legacy_gt_trip_cmd)
+        )
+    ]
     mapped_present = [
         target for target in canonical_targets if resolved.get(target) is not None
     ]
