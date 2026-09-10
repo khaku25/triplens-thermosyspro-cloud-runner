@@ -112,13 +112,10 @@ def make_port_rows(inventory: list[dict[str, str]]) -> list[dict[str, object]]:
                 "port_name": f"{prefix}.{suffix}", "direction": "INPUT",
                 "data_type": data_type, "unit": unit, "control_point_id": point,
                 "role": role, "model_binding": binding,
-                "grounding_status": "ADAPTER_REQUIRED", "description_ko": description,
+                "grounding_status": "FMU_CONNECTED", "description_ko": description,
             })
         for suffix, data_type, unit, role, binding, description in outputs:
-            status = "NATIVE_MAPPED" if role in {
-                "AUTOMATIC_COMMAND", "APPLIED_POSITION", "SOLVED_CV",
-                "SOLVED_MASS_FLOW", "SOLVED_PRESSURE_DROP",
-            } else "ADAPTER_REQUIRED"
+            status = "FMU_CONNECTED"
             result.append({
                 "port_name": f"{prefix}.{suffix}", "direction": "OUTPUT",
                 "data_type": data_type, "unit": unit, "control_point_id": point,
@@ -159,7 +156,7 @@ def make_logic_rows(inventory: list[dict[str, str]]) -> list[dict[str, object]]:
                 "expression": expression,
                 "delay_s": delay_s,
                 "enabled_default": 1,
-                "implementation_status": "DESIGN_ONLY_UNTIL_FMU_BUILD",
+                "implementation_status": "FMU_CONNECTED",
                 "description_ko": description,
             })
     return result

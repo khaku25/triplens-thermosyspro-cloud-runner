@@ -70,9 +70,9 @@ that physical valve equation. It is not claimed to be an independent plant
 position sensor.
 
 To simulate travel time, stiction or a gradual failure later, the Modelica
-adapter must add a state between `CMD` and the native `Ouv.signal`. Until the
-patched model compiles and runs, adapter-created ports and logic remain marked
-`ADAPTER_REQUIRED` or `DESIGN_ONLY_UNTIL_FMU_BUILD`.
+adapter must add a state between `CMD` and the native `Ouv.signal`. The v1
+ports and logic are marked `FMU_CONNECTED` only after the full-plant
+OpenModelica build and physical smoke checks pass.
 
 ## Native valve inventory
 
@@ -96,7 +96,9 @@ IP and LP only at the TripLens boundary.
 
 ## Promotion gate
 
-A valve is not `FMU_CONNECTED` until all of the following pass:
+A valve is not `FMU_CONNECTED` until all of the following pass. These gates
+passed for the full `CombinedCycle_TripTAC` demo model in GitHub Actions run
+[46](https://github.com/khaku25/triplens-thermosyspro-cloud-runner/actions/runs/34449701844):
 
 1. the adapter replaces the original `Ouv` driver without double-driving the connector;
 2. the unmodified AUTO run matches the baseline within declared tolerances;
