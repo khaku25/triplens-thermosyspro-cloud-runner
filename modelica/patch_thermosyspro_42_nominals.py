@@ -32,6 +32,7 @@ REPLACEMENTS = {
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("units_mo", type=Path)
+    parser.add_argument("--if97-packages", type=Path)
     args = parser.parse_args()
 
     text = args.units_mo.read_text(encoding="utf-8")
@@ -42,6 +43,22 @@ def main() -> None:
         text = text.replace(old, new)
     args.units_mo.write_text(text, encoding="utf-8")
     print(f"patched {len(REPLACEMENTS)} SI type attributes in {args.units_mo}")
+
+    if args.if97_packages is not None:
+        if97_text = args.if97_packages.read_text(encoding="utf-8")
+        old = 'assert(false, "Water_Ph: Incorrect region number (" + String(region) + ")");'
+        new = (
+            'assert(false, "Water_Ph: Incorrect region number (" + '
+            'String(region) + ") for p=" + String(p) + " Pa, h=" + '
+            'String(h) + " J/kg");'
+        )
+        count = if97_text.count(old)
+        if count != 1:
+            raise SystemExit(f"expected one Water_Ph diagnostic match, got {count}")
+        args.if97_packages.write_text(
+            if97_text.replace(old, new), encoding="utf-8"
+        )
+        print(f"expanded Water_Ph diagnostics in {args.if97_packages}")
 
 
 if __name__ == "__main__":
