@@ -63,17 +63,29 @@ def main() -> int:
             "and assert the physical ST isolation/bypass sequence."
         ),
     )
+    parser.add_argument(
+        "--external-trip-input",
+        action="store_true",
+        help=(
+            "Expose the live FMU GT Trip input and suppress every scheduled "
+            "Trip source. The external command becomes the only Trip cause."
+        ),
+    )
     parser.add_argument("--template-dir", type=Path, default=PROJECT_ROOT / "modelica")
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "build")
     args = parser.parse_args()
 
-    if sum((args.normal_operation, args.derate_only, args.gt_trip)) > 1:
+    if sum((
+        args.normal_operation, args.derate_only, args.gt_trip,
+        args.external_trip_input,
+    )) > 1:
         parser.error(
-            "--normal-operation, --derate-only and --gt-trip are mutually exclusive"
+            "--normal-operation, --derate-only, --gt-trip and "
+            "--external-trip-input are mutually exclusive"
         )
     if args.intervals < 10:
         parser.error("--intervals must be at least 10")
-    if not args.normal_operation:
+    if not args.normal_operation and not args.external_trip_input:
         if args.trip_time >= args.stop_time:
             parser.error("boundary event time must be earlier than --stop-time")
         if args.trip_time + args.trip_ramp_duration > args.stop_time:
@@ -82,7 +94,10 @@ def main() -> int:
     output_interval = args.stop_time / args.intervals
     stop_time = f"{args.stop_time:.12g}"
     gt_trip_enabled = "true" if args.gt_trip else "false"
-    if args.normal_operation:
+    if args.normal_operation or args.external_trip_input:
+        # In external mode both legacy TimeTables stay normal. The patch routes
+        # the live command through its own physical exhaust states, so a lost
+        # ECMS command cannot be masked by a scheduled boundary transition.
         vpp_trip_time = f"{args.stop_time + 1:.12g}"
         exhaust_flow_table = (
             f"[0,exhaustFlowNormalTH/3.6; {stop_time},exhaustFlowNormalTH/3.6]"
@@ -130,6 +145,9 @@ def main() -> int:
         "STOP_TIME": stop_time,
         "VPP_TRIP_TIME": vpp_trip_time,
         "GT_TRIP_ENABLED": gt_trip_enabled,
+        "EXTERNAL_TRIP_ENABLED": (
+            "true" if args.external_trip_input else "false"
+        ),
         "EXHAUST_FLOW_TABLE": exhaust_flow_table,
         "EXHAUST_TEMPERATURE_TABLE": exhaust_temperature_table,
         "NUMBER_OF_INTERVALS": str(args.intervals),
@@ -141,6 +159,13 @@ def main() -> int:
         replacements,
     )
     render(args.template_dir / "run.mos.tpl", args.output_dir / "run.mos", replacements)
+    live_fmu_template = args.template_dir / "build_live_fmu.mos.tpl"
+    if live_fmu_template.is_file():
+        render(
+            live_fmu_template,
+            args.output_dir / "build_live_fmu.mos",
+            replacements,
+        )
     return 0
 
 

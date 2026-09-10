@@ -30,6 +30,8 @@ equation
   connect(TurbineHP.Cs, MoitieDebitHP.Ce);
   connect(DoubleDebitMP.Cs, vanne_entree_TurbineMP.C1);
   connect(perteChargeK1.C2, CapteurDebitVapCondenseur.C1);
+  connect(Temperature.y,SourceFumees. ITemperature);
+  connect(Debit.y,SourceFumees. IMassFlow);
 end CombinedCycle_TripTAC;
 """
 
@@ -132,6 +134,12 @@ class TurbineBypassPatchTests(unittest.TestCase):
         self.assertIn("max(vppSpraySeatLeak", patched)
         self.assertIn("vppHPBypassMassFlow = vppHPBypassValve.Q", patched)
         self.assertIn("vppCondenserPressure = Condenseur.P", patched)
+        self.assertIn("input Boolean vppExternalTripCommand", patched)
+        self.assertIn(
+            "connect(vppGTExhaustMassFlowCommand, SourceFumees.IMassFlow)",
+            patched,
+        )
+        self.assertNotIn("connect(Debit.y,SourceFumees. IMassFlow)", patched)
 
     def test_patch_fails_closed_when_reapplied(self) -> None:
         with self.assertRaisesRegex(ValueError, "already patched"):

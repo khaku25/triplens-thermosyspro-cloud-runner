@@ -27,26 +27,51 @@ model TripLens_CombinedCycle_TripTAC
   parameter Real vppGTGSpeedNormalRPM = 3600.0;
   parameter Real vppGTGCoastdownTau(unit="s") = 1.2;
 
-  Boolean vppGTTripCmd "Modelica-produced GT Trip command";
-  Boolean vppGTTripLatch "Modelica-produced GT Trip latch";
-  Boolean vpp52GTTripCmd "Modelica-produced 52GT Trip command";
-  Boolean vpp52GTClosed "Modelica-produced 52GT auxiliary contact";
-  Boolean vpp52STTripCmd "Modelica-produced 52ST Trip command";
-  Boolean vpp52STClosed "Modelica-produced 52ST auxiliary contact";
-  Real vppGTGPowerMW(unit="MW") "Reduced-order GT electrical output";
-  Real vppGTGSpeedRPM "Reduced-order GT shaft speed in rpm";
+  output Boolean vppGTTripCmd "GT Trip command observed by the physical model";
+  output Boolean vppGTTripLatch "Modelica-produced GT Trip latch";
+  output Boolean vpp52GTTripCmd "Modelica-produced 52GT Trip command";
+  output Boolean vpp52GTClosed "Modelica-produced 52GT auxiliary contact";
+  output Boolean vpp52STTripCmd "Modelica-produced 52ST Trip command";
+  output Boolean vpp52STClosed "Modelica-produced 52ST auxiliary contact";
+  output Boolean vppSTTripLatchPublished
+    "Stable top-level FMU output for the physical ST Trip latch";
+  output Real vppGTGPowerMW(unit="MW") "Reduced-order GT electrical output";
+  output Real vppGTGSpeedRPM "Reduced-order GT shaft speed in rpm";
+  discrete Real vppGTTripAssertTime(unit="s", start=eventTime, fixed=true)
+    "Simulation time at the first physical GT Trip assertion";
 
-  Real vppGTExhaustMassFlowTH "Published GT exhaust mass flow in t/h";
-  Real vppHPTurbineSteamFlowTH "Published HP turbine steam flow in t/h";
-  Real vppIPTurbineSteamFlowTH "Published IP turbine steam flow in t/h";
-  Real vppLPTurbineSteamFlowTH "Published LP turbine steam flow in t/h";
-  Real vppHPBypassMassFlowTH "Published HP bypass steam flow in t/h";
-  Real vppLPBypassMassFlowTH "Published LP bypass steam flow in t/h";
-  Real vppHPSprayMassFlowTH "Published HP bypass spray flow in t/h";
-  Real vppLPSprayMassFlowTH "Published LP bypass spray flow in t/h";
+  output Real vppGTExhaustMassFlowTH "Published GT exhaust mass flow in t/h";
+  output Real vppGTExhaustTemperatureK(unit="K")
+    "Published GT exhaust temperature at the physical source boundary";
+  output Real vppHPTurbineSteamFlowTH "Published HP turbine steam flow in t/h";
+  output Real vppIPTurbineSteamFlowTH "Published IP turbine steam flow in t/h";
+  output Real vppLPTurbineSteamFlowTH "Published LP turbine steam flow in t/h";
+  output Real vppHPBypassMassFlowTH "Published HP bypass steam flow in t/h";
+  output Real vppLPBypassMassFlowTH "Published LP bypass steam flow in t/h";
+  output Real vppHPSprayMassFlowTH "Published HP bypass spray flow in t/h";
+  output Real vppLPSprayMassFlowTH "Published LP bypass spray flow in t/h";
+  output Real vppHPDrumLevelM(unit="m") "Published HP drum liquid level";
+  output Real vppIPDrumLevelM(unit="m") "Published IP drum liquid level";
+  output Real vppLPDrumLevelM(unit="m") "Published LP drum liquid level";
+  output Real vppHPDrumPressurePa(unit="Pa") "Published HP drum pressure";
+  output Real vppIPDrumPressurePa(unit="Pa") "Published IP drum pressure";
+  output Real vppLPDrumPressurePa(unit="Pa") "Published LP drum pressure";
+  output Real vppHPAdmissionPositionPU "Applied HP turbine admission position";
+  output Real vppIPAdmissionPositionPU "Applied IP turbine admission position";
+  output Real vppLPAdmissionMultiplierPU "Applied LP admission multiplier";
+  output Real vppHPBypassPositionPU "Applied HP bypass-valve position";
+  output Real vppLPBypassPositionPU "Applied LP bypass-valve position";
+  output Real vppCondenserPressurePa(unit="Pa") "Published condenser pressure";
+  output Real vppCondenserLevelM(unit="m") "Published condenser level";
 
   extends ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC(
     vppTripTime=@VPP_TRIP_TIME@,
+    vppUseExternalTripInput=@EXTERNAL_TRIP_ENABLED@,
+    vppGTExhaustMassFlowNormal=exhaustFlowNormalTH/3.6,
+    vppGTExhaustMassFlowTrip=exhaustFlowTripTH/3.6,
+    vppGTExhaustTemperatureNormal=exhaustTemperatureNormal,
+    vppGTExhaustTemperatureTrip=exhaustTemperatureTrip,
+    vppGTExhaustResponseTau=boundaryRampDuration/(-log(0.05)),
     // Seed the routed steam path from the last verified normal operating
     // point. These are initialization guesses only; the fluid equations own
     // every value after initialization and throughout the transient.
@@ -122,26 +147,34 @@ equation
   // The thermal plant and the reduced-order electrical boundary are solved in
   // one Modelica result file. Downstream ECMS code must observe these outputs;
   // it is not allowed to recreate them from Python timing constants.
-  vppGTTripCmd = enableGTTrip and time >= eventTime;
-  vppGTTripLatch = vppGTTripCmd;
+  vppGTTripCmd = if vppUseExternalTripInput then vppExternalTripCommand
+    else enableGTTrip and time >= eventTime;
+  vppGTTripLatch = vppSTTripLatch;
+  vppSTTripLatchPublished = vppSTTripLatch;
+  when edge(vppGTTripLatch) then
+    vppGTTripAssertTime = time;
+  end when;
   vpp52GTTripCmd = vppGTTripLatch and
-    time >= eventTime + vppGTTripCommandDelay;
+    time >= vppGTTripAssertTime + vppGTTripCommandDelay;
   vpp52GTClosed = not (vppGTTripLatch and
-    time >= eventTime + vppGTBreakerOpenDelay);
+    time >= vppGTTripAssertTime + vppGTBreakerOpenDelay);
   vpp52STTripCmd = vppSTTripLatch;
   vpp52STClosed = not (vppSTTripLatch and
-    time >= vppTripTime + vppSTBreakerOpenDelay);
+    time >= vppGTTripAssertTime + vppSTBreakerOpenDelay);
   vppGTGPowerMW = if not vppGTTripLatch then vppGTGPowerNormalMW
     else if vpp52GTClosed then
-      vppGTGPowerNormalMW*exp(-(time - eventTime)/vppGTGPowerDecayTau)
+      vppGTGPowerNormalMW*exp(
+        -(time - vppGTTripAssertTime)/vppGTGPowerDecayTau)
     else 0;
   vppGTGSpeedRPM = if vpp52GTClosed then vppGTGSpeedNormalRPM
     else vppGTGSpeedNormalRPM*exp(
-      -(time - eventTime - vppGTBreakerOpenDelay)/vppGTGCoastdownTau);
+      -(time - vppGTTripAssertTime - vppGTBreakerOpenDelay)
+      /vppGTGCoastdownTau);
 
   // ThermoSysPro connectors retain their native SI balance. Only the
   // published RAW boundary is converted to the plant-facing t/h contract.
-  vppGTExhaustMassFlowTH = 3.6*Debit.y.signal;
+  vppGTExhaustMassFlowTH = 3.6*vppGTExhaustMassFlowCommand.signal;
+  vppGTExhaustTemperatureK = vppGTExhaustTemperatureCommand.signal;
   vppHPTurbineSteamFlowTH = 3.6*TurbineHP.Q;
   vppIPTurbineSteamFlowTH = 3.6*TurbineMP.Q;
   vppLPTurbineSteamFlowTH = 3.6*TurbineBP.Q;
@@ -149,6 +182,19 @@ equation
   vppLPBypassMassFlowTH = 3.6*vppLPBypassMassFlow;
   vppHPSprayMassFlowTH = 3.6*vppHPSprayMassFlow;
   vppLPSprayMassFlowTH = 3.6*vppLPSprayMassFlow;
+  vppHPDrumLevelM = BallonHP.yLevel.signal;
+  vppIPDrumLevelM = BallonMP.yLevel.signal;
+  vppLPDrumLevelM = BallonBP.yLevel.signal;
+  vppHPDrumPressurePa = BallonHP.P;
+  vppIPDrumPressurePa = BallonMP.P;
+  vppLPDrumPressurePa = BallonBP.P;
+  vppHPAdmissionPositionPU = vppHPAdmissionPos;
+  vppIPAdmissionPositionPU = vppIPAdmissionPos;
+  vppLPAdmissionMultiplierPU = vppLPDrumAdmissionMultiplier;
+  vppHPBypassPositionPU = vppHPBypassPos;
+  vppLPBypassPositionPU = vppLPBypassPos;
+  vppCondenserPressurePa = vppCondenserPressure;
+  vppCondenserLevelM = vppCondenserLevel;
 
   annotation(experiment(
     StartTime=0,

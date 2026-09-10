@@ -164,6 +164,14 @@ PARAMETERS = f'''  // {MARKER}
 
   parameter Real vppTripTime(unit="s") = 600
     "Resolved ST Trip time for the physical GT Trip adapter";
+  parameter Boolean vppUseExternalTripInput = false
+    "Use the inherited FMU input instead of the scheduled Trip source";
+  parameter Modelica.SIunits.MassFlowRate vppGTExhaustMassFlowNormal = 606.94;
+  parameter Modelica.SIunits.MassFlowRate vppGTExhaustMassFlowTrip = 50;
+  parameter Modelica.SIunits.Temperature vppGTExhaustTemperatureNormal = 893.75;
+  parameter Modelica.SIunits.Temperature vppGTExhaustTemperatureTrip = 450;
+  parameter Real vppGTExhaustResponseTau(unit="s") = 0.667
+    "First-order live-command GT exhaust response time constant";
   parameter Real vppAdmissionStroke95(unit="s") = 0.150
     "HP/IP and LP-drum admission 95 percent closing time";
   parameter Real vppHPBypassStroke95(unit="s") = 0.300
@@ -214,8 +222,18 @@ PARAMETERS = f'''  // {MARKER}
 
 
 COMPONENTS = '''
-  Boolean vppSTTripLatch(start=false)
+  input Boolean vppExternalTripCommand(start=false)
+    "Live ECMS GT Trip input exposed by the Co-Simulation FMU";
+  discrete Boolean vppSTTripLatch(start=false, fixed=true)
     "One-way resolved ST Trip latch for this physical scenario";
+  Real vppGTExhaustMassFlowState(
+    unit="kg/s", start=vppGTExhaustMassFlowNormal, fixed=true);
+  Real vppGTExhaustTemperatureState(
+    unit="K", start=vppGTExhaustTemperatureNormal, fixed=true);
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
+    vppGTExhaustMassFlowCommand;
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
+    vppGTExhaustTemperatureCommand;
   Real vppHPAdmissionPos(start=0.8, fixed=true, min=0, max=1);
   Real vppIPAdmissionPos(start=0.8, fixed=true, min=0, max=1);
   Real vppLPDrumAdmissionMultiplier(start=1, fixed=true, min=0, max=1);
@@ -333,7 +351,22 @@ COMPONENTS = '''
 
 
 EQUATIONS = '''
-  vppSTTripLatch = time >= vppTripTime;
+  when (vppUseExternalTripInput and vppExternalTripCommand) or
+       ((not vppUseExternalTripInput) and time >= vppTripTime) then
+    vppSTTripLatch = true;
+  end when;
+  der(vppGTExhaustMassFlowState) =
+    ((if vppSTTripLatch then vppGTExhaustMassFlowTrip
+      else vppGTExhaustMassFlowNormal) - vppGTExhaustMassFlowState)
+      /vppGTExhaustResponseTau;
+  der(vppGTExhaustTemperatureState) =
+    ((if vppSTTripLatch then vppGTExhaustTemperatureTrip
+      else vppGTExhaustTemperatureNormal) - vppGTExhaustTemperatureState)
+      /vppGTExhaustResponseTau;
+  vppGTExhaustMassFlowCommand.signal = if vppUseExternalTripInput then
+    vppGTExhaustMassFlowState else Debit.y.signal;
+  vppGTExhaustTemperatureCommand.signal = if vppUseExternalTripInput then
+    vppGTExhaustTemperatureState else Temperature.y.signal;
   vppHPBypassCmd = if vppSTTripLatch then 1 else vppValveLeak;
   vppLPBypassCmd = if vppSTTripLatch then 1 else vppValveLeak;
 
@@ -443,6 +476,16 @@ def patch_model(source: str) -> str:
     )
     source = replace_connect_statement(
         source,
+        "Temperature.y,SourceFumees. ITemperature",
+        "  connect(vppGTExhaustTemperatureCommand, SourceFumees.ITemperature);",
+    )
+    source = replace_connect_statement(
+        source,
+        "Debit.y,SourceFumees. IMassFlow",
+        "  connect(vppGTExhaustMassFlowCommand, SourceFumees.IMassFlow);",
+    )
+    source = replace_connect_statement(
+        source,
         "ConstantVanneTurbineMP.y, vanne_entree_TurbineMP.Ouv",
         "  // VPP patch owns the IP admission-valve actuator equation.",
     )
@@ -487,6 +530,8 @@ def patch_model(source: str) -> str:
         "vppCondenserSteamVolume",
         "der(vppHPBypassPos)",
         "der(vppLPBypassPos)",
+        "vppExternalTripCommand",
+        "vppGTExhaustMassFlowCommand",
     )
     for token in required:
         if token not in source:
