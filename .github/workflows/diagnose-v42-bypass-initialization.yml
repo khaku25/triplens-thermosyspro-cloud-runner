@@ -7,6 +7,8 @@ on:
       - "modelica/install_modelica_4_0.mos"
       - "modelica/build_v42_bypass_diagnostic.mos"
       - "modelica/build_v42_baseline_diagnostic.mos"
+      - "modelica/apply_combined_cycle_warm_start.py"
+      - "modelica/CombinedCycle_init_D2012.mos"
       - ".github/workflows/diagnose-v42-bypass-initialization.yml"
   workflow_dispatch:
 
@@ -24,26 +26,26 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - case_name: baseline-omcTearing
+          - case_name: warm-baseline-hybrid
             build_script: build_v42_baseline_diagnostic.mos
             executable: ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC
             tearing: omcTearing
-          - case_name: baseline-minimalTearing
-            build_script: build_v42_baseline_diagnostic.mos
-            executable: ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC
-            tearing: minimalTearing
-          - case_name: bypass-minimalTearing
+            nls: hybrid
+          - case_name: warm-bypass-hybrid
             build_script: build_v42_bypass_diagnostic.mos
             executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass
-            tearing: minimalTearing
-          - case_name: bypass-cellier
+            tearing: omcTearing
+            nls: hybrid
+          - case_name: warm-bypass-homotopy
             build_script: build_v42_bypass_diagnostic.mos
             executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass
-            tearing: cellier
-          - case_name: bypass-guruTearing
+            tearing: omcTearing
+            nls: homotopy
+          - case_name: warm-bypass-mixed
             build_script: build_v42_bypass_diagnostic.mos
             executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass
-            tearing: guruTearing
+            tearing: omcTearing
+            nls: mixed
     steps:
       - uses: actions/checkout@v4
 
@@ -84,6 +86,13 @@ jobs:
             | tee build/v42/translation.log
           test -x "build/v42/${{ matrix.executable }}"
 
+      - name: Transfer the ThermoSysPro warm start into the OMC setup XML
+        run: |
+          python3 modelica/apply_combined_cycle_warm_start.py \
+            --init-xml "build/v42/${{ matrix.executable }}_init.xml" \
+            --dymola-script modelica/CombinedCycle_init_D2012.mos \
+            --output build/v42/warm_init.xml
+
       - name: Run dense hybrid initialization with detailed NLS log
         run: |
           set +e
@@ -95,8 +104,10 @@ jobs:
               "$OPENMODELICA_IMAGE" \
               "./${{ matrix.executable }}" \
                 -override=startTime=0,stopTime=1,stepSize=0.1,tolerance=0.001 \
+                -f=warm_init.xml \
                 -s=dassl \
-                -nls=hybrid \
+                -nls=${{ matrix.nls }} \
+                -nlsLS=totalpivot \
                 -nlssMaxDensity=0.01 \
                 -lv=LOG_STDOUT,LOG_ASSERT,LOG_STATS,LOG_INIT,LOG_NLS,LOG_NLS_V \
             > build/v42/initialization.log 2>&1
@@ -113,6 +124,7 @@ jobs:
             build/v42/install.log
             build/v42/translation.log
             build/v42/initialization.log
+            build/v42/warm_init.xml
             build/v42/*_init.xml
             build/v42/*_info.json
           if-no-files-found: warn
