@@ -146,7 +146,7 @@ class RawOnlyActionTests(unittest.TestCase):
         mos = (ROOT / "modelica" / "run.mos.tpl").read_text(encoding="utf-8")
 
         self.assertIn("patch_turbine_bypass_model.py", runner)
-        self.assertIn("HPBP_LPBP_PHYSICAL_V12", runner)
+        self.assertIn("HPBP_LPBP_PHYSICAL_V13_GT_TRIP_HANDOFF", runner)
         self.assertIn("TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12", runner)
         self.assertIn("patch_stodola_turbine.py", runner)
         self.assertIn("RAW simulation ended early", (
@@ -166,6 +166,11 @@ class RawOnlyActionTests(unittest.TestCase):
         self.assertNotIn("LOG_NLS_V", mos)
         self.assertIn('simflags="-noEventEmit"', mos)
         self.assertIn("CondenserPressure", mos)
+        self.assertIn("vppGTTripCmd", model)
+        self.assertIn("vpp52GTClosed", model)
+        self.assertIn("vppGTGPowerMW", model)
+        self.assertIn("GTGPowerMW", mos)
+        self.assertIn("52GTClosed", mos)
 
     def test_one_ms_dynamic_bypass_raw_meets_stroke_contract(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
