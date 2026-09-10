@@ -145,8 +145,9 @@ def build_preview_svg(
 
     kpis = [
         ("COMMUNICATION", str(validation.get("status", "?")), "#087f5b"),
-        ("PHYSICAL SIGNALS", str(len(signals)), "#536271"),
-        ("SOURCE SAMPLES", f"{len(rows):,}", "#536271"),
+        ("PHYSICAL SIGNALS", str((manifest.get("handoff") or {}).get(
+            "signal_count", len(signals))), "#536271"),
+        ("SOURCE SAMPLES", f'{int(validation.get("rows_compared", len(rows))):,}', "#536271"),
         ("VALUE MISMATCH", str(validation.get("value_mismatch_count", "?")), "#d71920"),
     ]
     for index, (label, value, color) in enumerate(kpis):
@@ -341,7 +342,7 @@ table{{width:100%;border-collapse:collapse}} th,td{{padding:7px 9px;border-botto
 <script>
 const P=JSON.parse(document.getElementById('payload').textContent), rows=P.rows, sigs=P.signals;
 const range=document.getElementById('range'), play=document.getElementById('play'); let timer=null;
-range.max=Math.max(0,rows.length-1); document.getElementById('signalCount').textContent=sigs.length;
+range.max=Math.max(0,rows.length-1); document.getElementById('signalCount').textContent=(P.manifest.handoff&&P.manifest.handoff.signal_count)||sigs.length;
 const owners=['DCS1','DCS2','ECMS'];
 function numeric(field){{return rows.map(r=>Number(r[field])).filter(Number.isFinite)}}
 function fmt(field,v,unit){{if(v===''||v==null)return '—'; let n=Number(v); if(!Number.isFinite(n))return v;
