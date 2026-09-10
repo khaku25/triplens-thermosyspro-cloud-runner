@@ -304,7 +304,7 @@ def main() -> int:
 
     process_fields, process_rows = require_columns(process_path, {
         "scenario_id", "time_s", "gt_trip_cmd", "stg_power_w",
-        "gt_exhaust_mass_flow_kg_s", "gt_exhaust_temperature_k",
+        "gt_exhaust_mass_flow_t_h", "gt_exhaust_temperature_k",
     })
     trend_fields, trend_rows = require_columns(trend_path, {
         "ecms_time_ms", "source_time_ms", "quality", "a_config_status",

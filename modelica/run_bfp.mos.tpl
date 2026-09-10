@@ -16,5 +16,5 @@ simulate(
   outputFormat="csv",
   simflags="-noEventEmit",
   fileNamePrefix="thermosyspro_bfp_blind",
-  variableFilter="^(time|PompeAlimHP\\.(Vr|Q|Qv|Wm|R|deltaP)|arretPomesHP\\.y\\.signal|CapteurDebitEau(HP|MP|BP)\\.(Q|Measure\\.signal)|Alternateur\\.Welec|Ballon(HP|MP|BP)\\.(yLevel\\.signal|zl|P)|Turbine(HP|MP|BP)\\.Q|vanne_alimentation(HP|MP|BP)\\.Ouv\\.signal|Debit\\.y\\.signal|Temperature\\.y\\.signal)$");
+  variableFilter="^(time|PompeAlimHP\\.(Vr|Wm|R|deltaP)|arretPomesHP\\.y\\.signal|Alternateur\\.Welec|Ballon(HP|MP|BP)\\.(yLevel\\.signal|zl|P)|vanne_alimentation(HP|MP|BP)\\.Ouv\\.signal|Temperature\\.y\\.signal|vpp(GTExhaustMassFlowTH|HPTurbineSteamFlowTH|IPTurbineSteamFlowTH|LPTurbineSteamFlowTH|FWPHPMassFlowTH))$");
 getErrorString();

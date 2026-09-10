@@ -5,13 +5,24 @@ model TripLens_CombinedCycle_TripTAC
   // canonical GT Trip definition used by TripLens.
   parameter Real eventTime(unit="s") = @TRIP_TIME@;
   parameter Real boundaryRampDuration(unit="s") = @TRIP_RAMP_DURATION@;
-  parameter Real exhaustFlowNormal(unit="kg/s") = 606.94;
-  // Canonical semantics: 606.94 -> 150 kg/s and 893.75 -> 550 K is GT DERATE.
+  parameter Real exhaustFlowNormalTH = 2184.984
+    "Published normal GT exhaust mass flow in t/h";
+  // Canonical semantics: 2184.984 -> 540 t/h and 893.75 -> 550 K is GT DERATE.
   // It must not be used as evidence of GT Trip success; GT Trip success is
   // electrical separation with 52GT.CLOSED=0 in the VPP/ECMS path.
-  parameter Real exhaustFlowDerated(unit="kg/s") = 150.0;
+  parameter Real exhaustFlowDeratedTH = 540.0
+    "Published derated GT exhaust mass flow in t/h";
   parameter Real exhaustTemperatureNormal(unit="K") = 893.75;
   parameter Real exhaustTemperatureDerated(unit="K") = 550.0;
+
+  Real vppGTExhaustMassFlowTH "Published GT exhaust mass flow in t/h";
+  Real vppHPTurbineSteamFlowTH "Published HP turbine steam flow in t/h";
+  Real vppIPTurbineSteamFlowTH "Published IP turbine steam flow in t/h";
+  Real vppLPTurbineSteamFlowTH "Published LP turbine steam flow in t/h";
+  Real vppHPBypassMassFlowTH "Published HP bypass steam flow in t/h";
+  Real vppLPBypassMassFlowTH "Published LP bypass steam flow in t/h";
+  Real vppHPSprayMassFlowTH "Published HP bypass spray flow in t/h";
+  Real vppLPSprayMassFlowTH "Published LP bypass spray flow in t/h";
 
   extends ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC(
     vppTripTime=@VPP_TRIP_TIME@,
@@ -85,6 +96,18 @@ model TripLens_CombinedCycle_TripTAC
       C2(Q(start=196.6524916480812, nominal=200))),
     Debit(Table=@EXHAUST_FLOW_TABLE@),
     Temperature(Table=@EXHAUST_TEMPERATURE_TABLE@));
+
+equation
+  // ThermoSysPro connectors retain their native SI balance. Only the
+  // published RAW boundary is converted to the plant-facing t/h contract.
+  vppGTExhaustMassFlowTH = 3.6*Debit.y.signal;
+  vppHPTurbineSteamFlowTH = 3.6*TurbineHP.Q;
+  vppIPTurbineSteamFlowTH = 3.6*TurbineMP.Q;
+  vppLPTurbineSteamFlowTH = 3.6*TurbineBP.Q;
+  vppHPBypassMassFlowTH = 3.6*vppHPBypassMassFlow;
+  vppLPBypassMassFlowTH = 3.6*vppLPBypassMassFlow;
+  vppHPSprayMassFlowTH = 3.6*vppHPSprayMassFlow;
+  vppLPSprayMassFlowTH = 3.6*vppLPSprayMassFlow;
 
   annotation(experiment(
     StartTime=0,

@@ -88,7 +88,7 @@
         "source": "HP_MAIN_STEAM_HEADER_UPSTREAM_HP_TURBINE_STOP_CONTROL_VALVE",
         "destination": "COLD_REHEAT_HEADER_DOWNSTREAM_HP_TURBINE",
         "bypassed_turbines": ["HP"],
-        "nominal_steam_flow_kg_s": 151.696,
+        "nominal_steam_flow_t_h": 546.1056,
         "nominal_inlet_pressure_pa": 12681000.0,
         "nominal_outlet_pressure_pa": 2726700.0,
         "stroke_time_ms": 300,
@@ -104,7 +104,7 @@
         "source": "HOT_REHEAT_HEADER_UPSTREAM_IP_TURBINE_STOP_CONTROL_VALVE",
         "destination": "CONDENSER_STEAM_INLET_HEADER",
         "bypassed_turbines": ["IP", "LP"],
-        "nominal_steam_flow_kg_s": 176.758,
+        "nominal_steam_flow_t_h": 636.3288,
         "nominal_inlet_pressure_pa": 2548600.0,
         "nominal_outlet_pressure_pa": 6136.0,
         "stroke_time_ms": 400,
@@ -167,6 +167,12 @@
     "rule_fields_locked_by_catalog": [
       "direction", "threshold_mode", "threshold_value", "hysteresis_value", "delay_s", "severity", "unit"
     ]
+  },
+  "unit_contract": {
+    "published_mass_flow_unit": "t/h",
+    "published_signal_suffix": "_t_h",
+    "model_to_published_multiplier": 3.6,
+    "scope": ["TAG_MASTER", "PROCESSBUS", "DCS_ALARM_RULES", "VPP_EVENT", "GITHUB_RAW_EXPORT_ALIASES"]
   },
   "common_trip": {
     "matrix_source": "config/common_trip_matrix.csv",

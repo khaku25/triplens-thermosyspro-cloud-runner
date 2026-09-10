@@ -3,7 +3,7 @@
 ## Canonical definitions
 
 - **GT TRIP**: electrical Trip. Success requires `ECMS.52GT.CLOSED=0`.
-- **GT DERATE**: exhaust-boundary reduction from `606.94 kg/s / 893.75 K` to `150 kg/s / 550 K` while the GT breaker remains closed.
+- **GT DERATE**: published exhaust-boundary reduction from `2184.984 t/h / 893.75 K` to `540 t/h / 550 K` while the GT breaker remains closed. ThermoSysPro retains its native SI mass balance internally.
 - The 150/550 boundary must never be presented as proof that GT Trip succeeded.
 
 ## Runtime ownership

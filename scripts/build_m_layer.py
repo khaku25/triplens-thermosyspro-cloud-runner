@@ -41,7 +41,7 @@ def main() -> int:
     m_rows = [row for row in rows if row["tag_class"] == "M" and row["value_basis"] == "M"]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=fields)
+        writer = csv.DictWriter(stream, fieldnames=fields, lineterminator="\n")
         writer.writeheader()
         writer.writerows(m_rows)
 

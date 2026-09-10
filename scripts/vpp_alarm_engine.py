@@ -407,6 +407,7 @@ def main() -> int:
         "root_cause_label_injected": False,
         "physics_to_logic_policy": "ZERO_ORDER_HOLD",
         "logic_period_ms": logic_period_ms,
+        "unit_contract": baseline.get("unit_contract", {}),
         "baseline": {
             "id": baseline["baseline_id"],
             "version": baseline.get("version", ""),

@@ -43,6 +43,7 @@ PHYSICAL_BYPASS_VARIANTS = {
     "HPBP_LPBP_DYNAMIC_V11",
     "HPBP_LPBP_PHYSICAL_V11",
     "HPBP_LPBP_PHYSICAL_V12",
+    "HPBP_LPBP_PHYSICAL_V12_TPH_EXPORT_V1",
 }
 DYNAMIC_BYPASS_COLUMNS = {
     "vppSTTripLatch",
@@ -59,10 +60,10 @@ DYNAMIC_BYPASS_COLUMNS = {
     "vppHPBypassCloseLS",
     "vppLPBypassOpenLS",
     "vppLPBypassCloseLS",
-    "vppHPBypassMassFlow",
-    "vppLPBypassMassFlow",
-    "vppHPSprayMassFlow",
-    "vppLPSprayMassFlow",
+    "vppHPBypassMassFlowTH",
+    "vppLPBypassMassFlowTH",
+    "vppHPSprayMassFlowTH",
+    "vppLPSprayMassFlowTH",
     "vppHPBypassInletPressure",
     "vppLPBypassInletPressure",
     "vppHPBypassOutletPressure",
@@ -82,9 +83,28 @@ NORMAL_RELIABILITY_COLUMNS = DYNAMIC_BYPASS_COLUMNS | {
     "BallonHP.P",
     "BallonMP.P",
     "BallonBP.P",
-    "TurbineHP.Q",
-    "TurbineMP.Q",
-    "TurbineBP.Q",
+    "vppHPTurbineSteamFlowTH",
+    "vppIPTurbineSteamFlowTH",
+    "vppLPTurbineSteamFlowTH",
+}
+DERATE_BOUNDARY_COLUMNS = {
+    "vppSTTripLatch",
+    "vppHPBypassCmd",
+    "vppLPBypassCmd",
+    "vppHPBypassPos",
+    "vppLPBypassPos",
+    "vppHPSprayPos",
+    "vppLPSprayPos",
+    "vppHPBypassOpenLS",
+    "vppHPBypassCloseLS",
+    "vppLPBypassOpenLS",
+    "vppLPBypassCloseLS",
+    "vppHPBypassMassFlowTH",
+    "vppLPBypassMassFlowTH",
+    "vppHPSprayMassFlowTH",
+    "vppLPSprayMassFlowTH",
+    "vppGTExhaustMassFlowTH",
+    "Temperature.y.signal",
 }
 
 
@@ -187,7 +207,7 @@ def validate_dynamic_bypass(path: Path, nominal_period_ms: float) -> dict[str, f
     ):
         if numeric[column][-1] > 0.01:
             raise ValueError(f"Trip isolation did not reach closed state: {column}")
-    for column in ("vppHPBypassMassFlow", "vppLPBypassMassFlow"):
+    for column in ("vppHPBypassMassFlowTH", "vppLPBypassMassFlowTH"):
         if max(numeric[column][trip_index:]) <= 0:
             raise ValueError(f"no positive physical bypass flow was produced: {column}")
     for column in (
@@ -292,10 +312,10 @@ def validate_normal_operation(path: Path) -> dict[str, float]:
     ):
         if max(abs(value) for value in numeric[column]) > 1e-8:
             raise ValueError(f"normal-operation command/position changed: {column}")
-    for column in ("vppHPBypassMassFlow", "vppLPBypassMassFlow"):
+    for column in ("vppHPBypassMassFlowTH", "vppLPBypassMassFlowTH"):
         if max(abs(value) for value in numeric[column]) > 1e-6:
             raise ValueError(f"normal-operation bypass produced steam flow: {column}")
-    for column in ("vppHPSprayMassFlow", "vppLPSprayMassFlow"):
+    for column in ("vppHPSprayMassFlowTH", "vppLPSprayMassFlowTH"):
         if min(numeric[column]) < 0 or max(numeric[column]) > 1e-3:
             raise ValueError(f"normal-operation spray seat leakage is invalid: {column}")
 
@@ -316,9 +336,9 @@ def validate_normal_operation(path: Path) -> dict[str, float]:
         "BallonHP.P",
         "BallonMP.P",
         "BallonBP.P",
-        "TurbineHP.Q",
-        "TurbineMP.Q",
-        "TurbineBP.Q",
+        "vppHPTurbineSteamFlowTH",
+        "vppIPTurbineSteamFlowTH",
+        "vppLPTurbineSteamFlowTH",
         "vppHPBypassInletPressure",
         "vppLPBypassInletPressure",
         "vppHPBypassOutletPressure",
@@ -351,9 +371,9 @@ def validate_normal_operation(path: Path) -> dict[str, float]:
         "BallonHP.P",
         "BallonMP.P",
         "BallonBP.P",
-        "TurbineHP.Q",
-        "TurbineMP.Q",
-        "TurbineBP.Q",
+        "vppHPTurbineSteamFlowTH",
+        "vppIPTurbineSteamFlowTH",
+        "vppLPTurbineSteamFlowTH",
         "vppCondenserPressure",
     )
     relative_drift: dict[str, float] = {}
@@ -377,11 +397,97 @@ def validate_normal_operation(path: Path) -> dict[str, float]:
             for column, drift in relative_drift.items()
             if column != "Alternateur.Welec"
         ),
-        "maximum_bypass_steam_flow_kg_s": max(
+        "maximum_bypass_steam_flow_t_h": max(
             max(abs(value) for value in numeric[column])
-            for column in ("vppHPBypassMassFlow", "vppLPBypassMassFlow")
+            for column in ("vppHPBypassMassFlowTH", "vppLPBypassMassFlowTH")
         ),
     }
+
+
+def validate_derate_operation(path: Path) -> dict[str, float]:
+    """Verify that the exhaust DERATE profile does not assert turbine Trip."""
+    with path.open("r", encoding="utf-8-sig", newline="") as stream:
+        reader = csv.DictReader(stream)
+        columns = set(reader.fieldnames or [])
+        missing = sorted(DERATE_BOUNDARY_COLUMNS.difference(columns))
+        if missing:
+            raise ValueError(
+                "GT DERATE RAW is missing columns: " + ", ".join(missing)
+            )
+        rows = list(reader)
+
+    boolean_columns = {
+        "vppSTTripLatch",
+        "vppHPBypassOpenLS",
+        "vppHPBypassCloseLS",
+        "vppLPBypassOpenLS",
+        "vppLPBypassCloseLS",
+    }
+    numeric_columns = DERATE_BOUNDARY_COLUMNS.difference(boolean_columns)
+    numeric: dict[str, list[float]] = {column: [] for column in numeric_columns}
+    boolean: dict[str, list[bool]] = {column: [] for column in boolean_columns}
+    for row_number, row in enumerate(rows, start=2):
+        for column in numeric_columns:
+            try:
+                value = float(row[column])
+            except ValueError as exc:
+                raise ValueError(
+                    f"RAW CSV row {row_number} {column} is not numeric"
+                ) from exc
+            if not math.isfinite(value):
+                raise ValueError(
+                    f"RAW CSV row {row_number} {column} is not finite"
+                )
+            numeric[column].append(value)
+        for column in boolean_columns:
+            boolean[column].append(
+                parse_boolean(row[column], column=column, row_number=row_number)
+            )
+
+    if any(boolean["vppSTTripLatch"]):
+        raise ValueError("GT DERATE profile asserted the embedded ST Trip latch")
+    expected_limits = {
+        "vppHPBypassOpenLS": False,
+        "vppHPBypassCloseLS": True,
+        "vppLPBypassOpenLS": False,
+        "vppLPBypassCloseLS": True,
+    }
+    for column, expected in expected_limits.items():
+        if any(value is not expected for value in boolean[column]):
+            raise ValueError(f"GT DERATE changed bypass limit switch: {column}")
+    for column in (
+        "vppHPBypassCmd",
+        "vppLPBypassCmd",
+        "vppHPBypassPos",
+        "vppLPBypassPos",
+        "vppHPSprayPos",
+        "vppLPSprayPos",
+    ):
+        if max(abs(value) for value in numeric[column]) > 1e-8:
+            raise ValueError(f"GT DERATE actuated the Trip-only bypass path: {column}")
+    for column in (
+        "vppHPBypassMassFlowTH",
+        "vppLPBypassMassFlowTH",
+        "vppHPSprayMassFlowTH",
+        "vppLPSprayMassFlowTH",
+    ):
+        if max(abs(value) for value in numeric[column]) > 1e-6:
+            raise ValueError(f"GT DERATE produced Trip-only bypass flow: {column}")
+
+    flow = numeric["vppGTExhaustMassFlowTH"]
+    temperature = numeric["Temperature.y.signal"]
+    expected = {
+        "flow_initial_t_h": (flow[0], 2184.984),
+        "flow_final_t_h": (flow[-1], 540.0),
+        "temperature_initial_k": (temperature[0], 893.75),
+        "temperature_final_k": (temperature[-1], 550.0),
+    }
+    for label, (actual, target) in expected.items():
+        if not math.isclose(actual, target, rel_tol=1e-8, abs_tol=1e-6):
+            raise ValueError(
+                f"GT DERATE {label} is {actual:.12g}, expected {target:.12g}"
+            )
+    return {label: actual for label, (actual, _) in expected.items()}
 
 
 def validate_raw_csv(path: Path) -> dict[str, object]:
@@ -538,7 +644,9 @@ def main() -> int:
             raise ValueError("dynamic bypass manifest is missing source-transform proof")
         expected_marker = (
             "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12"
-            if runtime.get("model_variant") == "HPBP_LPBP_PHYSICAL_V12"
+            if str(runtime.get("model_variant", "")).startswith(
+                "HPBP_LPBP_PHYSICAL_V12"
+            )
             else "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11"
         )
         if transform.get("marker") != expected_marker:
@@ -551,6 +659,12 @@ def main() -> int:
             print(
                 "NORMAL_OPERATION_RELIABILITY_PASS "
                 + json.dumps(reliability, sort_keys=True)
+            )
+        elif sampling.get("profile") == "gt_derate_3min_10ms":
+            derate = validate_derate_operation(raw_path)
+            print(
+                "GT_DERATE_BOUNDARY_VALIDATION_PASS "
+                + json.dumps(derate, sort_keys=True)
             )
         else:
             crossings = validate_dynamic_bypass(raw_path, nominal_period_ms)

@@ -82,6 +82,11 @@ UAT와 6.9 kV 모선에 전원을 공급할 수 있습니다. 승인된 동기�
 `DCS1/DCS2 → 운전·공정 알람`, `ProcessBus → RPM·유량·압력·수위`입니다.
 공정 물리량을 `ECMS.*.PHYS`로 복제하지 않습니다.
 
+유량의 공개 단위는 전 계층에서 `t/h`입니다. Tag Master, ProcessBus의
+`*_t_h` 필드, DCS 임계값·히스테리시스, VPP/ECMS 이벤트와 GitHub RAW alias가
+같은 계약을 사용합니다. 물리 솔버 내부 값은 출력 경계에서 정확히 3.6배로 한 번만
+변환됩니다.
+
 M은 읽기 전용입니다. A와 Command를 바꾸면 C/E만 새 Run에 계산되며 기존
 Run은 덮어쓰지 않습니다.
 

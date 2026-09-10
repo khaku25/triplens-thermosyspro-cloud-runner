@@ -49,7 +49,8 @@ def main() -> int:
         "--derate-only",
         action="store_true",
         help=(
-            "Apply the exhaust 606.94/893.75 -> 150/550 boundary reduction "
+            "Apply the exhaust 2184.984 t/h / 893.75 K -> 540 t/h / 550 K "
+            "boundary reduction "
             "without asserting the embedded ST Trip trigger."
         ),
     )
@@ -72,7 +73,7 @@ def main() -> int:
     if args.normal_operation:
         vpp_trip_time = f"{args.stop_time + 1:.12g}"
         exhaust_flow_table = (
-            f"[0,exhaustFlowNormal; {stop_time},exhaustFlowNormal]"
+            f"[0,exhaustFlowNormalTH/3.6; {stop_time},exhaustFlowNormalTH/3.6]"
         )
         exhaust_temperature_table = (
             f"[0,exhaustTemperatureNormal; {stop_time},exhaustTemperatureNormal]"
@@ -86,10 +87,10 @@ def main() -> int:
             else f"{args.trip_time:.12g}"
         )
         exhaust_flow_table = (
-            "[0,exhaustFlowNormal; "
-            "eventTime,exhaustFlowNormal; "
-            "eventTime + boundaryRampDuration,exhaustFlowDerated; "
-            f"{stop_time},exhaustFlowDerated]"
+            "[0,exhaustFlowNormalTH/3.6; "
+            "eventTime,exhaustFlowNormalTH/3.6; "
+            "eventTime + boundaryRampDuration,exhaustFlowDeratedTH/3.6; "
+            f"{stop_time},exhaustFlowDeratedTH/3.6]"
         )
         exhaust_temperature_table = (
             "[0,exhaustTemperatureNormal; "

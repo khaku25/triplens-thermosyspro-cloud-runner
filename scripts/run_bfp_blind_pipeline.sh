@@ -83,6 +83,7 @@ python3 scripts/build_raw_manifest.py \
   --stop-time "$stop_time_s" \
   --output-intervals "$intervals" \
   --thermosyspro-commit "$thermosyspro_commit" \
-  --openmodelica-image "$openmodelica_image"
+  --openmodelica-image "$openmodelica_image" \
+  --model-variant "FWP_HP_PHYSICAL_TPH_EXPORT_V1"
 
 python3 scripts/validate_raw_outputs.py --output-dir outputs

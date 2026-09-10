@@ -144,6 +144,7 @@ class ProcessBusContractV2Tests(unittest.TestCase):
                 },
             ])
             processbus = target / "processbus.csv"
+            review = target / "signal-mapping-review.json"
             result = self.run_script(
                 "normalize_processbus.py",
                 "--input", str(raw),
@@ -153,9 +154,16 @@ class ProcessBusContractV2Tests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             rows = self.read_csv(processbus)
             self.assertEqual(rows[0]["fwp_hp_speed_rpm"], "1400")
-            self.assertEqual(rows[0]["fwp_hp_mass_flow_kg_s"], "100")
+            self.assertEqual(rows[0]["fwp_hp_mass_flow_t_h"], "360")
             self.assertEqual(rows[0]["fwp_hp_mechanical_power_w"], "1000000")
             self.assertIn("raw__pompe_alim_hp_delta_p", rows[0])
+            metadata = json.loads(review.read_text(encoding="utf-8"))
+            conversion = next(
+                item for item in metadata["published_unit_conversions"]
+                if item["processbus_field"] == "fwp_hp_mass_flow_t_h"
+            )
+            self.assertEqual(conversion["multiplier"], 3.6)
+            self.assertEqual(conversion["published_unit"], "t/h")
 
     def test_legacy_trip_time_keeps_gt_trip_command_for_existing_pipeline(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

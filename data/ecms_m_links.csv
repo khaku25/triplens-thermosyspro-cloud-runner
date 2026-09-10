@@ -1,6 +1,6 @@
 link_id,ecms_equipment_id,source_m_tag_id,physical_quantity,unit,relationship,locked,notes
 M-LINK-001,STG,TSP.GEN.ACTIVE_POWER,ST 발전기 유효전력,W,DIRECT,true,ThermoSysPro Generator.active_power 직접값
 M-LINK-002,STG,TSP.GEN.MECH_POWER_IN,ST 발전기 기계입력,W,DIRECT,true,ThermoSysPro Generator.mech_power_in 직접값
-M-LINK-003,FWP-HP,TSP.DRUM.HP.FW_FLOW,HP 드럼 급수유량,kg/s,PHYSICAL_ASSOCIATION,true,전동기 전력 직접값이 아니라 해당 공정부하의 물리 연결점
-M-LINK-004,FWP-IP,TSP.DRUM.IP.FW_FLOW,IP 드럼 급수유량,kg/s,PHYSICAL_ASSOCIATION,true,전동기 전력 직접값이 아니라 해당 공정부하의 물리 연결점
-M-LINK-005,FWP-LP,TSP.DRUM.LP.FW_FLOW,LP 드럼 급수유량,kg/s,PHYSICAL_ASSOCIATION,true,전동기 전력 직접값이 아니라 해당 공정부하의 물리 연결점
+M-LINK-003,FWP-HP,TSP.DRUM.HP.FW_FLOW,HP 드럼 급수유량,t/h,PHYSICAL_ASSOCIATION,true,전동기 전력 직접값이 아니라 해당 공정부하의 물리 연결점
+M-LINK-004,FWP-IP,TSP.DRUM.IP.FW_FLOW,IP 드럼 급수유량,t/h,PHYSICAL_ASSOCIATION,true,전동기 전력 직접값이 아니라 해당 공정부하의 물리 연결점
+M-LINK-005,FWP-LP,TSP.DRUM.LP.FW_FLOW,LP 드럼 급수유량,t/h,PHYSICAL_ASSOCIATION,true,전동기 전력 직접값이 아니라 해당 공정부하의 물리 연결점

@@ -1,4 +1,4 @@
-name: Generate ThermoSysPro RAW (BFP physical adapter)
+name: Generate ThermoSysPro RAW (BFP physical adapter, t/h flow export)
 
 on:
   workflow_dispatch:

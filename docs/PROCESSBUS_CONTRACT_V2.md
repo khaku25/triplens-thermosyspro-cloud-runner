@@ -36,6 +36,10 @@ TripLens
 10. Dynamic ProcessBus signals are automatically included in persistent-deviation analysis by `extract_incident_window.py`.
 11. REAL values may be interpolated for an engineering trend; BOOL/ENUM state and DCS timer inputs use zero-order hold. No intermediate digital edge is fabricated.
 12. `quality` is metadata, not a plant signal, and is propagated to derived observations.
+13. Canonical mass-flow fields end in `_t_h` and publish `t/h`. A native model
+    source is multiplied by 3.6 exactly once during normalization; already
+    published t/h aliases use the identity transform. Every applied conversion
+    is recorded in `signal-mapping-review.json`.
 
 ## Alarm policy
 

@@ -18,8 +18,8 @@ class VppAlarmEngineTests(unittest.TestCase):
     def write_processbus(path: Path) -> None:
         fields = [
             "scenario_id", "time_s", "gt_trip_cmd", "stg_power_w",
-            "gt_exhaust_mass_flow_kg_s", "gt_exhaust_temperature_k",
-            "hp_drum_level_m", "hp_drum_pressure_pa", "hp_steam_flow_kg_s",
+            "gt_exhaust_mass_flow_t_h", "gt_exhaust_temperature_k",
+            "hp_drum_level_m", "hp_drum_pressure_pa", "hp_steam_flow_t_h",
         ]
         with path.open("w", encoding="utf-8", newline="") as stream:
             writer = csv.DictWriter(stream, fieldnames=fields)
@@ -32,11 +32,11 @@ class VppAlarmEngineTests(unittest.TestCase):
                     "time_s": f"{time_s:.1f}",
                     "gt_trip_cmd": int(time_s >= 2.0),
                     "stg_power_w": f"{250_000_000 * max(0.1, 1 - elapsed / 3):.3f}",
-                    "gt_exhaust_mass_flow_kg_s": f"{max(50, 607 - 180 * elapsed):.3f}",
+                    "gt_exhaust_mass_flow_t_h": f"{max(180, 2185.2 - 648 * elapsed):.3f}",
                     "gt_exhaust_temperature_k": f"{max(450, 894 - 160 * elapsed):.3f}",
                     "hp_drum_level_m": f"{max(0.8, 1.05 - 0.07 * elapsed):.3f}",
                     "hp_drum_pressure_pa": f"{max(8_000_000, 12_700_000 - 1_100_000 * elapsed):.3f}",
-                    "hp_steam_flow_kg_s": f"{max(20, 152 - 40 * elapsed):.3f}",
+                    "hp_steam_flow_t_h": f"{max(72, 547.2 - 144 * elapsed):.3f}",
                 })
 
     @staticmethod

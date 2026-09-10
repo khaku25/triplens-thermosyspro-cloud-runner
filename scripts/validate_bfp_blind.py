@@ -62,12 +62,12 @@ def main() -> int:
     if not pre or not post:
         raise ValueError("pre/post incident physics windows are missing")
     speed_field = available_field(process, "fwp_hp_speed_rpm", "bfp_hp_speed_rpm")
-    flow_field = available_field(process, "fwp_hp_mass_flow_kg_s", "bfp_hp_mass_flow_kg_s")
+    flow_field = available_field(process, "fwp_hp_mass_flow_t_h", "bfp_hp_mass_flow_t_h")
     initial_rpm = finite(pre[-1][speed_field], "pre-trip RPM")
     final_rpm = finite(post[-1][speed_field], "final RPM")
     if initial_rpm < 1300 or abs(final_rpm - args.final_rpm) > 1e-3:
         raise ValueError("BFP speed adapter did not reach the declared states")
-    exhaust = [finite(row["gt_exhaust_mass_flow_kg_s"], "GT exhaust flow") for row in process]
+    exhaust = [finite(row["gt_exhaust_mass_flow_t_h"], "GT exhaust flow") for row in process]
     if max(exhaust) - min(exhaust) > 1e-6:
         raise ValueError("GT exhaust changed during the isolated BFP incident")
     feedwater = [finite(row[flow_field], "HP feedwater flow") for row in process]
@@ -107,8 +107,8 @@ def main() -> int:
         "last_time_s": times[-1],
         "initial_bfp_rpm": initial_rpm,
         "final_bfp_rpm": final_rpm,
-        "feedwater_min_kg_s": min(feedwater),
-        "feedwater_max_kg_s": max(feedwater),
+        "feedwater_min_t_h": min(feedwater),
+        "feedwater_max_t_h": max(feedwater),
         "event_counts": {system: len(rows) for system, rows in events.items()},
     }, indent=2))
     return 0

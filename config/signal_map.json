@@ -38,13 +38,17 @@
         "stg_power_w"
       ]
     },
-    "gt_exhaust_mass_flow_kg_s": {
+    "gt_exhaust_mass_flow_t_h": {
       "required": false,
-      "unit": "kg/s",
+      "unit": "t/h",
       "aliases": [
+        "vppGTExhaustMassFlowTH",
         "Debit.y.signal",
-        "gt_exhaust_mass_flow_kg_s"
-      ]
+        "gt_exhaust_mass_flow_t_h"
+      ],
+      "source_multipliers": {
+        "Debit.y.signal": 3.6
+      }
     },
     "gt_exhaust_temperature_k": {
       "required": false,
@@ -105,29 +109,89 @@
         "lp_drum_pressure_pa"
       ]
     },
-    "hp_steam_flow_kg_s": {
+    "hp_steam_flow_t_h": {
       "required": false,
-      "unit": "kg/s",
+      "unit": "t/h",
       "aliases": [
+        "vppHPTurbineSteamFlowTH",
         "TurbineHP.Q",
-        "hp_steam_flow_kg_s"
-      ]
+        "hp_steam_flow_t_h"
+      ],
+      "source_multipliers": {
+        "TurbineHP.Q": 3.6
+      }
     },
-    "ip_steam_flow_kg_s": {
+    "ip_steam_flow_t_h": {
       "required": false,
-      "unit": "kg/s",
+      "unit": "t/h",
       "aliases": [
+        "vppIPTurbineSteamFlowTH",
         "TurbineMP.Q",
-        "ip_steam_flow_kg_s"
-      ]
+        "ip_steam_flow_t_h"
+      ],
+      "source_multipliers": {
+        "TurbineMP.Q": 3.6
+      }
     },
-    "lp_steam_flow_kg_s": {
+    "lp_steam_flow_t_h": {
       "required": false,
-      "unit": "kg/s",
+      "unit": "t/h",
       "aliases": [
+        "vppLPTurbineSteamFlowTH",
         "TurbineBP.Q",
-        "lp_steam_flow_kg_s"
-      ]
+        "lp_steam_flow_t_h"
+      ],
+      "source_multipliers": {
+        "TurbineBP.Q": 3.6
+      }
+    },
+    "hp_bypass_steam_flow_t_h": {
+      "required": false,
+      "unit": "t/h",
+      "aliases": [
+        "vppHPBypassMassFlowTH",
+        "vppHPBypassMassFlow",
+        "hp_bypass_steam_flow_t_h"
+      ],
+      "source_multipliers": {
+        "vppHPBypassMassFlow": 3.6
+      }
+    },
+    "lp_bypass_steam_flow_t_h": {
+      "required": false,
+      "unit": "t/h",
+      "aliases": [
+        "vppLPBypassMassFlowTH",
+        "vppLPBypassMassFlow",
+        "lp_bypass_steam_flow_t_h"
+      ],
+      "source_multipliers": {
+        "vppLPBypassMassFlow": 3.6
+      }
+    },
+    "hp_bypass_spray_flow_t_h": {
+      "required": false,
+      "unit": "t/h",
+      "aliases": [
+        "vppHPSprayMassFlowTH",
+        "vppHPSprayMassFlow",
+        "hp_bypass_spray_flow_t_h"
+      ],
+      "source_multipliers": {
+        "vppHPSprayMassFlow": 3.6
+      }
+    },
+    "lp_bypass_spray_flow_t_h": {
+      "required": false,
+      "unit": "t/h",
+      "aliases": [
+        "vppLPSprayMassFlowTH",
+        "vppLPSprayMassFlow",
+        "lp_bypass_spray_flow_t_h"
+      ],
+      "source_multipliers": {
+        "vppLPSprayMassFlow": 3.6
+      }
     },
     "hp_feedwater_valve_pu": {
       "required": false,
@@ -264,16 +328,21 @@
         "ecms_bus_a_voltage_kv"
       ]
     },
-    "fwp_hp_mass_flow_kg_s": {
+    "fwp_hp_mass_flow_t_h": {
       "required": false,
-      "unit": "kg/s",
+      "unit": "t/h",
       "aliases": [
+        "vppFWPHPMassFlowTH",
         "CapteurDebitEauHP.Q",
         "CapteurDebitEauHP.Measure.signal",
         "PompeAlimHP.Q",
-        "fwp_hp_mass_flow_kg_s",
-        "bfp_hp_mass_flow_kg_s"
-      ]
+        "fwp_hp_mass_flow_t_h"
+      ],
+      "source_multipliers": {
+        "CapteurDebitEauHP.Q": 3.6,
+        "CapteurDebitEauHP.Measure.signal": 3.6,
+        "PompeAlimHP.Q": 3.6
+      }
     },
     "fwp_hp_mechanical_power_w": {
       "required": false,

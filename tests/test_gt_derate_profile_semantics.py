@@ -49,11 +49,11 @@ class GtDerateProfileSemanticsTests(unittest.TestCase):
             )
             self.assertIn('parameter Real eventTime(unit="s") = 2;', model)
             self.assertIn('parameter Real boundaryRampDuration(unit="s") = 1;', model)
-            self.assertIn('parameter Real exhaustFlowDerated(unit="kg/s") = 150.0;', model)
+            self.assertIn('parameter Real exhaustFlowDeratedTH = 540.0', model)
             self.assertIn('parameter Real exhaustTemperatureDerated(unit="K") = 550.0;', model)
             self.assertIn("vppTripTime=6,", model)
             self.assertIn(
-                "eventTime + boundaryRampDuration,exhaustFlowDerated", model
+                "eventTime + boundaryRampDuration,exhaustFlowDeratedTH/3.6", model
             )
             self.assertIn(
                 "eventTime + boundaryRampDuration,exhaustTemperatureDerated", model

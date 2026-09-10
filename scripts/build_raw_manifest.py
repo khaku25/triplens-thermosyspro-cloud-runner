@@ -156,6 +156,11 @@ def main() -> int:
             "nominal_csv_period_ms": nominal_period_ms,
             "solver_step_note": "CSV output interval only; DASSL integration remains adaptive.",
         },
+        "published_unit_contract": {
+            "mass_flow": "t/h",
+            "model_to_published_multiplier": 3.6,
+            "raw_mass_flow_alias_suffix": "TH",
+        },
         "raw": {
             "file": args.raw_file.name,
             "bytes": args.raw_file.stat().st_size,

@@ -288,8 +288,15 @@ def main():
             tag_refs = split_refs(r["source_tag_ids"])
             model_refs = split_refs(r["source_model_variables"])
             canonical_signal = resolved_canonical_signal(r)
-            model_source_unit = "m" if r["absolute_conversion_status"] == "CALIBRATED_MODEL_LEVEL_MM" else r["threshold_unit"]
-            unit_transform = "x*1000" if r["absolute_conversion_status"] == "CALIBRATED_MODEL_LEVEL_MM" else "IDENTITY"
+            conversion = r["absolute_conversion_status"]
+            if conversion == "CALIBRATED_MODEL_LEVEL_MM":
+                model_source_unit, unit_transform = "m", "x*1000"
+            elif conversion == "CALIBRATED_MODEL_MASS_FLOW_T_H":
+                # ThermoSysPro's connector balance remains SI internally;
+                # Tag Master and every deployed logic threshold use t/h.
+                model_source_unit, unit_transform = "kg/s", "x*3.6"
+            else:
+                model_source_unit, unit_transform = r["threshold_unit"], "IDENTITY"
             if len(tag_refs) != len(model_refs):
                 raise ValueError(f"{r['logic_id']} source tag/model reference count mismatch")
             for ordinal, (tag_id, model_ref) in enumerate(zip(tag_refs, model_refs), 1):

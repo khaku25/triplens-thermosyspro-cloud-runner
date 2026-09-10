@@ -38,6 +38,42 @@ def resolve_column(headers: list[str], aliases: list[str]) -> str | None:
     return None
 
 
+def matching_columns(headers: list[str], aliases: list[str]) -> set[str]:
+    """Return every source column covered by a canonical signal definition."""
+    canonical = {canonical_header(header): header for header in headers}
+    matches: set[str] = set()
+    for alias in aliases:
+        if alias in canonical:
+            matches.add(canonical[alias])
+        matches.update(
+            raw for name, raw in canonical.items() if name.endswith("." + alias)
+        )
+    return matches
+
+
+def source_multiplier(source: str, definition: dict[str, object]) -> float:
+    """Resolve an explicit raw-source to published-engineering-unit multiplier."""
+    raw_multipliers = definition.get("source_multipliers", {})
+    if not isinstance(raw_multipliers, dict):
+        raise ValueError("source_multipliers must be an object")
+    source_name = canonical_header(source)
+    matched: list[float] = []
+    for alias, raw_value in raw_multipliers.items():
+        if source_name == alias or source_name.endswith("." + str(alias)):
+            try:
+                value = float(raw_value)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"invalid source multiplier for {alias!r}: {raw_value!r}"
+                ) from exc
+            if not math.isfinite(value) or value == 0:
+                raise ValueError(f"source multiplier for {alias!r} must be finite and nonzero")
+            matched.append(value)
+    if len(set(matched)) > 1:
+        raise ValueError(f"conflicting source multipliers for {source_name!r}")
+    return matched[0] if matched else 1.0
+
+
 def parse_float(value: str, field: str, row_number: int) -> float:
     try:
         number = float(value)
@@ -239,11 +275,15 @@ def main() -> int:
         raise ValueError("input CSV must contain at least two data rows")
 
     resolved: dict[str, str | None] = {}
+    resolved_multipliers: dict[str, float] = {}
     missing_required: list[str] = []
     for target, definition in signals.items():
         aliases = list(definition.get("aliases", []))
         source = resolve_column(headers, aliases)
         resolved[target] = source
+        resolved_multipliers[target] = (
+            source_multiplier(source, definition) if source is not None else 1.0
+        )
         if definition.get("required") and source is None:
             missing_required.append(target)
     if missing_required:
@@ -256,7 +296,11 @@ def main() -> int:
     mapped_present = [
         target for target in canonical_targets if resolved.get(target) is not None
     ]
-    consumed_sources = {source for source in resolved.values() if source is not None}
+    consumed_sources: set[str] = set()
+    for definition in signals.values():
+        consumed_sources.update(
+            matching_columns(headers, list(definition.get("aliases", [])))
+        )
     used_fields = {"scenario_id", "time_s", *canonical_targets}
     if event_time is not None:
         used_fields.add("event_marker")
@@ -309,10 +353,20 @@ def main() -> int:
                 target_row[target] = ""
                 continue
             raw = (source_row.get(source) or "").strip()
-            target_row[target] = (
-                "" if not raw
-                else normalize_typed_value(raw, target, signals[target], row_index)
+            if not raw:
+                target_row[target] = ""
+                continue
+            normalized_value = normalize_typed_value(
+                raw, target, signals[target], row_index
             )
+            multiplier = resolved_multipliers[target]
+            if multiplier != 1.0:
+                if str(signals[target].get("data_type", "REAL")).upper() != "REAL":
+                    raise ValueError(
+                        f"{target}: source multiplier is only valid for REAL signals"
+                    )
+                normalized_value = f"{float(normalized_value) * multiplier:.12g}"
+            target_row[target] = normalized_value
 
         for target, source in dynamic_sources.items():
             raw = (source_row.get(source) or "").strip()
@@ -352,6 +406,16 @@ def main() -> int:
         "duplicate_time_rows_collapsed": duplicate_time_rows_collapsed,
         "duplicate_time_policy": "keep_last_event_state",
         "resolved": resolved,
+        "published_unit_conversions": [
+            {
+                "processbus_field": target,
+                "source_column": canonical_header(source),
+                "multiplier": resolved_multipliers[target],
+                "published_unit": signals[target].get("unit", ""),
+            }
+            for target, source in resolved.items()
+            if source is not None and resolved_multipliers[target] != 1.0
+        ],
         "canonical_signals_present": mapped_present,
         "missing_optional": [
             name for name, source in resolved.items()

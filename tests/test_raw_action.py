@@ -155,8 +155,9 @@ class RawOnlyActionTests(unittest.TestCase):
         self.assertIn("resultFile = \"\"", runner)
         self.assertIn("vppTripTime=@VPP_TRIP_TIME@", model)
         self.assertEqual(model.count("regularizePressureCrossover=true"), 3)
-        self.assertIn("HPBypassMassFlow", mos)
-        self.assertIn("LPBypassMassFlow", mos)
+        self.assertIn("HPBypassMassFlowTH", mos)
+        self.assertIn("LPBypassMassFlowTH", mos)
+        self.assertNotIn("Turbine(HP|MP|BP)\\\\.Q", mos)
         self.assertNotIn("nlssMaxDensity=0", mos)
         self.assertNotIn("nls=hybrid", mos)
         self.assertNotIn("iim=none", mos)
@@ -186,10 +187,10 @@ class RawOnlyActionTests(unittest.TestCase):
                 "vppHPBypassCloseLS",
                 "vppLPBypassOpenLS",
                 "vppLPBypassCloseLS",
-                "vppHPBypassMassFlow",
-                "vppLPBypassMassFlow",
-                "vppHPSprayMassFlow",
-                "vppLPSprayMassFlow",
+                "vppHPBypassMassFlowTH",
+                "vppLPBypassMassFlowTH",
+                "vppHPSprayMassFlowTH",
+                "vppLPSprayMassFlowTH",
                 "vppHPBypassInletPressure",
                 "vppLPBypassInletPressure",
                 "vppHPBypassOutletPressure",
@@ -245,10 +246,10 @@ class RawOnlyActionTests(unittest.TestCase):
                             hp_pos <= 0.01,
                             lp_pos >= 0.95,
                             lp_pos <= 0.01,
-                            hp_pos*151.696,
-                            lp_pos*176.758,
-                            spray_pos*10,
-                            spray_pos*20,
+                            hp_pos*546.1056,
+                            lp_pos*636.3288,
+                            spray_pos*36,
+                            spray_pos*72,
                             12681000,
                             2548600,
                             2726700,
@@ -292,8 +293,8 @@ class RawOnlyActionTests(unittest.TestCase):
                 "vppLPBypassPos", "vppHPSprayPos", "vppLPSprayPos",
                 "vppHPBypassOpenLS", "vppHPBypassCloseLS",
                 "vppLPBypassOpenLS", "vppLPBypassCloseLS",
-                "vppHPBypassMassFlow", "vppLPBypassMassFlow",
-                "vppHPSprayMassFlow", "vppLPSprayMassFlow",
+                "vppHPBypassMassFlowTH", "vppLPBypassMassFlowTH",
+                "vppHPSprayMassFlowTH", "vppLPSprayMassFlowTH",
                 "vppHPBypassInletPressure", "vppLPBypassInletPressure",
                 "vppHPBypassOutletPressure", "vppLPBypassOutletPressure",
                 "vppHPBypassInletTemperature", "vppLPBypassInletTemperature",
@@ -302,14 +303,15 @@ class RawOnlyActionTests(unittest.TestCase):
                 "Alternateur.Welec", "BallonHP.yLevel.signal",
                 "BallonMP.yLevel.signal", "BallonBP.yLevel.signal",
                 "BallonHP.P", "BallonMP.P", "BallonBP.P",
-                "TurbineHP.Q", "TurbineMP.Q", "TurbineBP.Q",
+                "vppHPTurbineSteamFlowTH", "vppIPTurbineSteamFlowTH",
+                "vppLPTurbineSteamFlowTH",
             ]
             row = [
                 0, False, 0.8, 0.8, 1.0, 0, 0, 0, 0, 0, 0,
                 False, True, False, True, 0, 0, 1e-4, 1e-4,
                 12681000, 2548600, 2726700, 6136, 813, 813, 723, 373,
                 6136, 1.5, 129400000, 1.05, 1.05, 1.75,
-                12681000, 2548600, 563775, 151.769, 176.789, 196.652,
+                12681000, 2548600, 563775, 546.3684, 636.4404, 707.9472,
             ]
             with raw.open("w", encoding="utf-8", newline="") as stream:
                 writer = csv.writer(stream)
@@ -337,6 +339,53 @@ class RawOnlyActionTests(unittest.TestCase):
             )
             self.assertEqual(validate.returncode, 0, validate.stderr)
             self.assertIn("NORMAL_OPERATION_RELIABILITY_PASS", validate.stdout)
+
+    def test_gt_derate_keeps_trip_only_bypass_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            raw = target / "thermosyspro-raw.csv"
+            columns = [
+                "time", "vppSTTripLatch", "vppHPBypassCmd",
+                "vppLPBypassCmd", "vppHPBypassPos", "vppLPBypassPos",
+                "vppHPSprayPos", "vppLPSprayPos", "vppHPBypassOpenLS",
+                "vppHPBypassCloseLS", "vppLPBypassOpenLS",
+                "vppLPBypassCloseLS", "vppHPBypassMassFlowTH",
+                "vppLPBypassMassFlowTH", "vppHPSprayMassFlowTH",
+                "vppLPSprayMassFlowTH", "vppGTExhaustMassFlowTH",
+                "Temperature.y.signal",
+            ]
+            initial = [
+                0, False, 0, 0, 0, 0, 0, 0, False, True, False, True,
+                0, 0, 0, 0, 2184.984, 893.75,
+            ]
+            final = list(initial)
+            final[0] = 190
+            final[-2] = 540
+            final[-1] = 550
+            with raw.open("w", encoding="utf-8", newline="") as stream:
+                writer = csv.writer(stream, lineterminator="\n")
+                writer.writerow(columns)
+                writer.writerow(initial)
+                writer.writerow(final)
+            build = self.run_script(
+                "build_raw_manifest.py",
+                "--raw-file", str(raw),
+                "--output", str(target / "raw-manifest.json"),
+                "--sampling-profile", "gt_derate_3min_10ms",
+                "--stop-time", "190",
+                "--output-intervals", "19000",
+                "--thermosyspro-commit", "test-commit",
+                "--openmodelica-image", "test-image",
+                "--model-variant", "HPBP_LPBP_PHYSICAL_V12_TPH_EXPORT_V1",
+                "--source-patch-marker", "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12",
+                "--patched-model-sha256", "c"*64,
+            )
+            self.assertEqual(build.returncode, 0, build.stderr)
+            validate = self.run_script(
+                "validate_raw_outputs.py", "--output-dir", str(target)
+            )
+            self.assertEqual(validate.returncode, 0, validate.stderr)
+            self.assertIn("GT_DERATE_BOUNDARY_VALIDATION_PASS", validate.stdout)
 
     def test_partial_raw_run_is_rejected_before_manifest_creation(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

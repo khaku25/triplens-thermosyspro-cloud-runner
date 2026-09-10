@@ -7,7 +7,7 @@ set -euo pipefail
 # ECMS/SOE, select an incident window, or attach a scenario/root-cause label.
 #
 # Semantic boundary:
-#   606.94 kg/s / 893.75 K -> 150 kg/s / 550 K is GT DERATE only.
+#   2184.984 t/h / 893.75 K -> 540 t/h / 550 K is GT DERATE only.
 #   True GT TRIP is owned by the separate run-vpp-gt-trip path and requires
 #   electrical separation (52GT.CLOSED=0). Never label this boundary as Trip.
 
@@ -177,7 +177,7 @@ python3 scripts/build_raw_manifest.py \
   --output-intervals "$intervals" \
   --thermosyspro-commit "$thermosyspro_commit" \
   --openmodelica-image "$openmodelica_image" \
-  --model-variant "HPBP_LPBP_PHYSICAL_V12" \
+  --model-variant "HPBP_LPBP_PHYSICAL_V12_TPH_EXPORT_V1" \
   --source-patch-marker "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12" \
   --patched-model-sha256 "$patched_model_sha256"
 

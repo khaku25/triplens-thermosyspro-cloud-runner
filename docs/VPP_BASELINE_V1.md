@@ -22,6 +22,7 @@ for representing a particular real plant.
 | 50 element | 8,000 A pickup, 15 ms delay |
 | 51 element | 1,200 A pickup, IEC standard inverse, TMS 0.10 |
 | Feeder fault model | 12,000 A RMS, 0.20 pu terminal residual voltage |
+| Published mass flow | t/h for Tag Master, ProcessBus, alarms/events and GitHub RAW aliases |
 
 The connection points, model-grounded flows, preliminary heat balances and
 acceptance gates are recorded in
@@ -48,6 +49,11 @@ simulation, while the second prevents a false plant-approval claim.
 The alarm engine evaluates at 1 ms with zero-order-hold timers, accepts only
 GOOD-quality input and emits events only on state transitions. This prevents a
 persistent alarm from being repeated at every simulation sample.
+
+All mass-flow thresholds and hysteresis values use `t/h`. Native simulator
+connector values are converted once at the publishing boundary by the exact
+factor 3.6; alarm logic never compares a t/h threshold with an unconverted
+model value.
 
 ## Latch and reset contract
 
