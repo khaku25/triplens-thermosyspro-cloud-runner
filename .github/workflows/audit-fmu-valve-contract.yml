@@ -1,0 +1,37 @@
+name: Audit FMU Native Valve Contract
+
+on:
+  push:
+    paths:
+      - "config/fmu_valve_control_points_v1.csv"
+      - "data/fmu_valve_ports_v1.csv"
+      - "data/fmu_valve_logic_v1.csv"
+      - "scripts/build_fmu_valve_contract.py"
+      - "tests/test_fmu_valve_contract.py"
+      - ".github/workflows/audit-fmu-valve-contract.yml"
+  pull_request:
+    paths:
+      - "config/fmu_valve_control_points_v1.csv"
+      - "data/fmu_valve_ports_v1.csv"
+      - "data/fmu_valve_logic_v1.csv"
+      - "scripts/build_fmu_valve_contract.py"
+      - "tests/test_fmu_valve_contract.py"
+      - ".github/workflows/audit-fmu-valve-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify generated contract is current
+        run: python3 scripts/build_fmu_valve_contract.py --check
+      - name: Run valve contract tests
+        run: python3 -m unittest tests.test_fmu_valve_contract -v
