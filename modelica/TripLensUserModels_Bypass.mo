@@ -211,7 +211,7 @@ model CombinedCycle_TripTAC_Bypass
     Placement(transformation(origin = {533, -50}, extent = {{-20, -20}, {20, 20}}, rotation = 90)));
   ThermoSysPro.InstrumentationAndControl.Blocks.Sources.Constante constante_ballonBP(k = 1) annotation(
     Placement(transformation(extent = {{709, 6}, {695, 18}}, rotation = 0)));
-  ThermoSysPro.WaterSteam.PressureLosses.ControlValve Vanne_alimentationMPHP(mode = 1, Cvmax = 308.931, C1(h_vol(start = 561432.6820300646)), h(start = 550000), Cv(start = 308.931), Pm(start = 454319.5384961263)) annotation(
+  ThermoSysPro.WaterSteam.PressureLosses.ControlValve Vanne_alimentationMPHP(mode = 1, Cvmax = 308.931, C1(h_vol(start = 561432.6820300646)), C2(h_vol(start = 561432.6820300646)), h(start = 561432.6820300646), Cv(start = 308.931), Pm(start = 454319.5384961263)) annotation(
     Placement(transformation(extent = {{677, -14}, {697, 6}}, rotation = 0)));
   ThermoSysPro.MultiFluids.HeatExchangers.DynamicExchangerWaterSteamFlueGases SurchauffeurBP(Ns = 3, L = 20.726, Dint = 39.3e-3, Ntubes = 123, ExchangerWall(e = 2.6e-3, lambda = 47, dW1(start = {-1.1e6, -782901, -559798}), Tp(start = {477.52260500819597, 502.61487297914, 520.6394670364305}), Tp1(start = {477.2504107508904, 502.4219869045609, 520.5035062463255})), Cws1(h_vol(start = 2682927.2097681486)), Cws2(h_vol(start = 2919992.1127030067)), ExchangerFlueGasesMetal(step_T = 86.9e-3, Fa = 1, Dext = 44.5e-3, step_L = 222.1e-3, K(fixed = true, start = 30.46), CSailettes = 3.25763059984175, p_rho = 1.09, Encras = Encras_SBP, St = 5, DeltaT(start = {92, 66, 47}), T(start = {569.0130004882813, 567.4482541171128, 566.3390581546068, 565.5570068359375}), Tm(start = {568.2306339861118, 566.8936561358598, 565.9480470570934}), Tp(start = {477.77840698873644, 502.79614293098246, 520.7672398988061})), TwoPhaseFlowPipe(advection = false, z2 = 0, rugosrel = 1e-5, z1 = 10.767, inertia = true, dW1(start = {1.1e6, 782901, 559798}), h(start = {2682927.25, 2790287.093854774, 2866365.945824299, 2919992.1127030067, 2919992.0}), hb(start = {2684673.5, 2819292.38908571, 2893584.12921908, 2943776.05560762}), P(start = {509651.8125, 507980.5977658856, 506129.5447082628, 504067.5333025372, 501850.0}))) annotation(
     Placement(transformation(origin = {233, -50}, extent = {{20, -20}, {-20, 20}}, rotation = 90)));
@@ -257,9 +257,9 @@ model CombinedCycle_TripTAC_Bypass
     Placement(transformation(origin = {235, -100}, extent = {{-10, -10}, {10, 10}}, rotation = 270)));
   ThermoSysPro.WaterSteam.PressureLosses.PipePressureLoss PerteChargeZero2(z2 = 0, mode = 0, z1 = 0, K = K_PerteChargeZero2, h(start = 3000000), C1(h_vol(start = 3000000), h(start = 3000000), P(fixed = true, start = 501850)), Pm(start = 490000)) annotation(
     Placement(transformation(origin = {311, -278}, extent = {{10, -10}, {-10, 10}}, rotation = 180)));
-  ThermoSysPro.WaterSteam.PressureLosses.PipePressureLoss perteChargeK3(K = 1e-4, mode = 1, Pm(start = 372632.41194491077)) annotation(
+  ThermoSysPro.WaterSteam.PressureLosses.PipePressureLoss perteChargeK3(K = 1e-4, mode = 1, h(start = 561432.6820300613), C1(h_vol(start = 561432.6820300613)), C2(h_vol(start = 561432.6820300613)), Pm(start = 372632.41194491077)) annotation(
     Placement(transformation(origin = {747, -50}, extent = {{10, -10}, {-10, 10}}, rotation = 180)));
-  ThermoSysPro.WaterSteam.PressureLosses.PipePressureLoss perteChargeK8(K = 1e-4, mode = 1, Pm(start = 372632.41224549303)) annotation(
+  ThermoSysPro.WaterSteam.PressureLosses.PipePressureLoss perteChargeK8(K = 1e-4, mode = 1, h(start = 561432.6820300613), C1(h_vol(start = 561432.6820300613)), C2(h_vol(start = 561432.6820300613)), Pm(start = 372632.41224549303)) annotation(
     Placement(transformation(origin = {747, -10}, extent = {{10, -10}, {-10, 10}}, rotation = 180)));
   ThermoSysPro.WaterSteam.Machines.Generator Alternateur annotation(
     Placement(transformation(extent = {{369, -448}, {489, -348}}, rotation = 0)));
@@ -283,7 +283,7 @@ model CombinedCycle_TripTAC_Bypass
     Placement(transformation(origin = {481, 56}, extent = {{-8, 8}, {8, -8}}, rotation = 180)));
   ThermoSysPro.WaterSteam.Sensors.SensorQ CapteurDebitEauBP(C2(h_vol(start = 550000), h(start = 550000))) annotation(
     Placement(transformation(origin = {630.5, 34}, extent = {{6, -6.5}, {-6, 6.5}}, rotation = 270)));
-  ThermoSysPro.WaterSteam.Sensors.SensorQ CapteurDebitEauBPsortie(C2(h_vol(start = 550000), h(start = 550000))) annotation(
+  ThermoSysPro.WaterSteam.Sensors.SensorQ CapteurDebitEauBPsortie(C1(h_vol(start = 561432.6820300646), h(start = 561432.6820300646)), C2(h_vol(start = 561432.6820300646), h(start = 561432.6820300646))) annotation(
     Placement(transformation(extent = {{654, -11}, {667, 1}}, rotation = 0)));
   ThermoSysPro.WaterSteam.Sensors.SensorQ CapteurDebitEauCondenseur(C2(h_vol(start = 194585), h(start = 194585))) annotation(
     Placement(transformation(origin = {652.5, -412}, extent = {{-10, -6.5}, {10, 6.5}}, rotation = 270)));
@@ -321,9 +321,9 @@ model CombinedCycle_TripTAC_Bypass
     Placement(transformation(extent = {{423, -98}, {403, -78}}, rotation = 0)));
   ThermoSysPro.WaterSteam.Volumes.VolumeC VolumeECO_HP2_3(mode = 1, V = 1, h0 = 983786, h(start = 989834.8113335292), dynamic_mass_balance = true, P0 = 7000000, P(start = 13239005.657249678)) annotation(
     Placement(transformation(extent = {{219, -20}, {199, 0}}, rotation = 0)));
-  ThermoSysPro.WaterSteam.PressureLosses.ControlValve Vanne_alimentationMPHP1(mode = 1, Cvmax = 308.931, h(start = 618600), Cv(start = 308.931), Pm(start = 13150193.68579806)) annotation(
+  ThermoSysPro.WaterSteam.PressureLosses.ControlValve Vanne_alimentationMPHP1(mode = 1, Cvmax = 308.931, C1(h_vol(start = 630040.8772883223)), C2(h_vol(start = 630040.8772883223)), h(start = 630040.8772883223), Cv(start = 308.931), Pm(start = 13150193.68579806)) annotation(
     Placement(transformation(extent = {{721, -98}, {697, -122}}, rotation = 0)));
-  ThermoSysPro.WaterSteam.PressureLosses.ControlValve Vanne_alimentationMPHP2(mode = 1, Cvmax = 308.931, h(start = 565000), Cv(start = 308.931), Pm(start = 3163391.8442005403)) annotation(
+  ThermoSysPro.WaterSteam.PressureLosses.ControlValve Vanne_alimentationMPHP2(mode = 1, Cvmax = 308.931, C1(h_vol(start = 576430.3612424443)), C2(h_vol(start = 576430.3612424443)), h(start = 576430.3612424443), Cv(start = 308.931), Pm(start = 3163391.8442005403)) annotation(
     Placement(transformation(extent = {{771, -138}, {747, -162}}, rotation = 0)));
   ThermoSysPro.InstrumentationAndControl.Blocks.Sources.Rampe arretPomesMp1(Initialvalue = 0.8, Duration = 1000, Starttime = 3000, Finalvalue = 0.005) annotation(
     Placement(transformation(extent = {{913, -150}, {875, -118}}, rotation = 0)));
