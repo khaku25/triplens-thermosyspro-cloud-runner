@@ -76,7 +76,7 @@ class NativeOPCUAContractTests(unittest.TestCase):
         build_script = (ROOT / "modelica/build_native_opcua.mos.tpl").read_text(
             encoding="utf-8"
         )
-        self.assertIn("--preOptModules+=introduceOutputAliases", build_script)
+        self.assertNotIn("--preOptModules+=introduceOutputAliases", build_script)
         self.assertNotIn("--removeSimpleEquations=none", build_script)
 
         workflow = (ROOT / ".github/workflows/run-native-opcua-ecms.yml").read_text(

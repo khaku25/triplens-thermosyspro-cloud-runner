@@ -1,7 +1,7 @@
-// Preserve only named top-level interface aliases. OpenModelica enables the
-// same targeted module for FMI 2.0 output contracts; unlike disabling alias
-// elimination globally, it leaves the ThermoSysPro equation system intact.
-setCommandLineOptions("--std=3.4 --preOptModules+=introduceOutputAliases");
+// The native ECMS command is itself a top-level continuous state. Keep the
+// normal ThermoSysPro optimization pipeline so this name is a writable state
+// node rather than a read-only output alias.
+setCommandLineOptions("--std=3.4");
 loadModel(Modelica, {"3.2.3"});
 getErrorString();
 loadFile("/workspace/vendor/ThermoSysPro/ThermoSysPro/package.mo");
