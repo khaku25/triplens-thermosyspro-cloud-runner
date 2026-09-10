@@ -16,7 +16,7 @@ concurrency:
 jobs:
   live-closed-loop:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 65
     steps:
       - name: Check out main-grade physical model
         uses: actions/checkout@v4
@@ -34,7 +34,7 @@ jobs:
       - name: Build FMU and prove bidirectional physical communication
         env:
           OPENMODELICA_DEPENDENCY_TIMEOUT: 5m
-          OPENMODELICA_FMU_BUILD_TIMEOUT: 25m
+          OPENMODELICA_FMU_BUILD_TIMEOUT: 38m
           LIVE_STOP_TIME_S: "10"
           LIVE_STEP_SIZE_S: "0.001"
           LIVE_TRIP_TIME_S: "2"

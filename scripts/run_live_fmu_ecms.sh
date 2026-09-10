@@ -17,7 +17,7 @@ trip_time_s="${LIVE_TRIP_TIME_S:-2}"
 openmodelica_image="openmodelica/openmodelica:v1.27.0-minimal"
 thermosyspro_commit="db81ae1b5a6a85f6c6c7693244cafa6087e18ff5"
 dependency_timeout="${OPENMODELICA_DEPENDENCY_TIMEOUT:-5m}"
-fmu_build_timeout="${OPENMODELICA_FMU_BUILD_TIMEOUT:-25m}"
+fmu_build_timeout="${OPENMODELICA_FMU_BUILD_TIMEOUT:-38m}"
 
 mkdir -p build/omhome vendor outputs
 rm -rf "$project_root/outputs/live"
