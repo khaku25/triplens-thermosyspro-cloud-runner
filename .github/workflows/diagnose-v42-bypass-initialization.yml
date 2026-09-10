@@ -6,6 +6,7 @@ on:
       - "modelica/TripLensUserModels_Bypass.mo"
       - "modelica/install_modelica_4_0.mos"
       - "modelica/build_v42_bypass_diagnostic.mos"
+      - "modelica/build_v42_baseline_diagnostic.mos"
       - ".github/workflows/diagnose-v42-bypass-initialization.yml"
   workflow_dispatch:
 
@@ -19,6 +20,30 @@ jobs:
     env:
       THERMOSYSPRO_COMMIT: a896ab75ce22162369e7fa4ce79927eeca44ad4a
       OPENMODELICA_IMAGE: openmodelica/openmodelica:v1.27.0-minimal
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - case_name: baseline-omcTearing
+            build_script: build_v42_baseline_diagnostic.mos
+            executable: ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC
+            tearing: omcTearing
+          - case_name: baseline-minimalTearing
+            build_script: build_v42_baseline_diagnostic.mos
+            executable: ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC
+            tearing: minimalTearing
+          - case_name: bypass-minimalTearing
+            build_script: build_v42_bypass_diagnostic.mos
+            executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass
+            tearing: minimalTearing
+          - case_name: bypass-cellier
+            build_script: build_v42_bypass_diagnostic.mos
+            executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass
+            tearing: cellier
+          - case_name: bypass-guruTearing
+            build_script: build_v42_bypass_diagnostic.mos
+            executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass
+            tearing: guruTearing
     steps:
       - uses: actions/checkout@v4
 
@@ -46,7 +71,7 @@ jobs:
               omc /workspace/modelica/install_modelica_4_0.mos \
             | tee build/v42/install.log
 
-      - name: Translate ThermoSysPro 4.2 bypass model
+      - name: Translate ${{ matrix.case_name }}
         run: |
           timeout --signal=TERM --kill-after=30s 35m \
             docker run --rm \
@@ -54,11 +79,12 @@ jobs:
               -v "$PWD:/workspace" \
               -w /workspace \
               "$OPENMODELICA_IMAGE" \
-              omc /workspace/modelica/build_v42_bypass_diagnostic.mos \
+              omc --tearingMethod=${{ matrix.tearing }} \
+                /workspace/modelica/${{ matrix.build_script }} \
             | tee build/v42/translation.log
-          test -x build/v42/TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass
+          test -x "build/v42/${{ matrix.executable }}"
 
-      - name: Run dense KINSOL initialization with detailed NLS log
+      - name: Run dense hybrid initialization with detailed NLS log
         run: |
           set +e
           timeout --signal=TERM --kill-after=30s 20m \
@@ -67,27 +93,26 @@ jobs:
               -v "$PWD:/workspace" \
               -w /workspace/build/v42 \
               "$OPENMODELICA_IMAGE" \
-              ./TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass \
+              "./${{ matrix.executable }}" \
                 -override=startTime=0,stopTime=1,stepSize=0.1,tolerance=0.001 \
                 -s=dassl \
-                -nls=kinsol \
-                -nlsLS=lapack \
+                -nls=hybrid \
                 -nlssMaxDensity=0.01 \
                 -lv=LOG_STDOUT,LOG_ASSERT,LOG_STATS,LOG_INIT,LOG_NLS,LOG_NLS_V \
-            > build/v42/initialization-dense-kinsol.log 2>&1
+            > build/v42/initialization.log 2>&1
           sim_status=$?
-          cat build/v42/initialization-dense-kinsol.log
+          cat build/v42/initialization.log
           exit "$sim_status"
 
       - name: Upload complete initialization evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: thermosyspro-4.2-bypass-initialization-${{ github.run_number }}
+          name: thermosyspro-4.2-${{ matrix.case_name }}-${{ github.run_number }}
           path: |
             build/v42/install.log
             build/v42/translation.log
-            build/v42/initialization-dense-kinsol.log
+            build/v42/initialization.log
             build/v42/*_init.xml
             build/v42/*_info.json
           if-no-files-found: warn
