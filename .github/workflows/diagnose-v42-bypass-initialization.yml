@@ -69,7 +69,9 @@ jobs:
             --if97-packages \
             vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/IF97_packages.mo \
             --integrator \
-            vendor/ThermoSysPro/ThermoSysPro/InstrumentationAndControl/Blocks/Continu/Integrateur.mo
+            vendor/ThermoSysPro/ThermoSysPro/InstrumentationAndControl/Blocks/Continu/Integrateur.mo \
+            --dynamic-drum \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Volumes/DynamicDrum.mo
 
       - name: Install Modelica 4.0.0
         run: |
