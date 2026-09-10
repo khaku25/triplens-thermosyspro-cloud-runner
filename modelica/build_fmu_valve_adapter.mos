@@ -7,6 +7,8 @@ loadFile("/workspace/build/TripLens_CombinedCycle_TripTAC.mo");
 getErrorString();
 loadFile("/workspace/modelica/TripLens_Valve_Adapter_Smoke.mo");
 getErrorString();
+loadFile("/workspace/modelica/TripLens_Valve_Adapter_All_Smoke.mo");
+getErrorString();
 cd("/workspace/build");
 simulate(
   TripLens_CombinedCycle_TripTAC,
@@ -18,7 +20,7 @@ simulate(
   outputFormat="csv",
   simflags="-noEventEmit",
   fileNamePrefix="valve_auto_baseline",
-  variableFilter="^(time|fmuVlv(HPSteam|IPTurbAdm)(AutoCmd|Cmd|Fb|Deviation|FaultActive)|vanne_vapeurHP\.(Cv|Q|deltaP)|vanne_entree_TurbineMP\.(Cv|Q|deltaP))$");
+  variableFilter="^(time|fmuVlv.*(AutoCmd|Cmd|Fb|Deviation|FaultActive|Cv|MassFlow|Dp)|vanne_vapeurHP\.(Cv|Q|deltaP)|vanne_entree_TurbineMP\.(Cv|Q|deltaP))$");
 getErrorString();
 simulate(
   TripLens_Valve_Adapter_Smoke,
@@ -30,7 +32,19 @@ simulate(
   outputFormat="csv",
   simflags="-noEventEmit",
   fileNamePrefix="valve_manual_fault_smoke",
-  variableFilter="^(time|fmuVlv(HPSteam|IPTurbAdm)(AutoCmd|Cmd|Fb|Deviation|FaultActive)|vanne_vapeurHP\.(Cv|Q|deltaP)|vanne_entree_TurbineMP\.(Cv|Q|deltaP))$");
+  variableFilter="^(time|fmuVlv.*(AutoCmd|Cmd|Fb|Deviation|FaultActive|Cv|MassFlow|Dp)|vanne_vapeurHP\.(Cv|Q|deltaP)|vanne_entree_TurbineMP\.(Cv|Q|deltaP))$");
+getErrorString();
+simulate(
+  TripLens_Valve_Adapter_All_Smoke,
+  startTime=0,
+  stopTime=2,
+  numberOfIntervals=20,
+  tolerance=1e-3,
+  method="dassl",
+  outputFormat="csv",
+  simflags="-noEventEmit",
+  fileNamePrefix="valve_all_manual_smoke",
+  variableFilter="^(time|fmuVlv.*(AutoCmd|Cmd|Fb|Deviation|FaultActive|Cv|MassFlow|Dp))$");
 getErrorString();
 buildModelFMU(
   TripLens_CombinedCycle_TripTAC,
