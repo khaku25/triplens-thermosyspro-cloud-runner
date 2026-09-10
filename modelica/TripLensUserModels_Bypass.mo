@@ -835,12 +835,16 @@ end CombinedCycle_TripTAC_Bypass;
 model CombinedCycle_TripTAC_Bypass_OMCStart
   "OpenModelica staged start for the visible HP/LP bypass plant"
   extends CombinedCycle_TripTAC_Bypass(
-    BallonHP(steady_state=false, P0=12726424.235625941, Vf0=0.5,
+    BallonHP(steady_state=false, use_start_enthalpies=true,
+      P0=12726424.235625941, hl0=1460508.128907675,
+      hv0=2664791.3052738607, Vf0=0.5, zl(fixed=false)),
+    BallonMP(steady_state=false, use_start_enthalpies=true,
+      P0=2733918.2848144253, hl0=980960.1562978515,
+      hv0=2798761.3254371085, Vf0=0.5, zl(fixed=false)),
+    BallonBP(steady_state=false, use_start_enthalpies=true,
+      P0=536006.6647383622, hl0=561432.6820300646,
+      hv0=2682927.2097681486, Vf0=0.4206302498863762,
       zl(fixed=false)),
-    BallonMP(steady_state=false, P0=2733918.2848144253, Vf0=0.5,
-      zl(fixed=false)),
-    BallonBP(steady_state=false, P0=536006.6647383622,
-      Vf0=0.4206302498863762, zl(fixed=false)),
     EvaporateurHP(
       TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
         h0={1842386.3805685563,2019815.5675635953,2101914.802366878}),
