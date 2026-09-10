@@ -125,6 +125,7 @@ class LiveFMUNetworkTests(unittest.TestCase):
             self.assertNotIn(MINIMAL_DEFINITIONS, cmake)
             self.assertIn(FULL_LIBRARY_TARGET, cmake)
             self.assertIn(FULL_DEFINITIONS, cmake)
+            self.assertIn("LINKER:--no-as-needed", cmake)
             self.assertFalse(result["physical_equations_changed"])
             self.assertFalse(result["embedded_minimal_runtime"])
             self.assertTrue(manifest.is_file())
