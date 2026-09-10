@@ -70,13 +70,12 @@ def main() -> None:
     x0 = ureset.signal/k;
     reinit(x, x0);
   end when;"""
-        new = """  x0 = ureset.signal/k;
-  when not (reset.signal) then
-    // In permanent mode x was determined by the steady initialization
-    // equations. Do not overwrite that consistent solution at initial().
-    if not permanent then
-      reinit(x, x0);
-    end if;
+        new = """  when not (reset.signal) then
+    // Preserve the original event/reinit equation structure. In permanent
+    // mode, x was already determined by the steady initialization equations,
+    // so reinitialize it to itself instead of overwriting it with ureset/k.
+    x0 = if permanent then x else ureset.signal/k;
+    reinit(x, x0);
   end when;"""
         count = integrator_text.count(old)
         if count != 1:
