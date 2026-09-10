@@ -5,13 +5,9 @@ loadFile("/workspace/vendor/ThermoSysPro/ThermoSysPro/package.mo");
 getErrorString();
 loadFile("/workspace/build/TripLens_CombinedCycle_TripTAC.mo");
 getErrorString();
-loadFile("/workspace/modelica/TripLens_FMU_Valve_Export.mo");
-getErrorString();
-setIndexReductionMethod("dummyDerivatives");
-getErrorString();
 cd("/workspace/build");
 buildModelFMU(
-  TripLens_FMU_Valve_Export,
+  TripLens_CombinedCycle_TripTAC,
   version="2.0",
   fmuType="cs",
   fileNamePrefix="TripLens_Native_Valve_Control_V1");
