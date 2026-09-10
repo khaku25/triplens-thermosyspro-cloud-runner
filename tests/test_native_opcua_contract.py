@@ -62,7 +62,7 @@ class NativeOPCUAContractTests(unittest.TestCase):
         self.assertIn("y(stateSelect=StateSelect.always)", patch)
         self.assertIn("vppExternalTripCommandRegister.u = Modelica.Constants.eps*sin(time)", patch)
         client = (ROOT / "scripts/native_ecms_opcua_client.py").read_text(encoding="utf-8")
-        self.assertIn('command_name = "vppExternalTripCommandRegister.y"', client)
+        self.assertIn('command_name = "vppExternalTripCommandNative"', client)
         self.assertIn("ua.VariantType.Double", client)
         self.assertIn("command_written", client)
         self.assertIn("while current < args.stop_time - args.step_size / 2", client)
@@ -71,12 +71,21 @@ class NativeOPCUAContractTests(unittest.TestCase):
         build_script = (ROOT / "modelica/build_native_opcua.mos.tpl").read_text(
             encoding="utf-8"
         )
-        self.assertIn("--removeSimpleEquations=none", build_script)
+        self.assertIn("--preOptModules+=introduceOutputAliases", build_script)
+        self.assertNotIn("--removeSimpleEquations=none", build_script)
+
+        wrapper = (ROOT / "modelica/TripLens_CombinedCycle_TripTAC.mo.tpl").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("output Real vppExternalTripCommandNative", wrapper)
+        self.assertIn(
+            "vppExternalTripCommandNative = vppExternalTripCommandRegister.y", wrapper
+        )
 
         workflow = (ROOT / ".github/workflows/run-native-opcua-ecms.yml").read_text(
             encoding="utf-8"
         )
-        self.assertIn('name[[:space:]]*=[[:space:]]*"vppExternalTripCommandRegister.y"', workflow)
+        self.assertIn('name[[:space:]]*=[[:space:]]*"vppExternalTripCommandNative"', workflow)
 
 
 if __name__ == "__main__":

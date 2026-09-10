@@ -80,7 +80,7 @@ jobs:
           fi
           test -x build/TripLens_Native_OPCUA
           if ! grep -n -m 1 -E \
-            'name[[:space:]]*=[[:space:]]*"vppExternalTripCommandRegister.y"' \
+            'name[[:space:]]*=[[:space:]]*"vppExternalTripCommandNative"' \
             build/TripLens_Native_OPCUA_init.xml \
             > build/native-opcua-input-contract.txt; then
             grep -n -E 'vppExternalTrip|TripCommandRegister' \
@@ -103,7 +103,6 @@ jobs:
             ./TripLens_Native_OPCUA \
               -embeddedServer=opc-ua \
               -embeddedServerPort=4841 \
-              -override=stopTime="$LIVE_STOP_TIME_S",stepSize="$LIVE_STEP_SIZE_S" \
               -r=TripLens_Native_OPCUA_res.csv \
             > outputs/native-opcua/openmodelica-native.log 2>&1 &
           native_pid=$!
