@@ -30,7 +30,7 @@ concurrency:
 jobs:
   live-main-fmu-link:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       UPSTREAM_RUN_ID: ${{ inputs.upstream_run_id || '34449701844' }}
       UPSTREAM_ARTIFACT: openmodelica-native-valve-fmu-46
@@ -61,7 +61,7 @@ jobs:
             --manifest build/fmu-runtime-provenance.json
           cmake -S build/runtime-fmu/sources -B build/runtime-fmu/cmake \
             -DRUNTIME_DEPENDENCIES_LEVEL=none
-          cmake --build build/runtime-fmu/cmake --target create_fmu --parallel 2
+          cmake --build build/runtime-fmu/cmake --target create_fmu --parallel "$(nproc)"
           runtime_sha256="$(sha256sum build/runtime-fmu/TripLens_Native_Valve_Control_V1.fmu | awk '{print $1}')"
           echo "EXPECTED_FMU_SHA256=$runtime_sha256" >> "$GITHUB_ENV"
           python3 - "$runtime_sha256" <<'PY'
