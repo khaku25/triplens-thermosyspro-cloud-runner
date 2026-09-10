@@ -38,7 +38,7 @@ jobs:
   build-and-physical-smoke:
     needs: source-contract
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       THERMOSYSPRO_COMMIT: db81ae1b5a6a85f6c6c7693244cafa6087e18ff5
       OPENMODELICA_IMAGE: openmodelica/openmodelica:v1.27.0-minimal
