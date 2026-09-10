@@ -33,9 +33,12 @@ def value(row: dict[str, str], name: str) -> float:
     return number
 
 
-def validate_csv(auto_path: Path, smoke_path: Path) -> None:
+def validate_csv(
+    auto_path: Path, smoke_path: Path, all_manual_path: Path
+) -> None:
     auto = rows(auto_path)
     smoke = rows(smoke_path)
+    all_manual = rows(all_manual_path)
     a0, a1 = auto[0], auto[-1]
     s0, s1 = smoke[0], smoke[-1]
 
@@ -80,6 +83,33 @@ def validate_csv(auto_path: Path, smoke_path: Path) -> None:
         raise ValueError("IPCV selected command was not present at initialization")
     if value(s1, "fmuVlvIPTurbAdmFb") >= value(s0, "fmuVlvIPTurbAdmFb"):
         raise ValueError("IPCV physical actuator state did not move toward closed")
+
+    am0, am1 = all_manual[0], all_manual[-1]
+    for point in POINTS:
+        prefix = f"fmuVlv{point.key}"
+        target = 0.95 * point.initial
+        if not math.isclose(value(am1, f"{prefix}Cmd"), target, abs_tol=1e-6):
+            raise ValueError(f"{point.key}: all-valve MAN command was not selected")
+        if point.dynamic_state:
+            if not value(am1, f"{prefix}Fb") < value(am0, f"{prefix}Fb"):
+                raise ValueError(f"{point.key}: physical actuator did not move toward MAN")
+        elif not math.isclose(value(am1, f"{prefix}Fb"), target, abs_tol=1e-6):
+            raise ValueError(f"{point.key}: MAN command did not reach native Ouv")
+
+        auto_fb = value(a1, f"{prefix}Fb")
+        manual_fb = value(am1, f"{prefix}Fb")
+        auto_cv = value(a1, f"{prefix}Cv")
+        manual_cv = value(am1, f"{prefix}Cv")
+        if abs(auto_fb) < 1e-9 or abs(auto_cv) < 1e-9:
+            raise ValueError(f"{point.key}: AUTO state cannot prove Cv linkage")
+        if not math.isclose(
+            manual_cv / auto_cv, manual_fb / auto_fb, rel_tol=3e-3
+        ):
+            raise ValueError(f"{point.key}: native Cv did not track applied position")
+        if math.isclose(manual_cv, auto_cv, rel_tol=1e-5, abs_tol=1e-8):
+            raise ValueError(f"{point.key}: native Cv did not change under MAN")
+        value(am1, f"{prefix}MassFlow")
+        value(am1, f"{prefix}Dp")
 
 
 def validate_fmu(path: Path) -> None:
@@ -139,9 +169,10 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--auto", type=Path, required=True)
     parser.add_argument("--smoke", type=Path, required=True)
+    parser.add_argument("--all-manual", type=Path, required=True)
     parser.add_argument("--fmu", type=Path, required=True)
     args = parser.parse_args()
-    validate_csv(args.auto, args.smoke)
+    validate_csv(args.auto, args.smoke, args.all_manual)
     validate_fmu(args.fmu)
     print("OPENMODELICA_NATIVE_VALVE_PHYSICS_PASS")
     return 0
