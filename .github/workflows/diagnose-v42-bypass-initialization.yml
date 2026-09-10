@@ -67,7 +67,9 @@ jobs:
           python3 modelica/patch_thermosyspro_42_nominals.py \
             vendor/ThermoSysPro/ThermoSysPro/Units.mo \
             --if97-packages \
-            vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/IF97_packages.mo
+            vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/IF97_packages.mo \
+            --integrator \
+            vendor/ThermoSysPro/ThermoSysPro/InstrumentationAndControl/Blocks/Continu/Integrateur.mo
 
       - name: Install Modelica 4.0.0
         run: |
