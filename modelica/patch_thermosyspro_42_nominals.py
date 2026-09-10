@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Apply OpenModelica compatibility fixes to ThermoSysPro 4.2.
 
-This is an OpenModelica numerical-conditioning patch only.  It changes no
-equation, parameter value, or connector topology.  Absolute pressure is also
-bounded just above the IF97 triple-point limit so bounded nonlinear solvers do
-not evaluate the water-property functions outside their documented domain.
+This is an OpenModelica initialization compatibility patch. It changes no
+connector topology. Absolute pressure is bounded just above the IF97
+triple-point limit so bounded nonlinear solvers do not evaluate water-property
+functions outside their documented domain.
 The optional integrator patch prevents permanent-mode controller states found
 by the steady initialization problem from being overwritten by the initial
 ``when not reset`` event immediately after the solve.
@@ -37,6 +37,7 @@ def main() -> None:
     parser.add_argument("units_mo", type=Path)
     parser.add_argument("--if97-packages", type=Path)
     parser.add_argument("--integrator", type=Path)
+    parser.add_argument("--dynamic-drum", type=Path)
     args = parser.parse_args()
 
     text = args.units_mo.read_text(encoding="utf-8")
@@ -86,6 +87,32 @@ def main() -> None:
             integrator_text.replace(old, new), encoding="utf-8"
         )
         print(f"preserved permanent controller initialization in {args.integrator}")
+
+    if args.dynamic_drum is not None:
+        drum_text = args.dynamic_drum.read_text(encoding="utf-8")
+        parameter_anchor = (
+            '  parameter Units.SI.AbsolutePressure P0 = 50.e5 '
+            '"Fluid initial pressure (active if steady_state=false)";'
+        )
+        parameter_replacement = parameter_anchor + """
+  parameter Boolean use_start_enthalpies = false
+    "Use hl0/hv0 rather than saturation values when steady_state=false";
+  parameter Units.SI.SpecificEnthalpy hl0 = 1.e5
+    "Initial liquid enthalpy when use_start_enthalpies=true";
+  parameter Units.SI.SpecificEnthalpy hv0 = 2.5e6
+    "Initial vapor enthalpy when use_start_enthalpies=true";"""
+        initial_anchor = """    hl = lsat.h;
+    hv = vsat.h;"""
+        initial_replacement = """    hl = if use_start_enthalpies then hl0 else lsat.h;
+    hv = if use_start_enthalpies then hv0 else vsat.h;"""
+        if drum_text.count(parameter_anchor) != 1:
+            raise SystemExit("expected one DynamicDrum P0 parameter anchor")
+        if drum_text.count(initial_anchor) != 1:
+            raise SystemExit("expected one DynamicDrum enthalpy initialization anchor")
+        drum_text = drum_text.replace(parameter_anchor, parameter_replacement)
+        drum_text = drum_text.replace(initial_anchor, initial_replacement)
+        args.dynamic_drum.write_text(drum_text, encoding="utf-8")
+        print(f"enabled explicit DynamicDrum enthalpy starts in {args.dynamic_drum}")
 
 
 if __name__ == "__main__":
