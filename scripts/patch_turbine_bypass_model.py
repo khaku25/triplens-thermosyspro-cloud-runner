@@ -224,9 +224,10 @@ PARAMETERS = f'''  // {MARKER}
 COMPONENTS = '''
   input Boolean vppExternalTripCommand(start=false) = false
     "Live ECMS GT Trip input exposed by the Co-Simulation FMU";
-  Real vppExternalTripCommandRegister(
-    start=0, fixed=true, stateSelect=StateSelect.always)
-    "Writable native OPC UA GT Trip command register";
+  Modelica.Blocks.Continuous.Integrator vppExternalTripCommandRegister(
+    k=1, y_start=0,
+    y(stateSelect=StateSelect.always))
+    "Writable native OPC UA GT Trip command memory";
   discrete Boolean vppSTTripLatch(start=false, fixed=true)
     "One-way resolved ST Trip latch for this physical scenario";
   Real vppGTExhaustMassFlowState(
@@ -354,12 +355,11 @@ COMPONENTS = '''
 
 
 EQUATIONS = '''
-  // The time-dependent epsilon-scale hold equation prevents native code
-  // generation from folding this externally writable register into a constant.
-  der(vppExternalTripCommandRegister) =
-    Modelica.Constants.eps*sin(time);
+  // A named standard Integrator preserves a stable writable state node in the
+  // native OPC UA address space. The epsilon input is numerically negligible.
+  vppExternalTripCommandRegister.u = Modelica.Constants.eps*sin(time);
   when (vppUseExternalTripInput and
-        (vppExternalTripCommand or vppExternalTripCommandRegister >= 0.5)) or
+        (vppExternalTripCommand or vppExternalTripCommandRegister.y >= 0.5)) or
        ((not vppUseExternalTripInput) and time >= vppTripTime) then
     vppSTTripLatch = true;
   end when;

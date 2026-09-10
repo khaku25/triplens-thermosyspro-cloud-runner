@@ -79,7 +79,7 @@ jobs:
             exit 1
           fi
           test -x build/TripLens_Native_OPCUA
-          grep -n -m 1 'name="vppExternalTripCommandRegister"' \
+          grep -n -m 1 'name="vppExternalTripCommandRegister.y"' \
             build/TripLens_Native_OPCUA_init.xml \
             | tee build/native-opcua-input-contract.txt
           test -s build/native-opcua-input-contract.txt

@@ -180,7 +180,7 @@ def main() -> int:
     client = connect(args.endpoint, 180.0)
     rows: list[dict[str, float | int]] = []
     try:
-        command_name = "vppExternalTripCommandRegister"
+        command_name = "vppExternalTripCommandRegister.y"
         required = {command_name, *(s.node_name for s in SIGNALS)}
         nodes = wait_for_model_nodes(client, required, 60.0)
         # OpenModelica 1.27 defines control nodes in namespace 0 with stable
