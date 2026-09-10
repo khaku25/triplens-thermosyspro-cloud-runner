@@ -11,11 +11,26 @@ from patch_fmu_valve_controls import MARKER, POINTS, patch_model as patch_fmu  #
 from patch_turbine_bypass_model import patch_model as patch_bypass  # noqa: E402
 from tests.test_turbine_bypass_patch import UPSTREAM_STUB  # noqa: E402
 
+ADDITIONAL_NATIVE_CONNECTIONS = """  connect(regulation_Niveau_HP.SortieReelle1, vanne_alimentationHP.Ouv);
+  connect(constante_vanne_vapeurHP.y, vanne_vapeurHP.Ouv);
+  connect(regulation_Niveau_MP.SortieReelle1, vanne_alimentationMP.Ouv);
+  connect(constante_vanne_vapeurMP.y, vanne_vapeurMP.Ouv);
+  connect(vanne_alimentationBP.Ouv, constante_vanne_vapeurBP.y);
+  connect(Vanne_alimentationMPHP.Ouv, constante_ballonBP.y);
+  connect(regulation_Niveau_Condenseur.SortieReelle1, vanne_extraction.Ouv);
+  connect(arretPomesMp1.y, Vanne_alimentationMPHP1.Ouv);
+  connect(arretPomesHP1.y, Vanne_alimentationMPHP2.Ouv);
+"""
+FULL_UPSTREAM_STUB = UPSTREAM_STUB.replace(
+    "end CombinedCycle_TripTAC;",
+    ADDITIONAL_NATIVE_CONNECTIONS + "end CombinedCycle_TripTAC;",
+)
+
 
 class OpenModelicaValveAdapterTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.patched = patch_fmu(patch_bypass(UPSTREAM_STUB))
+        cls.patched = patch_fmu(patch_bypass(FULL_UPSTREAM_STUB))
 
     def test_all_twelve_native_valves_are_singly_driven(self):
         self.assertEqual(len(POINTS), 12)
