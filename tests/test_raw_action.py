@@ -171,6 +171,8 @@ class RawOnlyActionTests(unittest.TestCase):
         self.assertIn("vppGTGPowerMW", model)
         self.assertIn("GTGPowerMW", mos)
         self.assertIn("52GTClosed", mos)
+        self.assertIn("exhaustFlowTripTH = 180.0", model)
+        self.assertIn("exhaustTemperatureTrip(unit=\"K\") = 450.0", model)
 
     def test_one_ms_dynamic_bypass_raw_meets_stroke_contract(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
