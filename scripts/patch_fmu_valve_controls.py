@@ -88,7 +88,6 @@ def declarations() -> str:
             f"  output Boolean {prefix}FaultActive;",
             f"  output Real {prefix}Cv;",
             f"  output Real {prefix}MassFlow(unit=\"t/h\");",
-            f"  output Real {prefix}Dp(start=0, fixed=true, unit=\"Pa\");",
             f"  Real {prefix}Target(min=0, max=1);",
         ))
     return "\n".join(lines) + "\n\n"
@@ -115,14 +114,6 @@ def equations() -> str:
             f"  {prefix}MassFlow = 3.6*{point.object_name}.Q;",
             "",
         ))
-    lines.extend((
-        "  when {initial(), sample(0.01, 0.01)} then",
-        *(
-            f"    fmuVlv{point.key}Dp = {point.object_name}.deltaP;"
-            for point in POINTS
-        ),
-        "  end when;",
-    ))
     return "\n".join(lines)
 
 
@@ -218,7 +209,6 @@ def patch_model(source: str) -> str:
             f"{point.object_name}.Ouv.signal = {prefix}Fb",
             f"{prefix}Cv = {point.object_name}.Cv",
             f"{prefix}MassFlow = 3.6*{point.object_name}.Q",
-            f"{prefix}Dp = {point.object_name}.deltaP",
         )
         for token in required:
             if token not in source:
