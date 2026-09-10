@@ -94,7 +94,7 @@ def validate_csv(
         if math.isclose(manual_cv, auto_cv, rel_tol=1e-5, abs_tol=1e-8):
             raise ValueError(f"{point.key}: native Cv did not change under MAN")
         value(am1, f"{all_prefix}MassFlow")
-        value(am1, f"{all_prefix}Dp")
+        value(am1, f"plant.{point.object_name}.deltaP")
 
 
 def validate_fmu(path: Path) -> None:
