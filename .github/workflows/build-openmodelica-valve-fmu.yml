@@ -64,7 +64,10 @@ jobs:
       - name: Build FMU and run native physical smoke simulations
         run: |
           timeout --signal=TERM --kill-after=30s 32m             docker run --rm               -v "$PWD/build/omhome:/root"               -v "$PWD:/workspace"               -w /workspace               "$OPENMODELICA_IMAGE"               omc /workspace/modelica/build_fmu_valve_adapter.mos               | tee build/openmodelica-valve-fmu.log
-          ! grep -Eq             'resultFile = ""|Failed to build model|Simulation execution failed|Error:'             build/openmodelica-valve-fmu.log
+          if grep -Eq             'resultFile = ""|Failed to build model|Simulation execution failed|Error:'             build/openmodelica-valve-fmu.log; then
+            echo "OpenModelica reported a build or simulation failure" >&2
+            exit 1
+          fi
           test -s build/valve_auto_baseline_res.csv
           test -s build/valve_manual_fault_smoke_res.csv
           test -s build/TripLens_Native_Valve_Control_V1.fmu
