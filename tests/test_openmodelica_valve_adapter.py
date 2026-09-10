@@ -38,6 +38,16 @@ class OpenModelicaValveAdapterTests(unittest.TestCase):
         for point in POINTS:
             assignment = f"{point.object_name}.Ouv.signal = fmuVlv{point.key}Fb"
             self.assertEqual(self.patched.count(assignment), 1, point.key)
+            prefix = f"fmuVlv{point.key}"
+            self.assertIn(f"{prefix}Cv = {point.object_name}.Cv", self.patched)
+            self.assertIn(
+                f"{prefix}MassFlow = 3.6*{point.object_name}.Q",
+                self.patched,
+            )
+            self.assertIn(
+                f"{prefix}Dp = {point.object_name}.C1.P - {point.object_name}.C2.P",
+                self.patched,
+            )
             if point.original_connect:
                 self.assertNotIn(f"connect({point.original_connect})", self.patched)
 
