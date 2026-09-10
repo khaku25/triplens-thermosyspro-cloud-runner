@@ -1,0 +1,71 @@
+name: Verify main FMU ECMS live link
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_run_id:
+        description: Successful native-valve FMU workflow run ID
+        required: false
+        default: "34449701844"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "scripts/live_*.py"
+      - "scripts/validate_live_fmu_contract.py"
+      - "scripts/run_live_fmu_ecms.sh"
+      - "requirements-live.txt"
+      - "tests/test_live_fmu_network.py"
+      - ".github/workflows/run-live-fmu-ecms.yml"
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: main-fmu-ecms-live-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  live-main-fmu-link:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      UPSTREAM_RUN_ID: ${{ inputs.upstream_run_id || '34449701844' }}
+      UPSTREAM_ARTIFACT: openmodelica-native-valve-fmu-46
+      EXPECTED_FMU_SHA256: 883ca79109cc5277a01868068e916ebb1ad7df346b841820ff7b5ea66c76f387
+      LIVE_STOP_TIME_S: "2"
+      LIVE_STEP_SIZE_S: "0.01"
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify transport contract
+        run: python3 -m unittest tests.test_live_fmu_network -v
+
+      - name: Download the already physics-qualified main FMU
+        run: |
+          mkdir -p build/upstream
+          gh run download "$UPSTREAM_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "$UPSTREAM_ARTIFACT" \
+            --dir build/upstream
+          test "$(sha256sum build/upstream/TripLens_Native_Valve_Control_V1.fmu | awk '{print $1}')" = "$EXPECTED_FMU_SHA256"
+
+      - name: Install pinned FMI runtime
+        run: python3 -m pip install --disable-pip-version-check -r requirements-live.txt
+
+      - name: Prove commands to physics to ECMS over TCP
+        run: |
+          chmod +x scripts/run_live_fmu_ecms.sh
+          scripts/run_live_fmu_ecms.sh build/upstream/TripLens_Native_Valve_Control_V1.fmu
+
+      - name: Upload live link proof and dashboard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-fmu-ecms-live-${{ github.run_number }}
+          path: |
+            outputs/live-main-fmu/**
+          if-no-files-found: warn
+          retention-days: 30
