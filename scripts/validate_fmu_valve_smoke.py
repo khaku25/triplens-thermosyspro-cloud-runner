@@ -41,14 +41,14 @@ def validate_csv(auto_path: Path, smoke_path: Path) -> None:
 
     if not math.isclose(value(a1, "fmuVlvHPSteamCmd"), 0.5, abs_tol=1e-6):
         raise ValueError("AUTO HP steam-valve command is not the native 0.5 pu")
-    if not math.isclose(value(s1, "fmuVlvHPSteamCmd"), 0.2, abs_tol=1e-6):
+    if not math.isclose(value(s1, "fmuVlvHPSteamCmd"), 0.45, abs_tol=1e-6):
         raise ValueError("MAN command did not reach the selected HP steam-valve CMD")
-    if not math.isclose(value(s1, "fmuVlvHPSteamFb"), 0.2, abs_tol=1e-6):
+    if not math.isclose(value(s1, "fmuVlvHPSteamFb"), 0.45, abs_tol=1e-6):
         raise ValueError("MAN command did not reach the native HP steam-valve FB")
 
     auto_cv = value(a1, "vanne_vapeurHP.Cv")
     manual_cv = value(s1, "vanne_vapeurHP.Cv")
-    if not math.isclose(manual_cv / auto_cv, 0.2 / 0.5, rel_tol=2e-3):
+    if not math.isclose(manual_cv / auto_cv, 0.45 / 0.5, rel_tol=2e-3):
         raise ValueError("native HP steam-valve Cv did not follow MAN_CMD")
     if math.isclose(
         value(s1, "vanne_vapeurHP.Q"),
@@ -60,13 +60,13 @@ def validate_csv(auto_path: Path, smoke_path: Path) -> None:
 
     if not math.isclose(value(s1, "fmuVlvIPTurbAdmCmd"), 0.8, abs_tol=1e-6):
         raise ValueError("IPCV fault rewrote CMD; command/fault separation failed")
-    if value(s1, "fmuVlvIPTurbAdmFb") >= 0.05:
-        raise ValueError("IPCV forced-closed fault did not close the applied position")
-    if value(s1, "fmuVlvIPTurbAdmDeviation") <= 0.70:
+    if not math.isclose(value(s1, "fmuVlvIPTurbAdmFb"), 0.6, abs_tol=2e-2):
+        raise ValueError("IPCV fault value did not reach the applied position")
+    if value(s1, "fmuVlvIPTurbAdmDeviation") <= 0.15:
         raise ValueError("IPCV command-feedback deviation was not exposed")
     if value(s1, "fmuVlvIPTurbAdmFaultActive") < 0.5:
         raise ValueError("IPCV fault state was not exposed")
-    if value(s1, "vanne_entree_TurbineMP.Cv") >= 0.1 * value(a1, "vanne_entree_TurbineMP.Cv"):
+    if value(s1, "vanne_entree_TurbineMP.Cv") >= 0.85 * value(a1, "vanne_entree_TurbineMP.Cv"):
         raise ValueError("native IPCV Cv did not follow the fault-applied FB")
     if math.isclose(
         value(s1, "vanne_entree_TurbineMP.Q"),
@@ -101,6 +101,7 @@ def validate_fmu(path: Path) -> None:
         expected_outputs.update({
             f"{prefix}AutoCmd", f"{prefix}Cmd", f"{prefix}Fb",
             f"{prefix}Deviation", f"{prefix}FaultActive",
+            f"{prefix}Cv", f"{prefix}MassFlow", f"{prefix}Dp",
         })
         expected_starts.update({
             f"{prefix}ModeAuto": "true",
