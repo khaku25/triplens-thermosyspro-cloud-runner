@@ -61,15 +61,20 @@ jobs:
       - name: Run dense hybrid initialization with detailed NLS log
         run: |
           set +e
-          cd build/v42
-          ./TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass \
-            -override=startTime=0,stopTime=1,stepSize=0.1,tolerance=0.001 \
-            -s=dassl \
-            -nls=hybrid \
-            -lv=LOG_STDOUT,LOG_ASSERT,LOG_STATS,LOG_INIT,LOG_NLS,LOG_NLS_V \
-            > initialization-hybrid.log 2>&1
+          timeout --signal=TERM --kill-after=30s 20m \
+            docker run --rm \
+              -v "$PWD/build/omhome:/root" \
+              -v "$PWD:/workspace" \
+              -w /workspace/build/v42 \
+              "$OPENMODELICA_IMAGE" \
+              ./TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass \
+                -override=startTime=0,stopTime=1,stepSize=0.1,tolerance=0.001 \
+                -s=dassl \
+                -nls=hybrid \
+                -lv=LOG_STDOUT,LOG_ASSERT,LOG_STATS,LOG_INIT,LOG_NLS,LOG_NLS_V \
+            > build/v42/initialization-hybrid.log 2>&1
           sim_status=$?
-          cat initialization-hybrid.log
+          cat build/v42/initialization-hybrid.log
           exit "$sim_status"
 
       - name: Upload complete initialization evidence
