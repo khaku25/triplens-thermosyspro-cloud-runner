@@ -88,6 +88,8 @@ class LiveFMUNetworkTests(unittest.TestCase):
         self.assertIn("Inspect native KINSOL runtime availability", workflow)
         self.assertIn("Extract the matching full OpenModelica runtime", workflow)
         self.assertIn("FMU_RUNTIME_LIBRARY=", workflow)
+        self.assertIn("liblapack.so.3", workflow)
+        self.assertIn("libblas.so.3", workflow)
         self.assertIn("gh run download", workflow)
 
     def test_fmu_preparer_changes_only_two_runtime_init_calls(self) -> None:

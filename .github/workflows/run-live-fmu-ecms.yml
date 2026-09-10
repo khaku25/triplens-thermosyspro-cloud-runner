@@ -117,7 +117,17 @@ jobs:
           docker cp \
             "$runtime_container:/usr/lib/x86_64-linux-gnu/omc/." \
             build/openmodelica-runtime/omc/
-          docker rm "$runtime_container"
+          for library in \
+            liblapack.so.3 \
+            libblas.so.3 \
+            libgfortran.so.5 \
+            libquadmath.so.0
+          do
+            docker cp -L \
+              "$runtime_container:/lib/x86_64-linux-gnu/$library" \
+              build/openmodelica-runtime/omc/
+          done
+          docker rm "$runtime_container" >/dev/null
           runtime_library="$PWD/build/openmodelica-runtime/omc/libSimulationRuntimeC.so"
           test -s "$runtime_library"
           LD_LIBRARY_PATH="$PWD/build/openmodelica-runtime/omc" ldd "$runtime_library" \
