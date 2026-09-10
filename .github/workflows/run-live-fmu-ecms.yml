@@ -12,6 +12,7 @@ on:
       - main
     paths:
       - "scripts/live_*.py"
+      - "scripts/prepare_standard_init_fmu.py"
       - "scripts/validate_live_fmu_contract.py"
       - "scripts/run_live_fmu_ecms.sh"
       - "requirements-live.txt"
@@ -33,7 +34,7 @@ jobs:
     env:
       UPSTREAM_RUN_ID: ${{ inputs.upstream_run_id || '34449701844' }}
       UPSTREAM_ARTIFACT: openmodelica-native-valve-fmu-46
-      EXPECTED_FMU_SHA256: 883ca79109cc5277a01868068e916ebb1ad7df346b841820ff7b5ea66c76f387
+      SOURCE_FMU_SHA256: 883ca79109cc5277a01868068e916ebb1ad7df346b841820ff7b5ea66c76f387
       LIVE_STOP_TIME_S: "2"
       LIVE_STEP_SIZE_S: "0.01"
       GH_TOKEN: ${{ github.token }}
@@ -50,7 +51,30 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --name "$UPSTREAM_ARTIFACT" \
             --dir build/upstream
-          test "$(sha256sum build/upstream/TripLens_Native_Valve_Control_V1.fmu | awk '{print $1}')" = "$EXPECTED_FMU_SHA256"
+          test "$(sha256sum build/upstream/TripLens_Native_Valve_Control_V1.fmu | awk '{print $1}')" = "$SOURCE_FMU_SHA256"
+
+      - name: Restore standard OpenModelica symbolic initialization
+        run: |
+          python3 scripts/prepare_standard_init_fmu.py \
+            --source-fmu build/upstream/TripLens_Native_Valve_Control_V1.fmu \
+            --work-dir build/runtime-fmu \
+            --manifest build/fmu-runtime-provenance.json
+          cmake -S build/runtime-fmu/sources -B build/runtime-fmu/cmake \
+            -DRUNTIME_DEPENDENCIES_LEVEL=none
+          cmake --build build/runtime-fmu/cmake --target create_fmu --parallel 2
+          runtime_sha256="$(sha256sum build/runtime-fmu/TripLens_Native_Valve_Control_V1.fmu | awk '{print $1}')"
+          echo "EXPECTED_FMU_SHA256=$runtime_sha256" >> "$GITHUB_ENV"
+          python3 - "$runtime_sha256" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          path = Path("build/fmu-runtime-provenance.json")
+          manifest = json.loads(path.read_text(encoding="utf-8"))
+          manifest["status"] = "BUILT"
+          manifest["runtime_fmu_sha256"] = sys.argv[1]
+          path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+          PY
 
       - name: Install pinned FMI runtime
         run: python3 -m pip install --disable-pip-version-check -r requirements-live.txt
@@ -58,7 +82,8 @@ jobs:
       - name: Prove commands to physics to ECMS over TCP
         run: |
           chmod +x scripts/run_live_fmu_ecms.sh
-          scripts/run_live_fmu_ecms.sh build/upstream/TripLens_Native_Valve_Control_V1.fmu
+          scripts/run_live_fmu_ecms.sh build/runtime-fmu/TripLens_Native_Valve_Control_V1.fmu
+          cp build/fmu-runtime-provenance.json outputs/live-main-fmu/
 
       - name: Upload live link proof and dashboard
         if: always()

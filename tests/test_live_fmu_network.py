@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import io
 import sys
+import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 
@@ -19,6 +21,13 @@ from live_protocol import (  # noqa: E402
     encode_frame,
     read_frame,
     scenario_commands,
+)
+from prepare_standard_init_fmu import (  # noqa: E402
+    EXPECTED_REPLACEMENTS,
+    FMI_INIT_CALL,
+    RUNTIME_SOURCE,
+    STANDARD_INIT_CALL,
+    prepare,
 )
 
 
@@ -69,8 +78,27 @@ class LiveFMUNetworkTests(unittest.TestCase):
         self.assertIn("gateway_pid=$!", runner)
         self.assertNotIn("cp build/thermosyspro", runner)
         self.assertIn('LIVE_STEP_SIZE_S: "0.01"', workflow)
-        self.assertIn("EXPECTED_FMU_SHA256", workflow)
+        self.assertIn('LIVE_STOP_TIME_S: "2"', workflow)
+        self.assertIn("SOURCE_FMU_SHA256", workflow)
+        self.assertIn("prepare_standard_init_fmu.py", workflow)
         self.assertIn("gh run download", workflow)
+
+    def test_fmu_preparer_changes_only_two_runtime_init_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "source.fmu"
+            runtime_text = "before\n" + (FMI_INIT_CALL + "\n") * EXPECTED_REPLACEMENTS + "after\n"
+            with zipfile.ZipFile(source, "w") as archive:
+                archive.writestr(RUNTIME_SOURCE.as_posix(), runtime_text)
+                archive.writestr("modelDescription.xml", "<fmiModelDescription/>")
+            work = root / "work"
+            manifest = root / "manifest.json"
+            result = prepare(source, work, manifest)
+            patched = (work / RUNTIME_SOURCE).read_text(encoding="utf-8")
+            self.assertNotIn(FMI_INIT_CALL, patched)
+            self.assertEqual(patched.count(STANDARD_INIT_CALL), EXPECTED_REPLACEMENTS)
+            self.assertFalse(result["physical_equations_changed"])
+            self.assertTrue(manifest.is_file())
 
 
 if __name__ == "__main__":
