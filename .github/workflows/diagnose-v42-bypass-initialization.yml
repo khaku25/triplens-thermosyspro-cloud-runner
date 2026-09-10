@@ -7,6 +7,8 @@ on:
       - "modelica/install_modelica_4_0.mos"
       - "modelica/build_v42_bypass_diagnostic.mos"
       - "modelica/build_v42_bypass_staged.mos"
+      - "modelica/build_v42_bypass_no_feedwater_inertia.mos"
+      - "modelica/build_v42_bypass_static_feedwater_mass.mos"
       - "modelica/build_v42_baseline_diagnostic.mos"
       - "modelica/apply_combined_cycle_warm_start.py"
       - "modelica/patch_thermosyspro_42_nominals.py"
@@ -28,25 +30,25 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - case_name: staged-hybrid
-            build_script: build_v42_bypass_staged.mos
-            executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass_OMCStart
-            tearing: omcTearing
-            nls: hybrid
-            use_warm: false
-            iim: symbolic
-          - case_name: staged-homotopy
+          - case_name: staged-reference
             build_script: build_v42_bypass_staged.mos
             executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass_OMCStart
             tearing: omcTearing
             nls: homotopy
             use_warm: false
             iim: symbolic
-          - case_name: staged-experimental-kinsol
-            build_script: build_v42_bypass_staged.mos
-            executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass_OMCStart
+          - case_name: staged-no-feedwater-inertia
+            build_script: build_v42_bypass_no_feedwater_inertia.mos
+            executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass_OMCStart_NoFeedwaterInertia
             tearing: omcTearing
-            nls: experimental-kinsol
+            nls: homotopy
+            use_warm: false
+            iim: symbolic
+          - case_name: staged-static-feedwater-mass
+            build_script: build_v42_bypass_static_feedwater_mass.mos
+            executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass_OMCStart_StaticFeedwaterMass
+            tearing: omcTearing
+            nls: homotopy
             use_warm: false
             iim: symbolic
     steps:
