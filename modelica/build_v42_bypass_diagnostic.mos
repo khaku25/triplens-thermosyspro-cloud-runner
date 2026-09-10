@@ -1,5 +1,5 @@
 setCommandLineOptions("--indexReductionMethod=dynamicStateSelection");
-setCommandLineOptions("--tearingMethod=omcTearing");
+setCommandLineOptions("-d=initialization,aliasConflicts");
 
 loadModel(Modelica, {"4.0.0"});
 getErrorString();
