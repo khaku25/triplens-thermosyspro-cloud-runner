@@ -224,7 +224,8 @@ PARAMETERS = f'''  // {MARKER}
 COMPONENTS = '''
   input Boolean vppExternalTripCommand(start=false) = false
     "Live ECMS GT Trip input exposed by the Co-Simulation FMU";
-  Real vppExternalTripCommandRegister(start=0, fixed=true, min=0, max=1)
+  Real vppExternalTripCommandRegister(
+    start=0, fixed=true, stateSelect=StateSelect.always)
     "Writable native OPC UA GT Trip command register";
   discrete Boolean vppSTTripLatch(start=false, fixed=true)
     "One-way resolved ST Trip latch for this physical scenario";
@@ -353,7 +354,10 @@ COMPONENTS = '''
 
 
 EQUATIONS = '''
-  der(vppExternalTripCommandRegister) = 0;
+  // The epsilon-scale hold equation prevents native code generation from
+  // folding this externally writable OPC UA command register into a constant.
+  der(vppExternalTripCommandRegister) =
+    -Modelica.Constants.eps*vppExternalTripCommandRegister;
   when (vppUseExternalTripInput and
         (vppExternalTripCommand or vppExternalTripCommandRegister >= 0.5)) or
        ((not vppUseExternalTripInput) and time >= vppTripTime) then
