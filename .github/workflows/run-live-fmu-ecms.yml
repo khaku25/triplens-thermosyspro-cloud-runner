@@ -37,6 +37,7 @@ jobs:
       SOURCE_FMU_SHA256: 883ca79109cc5277a01868068e916ebb1ad7df346b841820ff7b5ea66c76f387
       LIVE_STOP_TIME_S: "2"
       LIVE_STEP_SIZE_S: "0.01"
+      OPENMODELICA_IMAGE: openmodelica/openmodelica:v1.27.0-minimal
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
@@ -98,6 +99,18 @@ jobs:
           test -s build/runtime-artifact/fmu-runtime-provenance.json
           runtime_sha256="$(sha256sum build/runtime-artifact/TripLens_Native_Valve_Control_V1.fmu | awk '{print $1}')"
           echo "EXPECTED_FMU_SHA256=$runtime_sha256" >> "$GITHUB_ENV"
+
+      - name: Inspect native KINSOL runtime availability
+        run: |
+          docker run --rm "$OPENMODELICA_IMAGE" bash -lc '
+            find /usr -type f \( \
+              -name "libSimulationRuntimeC*" -o \
+              -name "kinsolSolver.c" -o \
+              -name "kinsol_b.c" -o \
+              -name "libsundials_kinsol*" -o \
+              -name "libkinsol*" \
+            \) -print 2>/dev/null | sort
+          '
 
       - name: Install pinned FMI runtime
         run: python3 -m pip install --disable-pip-version-check -r requirements-live.txt
