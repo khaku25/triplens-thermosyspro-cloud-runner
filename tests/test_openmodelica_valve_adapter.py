@@ -44,6 +44,10 @@ class OpenModelicaValveAdapterTests(unittest.TestCase):
                 f"{prefix}MassFlow = 3.6*{point.object_name}.Q",
                 self.patched,
             )
+            self.assertIn(
+                f"{prefix}Dp = noEvent({point.object_name}.deltaP)",
+                self.patched,
+            )
             if point.original_connect:
                 self.assertNotIn(f"connect({point.original_connect})", self.patched)
 
