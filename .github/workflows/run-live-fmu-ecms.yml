@@ -103,13 +103,13 @@ jobs:
       - name: Inspect native KINSOL runtime availability
         run: |
           docker run --rm "$OPENMODELICA_IMAGE" bash -lc '
-            find /usr -type f \( \
-              -name "libSimulationRuntimeC*" -o \
-              -name "kinsolSolver.c" -o \
-              -name "kinsol_b.c" -o \
-              -name "libsundials_kinsol*" -o \
-              -name "libkinsol*" \
-            \) -print 2>/dev/null | sort
+            runtime=/usr/lib/x86_64-linux-gnu/omc/libSimulationRuntimeC.so
+            test -s "$runtime"
+            ldd "$runtime"
+            nm -D --defined-only "$runtime" | grep -E \
+              " (initialization|initializeNonlinearSystemData|nlsKinsolAllocate)$"
+            python3 --version
+            python3 -m pip --version
           '
 
       - name: Install pinned FMI runtime
