@@ -129,7 +129,6 @@ jobs:
                 -newton=damped_ls \
                 -newtonFTol=1e-8 \
                 -newtonXTol=1e-8 \
-                -jacobianNominalFactor=0.01 \
                 -nlsInfo \
                 -lv=LOG_STDOUT,LOG_ASSERT,LOG_STATS,LOG_INIT,LOG_NLS,LOG_NLS_V \
             > build/v42/initialization.log 2>&1
