@@ -76,6 +76,7 @@ class LiveFMUNetworkTests(unittest.TestCase):
         self.assertIn("live_fmu_gateway.py", runner)
         self.assertIn("live_ecms_client.py", runner)
         self.assertIn("gateway_pid=$!", runner)
+        self.assertIn("LD_PRELOAD=$runtime_library", runner)
         self.assertNotIn("cp build/thermosyspro", runner)
         self.assertIn('LIVE_STEP_SIZE_S: "0.01"', workflow)
         self.assertIn('LIVE_STOP_TIME_S: "2"', workflow)
@@ -85,6 +86,8 @@ class LiveFMUNetworkTests(unittest.TestCase):
         self.assertIn("actions/cache/save@v4", workflow)
         self.assertIn("build/runtime-artifact/TripLens_Native_Valve_Control_V1.fmu", workflow)
         self.assertIn("Inspect native KINSOL runtime availability", workflow)
+        self.assertIn("Extract the matching full OpenModelica runtime", workflow)
+        self.assertIn("FMU_RUNTIME_LIBRARY=", workflow)
         self.assertIn("gh run download", workflow)
 
     def test_fmu_preparer_changes_only_two_runtime_init_calls(self) -> None:

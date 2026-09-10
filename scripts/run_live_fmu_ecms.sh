@@ -15,6 +15,8 @@ step_size_s="${LIVE_STEP_SIZE_S:-0.01}"
 expected_fmu_sha256="${EXPECTED_FMU_SHA256:-883ca79109cc5277a01868068e916ebb1ad7df346b841820ff7b5ea66c76f387}"
 output_dir="$project_root/outputs/live-main-fmu"
 ready_file="$output_dir/gateway-ready.json"
+runtime_library="${FMU_RUNTIME_LIBRARY:-}"
+runtime_library_path="${FMU_RUNTIME_LIBRARY_PATH:-}"
 
 if [[ ! -s "$fmu_path" ]]; then
   echo "FMU not found: $fmu_path" >&2
@@ -29,7 +31,21 @@ python3 scripts/validate_live_fmu_contract.py --fmu "$fmu_path"
 
 rm -rf "$output_dir"
 mkdir -p "$output_dir"
-python3 scripts/live_fmu_gateway.py \
+gateway_command=(python3 scripts/live_fmu_gateway.py)
+if [[ -n "$runtime_library" ]]; then
+  if [[ ! -s "$runtime_library" ]]; then
+    echo "OpenModelica runtime library not found: $runtime_library" >&2
+    exit 1
+  fi
+  if [[ -z "$runtime_library_path" ]]; then
+    runtime_library_path="$(dirname -- "$runtime_library")"
+  fi
+  gateway_command=(env \
+    "LD_LIBRARY_PATH=$runtime_library_path${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    "LD_PRELOAD=$runtime_library" \
+    python3 scripts/live_fmu_gateway.py)
+fi
+"${gateway_command[@]}" \
   --fmu "$fmu_path" \
   --stop-time "$stop_time_s" \
   --step-size "$step_size_s" \

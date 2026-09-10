@@ -278,6 +278,18 @@ def main() -> int:
         "inputs_per_frame": len(COMMAND_INPUTS),
         "telemetry_values_per_frame": len(LIVE_SIGNALS),
         "sequence_errors": sequence_errors,
+        "openmodelica_runtime": {
+            "mode": (
+                "FULL_OPENMODELICA_RUNTIME_PRELOAD"
+                if os.environ.get("FMU_RUNTIME_LIBRARY")
+                else "FMU_EMBEDDED_RUNTIME"
+            ),
+            "library_sha256": (
+                sha256(Path(os.environ["FMU_RUNTIME_LIBRARY"]))
+                if os.environ.get("FMU_RUNTIME_LIBRARY")
+                else None
+            ),
+        },
         "step_size_s": args.step_size,
         "stop_time_s": args.stop_time,
         "fmu": {"file": args.fmu.name, "sha256": fmu_digest, **metadata},

@@ -45,6 +45,11 @@ def main() -> int:
 
     if gateway.get("status") != "PASS" or client.get("status") != "PASS":
         errors.append("gateway or ECMS client did not report PASS")
+    runtime = gateway.get("openmodelica_runtime", {})
+    if runtime.get("mode") != "FULL_OPENMODELICA_RUNTIME_PRELOAD":
+        errors.append("full OpenModelica nonlinear runtime was not active")
+    if len(str(runtime.get("library_sha256") or "")) != 64:
+        errors.append("full OpenModelica runtime library SHA-256 is missing")
     for report in (gateway, client):
         if report.get("protocol") != PROTOCOL:
             errors.append("wire protocol mismatch")

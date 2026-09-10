@@ -108,9 +108,26 @@ jobs:
             ldd "$runtime"
             nm -D --defined-only "$runtime" | grep -E \
               " (initialization|initializeNonlinearSystemData|nlsKinsolAllocate)$"
-            python3 --version
-            python3 -m pip --version
           '
+
+      - name: Extract the matching full OpenModelica runtime
+        run: |
+          mkdir -p build/openmodelica-runtime/omc
+          runtime_container="$(docker create "$OPENMODELICA_IMAGE")"
+          docker cp \
+            "$runtime_container:/usr/lib/x86_64-linux-gnu/omc/." \
+            build/openmodelica-runtime/omc/
+          docker rm "$runtime_container"
+          runtime_library="$PWD/build/openmodelica-runtime/omc/libSimulationRuntimeC.so"
+          test -s "$runtime_library"
+          LD_LIBRARY_PATH="$PWD/build/openmodelica-runtime/omc" ldd "$runtime_library" \
+            | tee build/openmodelica-runtime/runtime-ldd.txt
+          if grep -q "not found" build/openmodelica-runtime/runtime-ldd.txt; then
+            exit 1
+          fi
+          echo "FMU_RUNTIME_LIBRARY=$runtime_library" >> "$GITHUB_ENV"
+          echo "FMU_RUNTIME_LIBRARY_PATH=$PWD/build/openmodelica-runtime/omc" >> "$GITHUB_ENV"
+          sha256sum "$runtime_library" | tee build/openmodelica-runtime/runtime-sha256.txt
 
       - name: Install pinned FMI runtime
         run: python3 -m pip install --disable-pip-version-check -r requirements-live.txt
@@ -128,5 +145,6 @@ jobs:
           name: main-fmu-ecms-live-${{ github.run_number }}
           path: |
             outputs/live-main-fmu/**
+            build/openmodelica-runtime/runtime-*.txt
           if-no-files-found: warn
           retention-days: 30
