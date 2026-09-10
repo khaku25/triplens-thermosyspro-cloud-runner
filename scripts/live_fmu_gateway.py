@@ -73,9 +73,50 @@ class PhysicalFMU:
         )
         self._slave.instantiate(loggingOn=True)
         self._slave.setupExperiment(startTime=0.0, stopTime=stop_time, tolerance=tolerance)
+        self._declared_start_count = self._apply_declared_starts(description)
         self._slave.enterInitializationMode()
         self._slave.exitInitializationMode()
         self._closed = False
+
+    def _apply_declared_starts(self, description: Any) -> int:
+        """Restore the starts used by the native Modelica executable.
+
+        OpenModelica's FMI initialization path intentionally does not call its
+        normal setAllParamsToStart/setAllVarsToStart helpers. FMI permits an
+        importer to set parameters, inputs and variables with initial=exact
+        before entering initialization mode, so apply only those declared
+        values from modelDescription.xml. No guessed state is introduced.
+        """
+        values_by_kind: dict[str, dict[int, object]] = {
+            "Real": {}, "Boolean": {}, "Integer": {}, "String": {},
+        }
+        for variable in description.modelVariables:
+            if variable.start is None:
+                continue
+            if variable.causality not in ("parameter", "input") and variable.initial != "exact":
+                continue
+            values_by_kind[variable.type][variable.valueReference] = variable.start
+        if values_by_kind["Real"]:
+            self._slave.setReal(
+                list(values_by_kind["Real"]),
+                [float(value) for value in values_by_kind["Real"].values()],
+            )
+        if values_by_kind["Boolean"]:
+            self._slave.setBoolean(
+                list(values_by_kind["Boolean"]),
+                [bool(value) for value in values_by_kind["Boolean"].values()],
+            )
+        if values_by_kind["Integer"]:
+            self._slave.setInteger(
+                list(values_by_kind["Integer"]),
+                [int(value) for value in values_by_kind["Integer"].values()],
+            )
+        if values_by_kind["String"]:
+            self._slave.setString(
+                list(values_by_kind["String"]),
+                [str(value) for value in values_by_kind["String"].values()],
+            )
+        return sum(len(items) for items in values_by_kind.values())
 
     def set_inputs(self, values: dict[str, object]) -> None:
         expected = {item.fmu_name for item in COMMAND_INPUTS}
@@ -282,6 +323,7 @@ def main() -> int:
         "step_size_s": args.step_size,
         "stop_time_s": args.stop_time,
         "fmu": {"file": args.fmu.name, "sha256": fmu_digest, **metadata},
+        "declared_start_values_applied": model._declared_start_count,
         "command_rx_sha256": sha256(command_log_path),
         "telemetry_tx_sha256": sha256(telemetry_log_path),
     }
