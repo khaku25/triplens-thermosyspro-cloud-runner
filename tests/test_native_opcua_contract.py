@@ -59,7 +59,7 @@ class NativeOPCUAContractTests(unittest.TestCase):
         patch = (ROOT / "scripts/patch_turbine_bypass_model.py").read_text(encoding="utf-8")
         self.assertIn("input Boolean vppExternalTripCommand(start=false) = false", patch)
         self.assertIn("stateSelect=StateSelect.always", patch)
-        self.assertIn("-Modelica.Constants.eps*vppExternalTripCommandRegister", patch)
+        self.assertIn("Modelica.Constants.eps*sin(time)", patch)
         client = (ROOT / "scripts/native_ecms_opcua_client.py").read_text(encoding="utf-8")
         self.assertIn('command_name = "vppExternalTripCommandRegister"', client)
         self.assertIn("ua.VariantType.Double", client)

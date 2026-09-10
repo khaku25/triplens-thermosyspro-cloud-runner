@@ -354,10 +354,10 @@ COMPONENTS = '''
 
 
 EQUATIONS = '''
-  // The epsilon-scale hold equation prevents native code generation from
-  // folding this externally writable OPC UA command register into a constant.
+  // The time-dependent epsilon-scale hold equation prevents native code
+  // generation from folding this externally writable register into a constant.
   der(vppExternalTripCommandRegister) =
-    -Modelica.Constants.eps*vppExternalTripCommandRegister;
+    Modelica.Constants.eps*sin(time);
   when (vppUseExternalTripInput and
         (vppExternalTripCommand or vppExternalTripCommandRegister >= 0.5)) or
        ((not vppUseExternalTripInput) and time >= vppTripTime) then
