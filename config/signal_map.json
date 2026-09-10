@@ -30,12 +30,154 @@
         "QUALITY"
       ]
     },
+    "gt_trip_cmd": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "vppGTTripCmd",
+        "CMD.GTG.TRIP",
+        "gt_trip_cmd"
+      ]
+    },
+    "gt_trip_latch": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "vppGTTripLatch",
+        "CTRL.GTG.TRIP_LATCH",
+        "gt_trip_latch"
+      ]
+    },
+    "st_trip_latch": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "vppSTTripLatch",
+        "CTRL.STG.TRIP_LATCH",
+        "st_trip_latch"
+      ]
+    },
+    "cb_52gt_trip_cmd": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "vpp52GTTripCmd",
+        "ECMS.52GT.TRIP_CMD",
+        "cb_52gt_trip_cmd"
+      ]
+    },
+    "cb_52gt_closed": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "vpp52GTClosed",
+        "ECMS.52GT.CLOSED",
+        "cb_52gt_closed"
+      ]
+    },
+    "cb_52st_trip_cmd": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "vpp52STTripCmd",
+        "ECMS.52ST.TRIP_CMD",
+        "cb_52st_trip_cmd"
+      ]
+    },
+    "cb_52st_closed": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "vpp52STClosed",
+        "ECMS.52ST.CLOSED",
+        "cb_52st_closed"
+      ]
+    },
+    "gtg_power_mw": {
+      "required": false,
+      "unit": "MW",
+      "aliases": [
+        "vppGTGPowerMW",
+        "gtg_power_mw"
+      ]
+    },
+    "gtg_speed_rpm": {
+      "required": false,
+      "unit": "rpm",
+      "aliases": [
+        "vppGTGSpeedRPM",
+        "gtg_speed_rpm"
+      ]
+    },
     "stg_power_w": {
       "required": false,
       "unit": "W",
       "aliases": [
         "Alternateur.Welec",
         "stg_power_w"
+      ]
+    },
+    "hp_admission_valve_pu": {
+      "required": false,
+      "unit": "pu",
+      "aliases": [
+        "vppHPAdmissionPos",
+        "hp_admission_valve_pu"
+      ]
+    },
+    "ip_admission_valve_pu": {
+      "required": false,
+      "unit": "pu",
+      "aliases": [
+        "vppIPAdmissionPos",
+        "ip_admission_valve_pu"
+      ]
+    },
+    "lp_admission_multiplier_pu": {
+      "required": false,
+      "unit": "pu",
+      "aliases": [
+        "vppLPDrumAdmissionMultiplier",
+        "lp_admission_multiplier_pu"
+      ]
+    },
+    "hp_bypass_valve_pu": {
+      "required": false,
+      "unit": "pu",
+      "aliases": [
+        "vppHPBypassPos",
+        "hp_bypass_valve_pu"
+      ]
+    },
+    "lp_bypass_valve_pu": {
+      "required": false,
+      "unit": "pu",
+      "aliases": [
+        "vppLPBypassPos",
+        "lp_bypass_valve_pu"
+      ]
+    },
+    "hp_bypass_spray_valve_pu": {
+      "required": false,
+      "unit": "pu",
+      "aliases": [
+        "vppHPSprayPos",
+        "hp_bypass_spray_valve_pu"
+      ]
+    },
+    "lp_bypass_spray_valve_pu": {
+      "required": false,
+      "unit": "pu",
+      "aliases": [
+        "vppLPSprayPos",
+        "lp_bypass_spray_valve_pu"
       ]
     },
     "gt_exhaust_mass_flow_t_h": {
@@ -192,6 +334,22 @@
       "source_multipliers": {
         "vppLPSprayMassFlow": 3.6
       }
+    },
+    "condenser_pressure_pa": {
+      "required": false,
+      "unit": "Pa",
+      "aliases": [
+        "vppCondenserPressure",
+        "condenser_pressure_pa"
+      ]
+    },
+    "condenser_level_m": {
+      "required": false,
+      "unit": "m",
+      "aliases": [
+        "vppCondenserLevel",
+        "condenser_level_m"
+      ]
     },
     "hp_feedwater_valve_pu": {
       "required": false,
