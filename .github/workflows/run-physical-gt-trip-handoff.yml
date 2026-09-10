@@ -1,0 +1,62 @@
+name: Verify physical GT Trip to ECMS handoff
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: OpenModelica physical commissioning profile
+        required: true
+        type: choice
+        default: gt_trip_commissioning_1ms
+        options:
+          - gt_trip_commissioning_1ms
+          - gt_trip_full_100ms
+  push:
+    branches:
+      - codex/physical-raw-ecms-handoff-20260910
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: physical-gt-trip-ecms-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulate-and-prove:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out physical model
+        uses: actions/checkout@v4
+
+      - name: Verify contracts before simulation
+        run: |
+          python3 -m unittest \
+            tests.test_physical_handoff \
+            tests.test_processbus_contract_v2 \
+            tests.test_trip_contract \
+            tests.test_turbine_bypass_patch -v
+
+      - name: Solve and transport physical values
+        env:
+          OPENMODELICA_DEPENDENCY_TIMEOUT: 5m
+          OPENMODELICA_SIMULATION_TIMEOUT: 25m
+        run: |
+          chmod +x scripts/run_physical_gt_trip_handoff.sh
+          scripts/run_physical_gt_trip_handoff.sh "${{ inputs.profile || 'gt_trip_commissioning_1ms' }}"
+
+      - name: Publish physical proof and ECMS dashboard
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: physical-gt-trip-ecms-${{ github.run_number }}
+          path: |
+            outputs/thermosyspro-raw.csv
+            outputs/raw-manifest.json
+            outputs/integration/**
+          if-no-files-found: error
+          retention-days: 30
