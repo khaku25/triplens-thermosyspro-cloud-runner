@@ -353,8 +353,7 @@ model CombinedCycle_TripTAC_Bypass
     "One-way resolved ST Trip latch for this physical scenario";
   Real vppHPAdmissionPos(start=0.8, fixed=true, min=0, max=1);
   Real vppIPAdmissionPos(start=0.8, fixed=true, min=0, max=1);
-  Real vppLPDrumAdmissionPos(start=0.8, fixed=true, min=0, max=1)
-    "LP drum steam-valve actuator position";
+  Real vppLPDrumAdmissionMultiplier(start=1, fixed=true, min=0, max=1);
   Real vppHPBypassCmd(min=0, max=1);
   Real vppLPBypassCmd(min=0, max=1);
   Real vppHPBypassPos(start=vppValveLeak, fixed=true, min=0, max=1);
@@ -492,9 +491,9 @@ equation
     ((if vppSTTripLatch then vppAdmissionSeatLeak else 0.8)
       - vppIPAdmissionPos)
       /vppAdmissionTau;
-  der(vppLPDrumAdmissionPos) =
-    ((if vppSTTripLatch then vppAdmissionSeatLeak else 0.8)
-      - vppLPDrumAdmissionPos)/vppAdmissionTau;
+  der(vppLPDrumAdmissionMultiplier) =
+    ((if vppSTTripLatch then vppAdmissionSeatLeak else 1)
+      - vppLPDrumAdmissionMultiplier)/vppAdmissionTau;
   der(vppHPBypassPos) =
     (vppHPBypassCmd - vppHPBypassPos)/vppHPBypassTau;
   der(vppLPBypassPos) =
@@ -526,14 +525,8 @@ equation
 
   vanne_entree_TurbineHP.Ouv.signal = vppHPAdmissionPos;
   vanne_entree_TurbineMP.Ouv.signal = vppIPAdmissionPos;
-  // ThermoSysPro 4.2 initializes the permanent BP drum PI output at its
-  // limiter minimum in OpenModelica, although the hydraulic operating point
-  // used to size Cvmax assumes 0.8.  Feeding that discontinuous controller
-  // value straight into the valve creates a fictitious ~358 MPa pressure
-  // drop immediately after initialization.  Use the physical admission
-  // actuator position for the Trip scenario, consistent with the HP/IP
-  // admission valves and their documented 0.8 operating point.
-  vanne_vapeurBP.Ouv.signal = vppLPDrumAdmissionPos;
+  vanne_vapeurBP.Ouv.signal =
+    regulation_Niveau_BP.SortieReelle1.signal*vppLPDrumAdmissionMultiplier;
   vppHPBypassValve.Ouv.signal = vppHPBypassPos;
   vppLPBypassValve.Ouv.signal = vppLPBypassPos;
   vppHPSprayFlowCommand.signal = noEvent(max(vppSpraySeatLeak,
