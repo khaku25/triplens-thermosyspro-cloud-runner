@@ -247,9 +247,9 @@ model CombinedCycle_TripTAC_Bypass
     Placement(transformation(origin = {869, -270}, extent = {{12, -12}, {-12, 12}}, rotation = 270)));
   ThermoSysPro.WaterSteam.Volumes.VolumeA VolumeAlimMPHP(mode = 1, h(start = 561432.6820300613), P(start = 322430)) annotation(
     Placement(transformation(extent = {{709, -20}, {729, 0}}, rotation = 0)));
-  ThermoSysPro.WaterSteam.Machines.StaticCentrifugalPump PompeAlimMP(a3 = 350, b1(fixed = true) = -3.7751, a1 = -244551, Q(fixed = false), mode = 1, C1(h_vol(start = 561432.6820300613)), C2(h_vol(start = 576430.3612424443)), Qv(start = 0.013433660889458656), pro(d(start = 931.2517020786314)), Pm(start = 1725850)) annotation(
+  ThermoSysPro.WaterSteam.Machines.StaticCentrifugalPump PompeAlimMP(a3 = 350, b1(fixed = true) = -3.7751, a1 = -244551, Q(fixed = false), mode = 1, C1(h_vol(start = 561432.6820300613)), C2(h_vol(start = 576430.3612424443)), h(start = 568931.5216362528), Qv(start = 0.013433660889458656), pro(d(start = 931.2517020786314)), Pm(start = 1725850)) annotation(
     Placement(transformation(extent = {{771, -20}, {791, 0}}, rotation = 0)));
-  ThermoSysPro.WaterSteam.Machines.StaticCentrifugalPump PompeAlimHP(a3 = 1600, a1 = -28056.2, b1 = -12.7952660447433, Q(fixed = false), mode = 1, C1(h_vol(start = 561432.6820300613)), C2(h_vol(start = 630040.8772883223)), Qv(start = 0.08167585768192882), pro(d(start = 929.0940034498418)), Pm(start = 6774000)) annotation(
+  ThermoSysPro.WaterSteam.Machines.StaticCentrifugalPump PompeAlimHP(a3 = 1600, a1 = -28056.2, b1 = -12.7952660447433, Q(fixed = false), mode = 1, C1(h_vol(start = 561432.6820300613)), C2(h_vol(start = 630040.8772883223)), h(start = 595736.7796591918), Qv(start = 0.08167585768192882), pro(d(start = 929.0940034498418)), Pm(start = 6774000)) annotation(
     Placement(transformation(extent = {{771, -60}, {791, -40}}, rotation = 0)));
   ThermoSysPro.WaterSteam.Junctions.MassFlowMultiplier MoitieDebitBP(alpha = 0.5, h(start = 194585), P(start = 1540500), Cs(h(start = 194585))) annotation(
     Placement(transformation(extent = {{839, -328}, {853, -308}}, rotation = 0)));
@@ -845,6 +845,7 @@ model CombinedCycle_TripTAC_Bypass_OMCStart
       P0=536006.6647383622, hl0=561432.6820300646,
       hv0=2682927.2097681486, Vf0=0.4206302498863762,
       zl(fixed=false)),
+    VolumeAlimMPHP(steady_state=false, h0=561432.6820300613),
     EvaporateurHP(
       TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
         h0={1842386.3805685563,2019815.5675635953,2101914.802366878}),
@@ -926,9 +927,11 @@ model CombinedCycle_TripTAC_Bypass_OMCStart_NoFeedwaterInertia
 end CombinedCycle_TripTAC_Bypass_OMCStart_NoFeedwaterInertia;
 
 model CombinedCycle_TripTAC_Bypass_OMCStart_StaticFeedwaterMass
-  "Staged start with static mass balance in the first HP/MP economizers"
+  "Staged start with algebraic hydraulics in the first HP/MP economizers"
   extends CombinedCycle_TripTAC_Bypass_OMCStart(
-    EconomiseurHP1(TwoPhaseFlowPipe(dynamic_mass_balance=false)),
-    EconomiseurMP(TwoPhaseFlowPipe(dynamic_mass_balance=false)));
+    EconomiseurHP1(TwoPhaseFlowPipe(dynamic_mass_balance=false,
+      inertia=false)),
+    EconomiseurMP(TwoPhaseFlowPipe(dynamic_mass_balance=false,
+      inertia=false)));
 end CombinedCycle_TripTAC_Bypass_OMCStart_StaticFeedwaterMass;
 end TripLensUserModels_Bypass;
