@@ -10,6 +10,7 @@ on:
       - "scripts/patch_turbine_bypass_model.py"
       - "scripts/validate_fmu_valve_smoke.py"
       - "modelica/TripLens_Valve_Adapter_Smoke.mo"
+      - "modelica/TripLens_Valve_Adapter_All_Smoke.mo"
       - "modelica/build_fmu_valve_adapter.mos"
       - "tests/test_openmodelica_valve_adapter.py"
       - ".github/workflows/build-openmodelica-valve-fmu.yml"
@@ -70,11 +71,12 @@ jobs:
           fi
           test -s build/valve_auto_baseline_res.csv
           test -s build/valve_manual_fault_smoke_res.csv
+          test -s build/valve_all_manual_smoke_res.csv
           test -s build/TripLens_Native_Valve_Control_V1.fmu
 
       - name: Prove command-to-physics linkage and FMI causality
         run: |
-          python3 scripts/validate_fmu_valve_smoke.py             --auto build/valve_auto_baseline_res.csv             --smoke build/valve_manual_fault_smoke_res.csv             --fmu build/TripLens_Native_Valve_Control_V1.fmu             | tee build/native-valve-physics-validation.log
+          python3 scripts/validate_fmu_valve_smoke.py             --auto build/valve_auto_baseline_res.csv             --smoke build/valve_manual_fault_smoke_res.csv             --all-manual build/valve_all_manual_smoke_res.csv             --fmu build/TripLens_Native_Valve_Control_V1.fmu             | tee build/native-valve-physics-validation.log
           grep -q OPENMODELICA_NATIVE_VALVE_PHYSICS_PASS             build/native-valve-physics-validation.log
 
       - name: Upload FMU and physical evidence
@@ -86,6 +88,7 @@ jobs:
             build/TripLens_Native_Valve_Control_V1.fmu
             build/valve_auto_baseline_res.csv
             build/valve_manual_fault_smoke_res.csv
+            build/valve_all_manual_smoke_res.csv
             build/openmodelica-valve-fmu.log
             build/native-valve-physics-validation.log
           if-no-files-found: warn
