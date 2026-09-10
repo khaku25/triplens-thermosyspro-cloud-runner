@@ -5,6 +5,8 @@ loadFile("/workspace/vendor/ThermoSysPro/ThermoSysPro/package.mo");
 getErrorString();
 loadFile("/workspace/build/TripLens_CombinedCycle_TripTAC.mo");
 getErrorString();
+setIndexReductionMethod("dummyDerivatives");
+getErrorString();
 cd("/workspace/build");
 buildModelFMU(
   TripLens_CombinedCycle_TripTAC,
