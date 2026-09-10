@@ -1,0 +1,14 @@
+setCommandLineOptions("--std=3.4");
+loadModel(Modelica, {"3.2.3"});
+getErrorString();
+loadFile("/workspace/vendor/ThermoSysPro/ThermoSysPro/package.mo");
+getErrorString();
+loadFile("/workspace/build/TripLens_CombinedCycle_TripTAC.mo");
+getErrorString();
+cd("/workspace/build");
+buildModelFMU(
+  TripLens_CombinedCycle_TripTAC,
+  version="2.0",
+  fmuType="cs",
+  fileNamePrefix="TripLens_Native_Valve_Control_V1");
+getErrorString();
