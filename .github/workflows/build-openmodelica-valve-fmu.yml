@@ -11,6 +11,7 @@ on:
       - "scripts/validate_fmu_valve_smoke.py"
       - "modelica/TripLens_Valve_Adapter_Smoke.mo"
       - "modelica/TripLens_Valve_Adapter_All_Smoke.mo"
+      - "modelica/TripLens_FMU_Valve_Export.mo"
       - "modelica/build_fmu_valve_adapter.mos"
       - "modelica/build_fmu_valve_only.mos"
       - "tests/test_openmodelica_valve_adapter.py"
