@@ -30,7 +30,7 @@ concurrency:
 jobs:
   live-main-fmu-link:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       UPSTREAM_RUN_ID: ${{ inputs.upstream_run_id || '34449701844' }}
       UPSTREAM_ARTIFACT: openmodelica-native-valve-fmu-46
@@ -92,19 +92,27 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: build/runtime-artifact
-          key: openmodelica-full-runtime-${{ env.SOURCE_FMU_SHA256 }}-v2
+          key: openmodelica-full-runtime-${{ env.SOURCE_FMU_SHA256 }}-v3
+
+      - name: Restore full-runtime compiler objects
+        id: runtime-object-cache
+        if: steps.runtime-fmu-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: build/runtime-cmake
+          key: openmodelica-full-runtime-objects-${{ env.SOURCE_FMU_SHA256 }}-v3
 
       - name: Build full-runtime FMU with standard symbolic initialization
         if: steps.runtime-fmu-cache.outputs.cache-hit != 'true'
         run: |
           python3 scripts/prepare_standard_init_fmu.py \
             --source-fmu build/upstream/TripLens_Native_Valve_Control_V1.fmu \
-            --work-dir build/runtime-fmu \
+            --work-dir build/runtime-source \
             --manifest build/runtime-artifact/fmu-runtime-provenance.json
-          cmake -S build/runtime-fmu/sources -B build/runtime-fmu/cmake \
+          cmake -S build/runtime-source/sources -B build/runtime-cmake \
             -DRUNTIME_DEPENDENCIES_LEVEL=none \
             -DOPENMODELICA_RUNTIME_DIRECTORY="$PWD/build/openmodelica-runtime/omc"
-          cmake --build build/runtime-fmu/cmake --target create_fmu --parallel "$(nproc)"
+          cmake --build build/runtime-cmake --target create_fmu --parallel "$(nproc)"
           test -s build/TripLens_Native_Valve_Control_V1.fmu
           mv build/TripLens_Native_Valve_Control_V1.fmu build/runtime-artifact/
           unzip -p build/runtime-artifact/TripLens_Native_Valve_Control_V1.fmu \
@@ -126,6 +134,13 @@ jobs:
           manifest["runtime_fmu_sha256"] = sys.argv[1]
           path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
           PY
+
+      - name: Save full-runtime compiler objects
+        if: always() && steps.runtime-fmu-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: build/runtime-cmake
+          key: ${{ steps.runtime-object-cache.outputs.cache-primary-key }}
 
       - name: Save rebuilt runtime FMU
         if: steps.runtime-fmu-cache.outputs.cache-hit != 'true'
