@@ -109,6 +109,8 @@ jobs:
             --source-fmu build/upstream/TripLens_Native_Valve_Control_V1.fmu \
             --work-dir build/runtime-source \
             --manifest build/runtime-artifact/fmu-runtime-provenance.json
+          find build/runtime-source -type f \
+            -exec touch -d '2000-01-01T00:00:00Z' {} +
           cmake -S build/runtime-source/sources -B build/runtime-cmake \
             -DRUNTIME_DEPENDENCIES_LEVEL=none \
             -DOPENMODELICA_RUNTIME_DIRECTORY="$PWD/build/openmodelica-runtime/omc"
@@ -136,7 +138,10 @@ jobs:
           PY
 
       - name: Save full-runtime compiler objects
-        if: always() && steps.runtime-fmu-cache.outputs.cache-hit != 'true'
+        if: >-
+          always() &&
+          steps.runtime-fmu-cache.outputs.cache-hit != 'true' &&
+          steps.runtime-object-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: build/runtime-cmake

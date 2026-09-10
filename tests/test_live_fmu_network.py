@@ -92,6 +92,7 @@ class LiveFMUNetworkTests(unittest.TestCase):
         self.assertIn("actions/cache/save@v4", workflow)
         self.assertIn("Restore full-runtime compiler objects", workflow)
         self.assertIn("Save full-runtime compiler objects", workflow)
+        self.assertIn("2000-01-01T00:00:00Z", workflow)
         self.assertIn("build/runtime-artifact/TripLens_Native_Valve_Control_V1.fmu", workflow)
         self.assertIn("Extract the matching full OpenModelica runtime", workflow)
         self.assertIn("FMU_RUNTIME_LIBRARY=", workflow)
