@@ -67,6 +67,8 @@ class NativeOPCUAContractTests(unittest.TestCase):
         self.assertIn("command_written", client)
         self.assertIn("while current < args.stop_time - args.step_size / 2", client)
         self.assertIn("initial_values = client.get_values(signal_nodes)", client)
+        self.assertIn("def request_step(", client)
+        self.assertIn("time.monotonic() + 0.25", client)
 
         build_script = (ROOT / "modelica/build_native_opcua.mos.tpl").read_text(
             encoding="utf-8"

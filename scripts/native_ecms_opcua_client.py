@@ -100,13 +100,17 @@ def wait_for_model_nodes(client, required: set[str], timeout_s: float) -> dict[s
     )
 
 
-def wait_for_time(node: object, previous: float, timeout_s: float) -> float:
+def request_step(step_node: object, time_node: object, previous: float, ua, timeout_s: float) -> float:
+    """Request one native step, tolerating the server's initial registration race."""
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
-        current = float(node.get_value())
-        if current > previous + 1e-12:
-            return current
-        time.sleep(0.002)
+        step_node.set_value(ua.Variant(True, ua.VariantType.Boolean))
+        retry_at = min(deadline, time.monotonic() + 0.25)
+        while time.monotonic() < retry_at:
+            current = float(time_node.get_value())
+            if current > previous + 1e-12:
+                return current
+            time.sleep(0.002)
     raise TimeoutError(f"native solver did not advance beyond {previous:.9f} s")
 
 
@@ -191,25 +195,26 @@ def main() -> int:
         command_node = nodes[command_name]
         signal_nodes = [nodes[signal.node_name] for signal in SIGNALS]
         current = float(time_node.get_value())
-        if current < args.step_size / 2:
-            # The server registers nodes before reaching its first pause.  Do
-            # not send a step during that short window: waitForStep() clears
-            # an early step request before it starts waiting.
-            current = wait_for_time(time_node, current, 30.0)
-
         initial_readback = float(command_node.get_value()) >= 0.5
-        initial_values = client.get_values(signal_nodes)
-        initial_row: dict[str, float | int] = {
-            "sequence": 0,
-            "time_s": current,
-            "ecms_command_sent": 0,
-            "gt_trip_command_readback": int(initial_readback),
-            "round_trip_ms": 0.0,
-        }
-        initial_row.update(
-            {signal.field: as_number(value) for signal, value in zip(SIGNALS, initial_values)}
-        )
-        rows.append(initial_row)
+        if current > args.step_size / 2:
+            # If attachment happens after the first pause, retain that already
+            # solved frame. At the normal t=0 pause the loop below produces
+            # exactly 200 frames from 0.01 through 2.00 seconds.
+            initial_values = client.get_values(signal_nodes)
+            initial_row: dict[str, float | int] = {
+                "sequence": 0,
+                "time_s": current,
+                "ecms_command_sent": 0,
+                "gt_trip_command_readback": int(initial_readback),
+                "round_trip_ms": 0.0,
+            }
+            initial_row.update(
+                {
+                    signal.field: as_number(value)
+                    for signal, value in zip(SIGNALS, initial_values)
+                }
+            )
+            rows.append(initial_row)
 
         command_written = initial_readback
         while current < args.stop_time - args.step_size / 2:
@@ -221,8 +226,7 @@ def main() -> int:
                 command_node.set_value(ua.Variant(1.0, ua.VariantType.Double))
                 command_written = True
             sent_ns = time.time_ns()
-            step_node.set_value(ua.Variant(True, ua.VariantType.Boolean))
-            next_time = wait_for_time(time_node, current, 30.0)
+            next_time = request_step(step_node, time_node, current, ua, 30.0)
             readback = float(command_node.get_value()) >= 0.5
             values = client.get_values(signal_nodes)
             row: dict[str, float | int] = {
