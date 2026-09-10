@@ -35,8 +35,6 @@ model TripLens_CombinedCycle_TripTAC
   output Boolean vpp52STClosed "Modelica-produced 52ST auxiliary contact";
   output Boolean vppSTTripLatchPublished
     "Stable top-level FMU output for the physical ST Trip latch";
-  output Real vppExternalTripCommandNative
-    "Writable native OPC UA alias of the ECMS GT Trip command memory";
   output Real vppGTGPowerMW(unit="MW") "Reduced-order GT electrical output";
   output Real vppGTGSpeedRPM "Reduced-order GT shaft speed in rpm";
   discrete Real vppGTTripAssertTime(unit="s", start=eventTime, fixed=true)
@@ -153,7 +151,6 @@ equation
     else enableGTTrip and time >= eventTime;
   vppGTTripLatch = vppSTTripLatch;
   vppSTTripLatchPublished = vppSTTripLatch;
-  vppExternalTripCommandNative = vppExternalTripCommandRegister.y;
   when edge(vppGTTripLatch) then
     vppGTTripAssertTime = time;
   end when;

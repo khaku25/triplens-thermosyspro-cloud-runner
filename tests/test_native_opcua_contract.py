@@ -58,9 +58,12 @@ class NativeOPCUAContractTests(unittest.TestCase):
     def test_external_trip_is_retained_as_a_native_input(self) -> None:
         patch = (ROOT / "scripts/patch_turbine_bypass_model.py").read_text(encoding="utf-8")
         self.assertIn("input Boolean vppExternalTripCommand(start=false) = false", patch)
-        self.assertIn("Modelica.Blocks.Continuous.Integrator vppExternalTripCommandRegister", patch)
-        self.assertIn("y(stateSelect=StateSelect.always)", patch)
-        self.assertIn("vppExternalTripCommandRegister.u = Modelica.Constants.eps*sin(time)", patch)
+        self.assertIn("output Real vppExternalTripCommandNative(", patch)
+        self.assertIn("stateSelect=StateSelect.always", patch)
+        self.assertIn(
+            "der(vppExternalTripCommandNative) = Modelica.Constants.eps*sin(time)",
+            patch,
+        )
         client = (ROOT / "scripts/native_ecms_opcua_client.py").read_text(encoding="utf-8")
         self.assertIn('command_name = "vppExternalTripCommandNative"', client)
         self.assertIn("ua.VariantType.Double", client)
@@ -75,14 +78,6 @@ class NativeOPCUAContractTests(unittest.TestCase):
         )
         self.assertIn("--preOptModules+=introduceOutputAliases", build_script)
         self.assertNotIn("--removeSimpleEquations=none", build_script)
-
-        wrapper = (ROOT / "modelica/TripLens_CombinedCycle_TripTAC.mo.tpl").read_text(
-            encoding="utf-8"
-        )
-        self.assertIn("output Real vppExternalTripCommandNative", wrapper)
-        self.assertIn(
-            "vppExternalTripCommandNative = vppExternalTripCommandRegister.y", wrapper
-        )
 
         workflow = (ROOT / ".github/workflows/run-native-opcua-ecms.yml").read_text(
             encoding="utf-8"

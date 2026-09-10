@@ -224,9 +224,8 @@ PARAMETERS = f'''  // {MARKER}
 COMPONENTS = '''
   input Boolean vppExternalTripCommand(start=false) = false
     "Live ECMS GT Trip input exposed by the Co-Simulation FMU";
-  Modelica.Blocks.Continuous.Integrator vppExternalTripCommandRegister(
-    k=1, y_start=0,
-    y(stateSelect=StateSelect.always))
+  output Real vppExternalTripCommandNative(
+    start=0, fixed=true, stateSelect=StateSelect.always)
     "Writable native OPC UA GT Trip command memory";
   discrete Boolean vppSTTripLatch(start=false, fixed=true)
     "One-way resolved ST Trip latch for this physical scenario";
@@ -355,11 +354,11 @@ COMPONENTS = '''
 
 
 EQUATIONS = '''
-  // A named standard Integrator preserves a stable writable state node in the
-  // native OPC UA address space. The epsilon input is numerically negligible.
-  vppExternalTripCommandRegister.u = Modelica.Constants.eps*sin(time);
+  // The native OPC UA server permits writes to continuous states. A negligible
+  // derivative keeps this command memory as a state without affecting physics.
+  der(vppExternalTripCommandNative) = Modelica.Constants.eps*sin(time);
   when (vppUseExternalTripInput and
-        (vppExternalTripCommand or vppExternalTripCommandRegister.y >= 0.5)) or
+        (vppExternalTripCommand or vppExternalTripCommandNative >= 0.5)) or
        ((not vppUseExternalTripInput) and time >= vppTripTime) then
     vppSTTripLatch = true;
   end when;
