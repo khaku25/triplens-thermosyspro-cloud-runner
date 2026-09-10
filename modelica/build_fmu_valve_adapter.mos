@@ -46,9 +46,3 @@ simulate(
   fileNamePrefix="valve_all_manual_smoke",
   variableFilter="^(time|fmuVlv.*(AutoCmd|Cmd|Fb|Deviation|FaultActive|Cv|MassFlow|Dp))$");
 getErrorString();
-buildModelFMU(
-  TripLens_CombinedCycle_TripTAC,
-  version="2.0",
-  fmuType="cs",
-  fileNamePrefix="TripLens_Native_Valve_Control_V1");
-getErrorString();
