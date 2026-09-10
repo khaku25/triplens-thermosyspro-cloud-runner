@@ -202,7 +202,7 @@ python3 scripts/build_raw_manifest.py \
   --thermosyspro-commit "$thermosyspro_commit" \
   --openmodelica-image "$openmodelica_image" \
   --model-variant "HPBP_LPBP_PHYSICAL_V13_GT_TRIP_HANDOFF" \
-  --source-patch-marker "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12" \
+  --source-patch-marker "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V13" \
   --patched-model-sha256 "$patched_model_sha256"
 
 python3 scripts/validate_raw_outputs.py --output-dir outputs

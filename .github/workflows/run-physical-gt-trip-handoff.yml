@@ -57,3 +57,17 @@ jobs:
             outputs/integration/**
           if-no-files-found: error
           retention-days: 30
+
+      - name: Preserve solver diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: physical-gt-trip-solver-diagnostics-${{ github.run_number }}
+          path: |
+            build/openmodelica-run.log
+            build/thermosyspro_trip_tac_res.csv
+            build/TripLens_CombinedCycle_TripTAC.mo
+            build/run.mos
+            vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
+          if-no-files-found: warn
+          retention-days: 7

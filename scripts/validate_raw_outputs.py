@@ -750,13 +750,13 @@ def main() -> int:
         transform = runtime.get("source_transform")
         if not isinstance(transform, dict):
             raise ValueError("dynamic bypass manifest is missing source-transform proof")
-        expected_marker = (
-            "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12"
-            if str(runtime.get("model_variant", "")).startswith((
-                "HPBP_LPBP_PHYSICAL_V12", "HPBP_LPBP_PHYSICAL_V13"
-            ))
-            else "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11"
-        )
+        variant = str(runtime.get("model_variant", ""))
+        if variant.startswith("HPBP_LPBP_PHYSICAL_V13"):
+            expected_marker = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V13"
+        elif variant.startswith("HPBP_LPBP_PHYSICAL_V12"):
+            expected_marker = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12"
+        else:
+            expected_marker = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11"
         if transform.get("marker") != expected_marker:
             raise ValueError("dynamic bypass manifest has the wrong patch marker")
         digest = transform.get("patched_model_sha256")

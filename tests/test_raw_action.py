@@ -147,7 +147,7 @@ class RawOnlyActionTests(unittest.TestCase):
 
         self.assertIn("patch_turbine_bypass_model.py", runner)
         self.assertIn("HPBP_LPBP_PHYSICAL_V13_GT_TRIP_HANDOFF", runner)
-        self.assertIn("TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12", runner)
+        self.assertIn("TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V13", runner)
         self.assertIn("patch_stodola_turbine.py", runner)
         self.assertIn("RAW simulation ended early", (
             ROOT / "scripts" / "build_raw_manifest.py"
