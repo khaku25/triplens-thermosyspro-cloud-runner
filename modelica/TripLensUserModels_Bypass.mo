@@ -831,4 +831,80 @@ equation
 ## ThermoSysPro Version 4.2   
     "));
 end CombinedCycle_TripTAC_Bypass;
+
+model CombinedCycle_TripTAC_Bypass_OMCStart
+  "OpenModelica staged start for the visible HP/LP bypass plant"
+  extends CombinedCycle_TripTAC_Bypass(
+    EvaporateurHP(
+      TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
+        h0={1842386.3805685563,2019815.5675635953,2101914.802366878}),
+      ExchangerWall(steady_state=false, T0=605.811962373853)),
+    EconomiseurHP4(
+      TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
+        h0={1338569.0293807227,1373037.3060893763,1399087.0448386343}),
+      ExchangerWall(steady_state=false, T0=581.78878425298)),
+    SurchauffeurHP1(
+      TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
+        h0={2793445.279188231,2894719.078252342,2973079.185217006}),
+      ExchangerWall(steady_state=false, T0=658.521061376494)),
+    EconomiseurHP3(
+      TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
+        h0={1193223.55215195,1266335.416732016,1292777.0058783418}),
+      ExchangerWall(steady_state=false, T0=562.298434580731)),
+    EconomiseurHP2(
+      TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
+        h0={924469.2991480937,964586.6772085332,989834.8113335292}),
+      ExchangerWall(steady_state=false, T0=498.83120174068)),
+    EconomiseurHP1(
+      TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
+        h0={764519.0167009356,829416.7979796123,860655.3510811749}),
+      ExchangerWall(steady_state=false, T0=469.794532046599)),
+    SurchauffeurHP2(
+      TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
+        h0={3088900.225778996,3175878.2994419048,3240679.101987554}),
+      ExchangerWall(steady_state=false, T0=737.360015517176)),
+    SurchauffeurHP3(
+      TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
+        h0={3323783.054261407,3386205.9057494565,3432930.991856911}),
+      ExchangerWall(steady_state=false, T0=805.329421109297)),
+    EvaporateurMP(
+      TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
+        h0={1046373.213452734,1096957.9937272775,1136069.1896699532}),
+      ExchangerWall(steady_state=false, T0=504.324590020897)),
+    EconomiseurMP(
+      TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
+        h0={780326.2782299566,889409.3790325949,947830.5281155076}),
+      ExchangerWall(steady_state=false, T0=485.444234896616)),
+    SurchauffeurMP1(
+      TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
+        h0={2900642.773718668,2965011.0169332824,3005318.492253628}),
+      ExchangerWall(steady_state=false, T0=572.11645338699)),
+    SurchauffeurMP2(
+      TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
+        h0={3169860.5211362485,3259603.344415277,3321522.540904887}),
+      ExchangerWall(steady_state=false, T0=711.624305834419)),
+    SurchauffeurMP3(
+      TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
+        h0={3412353.763453483,3474687.0390689597,3517381.1285517}),
+      ExchangerWall(steady_state=false, T0=800.894793015526)),
+    EvaporateurBP(
+      TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
+        h0={799363.0194709267,961560.8510406071,1072378.2305328134}),
+      ExchangerWall(steady_state=false, T0=430.332996172579)),
+    SurchauffeurBP(
+      TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
+        h0={2790287.093854774,2866365.945824299,2919992.1127030067}),
+      ExchangerWall(steady_state=false, T0=500.258981674589)),
+    EconomiseurBP(
+      TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
+        h0={449026.540992922,505517.82265620184,517521.1338868904}),
+      ExchangerWall(steady_state=false, T0=399.207584679476)));
+  annotation(
+    experiment(StartTime=0, StopTime=10000, Tolerance=0.001,
+      Interval=20),
+    Documentation(info="<html><p>OpenModelica staged-start variant. The
+    exchanger fluid enthalpy and wall-temperature states are initialized from
+    the documented operating-point starts instead of solving the whole HRSG
+    thermal network as one steady-state nonlinear block at t=0.</p></html>"));
+end CombinedCycle_TripTAC_Bypass_OMCStart;
 end TripLensUserModels_Bypass;
