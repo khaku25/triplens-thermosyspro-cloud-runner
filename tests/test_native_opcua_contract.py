@@ -70,6 +70,11 @@ class NativeOPCUAContractTests(unittest.TestCase):
         )
         self.assertIn("--removeSimpleEquations=none", build_script)
 
+        workflow = (ROOT / ".github/workflows/run-native-opcua-ecms.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('name[[:space:]]*=[[:space:]]*"vppExternalTripCommandRegister.y"', workflow)
+
 
 if __name__ == "__main__":
     unittest.main()
