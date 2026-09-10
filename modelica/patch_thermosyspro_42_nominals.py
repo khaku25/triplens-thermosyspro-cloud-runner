@@ -70,11 +70,11 @@ def main() -> None:
     x0 = ureset.signal/k;
     reinit(x, x0);
   end when;"""
-        new = """  when not (reset.signal) then
+        new = """  x0 = ureset.signal/k;
+  when not (reset.signal) then
     // In permanent mode x was determined by the steady initialization
     // equations. Do not overwrite that consistent solution at initial().
     if not permanent then
-      x0 = ureset.signal/k;
       reinit(x, x0);
     end if;
   end when;"""
