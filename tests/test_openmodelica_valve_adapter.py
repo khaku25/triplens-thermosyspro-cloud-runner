@@ -45,7 +45,7 @@ class OpenModelicaValveAdapterTests(unittest.TestCase):
                 self.patched,
             )
             self.assertIn(
-                f"{prefix}Dp = {point.object_name}.C1.P - {point.object_name}.C2.P",
+                f"{prefix}Dp = {point.object_name}.deltaP",
                 self.patched,
             )
             if point.original_connect:
