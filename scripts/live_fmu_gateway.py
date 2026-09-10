@@ -72,7 +72,7 @@ class PhysicalFMU:
             modelIdentifier=self.model_identifier,
             instanceName="TripLensPhysicalPlant",
         )
-        self._slave.instantiate()
+        self._slave.instantiate(loggingOn=True)
         self._slave.setupExperiment(startTime=0.0, stopTime=stop_time, tolerance=tolerance)
         self.set_inputs(command_defaults())
         self._slave.enterInitializationMode()
@@ -155,7 +155,7 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=0)
     parser.add_argument("--stop-time", type=float, default=2.0)
     parser.add_argument("--step-size", type=float, default=0.01)
-    parser.add_argument("--tolerance", type=float, default=1e-6)
+    parser.add_argument("--tolerance", type=float, default=1e-3)
     parser.add_argument("--ready-file", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
