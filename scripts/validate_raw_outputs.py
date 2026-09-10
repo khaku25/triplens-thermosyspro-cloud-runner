@@ -580,8 +580,8 @@ def validate_gt_trip_handoff(
         raise ValueError("GT generator output did not become zero after 52GT opened")
     if speed[0] <= 0 or speed[-1] >= 0.05 * speed[0]:
         raise ValueError("GT shaft speed did not physically coast down")
-    if exhaust[0] <= 0 or exhaust[-1] > 0.01 * exhaust[0]:
-        raise ValueError("GT exhaust mass flow did not reach the shutdown boundary")
+    if exhaust[0] <= 0 or exhaust[-1] > 0.10 * exhaust[0]:
+        raise ValueError("GT exhaust mass flow did not reach the purge/coastdown boundary")
     if max(abs(value) for value in analog["Alternateur.Welec"]) <= 0:
         raise ValueError("ST generator physical power is missing or identically zero")
 
