@@ -53,28 +53,51 @@ jobs:
             --dir build/upstream
           test "$(sha256sum build/upstream/TripLens_Native_Valve_Control_V1.fmu | awk '{print $1}')" = "$SOURCE_FMU_SHA256"
 
+      - name: Restore previously rebuilt runtime FMU
+        id: runtime-fmu-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: build/runtime-artifact
+          key: openmodelica-standard-init-${{ env.SOURCE_FMU_SHA256 }}-v1
+
       - name: Restore standard OpenModelica symbolic initialization
+        if: steps.runtime-fmu-cache.outputs.cache-hit != 'true'
         run: |
           python3 scripts/prepare_standard_init_fmu.py \
             --source-fmu build/upstream/TripLens_Native_Valve_Control_V1.fmu \
             --work-dir build/runtime-fmu \
-            --manifest build/fmu-runtime-provenance.json
+            --manifest build/runtime-artifact/fmu-runtime-provenance.json
           cmake -S build/runtime-fmu/sources -B build/runtime-fmu/cmake \
             -DRUNTIME_DEPENDENCIES_LEVEL=none
           cmake --build build/runtime-fmu/cmake --target create_fmu --parallel "$(nproc)"
-          runtime_sha256="$(sha256sum build/runtime-fmu/TripLens_Native_Valve_Control_V1.fmu | awk '{print $1}')"
-          echo "EXPECTED_FMU_SHA256=$runtime_sha256" >> "$GITHUB_ENV"
+          test -s build/TripLens_Native_Valve_Control_V1.fmu
+          mv build/TripLens_Native_Valve_Control_V1.fmu build/runtime-artifact/
+          runtime_sha256="$(sha256sum build/runtime-artifact/TripLens_Native_Valve_Control_V1.fmu | awk '{print $1}')"
           python3 - "$runtime_sha256" <<'PY'
           import json
           import sys
           from pathlib import Path
 
-          path = Path("build/fmu-runtime-provenance.json")
+          path = Path("build/runtime-artifact/fmu-runtime-provenance.json")
           manifest = json.loads(path.read_text(encoding="utf-8"))
           manifest["status"] = "BUILT"
           manifest["runtime_fmu_sha256"] = sys.argv[1]
           path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
           PY
+
+      - name: Save rebuilt runtime FMU
+        if: steps.runtime-fmu-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: build/runtime-artifact
+          key: ${{ steps.runtime-fmu-cache.outputs.cache-primary-key }}
+
+      - name: Pin the exact runtime FMU
+        run: |
+          test -s build/runtime-artifact/TripLens_Native_Valve_Control_V1.fmu
+          test -s build/runtime-artifact/fmu-runtime-provenance.json
+          runtime_sha256="$(sha256sum build/runtime-artifact/TripLens_Native_Valve_Control_V1.fmu | awk '{print $1}')"
+          echo "EXPECTED_FMU_SHA256=$runtime_sha256" >> "$GITHUB_ENV"
 
       - name: Install pinned FMI runtime
         run: python3 -m pip install --disable-pip-version-check -r requirements-live.txt
@@ -82,8 +105,8 @@ jobs:
       - name: Prove commands to physics to ECMS over TCP
         run: |
           chmod +x scripts/run_live_fmu_ecms.sh
-          scripts/run_live_fmu_ecms.sh build/runtime-fmu/TripLens_Native_Valve_Control_V1.fmu
-          cp build/fmu-runtime-provenance.json outputs/live-main-fmu/
+          scripts/run_live_fmu_ecms.sh build/runtime-artifact/TripLens_Native_Valve_Control_V1.fmu
+          cp build/runtime-artifact/fmu-runtime-provenance.json outputs/live-main-fmu/
 
       - name: Upload live link proof and dashboard
         if: always()

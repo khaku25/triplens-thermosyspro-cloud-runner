@@ -81,6 +81,9 @@ class LiveFMUNetworkTests(unittest.TestCase):
         self.assertIn('LIVE_STOP_TIME_S: "2"', workflow)
         self.assertIn("SOURCE_FMU_SHA256", workflow)
         self.assertIn("prepare_standard_init_fmu.py", workflow)
+        self.assertIn("actions/cache/restore@v4", workflow)
+        self.assertIn("actions/cache/save@v4", workflow)
+        self.assertIn("build/runtime-artifact/TripLens_Native_Valve_Control_V1.fmu", workflow)
         self.assertIn("gh run download", workflow)
 
     def test_fmu_preparer_changes_only_two_runtime_init_calls(self) -> None:
