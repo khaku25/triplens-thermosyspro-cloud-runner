@@ -1,0 +1,22 @@
+setCommandLineOptions("--std=3.4");
+loadModel(Modelica, {"3.2.3"});
+getErrorString();
+loadFile("/workspace/vendor/ThermoSysPro/ThermoSysPro/package.mo");
+getErrorString();
+loadFile("/workspace/build/TripLens_CombinedCycle_TripTAC.mo");
+getErrorString();
+loadFile("/workspace/modelica/TripLens_OMEdit_Init_Alias.mo");
+getErrorString();
+cd("/workspace/build");
+simulate(
+  TripLensUserModels.CombinedCycle_TripTAC,
+  startTime=0,
+  stopTime=2,
+  numberOfIntervals=2,
+  tolerance=1e-3,
+  method="dassl",
+  outputFormat="mat",
+  simflags="-noEventEmit",
+  fileNamePrefix="TripLensUserModels.CombinedCycle_TripTAC_steady_init",
+  variableFilter=".*");
+getErrorString();
