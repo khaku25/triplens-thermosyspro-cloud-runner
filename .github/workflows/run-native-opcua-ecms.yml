@@ -32,7 +32,10 @@ jobs:
     env:
       OPENMODELICA_IMAGE: openmodelica/openmodelica:v1.27.0-minimal
       THERMOSYSPRO_COMMIT: db81ae1b5a6a85f6c6c7693244cafa6087e18ff5
-      LIVE_STOP_TIME_S: "40"
+      # The LP drum reaches the configured L/LL thresholds at roughly 47/93 s
+      # after VCB-A02 opens. Keep the physical thresholds unchanged and run
+      # long enough to prove the complete LL -> GT/ST trip return path.
+      LIVE_STOP_TIME_S: "120"
       LIVE_STEP_SIZE_S: "0.02"
     steps:
       - uses: actions/checkout@v4
