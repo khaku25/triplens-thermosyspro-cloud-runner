@@ -1,5 +1,6 @@
 cause_id,source_signal,source_layer,source_event_tag,gt_trip_request,st_trip_request,notes
 DIRECT_GT_TRIP,gt_trip_cmd,COMMAND,CMD.GTG.TRIP,1,1,GT Trip always intertrips ST
+GT_BREAKER_OPEN_WHILE_RUNNING,gt_trip_from_52gt_open,PROTECTION_INPUT,ECMS.52GT.OPEN_WHILE_RUNNING,1,1,Observed 52GT open feedback while GT is in service resolves to GT Trip and ST intertrip in the provisional VPP policy
 DIRECT_ST_TRIP,st_trip_cmd,COMMAND,CMD.STG.TRIP,0,1,Direct ST Trip affects ST only
 HP_DRUM_HH,hp_drum_level_hh,LAYER1_ALARM,HRSG.HP.DRUM.LEVEL.HH,0,1,HP Drum HH trips ST only
 IP_DRUM_HH,ip_drum_level_hh,LAYER1_ALARM,HRSG.IP.DRUM.LEVEL.HH,0,1,IP Drum HH trips ST only

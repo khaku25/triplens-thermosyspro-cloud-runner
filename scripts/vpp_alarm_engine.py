@@ -271,6 +271,9 @@ def main() -> int:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--baseline", type=Path, default=PROJECT_ROOT / "config/vpp_baseline_v1.json")
     parser.add_argument("--rules", type=Path)
+    parser.add_argument("--a-settings", type=Path)
+    parser.add_argument("--a-equipment", type=Path)
+    parser.add_argument("--observed-gt-trip-source")
     parser.add_argument("--commands", type=Path)
     parser.add_argument("--fault-preset", default="none")
     parser.add_argument("--logic-period-ms", type=int)
@@ -330,6 +333,10 @@ def main() -> int:
             "--event-time", str(args.reference_event_time),
             "--scenario-id", "",
             "--no-legacy-gt-trip-cmd",
+            *(
+                ["--observed-gt-trip-source", args.observed_gt_trip_source]
+                if args.observed_gt_trip_source else []
+            ),
         )
     else:
         if args.input.resolve() != processbus.resolve():
@@ -356,16 +363,22 @@ def main() -> int:
         "--dcs1-output", str(dcs1),
         "--dcs2-output", str(dcs2),
     )
+    a_settings = args.a_settings or baseline_path(
+        source_configs.get("ratings_and_protection", "config/ecms_a_settings.csv"),
+        "ratings_and_protection",
+    )
+    a_equipment = args.a_equipment or baseline_path(
+        source_configs.get("fwp_equipment", "config/ecms_a_equipment.csv"),
+        "fwp_equipment",
+    )
+    if not a_settings.is_file():
+        raise ValueError("A settings file does not exist")
+    if not a_equipment.is_file():
+        raise ValueError("A equipment file does not exist")
     ecms_args = [
         "--processbus", str(processbus),
-        "--a-settings", str(baseline_path(
-            source_configs.get("ratings_and_protection", "config/ecms_a_settings.csv"),
-            "ratings_and_protection",
-        )),
-        "--a-equipment", str(baseline_path(
-            source_configs.get("fwp_equipment", "config/ecms_a_equipment.csv"),
-            "fwp_equipment",
-        )),
+        "--a-settings", str(a_settings),
+        "--a-equipment", str(a_equipment),
         "--common-trip-matrix", str(baseline_path(
             source_configs.get("trip_coupling", "config/common_trip_matrix.csv"),
             "trip_coupling",
@@ -418,6 +431,13 @@ def main() -> int:
             ),
             "file": args.baseline.name,
             "sha256": sha256(args.baseline),
+        },
+        "a_configuration": {
+            "settings_file": a_settings.name,
+            "settings_sha256": sha256(a_settings),
+            "equipment_file": a_equipment.name,
+            "equipment_sha256": sha256(a_equipment),
+            "source": "EXPLICIT_CLOUD_INPUT" if args.a_settings or args.a_equipment else "VPP_BASELINE",
         },
         "event_count": event_count,
         "exact_duplicate_edges_removed": duplicate_count,

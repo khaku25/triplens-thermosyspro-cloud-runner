@@ -54,15 +54,38 @@ def main() -> int:
             "without asserting the embedded ST Trip trigger."
         ),
     )
+    parser.add_argument(
+        "--gt-trip",
+        action="store_true",
+        help=(
+            "Run the canonical GT Trip profile: publish the GT Trip/breaker "
+            "states from Modelica, coast the exhaust boundary to shutdown, "
+            "and assert the physical ST isolation/bypass sequence."
+        ),
+    )
+    parser.add_argument(
+        "--external-trip-input",
+        action="store_true",
+        help=(
+            "Expose the live FMU GT Trip input and suppress every scheduled "
+            "Trip source. The external command becomes the only Trip cause."
+        ),
+    )
     parser.add_argument("--template-dir", type=Path, default=PROJECT_ROOT / "modelica")
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "build")
     args = parser.parse_args()
 
-    if args.normal_operation and args.derate_only:
-        parser.error("--normal-operation and --derate-only are mutually exclusive")
+    if sum((
+        args.normal_operation, args.derate_only, args.gt_trip,
+        args.external_trip_input,
+    )) > 1:
+        parser.error(
+            "--normal-operation, --derate-only, --gt-trip and "
+            "--external-trip-input are mutually exclusive"
+        )
     if args.intervals < 10:
         parser.error("--intervals must be at least 10")
-    if not args.normal_operation:
+    if not args.normal_operation and not args.external_trip_input:
         if args.trip_time >= args.stop_time:
             parser.error("boundary event time must be earlier than --stop-time")
         if args.trip_time + args.trip_ramp_duration > args.stop_time:
@@ -70,13 +93,31 @@ def main() -> int:
 
     output_interval = args.stop_time / args.intervals
     stop_time = f"{args.stop_time:.12g}"
-    if args.normal_operation:
+    gt_trip_enabled = "true" if args.gt_trip else "false"
+    if args.normal_operation or args.external_trip_input:
+        # In external mode both legacy TimeTables stay normal. The patch routes
+        # the live command through its own physical exhaust states, so a lost
+        # ECMS command cannot be masked by a scheduled boundary transition.
         vpp_trip_time = f"{args.stop_time + 1:.12g}"
         exhaust_flow_table = (
             f"[0,exhaustFlowNormalTH/3.6; {stop_time},exhaustFlowNormalTH/3.6]"
         )
         exhaust_temperature_table = (
             f"[0,exhaustTemperatureNormal; {stop_time},exhaustTemperatureNormal]"
+        )
+    elif args.gt_trip:
+        vpp_trip_time = f"{args.trip_time:.12g}"
+        exhaust_flow_table = (
+            "[0,exhaustFlowNormalTH/3.6; "
+            "eventTime,exhaustFlowNormalTH/3.6; "
+            "eventTime + boundaryRampDuration,exhaustFlowTripTH/3.6; "
+            f"{stop_time},exhaustFlowTripTH/3.6]"
+        )
+        exhaust_temperature_table = (
+            "[0,exhaustTemperatureNormal; "
+            "eventTime,exhaustTemperatureNormal; "
+            "eventTime + boundaryRampDuration,exhaustTemperatureTrip; "
+            f"{stop_time},exhaustTemperatureTrip]"
         )
     else:
         # In DERATE-only mode the exhaust boundary still changes at eventTime,
@@ -103,6 +144,10 @@ def main() -> int:
         "TRIP_RAMP_DURATION": f"{args.trip_ramp_duration:.12g}",
         "STOP_TIME": stop_time,
         "VPP_TRIP_TIME": vpp_trip_time,
+        "GT_TRIP_ENABLED": gt_trip_enabled,
+        "EXTERNAL_TRIP_ENABLED": (
+            "true" if args.external_trip_input else "false"
+        ),
         "EXHAUST_FLOW_TABLE": exhaust_flow_table,
         "EXHAUST_TEMPERATURE_TABLE": exhaust_temperature_table,
         "NUMBER_OF_INTERVALS": str(args.intervals),
@@ -114,6 +159,20 @@ def main() -> int:
         replacements,
     )
     render(args.template_dir / "run.mos.tpl", args.output_dir / "run.mos", replacements)
+    live_fmu_template = args.template_dir / "build_live_fmu.mos.tpl"
+    if live_fmu_template.is_file():
+        render(
+            live_fmu_template,
+            args.output_dir / "build_live_fmu.mos",
+            replacements,
+        )
+    native_opcua_template = args.template_dir / "build_native_opcua.mos.tpl"
+    if native_opcua_template.is_file():
+        render(
+            native_opcua_template,
+            args.output_dir / "build_native_opcua.mos",
+            replacements,
+        )
     return 0
 
 
