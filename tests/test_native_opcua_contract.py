@@ -11,8 +11,10 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from native_ecms_opcua_client import (  # noqa: E402
     COMMAND_NODES,
     DelayedLowAlarm,
+    EVENT_SPECS,
     PROTOCOL,
     SIGNALS,
+    build_native_events,
     lp_bfp_closed_loop_complete,
     load_lp_rules,
     validate_lp_bfp,
@@ -38,7 +40,7 @@ class NativeOPCUAContractTests(unittest.TestCase):
 
     def test_validator_requires_complete_lp_closed_loop(self) -> None:
         def row(t: float, tripped: bool):
-            values = {signal.field: 1.0 + t for signal in SIGNALS}
+            values = {signal.field: 0.0 for signal in SIGNALS}
             values.update({
                 "time_s": t,
                 "lp_fwp_trip_command_readback": int(tripped),
@@ -54,19 +56,41 @@ class NativeOPCUAContractTests(unittest.TestCase):
                 "lp_drum_level_m": 1.45 if tripped else 1.75,
                 "lp_drum_level_l_alarm": int(tripped),
                 "lp_drum_level_ll_alarm": int(tripped),
+                "common_gt_trip_request": int(tripped),
+                "common_st_trip_request": int(tripped),
                 "gt_trip_command_readback": int(tripped),
                 "gt_trip_latch": int(tripped),
                 "st_trip_latch": int(tripped),
+                "gt_breaker_trip_command": int(tripped),
+                "st_breaker_trip_command": int(tripped),
                 "gt_breaker_closed": int(not tripped),
                 "st_breaker_closed": int(not tripped),
+                "lp_fwp_speed_proven": int(not tripped),
+                "lp_fwp_running": int(not tripped),
+                "hp_admission_position_pu": 0.01 if tripped else 0.8,
+                "ip_admission_position_pu": 0.01 if tripped else 0.8,
+                "lp_admission_position_pu": 0.01 if tripped else 1.0,
+                "hp_bypass_position_pu": 1.0 if tripped else 0.0,
+                "lp_bypass_position_pu": 1.0 if tripped else 0.0,
+                "hp_spray_position_pu": 1.0 if tripped else 0.0,
+                "lp_spray_position_pu": 1.0 if tripped else 0.0,
+                "gtg_power_mw": 0.0 if tripped else 160.0,
+                "gtg_speed_rpm": 3500.0 if tripped else 3600.0,
             })
             return values
 
-        report = validate_lp_bfp([row(0.1, False), row(5.0, True)], 0.2)
+        passing_rows = [row(0.1, False), row(5.0, True), row(35.0, True)]
+        report = validate_lp_bfp(passing_rows, 0.2, 30.0)
         self.assertEqual(report["status"], "PASS")
         self.assertTrue(lp_bfp_closed_loop_complete(row(5.0, True)))
-        self.assertEqual(report["termination_reason"], "CLOSED_LOOP_TERMINAL_STATE")
-        bad = validate_lp_bfp([row(0.1, False), row(5.0, False)], 0.2)
+        self.assertEqual(report["termination_reason"], "GT_TRIP_PLUS_30_SECONDS")
+        self.assertEqual(report["post_gt_trip_observation_s"], 30.0)
+        events = build_native_events(passing_rows, 0.2)
+        self.assertEqual(
+            {event["canonical_tag"] for event in events},
+            {spec.tag for spec in EVENT_SPECS},
+        )
+        bad = validate_lp_bfp([row(0.1, False), row(5.0, False)], 0.2, 30.0)
         self.assertEqual(bad["status"], "FAIL")
         self.assertFalse(lp_bfp_closed_loop_complete(row(5.0, False)))
 
@@ -98,12 +122,12 @@ class NativeOPCUAContractTests(unittest.TestCase):
         self.assertIn("model SpringLoadedCheckValve", package)
         self.assertIn("opening = noEvent(max(0, min(1, openingState)))", package)
 
-    def test_tag_contract_has_all_30_scenario_tags(self) -> None:
+    def test_tag_contract_has_all_63_scenario_tags(self) -> None:
         path = ROOT / "data/opcua_lp_bfp_nodes_v1.csv"
         with path.open(encoding="utf-8-sig", newline="") as stream:
             rows = list(csv.DictReader(stream))
-        self.assertEqual(len(rows), 30)
-        self.assertEqual(len({row["canonical_tag"] for row in rows}), 30)
+        self.assertEqual(len(rows), 63)
+        self.assertEqual(len({row["canonical_tag"] for row in rows}), 63)
         tags = {row["canonical_tag"]: row for row in rows}
         self.assertEqual(tags["ECMS.VCB-A02.CLOSED"]["direction"], "WRITE")
         self.assertEqual(tags["TSP.FWP-LP.SPEED_RPM"]["direction"], "READ")
@@ -121,10 +145,11 @@ class NativeOPCUAContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("-embeddedServer=opc-ua", workflow)
-        self.assertIn('LIVE_STOP_TIME_S: "100"', workflow)
+        self.assertIn('LIVE_STOP_TIME_S: "120"', workflow)
         self.assertIn('LIVE_STEP_SIZE_S: "0.04"', workflow)
         self.assertIn('LIVE_COMMAND_TIME_S: "20"', workflow)
-        self.assertIn("--intervals 2500", workflow)
+        self.assertIn('LIVE_POST_GT_TRIP_S: "30"', workflow)
+        self.assertIn("--intervals 3000", workflow)
         self.assertNotIn("scripts/patch_fmu_valve_controls.py", workflow)
         self.assertIn("scripts/patch_lp_fwp_opcua.py", workflow)
         self.assertIn("scripts/patch_all_fwp_check_valves.py", workflow)
@@ -135,6 +160,9 @@ class NativeOPCUAContractTests(unittest.TestCase):
         self.assertIn('loadFile("/workspace/modelica/TripLens_PumpPhysics.mo")', build)
         self.assertIn("--scenario lp-bfp-trip", workflow)
         self.assertIn('--command-time "$LIVE_COMMAND_TIME_S"', workflow)
+        self.assertIn('--post-gt-trip-seconds "$LIVE_POST_GT_TRIP_S"', workflow)
+        self.assertIn("-s=ida", workflow)
+        self.assertIn("-nls=kinsol", workflow)
         self.assertIn('docker rm -f "$native_container"', workflow)
         self.assertIn('"vppVCBA02ClosedNative"', workflow)
         self.assertNotIn("live_fmu_gateway.py", workflow)
