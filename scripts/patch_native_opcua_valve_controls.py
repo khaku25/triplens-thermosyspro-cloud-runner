@@ -74,7 +74,7 @@ POINTS = (
 # initialization torn system after the condenser extraction back-edge was
 # isolated. Keep this set evidence-scoped: FWCV and turbine admission dynamics
 # are deliberately continuous.
-SAMPLED_PHYSICAL_POINT_IDS = frozenset({
+CAUSAL_PHYSICAL_POINT_IDS = frozenset({
     "HP_STEAM_VLV",
     "IP_STEAM_VLV",
     "LP_FW_VLV",
@@ -92,8 +92,8 @@ def clamp(expression: str) -> str:
 def declarations() -> str:
     lines = [
         f"  // {MARKER}",
-        "  parameter Real vppValvePressureSamplePeriodS(unit=\"s\") = 0.02",
-        '    "Sampling period for the causal extraction-valve boundary and pressure-drop telemetry";',
+        "  parameter Real vppValveTrackingTimeConstantS(unit=\"s\") = 0.02",
+        '    "Tracking-state time constant without periodic global DAE events";',
     ]
     for point in POINTS:
         stem = f"vppVlv{point.suffix}"
@@ -111,16 +111,16 @@ def declarations() -> str:
             f"  output Real {stem}Fb(min=0, max=1);",
             f"  output Real {stem}Deviation;",
             f"  output Boolean {stem}FaultActive;",
-            f"  output Real {stem}Cv;",
+            f"  output Real {stem}Cv(start=0, fixed=true, stateSelect=StateSelect.always);",
             f"  output Real {stem}MassFlowTH(unit=\"t/h\");",
-            f"  discrete output Real {stem}DPPa(start=0, fixed=true, unit=\"Pa\")",
-            '    "Sampled pressure drop kept outside the continuous plant DAE";',
+            f"  output Real {stem}DPPa(start=0, fixed=true, stateSelect=StateSelect.always, unit=\"Pa\")",
+            '    "Tracking pressure telemetry kept outside the plant algebraic system";',
             f"  Real {stem}Target(min=0, max=1);",
         ))
-        if point.control_point_id in SAMPLED_PHYSICAL_POINT_IDS:
+        if point.control_point_id in CAUSAL_PHYSICAL_POINT_IDS:
             lines.extend((
-                f"  discrete Real {stem}Applied(start={point.initial:g}, fixed=true, min=0, max=1)",
-                '    "Causal physical position held between 20 ms control scans";',
+                f"  Real {stem}Applied(start={point.initial:g}, fixed=true, stateSelect=StateSelect.always, min=0, max=1)",
+                '    "Causal first-order physical command boundary";',
             ))
     return "\n".join(lines) + "\n\n"
 
@@ -135,7 +135,7 @@ def equations() -> str:
             f"  {stem}Target = if {stem}FaultEnableNative >= 0.5 then {clamp(stem + 'FaultValueNative')} else {stem}Cmd;",
             f"  {stem}FaultActive = {stem}FaultEnableNative >= 0.5;",
         ))
-        if point.control_point_id in SAMPLED_PHYSICAL_POINT_IDS:
+        if point.control_point_id in CAUSAL_PHYSICAL_POINT_IDS:
             lines.append(f"  {stem}Fb = {stem}Applied;")
         elif point.dynamic_state:
             lines.append(f"  {stem}Fb = {point.dynamic_state};")
@@ -144,29 +144,29 @@ def equations() -> str:
         lines.extend((
             f"  {stem}Deviation = {stem}Cmd - {stem}Fb;",
             f"  {point.object_name}.Ouv.signal = {stem}Fb;",
-            f"  {stem}Cv = {point.object_name}.Cv;",
             f"  {stem}MassFlowTH = 3.6*{point.object_name}.Q;",
             "",
         ))
-    # The failed #52 initialization trace contains exactly seven physical valve
-    # Cv residuals. Keep their command tags live, but apply Target through one
-    # 20 ms zero-order hold initialized at each original valve position. FWCV
-    # and turbine admission commands remain continuous. DPPa shares the event.
-    lines.extend((
-        "  when sample(vppValvePressureSamplePeriodS,",
-        "      vppValvePressureSamplePeriodS) then",
-        *(
-            f"    vppVlv{point.suffix}Applied = vppVlv{point.suffix}Target;"
-            for point in POINTS
-            if point.control_point_id in SAMPLED_PHYSICAL_POINT_IDS
-        ),
-        *(
-            f"    vppVlv{point.suffix}DPPa = "
-            f"{point.object_name}.C1.P - {point.object_name}.C2.P;"
-            for point in POINTS
-        ),
-        "  end when;",
-    ))
+    # Tracking states preserve the causal boundary without forcing a global
+    # time event every 20 ms.
+    lines.extend(
+        f"  der(vppVlv{point.suffix}Applied) = "
+        f"(vppVlv{point.suffix}Target - vppVlv{point.suffix}Applied)/"
+        "vppValveTrackingTimeConstantS;"
+        for point in POINTS
+        if point.control_point_id in CAUSAL_PHYSICAL_POINT_IDS
+    )
+    lines.extend(
+        f"  der(vppVlv{point.suffix}Cv) = ({point.object_name}.Cv - "
+        f"vppVlv{point.suffix}Cv)/vppValveTrackingTimeConstantS;"
+        for point in POINTS
+    )
+    lines.extend(
+        f"  der(vppVlv{point.suffix}DPPa) = ("
+        f"{point.object_name}.C1.P - {point.object_name}.C2.P - "
+        f"vppVlv{point.suffix}DPPa)/vppValveTrackingTimeConstantS;"
+        for point in POINTS
+    )
     return "\n".join(lines)
 
 
@@ -258,10 +258,10 @@ def patch_model(source: str) -> str:
             f"input Real {stem}FaultEnableNative",
             f"input Real {stem}FaultValueNative",
             f"{point.object_name}.Ouv.signal = {stem}Fb",
-            f"{stem}Cv = {point.object_name}.Cv",
+            f"der({stem}Cv) = ({point.object_name}.Cv - {stem}Cv)",
             f"{stem}MassFlowTH = 3.6*{point.object_name}.Q",
-            f"discrete output Real {stem}DPPa",
-            f"{stem}DPPa = {point.object_name}.C1.P - {point.object_name}.C2.P",
+            f"output Real {stem}DPPa(start=0, fixed=true, stateSelect=StateSelect.always",
+            f"der({stem}DPPa) = ({point.object_name}.C1.P - {point.object_name}.C2.P - {stem}DPPa)",
         )
         for token in required:
             if token not in source:
@@ -272,8 +272,8 @@ def patch_model(source: str) -> str:
             )
     for point in POINTS:
         stem = f"vppVlv{point.suffix}"
-        if point.control_point_id in SAMPLED_PHYSICAL_POINT_IDS:
-            if f"discrete Real {stem}Applied" not in source:
+        if point.control_point_id in CAUSAL_PHYSICAL_POINT_IDS:
+            if f"Real {stem}Applied" not in source:
                 raise AssertionError(
                     f"{point.control_point_id}: causal boundary is missing"
                 )

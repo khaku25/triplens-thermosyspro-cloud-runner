@@ -71,21 +71,18 @@ end CombinedCycle_TripTAC;
                 "ResistancePaSPerKg",
             ):
                 self.assertIn(
-                    f"discrete output Real vpp{level}FWPCheckValve{suffix}",
+                    f"output Real vpp{level}FWPCheckValve{suffix}"
+                    "(start=0, fixed=true, stateSelect=StateSelect.always",
                     patched,
                 )
                 self.assertNotIn(
                     f"\n  vpp{level}FWPCheckValve{suffix} = ", patched
                 )
         self.assertIn(
-            "when sample(vppFWPCheckValveTelemetrySamplePeriodS,", patched
+            "der(vppHPFWPCheckValveDeltaPPa) =", patched
         )
-        self.assertEqual(
-            patched.count("    vppHPFWPCheckValveDeltaPPa =")
-            + patched.count("    vppIPFWPCheckValveDeltaPPa =")
-            + patched.count("    vppLPFWPCheckValveDeltaPPa ="),
-            3,
-        )
+        self.assertEqual(patched.count("der(vpp"), 12)
+        self.assertNotIn("when sample(", patched)
 
     def test_contract_has_three_valves_and_all_21_physical_read_nodes(self):
         self.assertEqual(len(self.nodes), 21)

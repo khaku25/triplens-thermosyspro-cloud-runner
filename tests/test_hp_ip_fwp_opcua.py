@@ -113,6 +113,22 @@ class HPIPFWPOPCUATests(unittest.TestCase):
                 delta=6,
             )
 
+    def test_read_only_pump_telemetry_tracks_outside_plant_dae(self) -> None:
+        patched = self.patcher.patch_model(patched_input())
+        self.assertNotIn("when sample(", patched)
+        for level, pump in (("HP", "PompeAlimHP"), ("IP", "PompeAlimMP")):
+            for suffix in ("VolumeFlowM3S", "DeltaPPa"):
+                self.assertIn(
+                    f"output Real vpp{level}FWP{suffix}"
+                    "(start=0, fixed=true, stateSelect=StateSelect.always",
+                    patched,
+                )
+                self.assertNotIn(f"\n  vpp{level}FWP{suffix} = ", patched)
+            self.assertIn(f"\n  vpp{level}FWPMassFlowTH = 3.6*{pump}.Q;", patched)
+            self.assertIn(f"der(vpp{level}FWPVolumeFlowM3S) = ({pump}.Qv -", patched)
+            self.assertIn(f"der(vpp{level}FWPDeltaPPa) = ({pump}.deltaP -", patched)
+            self.assertIn(f"\n  vpp{level}FWPMechanicalPowerW = {pump}.Wm;", patched)
+
     def test_existing_check_valve_patch_remains_sole_nrv_owner(self) -> None:
         patched = self.patcher.patch_model(patched_input())
         for token in (
@@ -160,8 +176,12 @@ class HPIPFWPOPCUATests(unittest.TestCase):
                 f"vpp{level}FWPDrive.pumpPower.signal = {pump}.Wm", source
             )
             self.assertIn(f"vpp{level}FWPMassFlowTH = 3.6*{pump}.Q", source)
-            self.assertIn(f"vpp{level}FWPVolumeFlowM3S = {pump}.Qv", source)
-            self.assertIn(f"vpp{level}FWPDeltaPPa = {pump}.deltaP", source)
+            self.assertIn(
+                f"der(vpp{level}FWPVolumeFlowM3S) = ({pump}.Qv -", source
+            )
+            self.assertIn(
+                f"der(vpp{level}FWPDeltaPPa) = ({pump}.deltaP -", source
+            )
             self.assertIn(f"vpp{level}FWPMechanicalPowerW = {pump}.Wm", source)
 
 

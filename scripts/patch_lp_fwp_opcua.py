@@ -23,6 +23,8 @@ DECLARATIONS = f'''
     torqueLimit=6e4);
   parameter Real vppLPFWPHydraulicSpeedFloorRPM(unit="rev/min") = 700
     "Numerical floor for the upstream static pump curve; shaft speed remains physical";
+  parameter Real vppLPBreakerInputTimeConstantS(unit="s") = 0.02
+    "Causal breaker-input tracking time constant without periodic time events";
   TripLens_PumpPhysics.SpringLoadedCheckValve vppLPFWPCheckValve(
     closeFlow=70,
     closedResistance=1e5);
@@ -30,8 +32,9 @@ DECLARATIONS = f'''
   input Real vppLPFWPTripLatchNative(start=0) = 0;
   input Real vppVCBA02TripCommandNative(start=0) = 0;
   input Real vppVCBA02ClosedNative(start=1) = 1;
-  discrete Real vppVCBA02ClosedApplied(start=1, fixed=true)
-    "20 ms physical scan image of the writable breaker auxiliary contact";
+  Real vppVCBA02ClosedApplied(start=1, fixed=true,
+    stateSelect=StateSelect.always)
+    "Causal physical image of the writable breaker auxiliary contact";
   output Boolean vppLPFWPMotorEnergized;
   output Boolean vppLPFWPSpeedProven;
   output Boolean vppLPFWPRunning;
@@ -48,9 +51,9 @@ DECLARATIONS = f'''
 '''
 
 EQUATIONS = '''
-  when sample(0.02, 0.02) then
-    vppVCBA02ClosedApplied = vppVCBA02ClosedNative;
-  end when;
+  der(vppVCBA02ClosedApplied) =
+    (vppVCBA02ClosedNative - vppVCBA02ClosedApplied)/
+    vppLPBreakerInputTimeConstantS;
   vppLPFWPMotorEnergized = vppVCBA02ClosedApplied >= 0.5;
   vppLPFWPDrive.breakerClosed.signal = vppLPFWPMotorEnergized;
   vppLPFWPDrive.pumpPower.signal = PompeAlimBP.Wm;
@@ -114,8 +117,9 @@ def patch_model(source: str) -> str:
     required = (
         "input Real vppLPFWPTripCommandNative(start=0) = 0",
         "input Real vppVCBA02ClosedNative(start=1) = 1",
-        "discrete Real vppVCBA02ClosedApplied(start=1, fixed=true)",
-        "vppVCBA02ClosedApplied = vppVCBA02ClosedNative",
+        "Real vppVCBA02ClosedApplied(start=1, fixed=true,",
+        "der(vppVCBA02ClosedApplied) =",
+        "vppLPBreakerInputTimeConstantS",
         "vppLPFWPMotorEnergized = vppVCBA02ClosedApplied >= 0.5",
         "connect(vppLPFWPHydraulicSpeedCommand, PompeAlimBP.rpm_or_mpower)",
         "vppLPFWPHydraulicSpeedFloorRPM, vppLPFWPDrive.speedRpm",

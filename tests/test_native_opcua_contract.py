@@ -151,12 +151,13 @@ class NativeOPCUAContractTests(unittest.TestCase):
             self.assertIn(f"input Real {name}", source)
             self.assertNotIn(f"der({name})", source)
         self.assertIn(
-            "discrete Real vppVCBA02ClosedApplied(start=1, fixed=true)",
+            "Real vppVCBA02ClosedApplied(start=1, fixed=true,",
             source,
         )
         self.assertIn(
-            "vppVCBA02ClosedApplied = vppVCBA02ClosedNative", source
+            "der(vppVCBA02ClosedApplied) =", source
         )
+        self.assertNotIn("when sample(", source)
         self.assertIn(
             "vppLPFWPMotorEnergized = vppVCBA02ClosedApplied >= 0.5", source
         )

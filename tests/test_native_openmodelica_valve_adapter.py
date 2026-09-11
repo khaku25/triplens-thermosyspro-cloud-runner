@@ -14,7 +14,7 @@ from patch_native_opcua_valve_controls import (  # noqa: E402
     FORBIDDEN_LEGACY_MARKER,
     MARKER,
     POINTS,
-    SAMPLED_PHYSICAL_POINT_IDS,
+    CAUSAL_PHYSICAL_POINT_IDS,
     patch_model as patch_native,
 )
 from patch_turbine_bypass_model import patch_model as patch_bypass  # noqa: E402
@@ -62,17 +62,21 @@ class NativeOpenModelicaValveAdapterTests(unittest.TestCase):
                 1,
                 point.control_point_id,
             )
-            self.assertIn(f"{stem}Cv = {point.object_name}.Cv", self.patched)
             self.assertIn(f"{stem}MassFlowTH = 3.6*{point.object_name}.Q", self.patched)
             self.assertIn(
-                f"discrete output Real {stem}DPPa",
+                f"output Real {stem}Cv(start=0, fixed=true, "
+                "stateSelect=StateSelect.always)",
                 self.patched,
             )
-            sampled = (
-                f"    {stem}DPPa = "
-                f"{point.object_name}.C1.P - {point.object_name}.C2.P;"
+            self.assertIn(f"der({stem}Cv) = ({point.object_name}.Cv - {stem}Cv)/", self.patched)
+            self.assertNotIn(f"\n  {stem}Cv = ", self.patched)
+            self.assertIn(f"\n  {stem}MassFlowTH = ", self.patched)
+            self.assertIn(
+                f"output Real {stem}DPPa(start=0, fixed=true, "
+                "stateSelect=StateSelect.always",
+                self.patched,
             )
-            self.assertIn(sampled, self.patched)
+            self.assertIn(f"der({stem}DPPa) = (", self.patched)
             self.assertNotIn(
                 f"\n  {stem}DPPa = ",
                 self.patched,
@@ -81,16 +85,11 @@ class NativeOpenModelicaValveAdapterTests(unittest.TestCase):
                 self.assertNotIn(f"connect({point.original_connect})", self.patched)
 
     def test_pressure_drop_telemetry_is_outside_continuous_initialization_dae(self) -> None:
-        self.assertIn(
-            "when sample(vppValvePressureSamplePeriodS,\n"
-            "      vppValvePressureSamplePeriodS) then",
-            self.patched,
-        )
-        self.assertNotIn("when {initial(), sample(", self.patched)
-        self.assertEqual(self.patched.count("discrete output Real vppVlv"), 12)
+        self.assertNotIn("when sample(", self.patched)
+        self.assertEqual(self.patched.count("der(vppVlv"), 31)
         self.assertNotIn("output discrete Real", self.patched)
 
-    def test_only_traced_physical_valve_positions_are_sampled(self) -> None:
+    def test_only_traced_physical_valve_positions_are_causally_tracked(self) -> None:
         expected_sampled = {
             "HP_STEAM_VLV",
             "IP_STEAM_VLV",
@@ -100,27 +99,26 @@ class NativeOpenModelicaValveAdapterTests(unittest.TestCase):
             "HP_FW_ISO_VLV",
             "IP_FW_ISO_VLV",
         }
-        self.assertEqual(SAMPLED_PHYSICAL_POINT_IDS, expected_sampled)
-        self.assertEqual(self.patched.count("when sample("), 1)
+        self.assertEqual(CAUSAL_PHYSICAL_POINT_IDS, expected_sampled)
+        self.assertEqual(self.patched.count("when sample("), 0)
         for point in POINTS:
             stem = f"vppVlv{point.suffix}"
             self.assertIn(f"Real {stem}Target(min=0, max=1);", self.patched)
             self.assertIn(f"\n  {stem}Target = if", self.patched)
             if point.control_point_id in expected_sampled:
                 self.assertIn(
-                    f"discrete Real {stem}Applied(start={point.initial:g}, "
-                    "fixed=true, min=0, max=1)",
+                    f"Real {stem}Applied(start={point.initial:g}, fixed=true, "
+                    "stateSelect=StateSelect.always, min=0, max=1)",
                     self.patched,
                 )
                 self.assertIn(
-                    f"    {stem}Applied = {stem}Target;",
+                    f"der({stem}Applied) = ({stem}Target - {stem}Applied)/",
                     self.patched,
                 )
                 self.assertIn(f"{stem}Fb = {stem}Applied;", self.patched)
             else:
                 self.assertNotIn(f"{stem}Applied", self.patched)
-        self.assertEqual(self.patched.count("discrete Real vppVlv"), 7)
-        self.assertNotIn("when {initial(), sample(", self.patched)
+        self.assertNotIn("discrete Real vppVlv", self.patched)
 
     def test_trip_admission_targets_remain_continuous(self) -> None:
         for suffix in ("HPTurbAdm", "IPTurbAdm", "LPSteam"):
@@ -142,7 +140,9 @@ class NativeOpenModelicaValveAdapterTests(unittest.TestCase):
                 self.assertNotIn(f"der({name})", self.patched)
                 inputs += 1
         self.assertEqual(inputs, 48)
-        self.assertNotIn("StateSelect.always", self.patched)
+        for line in self.patched.splitlines():
+            if "input Real vppVlv" in line:
+                self.assertNotIn("StateSelect.always", line)
 
     def test_fault_override_does_not_rewrite_selected_command(self) -> None:
         for point in POINTS:

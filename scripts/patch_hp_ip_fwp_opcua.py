@@ -40,6 +40,8 @@ DECLARATIONS = f'''
     "Pinned 1400 rpm HP pump load used by the causal shaft-load boundary";
   parameter Real vppIPFWPNominalMechanicalPowerW(unit="W") = 220732.6496544388
     "Pinned 1400 rpm IP pump load used by the causal shaft-load boundary";
+  parameter Real vppHPIPTelemetryTimeConstantS(unit="s") = 0.02
+    "Tracking-state time constant that keeps pump telemetry outside the plant DAE";
   parameter Real vppHPFWPHydraulicSpeedFloorRPM(unit="rev/min") = 700
     "Numerical floor for the HP static-pump curve; shaft speed remains physical";
   parameter Real vppIPFWPHydraulicSpeedFloorRPM(unit="rev/min") = 700
@@ -56,8 +58,8 @@ DECLARATIONS = f'''
   output Real vppHPFWPSpeedRPM(unit="rev/min");
   output Real vppHPFWPHydraulicSpeedRPM(unit="rev/min");
   output Real vppHPFWPMassFlowTH(unit="t/h");
-  output Real vppHPFWPVolumeFlowM3S(unit="m3/s");
-  output Real vppHPFWPDeltaPPa(unit="Pa");
+  output Real vppHPFWPVolumeFlowM3S(start=0, fixed=true, stateSelect=StateSelect.always, unit="m3/s");
+  output Real vppHPFWPDeltaPPa(start=0, fixed=true, stateSelect=StateSelect.always, unit="Pa");
   output Real vppHPFWPMechanicalPowerW(unit="W");
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
     vppHPFWPHydraulicSpeedCommand;
@@ -68,8 +70,8 @@ DECLARATIONS = f'''
   output Real vppIPFWPSpeedRPM(unit="rev/min");
   output Real vppIPFWPHydraulicSpeedRPM(unit="rev/min");
   output Real vppIPFWPMassFlowTH(unit="t/h");
-  output Real vppIPFWPVolumeFlowM3S(unit="m3/s");
-  output Real vppIPFWPDeltaPPa(unit="Pa");
+  output Real vppIPFWPVolumeFlowM3S(start=0, fixed=true, stateSelect=StateSelect.always, unit="m3/s");
+  output Real vppIPFWPDeltaPPa(start=0, fixed=true, stateSelect=StateSelect.always, unit="Pa");
   output Real vppIPFWPMechanicalPowerW(unit="W");
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
     vppIPFWPHydraulicSpeedCommand;
@@ -108,18 +110,23 @@ EQUATIONS = '''
   vppHPFWPSpeedProven = vppHPFWPSpeedRPM >= 0.9*vppHPFWPDrive.nominalSpeedRpm;
   vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven;
   vppHPFWPMassFlowTH = 3.6*PompeAlimHP.Q;
-  vppHPFWPVolumeFlowM3S = PompeAlimHP.Qv;
-  vppHPFWPDeltaPPa = PompeAlimHP.deltaP;
   vppHPFWPMechanicalPowerW = PompeAlimHP.Wm;
-
   vppIPFWPSpeedRPM = vppIPFWPDrive.speedRpm;
   vppIPFWPHydraulicSpeedRPM = vppIPFWPHydraulicSpeedCommand.signal;
   vppIPFWPSpeedProven = vppIPFWPSpeedRPM >= 0.9*vppIPFWPDrive.nominalSpeedRpm;
   vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven;
   vppIPFWPMassFlowTH = 3.6*PompeAlimMP.Q;
-  vppIPFWPVolumeFlowM3S = PompeAlimMP.Qv;
-  vppIPFWPDeltaPPa = PompeAlimMP.deltaP;
   vppIPFWPMechanicalPowerW = PompeAlimMP.Wm;
+  // Tracking states prevent observability aliases from replacing native pump
+  // iteration variables without generating periodic global DAE events.
+  der(vppHPFWPVolumeFlowM3S) = (PompeAlimHP.Qv -
+    vppHPFWPVolumeFlowM3S)/vppHPIPTelemetryTimeConstantS;
+  der(vppHPFWPDeltaPPa) = (PompeAlimHP.deltaP -
+    vppHPFWPDeltaPPa)/vppHPIPTelemetryTimeConstantS;
+  der(vppIPFWPVolumeFlowM3S) = (PompeAlimMP.Qv -
+    vppIPFWPVolumeFlowM3S)/vppHPIPTelemetryTimeConstantS;
+  der(vppIPFWPDeltaPPa) = (PompeAlimMP.deltaP -
+    vppIPFWPDeltaPPa)/vppHPIPTelemetryTimeConstantS;
 
 '''
 
