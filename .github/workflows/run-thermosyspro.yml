@@ -14,6 +14,8 @@ on:
           - incident_1ms
           - normal_3min
           - gt_derate_3min_10ms
+          - gt_trip_commissioning_1ms
+          - gt_trip_full_100ms
       event_time_s:
         description: Physical exhaust-boundary change start time in seconds
         required: true

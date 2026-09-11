@@ -44,6 +44,7 @@ PHYSICAL_BYPASS_VARIANTS = {
     "HPBP_LPBP_PHYSICAL_V11",
     "HPBP_LPBP_PHYSICAL_V12",
     "HPBP_LPBP_PHYSICAL_V12_TPH_EXPORT_V1",
+    "HPBP_LPBP_PHYSICAL_V13_GT_TRIP_HANDOFF",
 }
 DYNAMIC_BYPASS_COLUMNS = {
     "vppSTTripLatch",
@@ -105,6 +106,18 @@ DERATE_BOUNDARY_COLUMNS = {
     "vppLPSprayMassFlowTH",
     "vppGTExhaustMassFlowTH",
     "Temperature.y.signal",
+}
+GT_TRIP_HANDOFF_COLUMNS = {
+    "vppGTTripCmd",
+    "vppGTTripLatch",
+    "vpp52GTTripCmd",
+    "vpp52GTClosed",
+    "vpp52STTripCmd",
+    "vpp52STClosed",
+    "vppGTGPowerMW",
+    "vppGTGSpeedRPM",
+    "vppGTExhaustMassFlowTH",
+    "Alternateur.Welec",
 }
 
 
@@ -490,6 +503,101 @@ def validate_derate_operation(path: Path) -> dict[str, float]:
     return {label: actual for label, (actual, _) in expected.items()}
 
 
+def validate_gt_trip_handoff(
+    path: Path, nominal_period_ms: float
+) -> dict[str, float]:
+    """Fail closed unless GT/ST electrical states originate in Modelica RAW."""
+    with path.open("r", encoding="utf-8-sig", newline="") as stream:
+        reader = csv.DictReader(stream)
+        columns = set(reader.fieldnames or [])
+        missing = sorted(GT_TRIP_HANDOFF_COLUMNS.difference(columns))
+        if missing:
+            raise ValueError(
+                "GT Trip physical RAW is missing columns: " + ", ".join(missing)
+            )
+        rows = list(reader)
+
+    times = [float(row["time"]) for row in rows]
+    bool_columns = (
+        "vppGTTripCmd", "vppGTTripLatch", "vpp52GTTripCmd",
+        "vpp52GTClosed", "vpp52STTripCmd", "vpp52STClosed",
+    )
+    digital = {
+        column: [
+            parse_boolean(row[column], column=column, row_number=index)
+            for index, row in enumerate(rows, start=2)
+        ]
+        for column in bool_columns
+    }
+    analog: dict[str, list[float]] = {}
+    for column in (
+        "vppGTGPowerMW", "vppGTGSpeedRPM", "vppGTExhaustMassFlowTH",
+        "Alternateur.Welec",
+    ):
+        values = [float(row[column]) for row in rows]
+        if not all(math.isfinite(value) for value in values):
+            raise ValueError(f"GT Trip physical RAW contains non-finite {column}")
+        analog[column] = values
+
+    def edge(column: str, old: bool, new: bool) -> float:
+        values = digital[column]
+        matches = [
+            times[index]
+            for index in range(1, len(values))
+            if values[index - 1] is old and values[index] is new
+        ]
+        if len(matches) != 1:
+            raise ValueError(
+                f"{column} must make exactly one {old}->{new} transition"
+            )
+        return matches[0]
+
+    gt_cmd_s = edge("vppGTTripCmd", False, True)
+    gt_latch_s = edge("vppGTTripLatch", False, True)
+    gt_52_cmd_s = edge("vpp52GTTripCmd", False, True)
+    gt_52_open_s = edge("vpp52GTClosed", True, False)
+    st_52_cmd_s = edge("vpp52STTripCmd", False, True)
+    st_52_open_s = edge("vpp52STClosed", True, False)
+    tolerance_s = max(0.002, 2 * nominal_period_ms / 1000)
+    expectations = {
+        "GT latch": (gt_latch_s - gt_cmd_s, 0.0),
+        "52GT Trip command": (gt_52_cmd_s - gt_cmd_s, 0.055),
+        "52GT opening": (gt_52_open_s - gt_cmd_s, 0.080),
+        "52ST Trip command": (st_52_cmd_s - gt_cmd_s, 0.0),
+        "52ST opening": (st_52_open_s - gt_cmd_s, 0.100),
+    }
+    for label, (actual, expected) in expectations.items():
+        if abs(actual - expected) > tolerance_s:
+            raise ValueError(
+                f"{label} timing is {actual:.6f}s, expected {expected:.6f}s"
+            )
+
+    power = analog["vppGTGPowerMW"]
+    speed = analog["vppGTGSpeedRPM"]
+    exhaust = analog["vppGTExhaustMassFlowTH"]
+    open_index = next(index for index, time_s in enumerate(times) if time_s >= gt_52_open_s)
+    if power[0] <= 0 or max(abs(value) for value in power[open_index:]) > 1e-6:
+        raise ValueError("GT generator output did not become zero after 52GT opened")
+    if speed[0] <= 0 or speed[-1] >= 0.05 * speed[0]:
+        raise ValueError("GT shaft speed did not physically coast down")
+    if exhaust[0] <= 0 or exhaust[-1] > 0.10 * exhaust[0]:
+        raise ValueError("GT exhaust mass flow did not reach the purge/coastdown boundary")
+    if max(abs(value) for value in analog["Alternateur.Welec"]) <= 0:
+        raise ValueError("ST generator physical power is missing or identically zero")
+
+    return {
+        "gt_trip_command_time_s": gt_cmd_s,
+        "cb_52gt_trip_command_time_s": gt_52_cmd_s,
+        "cb_52gt_open_time_s": gt_52_open_s,
+        "cb_52st_open_time_s": st_52_open_s,
+        "gtg_initial_power_mw": power[0],
+        "gtg_final_power_mw": power[-1],
+        "gtg_initial_speed_rpm": speed[0],
+        "gtg_final_speed_rpm": speed[-1],
+        "gt_exhaust_final_t_h": exhaust[-1],
+    }
+
+
 def validate_raw_csv(path: Path) -> dict[str, object]:
     with path.open("r", encoding="utf-8-sig", newline="") as stream:
         reader = csv.reader(stream)
@@ -642,13 +750,13 @@ def main() -> int:
         transform = runtime.get("source_transform")
         if not isinstance(transform, dict):
             raise ValueError("dynamic bypass manifest is missing source-transform proof")
-        expected_marker = (
-            "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12"
-            if str(runtime.get("model_variant", "")).startswith(
-                "HPBP_LPBP_PHYSICAL_V12"
-            )
-            else "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11"
-        )
+        variant = str(runtime.get("model_variant", ""))
+        if variant.startswith("HPBP_LPBP_PHYSICAL_V13"):
+            expected_marker = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V13"
+        elif variant.startswith("HPBP_LPBP_PHYSICAL_V12"):
+            expected_marker = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12"
+        else:
+            expected_marker = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V11"
         if transform.get("marker") != expected_marker:
             raise ValueError("dynamic bypass manifest has the wrong patch marker")
         digest = transform.get("patched_model_sha256")
@@ -672,6 +780,12 @@ def main() -> int:
                 "DYNAMIC_BYPASS_VALIDATION_PASS "
                 + json.dumps(crossings, sort_keys=True)
             )
+            if str(sampling.get("profile", "")).startswith("gt_trip_"):
+                gt_trip = validate_gt_trip_handoff(raw_path, nominal_period_ms)
+                print(
+                    "GT_TRIP_PHYSICAL_HANDOFF_PASS "
+                    + json.dumps(gt_trip, sort_keys=True)
+                )
     return 0
 
 

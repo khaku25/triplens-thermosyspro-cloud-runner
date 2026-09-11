@@ -86,6 +86,8 @@ def main() -> int:
             "incident_1ms",
             "normal_3min",
             "gt_derate_3min_10ms",
+            "gt_trip_commissioning_1ms",
+            "gt_trip_full_100ms",
         ),
         required=True,
     )

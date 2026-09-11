@@ -30,6 +30,8 @@ equation
   connect(TurbineHP.Cs, MoitieDebitHP.Ce);
   connect(DoubleDebitMP.Cs, vanne_entree_TurbineMP.C1);
   connect(perteChargeK1.C2, CapteurDebitVapCondenseur.C1);
+  connect(Temperature.y,SourceFumees. ITemperature);
+  connect(Debit.y,SourceFumees. IMassFlow);
 end CombinedCycle_TripTAC;
 """
 
@@ -45,8 +47,7 @@ class TurbineBypassPatchTests(unittest.TestCase):
         self.assertIn("connect(DoubleDebitHP.Cs, vppHPSplitter.Ce)", patched)
         self.assertIn("connect(TurbineHP.Cs, vppHPColdReheatVolume.Ce1)", patched)
         self.assertIn(
-            "ThermoSysPro.WaterSteam.Volumes.VolumeC vppHPColdReheatVolume",
-            patched,
+            "VPPRegularizedMixingVolume vppHPColdReheatVolume", patched
         )
         self.assertIn(
             "connect(vppHPBypassValve.C2, vppHPColdReheatVolume.Ce2)",
@@ -62,8 +63,7 @@ class TurbineBypassPatchTests(unittest.TestCase):
         )
         self.assertIn("connect(DoubleDebitMP.Cs, vppLPSplitter.Ce)", patched)
         self.assertIn(
-            "ThermoSysPro.WaterSteam.Volumes.VolumeC vppCondenserSteamVolume",
-            patched,
+            "VPPRegularizedMixingVolume vppCondenserSteamVolume", patched
         )
         self.assertIn(
             "connect(vppLPBypassValve.C2, vppCondenserSteamVolume.Ce2)",
@@ -77,11 +77,15 @@ class TurbineBypassPatchTests(unittest.TestCase):
             "connect(vppLPSprayInjector.C2, vppCondenserSteamVolume.Ce3)",
             patched,
         )
-        self.assertEqual(patched.count("dynamic_mass_balance=false"), 2)
-        self.assertEqual(patched.count("steady_state=true"), 2)
+        # One model default plus the two instantiated headers.
+        self.assertEqual(patched.count("dynamic_mass_balance=false"), 3)
+        self.assertEqual(patched.count("steady_state=true"), 3)
         self.assertIn("parameter Real vppValveLeak = 0", patched)
         self.assertIn("model VPPPressureDrivenBypassValve", patched)
         self.assertEqual(patched.count("VPPPressureDrivenBypassValve vpp"), 2)
+        self.assertEqual(patched.count("VPPRegularizedSplitter2 vpp"), 2)
+        self.assertEqual(patched.count("VPPRegularizedMixingVolume vpp"), 2)
+        self.assertIn("Pthermo = noEvent(max(pressureFloor, P))", patched)
         self.assertIn("if noEvent(Ouv.signal <= closedEpsilon)", patched)
         self.assertIn("C1.h = C1.h_vol", patched)
         self.assertIn("Q = Cv*rhoNom", patched)
@@ -130,6 +134,12 @@ class TurbineBypassPatchTests(unittest.TestCase):
         self.assertIn("max(vppSpraySeatLeak", patched)
         self.assertIn("vppHPBypassMassFlow = vppHPBypassValve.Q", patched)
         self.assertIn("vppCondenserPressure = Condenseur.P", patched)
+        self.assertIn("input Boolean vppExternalTripCommand", patched)
+        self.assertIn(
+            "connect(vppGTExhaustMassFlowCommand, SourceFumees.IMassFlow)",
+            patched,
+        )
+        self.assertNotIn("connect(Debit.y,SourceFumees. IMassFlow)", patched)
 
     def test_patch_fails_closed_when_reapplied(self) -> None:
         with self.assertRaisesRegex(ValueError, "already patched"):

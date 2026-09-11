@@ -1,0 +1,68 @@
+name: Verify live FMU ECMS closed loop
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-fmu-ecms-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  live-closed-loop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    steps:
+      - name: Check out main-grade physical model
+        uses: actions/checkout@v4
+
+      - name: Verify live interface contracts
+        run: |
+          python3 -m unittest \
+            tests.test_live_fmu_network \
+            tests.test_turbine_bypass_patch \
+            tests.test_raw_action -v
+
+      - name: Install pinned FMI host
+        run: python3 -m pip install --disable-pip-version-check -r requirements-live.txt
+
+      - name: Build FMU and prove bidirectional physical communication
+        env:
+          OPENMODELICA_DEPENDENCY_TIMEOUT: 5m
+          OPENMODELICA_FMU_BUILD_TIMEOUT: 38m
+          LIVE_STOP_TIME_S: "10"
+          LIVE_STEP_SIZE_S: "0.001"
+          LIVE_TRIP_TIME_S: "2"
+        run: |
+          chmod +x scripts/run_live_fmu_ecms.sh
+          scripts/run_live_fmu_ecms.sh
+
+      - name: Publish live ECMS capture and network proof
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-fmu-ecms-${{ github.run_number }}
+          path: |
+            outputs/live/**
+            build/TripLens_CCPP_Live.fmu
+            build/live-fmu-build.log
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Preserve live diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-fmu-ecms-diagnostics-${{ github.run_number }}
+          path: |
+            outputs/live/**
+            build/TripLens_CombinedCycle_TripTAC.mo
+            build/build_live_fmu.mos
+            build/live-fmu-build.log
+          if-no-files-found: warn
+          retention-days: 7

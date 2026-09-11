@@ -51,6 +51,38 @@ EVENT_TAG_ALIASES = {
     "GT.TRIP.CMD": "CMD.GTG.TRIP",
     "ST.TRIP.CMD": "CMD.STG.TRIP",
 }
+PHYSICAL_GT_TRIP_REQUIRED = (
+    "gt_trip_cmd",
+    "gt_trip_latch",
+    "st_trip_latch",
+    "cb_52gt_trip_cmd",
+    "cb_52gt_closed",
+    "cb_52st_trip_cmd",
+    "cb_52st_closed",
+    "gtg_power_mw",
+    "gtg_speed_rpm",
+    "stg_power_w",
+    "gt_exhaust_mass_flow_t_h",
+    "gt_exhaust_temperature_k",
+    "hp_drum_level_m",
+    "ip_drum_level_m",
+    "lp_drum_level_m",
+    "hp_drum_pressure_pa",
+    "ip_drum_pressure_pa",
+    "lp_drum_pressure_pa",
+    "hp_steam_flow_t_h",
+    "ip_steam_flow_t_h",
+    "lp_steam_flow_t_h",
+    "hp_admission_valve_pu",
+    "ip_admission_valve_pu",
+    "lp_admission_multiplier_pu",
+    "hp_bypass_valve_pu",
+    "lp_bypass_valve_pu",
+    "hp_bypass_steam_flow_t_h",
+    "lp_bypass_steam_flow_t_h",
+    "condenser_pressure_pa",
+    "condenser_level_m",
+)
 
 
 def sha256(path: Path) -> str:
@@ -279,6 +311,18 @@ def main() -> int:
         choices=("standard", "causal_100ms", "incident_1ms"),
         default="standard",
     )
+    parser.add_argument(
+        "--physical-source-policy",
+        choices=("prefer-observed", "require-observed", "calculated"),
+        default="prefer-observed",
+        help="Control whether ECMS generator/breaker values must come from ProcessBus.",
+    )
+    parser.add_argument(
+        "--physical-handoff",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Publish and byte-verify the ECMS physical-value intake file/dashboard.",
+    )
     args = parser.parse_args()
     args.input = args.raw or args.input
     if args.reference_event_time is not None and not math.isclose(
@@ -318,6 +362,11 @@ def main() -> int:
     vpp_event = args.output_dir / "VPP.EVENT.csv"
     trend = args.output_dir / "ECMS-trend.csv"
     feeders = args.output_dir / "ECMS-feeders.csv"
+    physical = args.output_dir / "ECMS-physical.csv"
+    physical_manifest = args.output_dir / "ECMS-PHYSICAL-MANIFEST.json"
+    physical_report = args.output_dir / "PHYSICAL-HANDOFF-REPORT.json"
+    physical_dashboard = args.output_dir / "ECMS-physical-dashboard.html"
+    physical_dashboard_preview = args.output_dir / "ECMS-physical-dashboard.svg"
 
     if args.input.resolve() != vpp_raw.resolve():
         shutil.copyfile(args.input, vpp_raw)
@@ -346,6 +395,23 @@ def main() -> int:
         }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     start_s, stop_s = validate_processbus(processbus, args.reference_event_time)
+    if args.physical_handoff:
+        if input_kind != "raw":
+            raise ValueError(
+                "--physical-handoff requires native simulator RAW so every ECMS value "
+                "can be traced to an OpenModelica source column"
+            )
+        handoff_args = [
+            "--raw", str(vpp_raw),
+            "--processbus", str(processbus),
+            "--mapping-review", str(metadata),
+            "--output", str(physical),
+            "--manifest-output", str(physical_manifest),
+        ]
+        if args.physical_source_policy == "require-observed":
+            for signal in PHYSICAL_GT_TRIP_REQUIRED:
+                handoff_args.extend(["--require-signal", signal])
+        run_script("build_ecms_physical_handoff.py", *handoff_args)
     run_script(
         "generate_dcs_alarms.py",
         "--incident-raw", str(processbus),
@@ -376,6 +442,7 @@ def main() -> int:
         "--dcs-events", str(dcs2),
         "--fault-preset", args.fault_preset,
         "--sampling-profile", args.ecms_sampling_profile,
+        "--physical-source-policy", args.physical_source_policy,
         "--trend-output", str(trend),
         "--event-output", str(ecms),
         "--feeder-output", str(feeders),
@@ -384,6 +451,25 @@ def main() -> int:
         ecms_args.extend(["--commands", str(args.commands)])
     run_script("generate_ecms.py", *ecms_args)
 
+    if args.physical_handoff:
+        run_script(
+            "validate_physical_handoff.py",
+            "--raw", str(vpp_raw),
+            "--processbus", str(processbus),
+            "--handoff", str(physical),
+            "--manifest", str(physical_manifest),
+            "--report", str(physical_report),
+        )
+        run_script(
+            "build_ecms_physical_dashboard.py",
+            "--handoff", str(physical),
+            "--manifest", str(physical_manifest),
+            "--validation-report", str(physical_report),
+            "--event-time", str(args.reference_event_time),
+            "--output", str(physical_dashboard),
+            "--preview-svg", str(physical_dashboard_preview),
+        )
+
     event_count, duplicate_count = write_vpp_events(
         vpp_event, dcs1, dcs2, ecms, args.reference_event_time
     )
@@ -391,6 +477,11 @@ def main() -> int:
         raise RuntimeError("source simulator output changed during alarm generation")
 
     products = [vpp_raw, processbus, vpp_event, dcs1, dcs2, ecms, trend, feeders, metadata]
+    if args.physical_handoff:
+        products.extend([
+            physical, physical_manifest, physical_report, physical_dashboard,
+            physical_dashboard_preview,
+        ])
     counts = {}
     for path in (vpp_event, dcs1, dcs2, ecms):
         _fields, rows = read_csv(path)
@@ -423,6 +514,15 @@ def main() -> int:
         "exact_duplicate_edges_removed": duplicate_count,
         "event_counts_by_file": counts,
         "ownership_policy": "DCS1_DCS2_ECMS_PRESERVED_IN_SOURCE_SYSTEM",
+        "physical_handoff": {
+            "enabled": args.physical_handoff,
+            "source_policy": args.physical_source_policy,
+            "transport_mode": "FILE_HANDOFF" if args.physical_handoff else "DISABLED",
+            "value_policy": (
+                "NO_ECMS_RECALCULATION_NO_INTERPOLATION"
+                if args.physical_handoff else "DISABLED"
+            ),
+        },
         "products": {
             path.name: {"bytes": path.stat().st_size, "sha256": sha256(path)}
             for path in products

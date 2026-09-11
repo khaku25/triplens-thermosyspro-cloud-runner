@@ -8,8 +8,10 @@ set -euo pipefail
 #
 # Semantic boundary:
 #   2184.984 t/h / 893.75 K -> 540 t/h / 550 K is GT DERATE only.
-#   True GT TRIP is owned by the separate run-vpp-gt-trip path and requires
-#   electrical separation (52GT.CLOSED=0). Never label this boundary as Trip.
+#   GT DERATE remains separate. Canonical GT TRIP profiles are solved here and
+#   must publish Modelica-produced command, breaker and thermal-process values.
+#   The old run-vpp-gt-trip Python generator is replay-only and is not accepted
+#   as physical proof.
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd -- "$script_dir/.." && pwd)"
@@ -27,6 +29,7 @@ stop_time_s="$requested_stop_time_s"
 intervals="$requested_intervals"
 normal_operation=false
 derate_only=false
+gt_trip=false
 operating_mode="boundary-transient"
 
 case "$sampling_profile" in
@@ -70,6 +73,25 @@ PY
     derate_only=true
     operating_mode="gt-derate"
     ;;
+  gt_trip_commissioning_1ms)
+    # Fast end-to-end proof: the command, breaker states and every thermal
+    # response are emitted by the same OpenModelica result at 1 ms resolution.
+    event_time_s=2
+    transition_duration_s=2
+    stop_time_s=10
+    intervals=10000
+    gt_trip=true
+    operating_mode="gt-trip-physical"
+    ;;
+  gt_trip_full_100ms)
+    # Competition replay horizon: 300 s pre-Trip and 120 s post-Trip.
+    event_time_s=300
+    transition_duration_s=5
+    stop_time_s=420
+    intervals=4200
+    gt_trip=true
+    operating_mode="gt-trip-physical-full"
+    ;;
   *)
     echo "unknown sampling profile: $sampling_profile" >&2
     exit 2
@@ -101,6 +123,8 @@ if [[ "$normal_operation" == true ]]; then
   render_arguments+=(--normal-operation)
 elif [[ "$derate_only" == true ]]; then
   render_arguments+=(--derate-only)
+elif [[ "$gt_trip" == true ]]; then
+  render_arguments+=(--gt-trip)
 fi
 python3 scripts/render_modelica.py "${render_arguments[@]}"
 
@@ -177,8 +201,8 @@ python3 scripts/build_raw_manifest.py \
   --output-intervals "$intervals" \
   --thermosyspro-commit "$thermosyspro_commit" \
   --openmodelica-image "$openmodelica_image" \
-  --model-variant "HPBP_LPBP_PHYSICAL_V12_TPH_EXPORT_V1" \
-  --source-patch-marker "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12" \
+  --model-variant "HPBP_LPBP_PHYSICAL_V13_GT_TRIP_HANDOFF" \
+  --source-patch-marker "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V13" \
   --patched-model-sha256 "$patched_model_sha256"
 
 python3 scripts/validate_raw_outputs.py --output-dir outputs

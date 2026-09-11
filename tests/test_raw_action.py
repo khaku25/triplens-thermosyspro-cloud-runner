@@ -146,8 +146,8 @@ class RawOnlyActionTests(unittest.TestCase):
         mos = (ROOT / "modelica" / "run.mos.tpl").read_text(encoding="utf-8")
 
         self.assertIn("patch_turbine_bypass_model.py", runner)
-        self.assertIn("HPBP_LPBP_PHYSICAL_V12", runner)
-        self.assertIn("TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12", runner)
+        self.assertIn("HPBP_LPBP_PHYSICAL_V13_GT_TRIP_HANDOFF", runner)
+        self.assertIn("TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V13", runner)
         self.assertIn("patch_stodola_turbine.py", runner)
         self.assertIn("RAW simulation ended early", (
             ROOT / "scripts" / "build_raw_manifest.py"
@@ -166,6 +166,40 @@ class RawOnlyActionTests(unittest.TestCase):
         self.assertNotIn("LOG_NLS_V", mos)
         self.assertIn('simflags="-noEventEmit"', mos)
         self.assertIn("CondenserPressure", mos)
+        self.assertIn("vppGTTripCmd", model)
+        self.assertIn("vpp52GTClosed", model)
+        self.assertIn("vppGTGPowerMW", model)
+        self.assertIn("GTGPowerMW", mos)
+        self.assertIn("52GTClosed", mos)
+        self.assertIn("exhaustFlowTripTH = 180.0", model)
+        self.assertIn("exhaustTemperatureTrip(unit=\"K\") = 450.0", model)
+
+    def test_gt_trip_profiles_are_manifest_contracts(self) -> None:
+        for profile, stop_time, intervals in (
+            ("gt_trip_commissioning_1ms", 10, 10000),
+            ("gt_trip_full_100ms", 420, 4200),
+        ):
+            with self.subTest(profile=profile), tempfile.TemporaryDirectory() as directory:
+                target = Path(directory)
+                raw = target / "thermosyspro-raw.csv"
+                raw.write_text(
+                    f'"time","x"\n0,1\n{stop_time},2\n', encoding="utf-8"
+                )
+                result = self.run_script(
+                    "build_raw_manifest.py",
+                    "--raw-file", str(raw),
+                    "--output", str(target / "raw-manifest.json"),
+                    "--sampling-profile", profile,
+                    "--stop-time", str(stop_time),
+                    "--output-intervals", str(intervals),
+                    "--thermosyspro-commit", "test-commit",
+                    "--openmodelica-image", "test-image",
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                manifest = json.loads(
+                    (target / "raw-manifest.json").read_text(encoding="utf-8")
+                )
+                self.assertEqual(manifest["sampling"]["profile"], profile)
 
     def test_one_ms_dynamic_bypass_raw_meets_stroke_contract(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
