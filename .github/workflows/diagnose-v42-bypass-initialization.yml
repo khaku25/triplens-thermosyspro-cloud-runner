@@ -75,7 +75,9 @@ jobs:
             --dynamic-drum \
             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Volumes/DynamicDrum.mo \
             --stodola-turbine \
-            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo \
+            --fluid-ph \
+            vendor/ThermoSysPro/ThermoSysPro/Properties/Fluid/Ph.mo
 
       - name: Install Modelica 4.0.0
         run: |
