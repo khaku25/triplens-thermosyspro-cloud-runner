@@ -113,7 +113,9 @@ end CombinedCycle_TripTAC;
                 "inlet_p_node", "outlet_p_node", "resistance_node",
             ):
                 self.assertIn(asset[key], content)
-            self.assertEqual(content.count('data-opcua-access="READ_ONLY"'), 7)
+            self.assertEqual(content.count('data-opcua-access="READ_ONLY"'), 1)
+            self.assertNotIn("<text", content)
+            self.assertIn('width="512" height="512"', content)
 
 
 if __name__ == "__main__":

@@ -87,58 +87,25 @@ DEFS = """
 """
 
 
-def feedback_rows(asset: CheckValveAsset) -> str:
-    rows: list[str] = []
-    for index, (label, node, unit) in enumerate(asset.nodes):
-        col = index % 2
-        row = index // 2
-        x = 70 + 510 * col
-        y = 405 + 72 * row
-        rows.append(f'''
-  <g data-opcua-access="READ_ONLY" data-opcua-browse-name="{esc(node)}">
-    <rect class="io" x="{x}" y="{y}" width="470" height="58" rx="8"/>
-    <text class="label" x="{x + 15}" y="{y + 22}">{label} · {unit}</text>
-    <text class="mono" x="{x + 15}" y="{y + 44}">{esc(node)}</text>
-  </g>''')
-    return "".join(rows)
-
-
 def render_asset(asset: CheckValveAsset) -> str:
     label = f"{asset.pressure_level} FWP DISCHARGE CHECK VALVE"
-    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="760" viewBox="0 0 1160 760"
-  role="img" aria-labelledby="title desc" data-protocol="OPC UA" data-endpoint="{ENDPOINT}"
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"
+  role="img" aria-labelledby="title" data-protocol="OPC UA" data-endpoint="{ENDPOINT}"
   data-equipment-id="{esc(asset.equipment_id)}">
-  <title id="title">{label} OPC UA physical feedback</title>
-  <desc id="desc">Passive physical non-return valve after {esc(asset.pump_component)} with seven read-only solved values.</desc>
-  <style>{STYLE}</style>{DEFS}
-  <rect class="bg" width="1160" height="760"/><rect class="panel" x="22" y="20" width="1116" height="715" rx="18"/>
-  <text class="title" x="52" y="62">{label}</text>
-  <text class="sub" x="52" y="88">ThermoSysPro/OpenModelica → OPC UA → ECMS/SVG · BrowseName runtime binding</text>
-  <rect class="badge" x="835" y="43" width="255" height="28" rx="14"/><text class="badgeText" x="962" y="62" text-anchor="middle">PASSIVE · PHYSICAL · READ ONLY</text>
-
-  <rect class="equip" x="70" y="205" width="180" height="90" rx="14"/>
-  <text class="label" x="160" y="240" text-anchor="middle">{esc(asset.inlet)}</text><text class="small" x="160" y="266" text-anchor="middle">{esc(asset.pump_component)}</text>
-  <path class="water" d="M250 250H350" marker-end="url(#waterArrow)"/>
-  <circle class="pump" cx="395" cy="250" r="44"/><path d="M373 275Q430 250 373 225Z" fill="#d9f4ff"/>
-  <text class="small" x="395" y="320" text-anchor="middle">CENTRIFUGAL PUMP</text>
-  <path class="water" d="M439 250H560" marker-end="url(#waterArrow)"/>
+  <title id="title">{label}</title>
+  <style>{STYLE}</style>
   <g data-component="{esc(asset.check_valve_component)}" data-symbol-type="SPRING_CHECK_VALVE"
-    data-symbol-convention="ISO-10628-style" aria-label="Spring-loaded non-return valve">
-    <polygon class="nrv" points="575,215 635,250 575,285"/>
-    <line x1="635" y1="210" x2="635" y2="290" stroke="#87efbd" stroke-width="6"/>
-    <polyline points="635,210 625,200 645,188 625,176 635,164" fill="none"
-      stroke="#87efbd" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    <text class="small" x="610" y="320" text-anchor="middle">SPRING CHECK VALVE · NRV</text>
+    data-symbol-convention="ISO-10628-style" data-opcua-access="READ_ONLY"
+    data-opcua-open="{esc(asset.open_node)}" data-opcua-opening="{esc(asset.opening_node)}"
+    data-opcua-flow="{esc(asset.flow_node)}" data-opcua-delta-p="{esc(asset.delta_p_node)}"
+    data-opcua-inlet-p="{esc(asset.inlet_p_node)}" data-opcua-outlet-p="{esc(asset.outlet_p_node)}"
+    data-opcua-resistance="{esc(asset.resistance_node)}" aria-label="Spring-loaded non-return valve">
+    <path class="water" d="M40 280H190M300 280H472"/>
+    <polygon class="nrv" points="190,225 290,280 190,335"/>
+    <line x1="290" y1="205" x2="290" y2="355" stroke="#87efbd" stroke-width="10"/>
+    <polyline points="290,205 272,185 308,163 272,141 290,115" fill="none"
+      stroke="#87efbd" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-  <path class="water" d="M650 250H805" marker-end="url(#waterArrow)"/>
-  <rect class="equip" x="805" y="205" width="285" height="90" rx="14"/>
-  <text class="label" x="947" y="240" text-anchor="middle">{esc(asset.outlet)}</text><text class="small" x="947" y="266" text-anchor="middle">protected discharge header</text>
-
-  <rect class="passive" x="70" y="345" width="1020" height="38" rx="10"/>
-  <text class="small" x="580" y="369" text-anchor="middle">No WRITE command: flap position is solved from flow, pressure and spring-equivalent dynamics</text>
-  {feedback_rows(asset)}
-  <text class="muted" x="70" y="703">ISO 10628-style process symbol · OpenModelica physical component · not an operating or isolation drawing</text>
-  <text class="muted" x="70" y="720">Endpoint {ENDPOINT} · Value/StatusCode/SourceTimestamp/ServerTimestamp handled by the OPC UA client</text>
 </svg>
 '''
 

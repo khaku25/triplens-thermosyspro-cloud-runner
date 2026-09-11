@@ -79,13 +79,15 @@ class OPCUASVGAssetsTest(unittest.TestCase):
             self.assertIn(row["position_node"], content)
             self.assertIn(row["flow_node"], content)
             self.assertIn('data-opcua-access="READ_ONLY"', content)
+            self.assertNotIn("<text", content)
+            self.assertIn('width="512" height="512"', content)
 
     def test_spray_implementation_is_not_misrepresented(self):
         spray = [row for row in self.assets if row["actuator_kind"] == "SPRAY_FLOW_SOURCE"]
         self.assertEqual(len(spray), 2)
         for row in spray:
             content = (ROOT / row["svg"]).read_text(encoding="utf-8")
-            self.assertIn("FLOW SOURCE + INJECTOR", content)
+            self.assertIn('data-symbol-type="FLOW_SOURCE_INJECTOR"', content)
 
     def test_individual_assets_use_explicit_process_symbol_types(self):
         for row in self.assets:
