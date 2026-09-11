@@ -2,9 +2,9 @@
 """Apply OpenModelica compatibility fixes to ThermoSysPro 4.2.
 
 This is an OpenModelica initialization compatibility patch. It changes no
-connector topology. Absolute pressure is bounded just above the IF97
-triple-point limit so bounded nonlinear solvers do not evaluate water-property
-functions outside their documented domain.
+connector topology. Water-property calls are guarded locally so transient
+nonlinear-solver trial points stay inside the IF97 domain without rejecting
+valid zero-valued connector defaults elsewhere in the model.
 The optional integrator patch prevents permanent-mode controller states found
 by the steady initialization problem from being overwritten by the initial
 ``when not reset`` event immediately after the solve.
