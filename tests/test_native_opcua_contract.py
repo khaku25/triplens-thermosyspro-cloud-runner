@@ -90,6 +90,12 @@ class NativeOPCUAContractTests(unittest.TestCase):
             {event["canonical_tag"] for event in events},
             {spec.tag for spec in EVENT_SPECS},
         )
+        by_tag = {event["canonical_tag"]: event for event in events}
+        self.assertEqual(by_tag["GTG.ACTIVE_POWER.ZERO"]["event_state"], "1")
+        self.assertEqual(
+            by_tag["TSP.TURBINE.HP.ADMISSION.CLOSE_LS"]["event_state"], "1"
+        )
+        self.assertEqual(by_tag["ECMS.52GT.CLOSED"]["event_state"], "0")
         bad = validate_lp_bfp([row(0.1, False), row(5.0, False)], 0.2, 30.0)
         self.assertEqual(bad["status"], "FAIL")
         self.assertFalse(lp_bfp_closed_loop_complete(row(5.0, False)))
