@@ -162,6 +162,8 @@ class NativeOPCUAContractTests(unittest.TestCase):
         self.assertIn('--command-time "$LIVE_COMMAND_TIME_S"', workflow)
         self.assertIn('--post-gt-trip-seconds "$LIVE_POST_GT_TRIP_S"', workflow)
         self.assertIn("-s=ida", workflow)
+        self.assertIn("-idaLS=dense", workflow)
+        self.assertIn("-jacobian=internalNumerical", workflow)
         self.assertNotIn("-nls=kinsol", workflow)
         self.assertNotIn("-nlsLS=klu", workflow)
         self.assertIn('docker rm -f "$native_container"', workflow)
