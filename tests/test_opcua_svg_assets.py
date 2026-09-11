@@ -8,6 +8,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
 INVENTORY = ROOT / "config" / "opcua_visual_assets_v1.csv"
 MANIFEST = ROOT / "topology" / "opcua" / "opcua_svg_manifest.json"
 GENERATOR = ROOT / "scripts" / "generate_opcua_svg_assets.py"
