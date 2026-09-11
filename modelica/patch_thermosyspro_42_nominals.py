@@ -127,12 +127,24 @@ def main() -> None:
         pros1_new = "  pros1 = ThermoSysPro.Properties.Fluid.Ph(Ps, max(Hrs, h_property_min), mode_s, fluid);"
         pros_old = "  pros = ThermoSysPro.Properties.Fluid.Ph(Ps, Cs.h, mode_s, fluid);"
         pros_new = "  pros = ThermoSysPro.Properties.Fluid.Ph(Ps, max(Cs.h, h_property_min), mode_s, fluid);"
-        for old in (anchor, pros1_old, pros_old):
+        pros1_decl_old = (
+            "  ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph "
+            "pros1 annotation("
+        )
+        pros1_decl_new = (
+            "  // Only pros1.x participates in the turbine equations. OMC scalarizes "
+            "the other record fields to zero, so allow that value on this instance "
+            "instead of emitting false initialization failures.\n"
+            "  ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph "
+            "pros1(T(min = 0), d(min = 0), cp(min = 0)) annotation("
+        )
+        for old in (anchor, pros1_old, pros_old, pros1_decl_old):
             if turbine_text.count(old) != 1:
                 raise SystemExit(f"expected one StodolaTurbine anchor, got {turbine_text.count(old)}: {old}")
         turbine_text = turbine_text.replace(anchor, replacement)
         turbine_text = turbine_text.replace(pros1_old, pros1_new)
         turbine_text = turbine_text.replace(pros_old, pros_new)
+        turbine_text = turbine_text.replace(pros1_decl_old, pros1_decl_new)
         args.stodola_turbine.write_text(turbine_text, encoding="utf-8")
         print(f"guarded StodolaTurbine property iterations in {args.stodola_turbine}")
 
