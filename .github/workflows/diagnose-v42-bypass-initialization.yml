@@ -114,8 +114,8 @@ jobs:
               "$OPENMODELICA_IMAGE" \
               "./${{ matrix.executable }}" \
                 -startTime=0 \
-                -stopTime=1 \
-                -stepSize=0.1 \
+                -stopTime=0.5 \
+                -stepSize=0.05 \
                 -tolerance=0.001 \
                 -f=selected_init.xml \
                 -iim=${{ matrix.iim }} \
