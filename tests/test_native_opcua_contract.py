@@ -135,7 +135,7 @@ class NativeOPCUAContractTests(unittest.TestCase):
         self.assertIn('loadFile("/workspace/modelica/TripLens_PumpPhysics.mo")', build)
         self.assertIn("--scenario lp-bfp-trip", workflow)
         self.assertIn('--command-time "$LIVE_COMMAND_TIME_S"', workflow)
-        self.assertIn('kill "$native_pid" 2>/dev/null || true', workflow)
+        self.assertIn('docker rm -f "$native_container"', workflow)
         self.assertIn('"vppVCBA02ClosedNative"', workflow)
         self.assertNotIn("live_fmu_gateway.py", workflow)
 
