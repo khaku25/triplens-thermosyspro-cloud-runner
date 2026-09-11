@@ -35,9 +35,11 @@ jobs:
       THERMOSYSPRO_COMMIT: db81ae1b5a6a85f6c6c7693244cafa6087e18ff5
       # The previously validated LP discharge check valve closes before reverse
       # flow; the unchanged L/LL thresholds occur near 32/56 s after Trip.
-      # Keep 20 ms OPC UA capture and enough margin for the GT/ST return path.
+      # Keep 40 ms OPC UA capture (two samples across the 80 ms breaker delay)
+      # and enough margin for the GT/ST return path.
       LIVE_STOP_TIME_S: "80"
-      LIVE_STEP_SIZE_S: "0.05"
+      LIVE_STEP_SIZE_S: "0.04"
+      LIVE_COMMAND_TIME_S: "20"
     steps:
       - uses: actions/checkout@v4
 
@@ -102,7 +104,8 @@ jobs:
               "vppExternalTripCommandNative", "vppLPFWPTripCommandNative",
               "vppLPFWPTripLatchNative", "vppVCBA02TripCommandNative",
               "vppVCBA02ClosedNative", "vppLPFWPMotorEnergized",
-              "vppLPFWPSpeedRPM", "vppLPFWPMassFlowTH",
+              "vppLPFWPSpeedRPM", "vppLPFWPHydraulicSpeedRPM",
+              "vppLPFWPMassFlowTH",
               "vppLPFWPDeltaPPa", "vppLPFWPCheckValveOpen",
               "vppLPFWPCheckValveOpening", "vppGTTripCmd", "vpp52GTClosed",
               "vpp52STClosed",
@@ -136,6 +139,7 @@ jobs:
               --scenario lp-bfp-trip \
               --stop-time "$LIVE_STOP_TIME_S" \
               --step-size "$LIVE_STEP_SIZE_S" \
+              --command-time "$LIVE_COMMAND_TIME_S" \
               --output-dir outputs/native-opcua; then
             tail -n 500 outputs/native-opcua/openmodelica-native.log || true
             exit 1

@@ -22,8 +22,10 @@ DECLARATIONS = f'''
     frictionTorqueNominal=20,
     initialTorque=4200,
     torqueLimit=6e4);
+  parameter Real vppLPFWPHydraulicSpeedFloorRPM(unit="rev/min") = 700
+    "Numerical floor for the upstream static pump curve; shaft speed remains physical";
   TripLens_PumpPhysics.SpringLoadedCheckValve vppLPFWPCheckValve(
-    closeFlow=20,
+    closeFlow=70,
     closedResistance=1e5);
   output Real vppLPFWPTripCommandNative(start=0, fixed=true, stateSelect=StateSelect.always);
   output Real vppLPFWPTripLatchNative(start=0, fixed=true, stateSelect=StateSelect.always);
@@ -33,12 +35,15 @@ DECLARATIONS = f'''
   output Boolean vppLPFWPSpeedProven;
   output Boolean vppLPFWPRunning;
   output Real vppLPFWPSpeedRPM(unit="rev/min");
+  output Real vppLPFWPHydraulicSpeedRPM(unit="rev/min");
   output Boolean vppLPFWPCheckValveOpen;
   output Real vppLPFWPCheckValveOpening(min=0, max=1);
   output Real vppLPFWPMassFlowTH(unit="t/h");
   output Real vppLPFWPVolumeFlowM3S(unit="m3/s");
   output Real vppLPFWPDeltaPPa(unit="Pa");
   output Real vppLPFWPMechanicalPowerW(unit="W");
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
+    vppLPFWPHydraulicSpeedCommand;
 '''
 
 EQUATIONS = '''
@@ -49,10 +54,13 @@ EQUATIONS = '''
   vppLPFWPMotorEnergized = vppVCBA02ClosedNative >= 0.5;
   vppLPFWPDrive.breakerClosed.signal = vppLPFWPMotorEnergized;
   vppLPFWPDrive.pumpPower.signal = PompeAlimBP.Wm;
-  connect(vppLPFWPDrive.speedCommand, PompeAlimBP.rpm_or_mpower);
+  vppLPFWPHydraulicSpeedCommand.signal = noEvent(max(
+    vppLPFWPHydraulicSpeedFloorRPM, vppLPFWPDrive.speedRpm));
+  connect(vppLPFWPHydraulicSpeedCommand, PompeAlimBP.rpm_or_mpower);
   connect(PompeAlimBP.C2, vppLPFWPCheckValve.C1);
   connect(vppLPFWPCheckValve.C2, vanne_extraction.C1);
   vppLPFWPSpeedRPM = vppLPFWPDrive.speedRpm;
+  vppLPFWPHydraulicSpeedRPM = vppLPFWPHydraulicSpeedCommand.signal;
   vppLPFWPCheckValveOpen = vppLPFWPCheckValve.ouvert;
   vppLPFWPCheckValveOpening = vppLPFWPCheckValve.opening;
   vppLPFWPSpeedProven = vppLPFWPSpeedRPM >= 0.9*vppLPFWPDrive.nominalSpeedRpm;
@@ -106,7 +114,8 @@ def patch_model(source: str) -> str:
     required = (
         "output Real vppLPFWPTripCommandNative(",
         "output Real vppVCBA02ClosedNative(",
-        "connect(vppLPFWPDrive.speedCommand, PompeAlimBP.rpm_or_mpower)",
+        "connect(vppLPFWPHydraulicSpeedCommand, PompeAlimBP.rpm_or_mpower)",
+        "vppLPFWPHydraulicSpeedFloorRPM, vppLPFWPDrive.speedRpm",
         "connect(PompeAlimBP.C2, vppLPFWPCheckValve.C1)",
         "connect(vppLPFWPCheckValve.C2, vanne_extraction.C1)",
         "vppLPFWPMassFlowTH = 3.6*PompeAlimBP.Q",

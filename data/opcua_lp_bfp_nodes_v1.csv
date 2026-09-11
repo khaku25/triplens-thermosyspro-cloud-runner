@@ -6,7 +6,8 @@ ECMS.VCB-A02.CLOSED,ECMS,ELECTRICAL,WRITE,vppVCBA02ClosedNative,VCB-A02 auxiliar
 FWP-LP.MOTOR_ENERGIZED,OpenModelica,PHYSICAL,READ,vppLPFWPMotorEnergized,ECMS.VCB-A02.CLOSED,Applied motor-power state
 DCS.FWP-LP.SPEED_PROVEN,OpenModelica,PHYSICAL,READ,vppLPFWPSpeedProven,vppLPFWPSpeedRPM,Derived speed feedback
 DCS.FWP-LP.RUN_FB,OpenModelica,PHYSICAL,READ,vppLPFWPRunning,motor energized and speed proven,Derived run feedback
-TSP.FWP-LP.SPEED_RPM,OpenModelica,PHYSICAL,READ,vppLPFWPSpeedRPM,PompeAlimBP.Vr,Solved pump speed
+TSP.FWP-LP.SPEED_RPM,OpenModelica,PHYSICAL,READ,vppLPFWPSpeedRPM,vppLPFWPDrive.speedRpm,Solved physical shaft speed
+TSP.FWP-LP.HYDRAULIC_SPEED_RPM,OpenModelica,NUMERICAL_ADAPTER,READ,vppLPFWPHydraulicSpeedRPM,PompeAlimBP.Vr,Explicit static-pump numerical speed separate from physical shaft speed
 TSP.FWP-LP.MASS_FLOW,OpenModelica,PHYSICAL,READ,vppLPFWPMassFlowTH,PompeAlimBP.Q,Solved pump mass flow
 TSP.FWP-LP.VOLUME_FLOW,OpenModelica,PHYSICAL,READ,vppLPFWPVolumeFlowM3S,PompeAlimBP.Qv,Solved pump volume flow
 TSP.FWP-LP.DELTA_P,OpenModelica,PHYSICAL,READ,vppLPFWPDeltaPPa,PompeAlimBP.deltaP,Solved pump differential pressure

@@ -63,6 +63,9 @@ SIGNALS = (
     Signal("lp_fwp_speed_proven", "vppLPFWPSpeedProven", "BOOL", "DCS1"),
     Signal("lp_fwp_running", "vppLPFWPRunning", "BOOL", "DCS1"),
     Signal("lp_fwp_speed_rpm", "vppLPFWPSpeedRPM", "rpm", "DCS1"),
+    Signal(
+        "lp_fwp_hydraulic_speed_rpm", "vppLPFWPHydraulicSpeedRPM", "rpm", "DCS1"
+    ),
     Signal("lp_fwp_mass_flow_th", "vppLPFWPMassFlowTH", "t/h", "DCS2"),
     Signal("lp_fwp_volume_flow_m3_s", "vppLPFWPVolumeFlowM3S", "m3/s", "DCS2"),
     Signal("lp_fwp_delta_p_pa", "vppLPFWPDeltaPPa", "Pa", "DCS2"),
@@ -223,6 +226,10 @@ def validate_lp_bfp(rows: list[dict[str, float | int]], command_time: float) -> 
             errors.append("LP FWP discharge check valve remained materially open")
         if float(post["lp_fwp_speed_rpm"]) >= float(pre["lp_fwp_speed_rpm"]) - 50:
             errors.append("PompeAlimBP did not coast down")
+        if float(post["lp_fwp_speed_rpm"]) >= (
+            float(post["lp_fwp_hydraulic_speed_rpm"]) - 50
+        ):
+            errors.append("physical shaft did not decay below the numerical pump floor")
         if float(post["lp_fwp_mass_flow_th"]) >= float(pre["lp_fwp_mass_flow_th"]):
             errors.append("PompeAlimBP mass flow did not decrease")
         if float(post["lp_drum_level_m"]) >= float(pre["lp_drum_level_m"]) - 0.02:
@@ -266,7 +273,7 @@ def main() -> int:
     parser.add_argument("--scenario", choices=("lp-bfp-trip",), default="lp-bfp-trip")
     parser.add_argument("--stop-time", type=float, default=80.0)
     parser.add_argument("--step-size", type=float, default=0.05)
-    parser.add_argument("--command-time", type=float, default=0.20)
+    parser.add_argument("--command-time", type=float, default=20.0)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
     if args.step_size <= 0 or not math.isclose(

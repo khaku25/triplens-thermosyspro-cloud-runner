@@ -325,7 +325,12 @@
     "fwp_lp_speed_rpm": {
       "required": false,
       "unit": "rpm",
-      "aliases": ["PompeAlimBP.Vr", "vppLPFWPSpeedRPM", "fwp_lp_speed_rpm"]
+      "aliases": ["vppLPFWPDrive.speedRpm", "vppLPFWPSpeedRPM", "fwp_lp_speed_rpm"]
+    },
+    "fwp_lp_hydraulic_speed_rpm": {
+      "required": false,
+      "unit": "rpm",
+      "aliases": ["PompeAlimBP.Vr", "vppLPFWPHydraulicSpeedRPM", "fwp_lp_hydraulic_speed_rpm"]
     },
     "fwp_lp_mass_flow_t_h": {
       "required": false,
