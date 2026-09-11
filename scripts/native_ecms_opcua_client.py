@@ -201,6 +201,19 @@ def set_real_once(node, value: float, written: dict[str, float], field: str, ua)
         written[field] = value
 
 
+def lp_bfp_closed_loop_complete(row: dict[str, float | int]) -> bool:
+    """Return true only after the commanded protection loop is physically visible."""
+    asserted = (
+        "lp_drum_level_ll_alarm",
+        "gt_trip_command_readback",
+        "gt_trip_latch",
+        "st_trip_latch",
+    )
+    return all(int(row[field]) == 1 for field in asserted) and all(
+        int(row[field]) == 0 for field in ("gt_breaker_closed", "st_breaker_closed")
+    )
+
+
 def validate_lp_bfp(rows: list[dict[str, float | int]], command_time: float) -> dict[str, object]:
     before = [row for row in rows if row["time_s"] < command_time]
     after = [row for row in rows if row["time_s"] >= command_time + 0.2]
@@ -256,6 +269,9 @@ def validate_lp_bfp(rows: list[dict[str, float | int]], command_time: float) -> 
         "values_received": len(rows) * (len(SIGNALS) + len(COMMAND_NODES)),
         "changed_physical_fields": changed,
         "command_time_s": command_time,
+        "terminal_time_s": rows[-1]["time_s"] if rows else None,
+        "termination_reason": "CLOSED_LOOP_TERMINAL_STATE" if rows and
+            lp_bfp_closed_loop_complete(rows[-1]) else "STOP_TIME",
         "closed_loop": "FWP-LP Trip -> VCB-A02 open -> PompeAlimBP -> LP Drum LL -> GT/ST Trip",
         "errors": errors,
     }
@@ -345,7 +361,8 @@ def main() -> int:
             row["common_st_trip_request"] = int(ll_active and ll_trips_st)
             rows.append(row)
             current = next_time
-        step_node.set_value(ua.Variant(True, ua.VariantType.Boolean))
+            if lp_bfp_closed_loop_complete(row):
+                break
     finally:
         try:
             client.disconnect()

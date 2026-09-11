@@ -144,7 +144,11 @@ jobs:
             tail -n 500 outputs/native-opcua/openmodelica-native.log || true
             exit 1
           fi
-          wait "$native_pid"
+          # The proof ends when LL, both trip latches, and both open breaker
+          # contacts have returned through OPC UA. Stop the paused native
+          # executable at that terminal scenario state.
+          kill "$native_pid" 2>/dev/null || true
+          wait "$native_pid" || true
           trap - EXIT
           python3 scripts/build_native_opcua_dashboard.py \
             --capture outputs/native-opcua/ECMS-native-physical.csv \

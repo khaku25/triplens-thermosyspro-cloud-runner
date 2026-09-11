@@ -13,6 +13,7 @@ from native_ecms_opcua_client import (  # noqa: E402
     DelayedLowAlarm,
     PROTOCOL,
     SIGNALS,
+    lp_bfp_closed_loop_complete,
     load_lp_rules,
     validate_lp_bfp,
 )
@@ -63,8 +64,11 @@ class NativeOPCUAContractTests(unittest.TestCase):
 
         report = validate_lp_bfp([row(0.1, False), row(5.0, True)], 0.2)
         self.assertEqual(report["status"], "PASS")
+        self.assertTrue(lp_bfp_closed_loop_complete(row(5.0, True)))
+        self.assertEqual(report["termination_reason"], "CLOSED_LOOP_TERMINAL_STATE")
         bad = validate_lp_bfp([row(0.1, False), row(5.0, False)], 0.2)
         self.assertEqual(bad["status"], "FAIL")
+        self.assertFalse(lp_bfp_closed_loop_complete(row(5.0, False)))
 
     def test_native_adapter_owns_vcb_a02_to_pump_boundary(self) -> None:
         source = (ROOT / "scripts/patch_lp_fwp_opcua.py").read_text(encoding="utf-8")
@@ -130,6 +134,7 @@ class NativeOPCUAContractTests(unittest.TestCase):
         self.assertIn('loadFile("/workspace/modelica/TripLens_PumpPhysics.mo")', build)
         self.assertIn("--scenario lp-bfp-trip", workflow)
         self.assertIn('--command-time "$LIVE_COMMAND_TIME_S"', workflow)
+        self.assertIn('kill "$native_pid" 2>/dev/null || true', workflow)
         self.assertIn('"vppVCBA02ClosedNative"', workflow)
         self.assertNotIn("live_fmu_gateway.py", workflow)
 
