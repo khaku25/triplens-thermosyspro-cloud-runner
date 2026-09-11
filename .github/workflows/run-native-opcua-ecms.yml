@@ -153,13 +153,6 @@ jobs:
             -w /workspace/build \
             "$OPENMODELICA_IMAGE" \
             ./TripLens_Native_OPCUA \
-              -s=ida \
-              -idaLS=dense \
-              -jacobian=internalNumerical \
-              -idaScaling \
-              -idaMaxNonLinIters=8 \
-              -idaMaxConvFails=100 \
-              -idaMaxErrorTestFails=20 \
               -embeddedServer=opc-ua \
               -embeddedServerPort=4841 \
               -r=TripLens_Native_OPCUA_res.csv \
