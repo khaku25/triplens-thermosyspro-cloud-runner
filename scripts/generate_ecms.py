@@ -348,6 +348,14 @@ class StepSeries:
                 ))
         return events
 
+    def first_falling_edge_ms(self) -> int | None:
+        for index in range(1, len(self.values)):
+            before = parse_bool(self.values[index - 1], "observed ProcessBus state")
+            after = parse_bool(self.values[index], "observed ProcessBus state")
+            if before and not after:
+                return self.times_ms[index]
+        return None
+
 
 def build_sample_times(
     start_ms: int,
@@ -737,6 +745,10 @@ def canonical_event_tag(tag: str) -> str:
     explicit = {
         "GT.TRIP.CMD": "CMD.GTG.TRIP",
         "ST.TRIP.CMD": "CMD.STG.TRIP",
+        "52GT.OPEN.CMD": "CMD.CB-52GT.OPEN",
+        "GT.TRIP.FROM_52GT_OPEN": "CTRL.GTG.TRIP_FROM_52GT_OPEN",
+        "GT.TRIP.OPCUA.READBACK": "CTRL.GTG.TRIP_OPCUA_READBACK",
+        "GT.TRIP.PHYSICS.LATCH": "CTRL.GTG.TRIP_PHYSICS_LATCH",
         "GT.TRIP.LATCH": "CTRL.GTG.TRIP_LATCH",
         "ST.TRIP.LATCH": "CTRL.STG.TRIP_LATCH",
         "FWP-HP.TRIP.INPUT": "CMD.FWP-HP.TRIP",
@@ -1087,7 +1099,7 @@ def main() -> int:
         None if relay_trip_ms is None
         else relay_trip_ms + int(a["LOCKOUT_OPERATE_DELAY_MS"])
     )
-    gt_breaker_open_ms = (
+    automatic_gt_breaker_open_ms = (
         None if gt_request_ms is None
         else gt_request_ms + int(a["GT_BREAKER_OPEN_DELAY_MS"])
     )
@@ -1098,10 +1110,24 @@ def main() -> int:
 
     stg_power_series = LinearSeries.from_rows(rows, "stg_power_w")
     gt_trip_input_series = StepSeries.from_rows(rows, "gt_trip_cmd")
+    cb_52gt_open_command_series = StepSeries.from_rows(rows, "cb_52gt_open_command")
+    observed_gt_breaker_series = StepSeries.from_rows(rows, "ecms_cb_52gt_closed")
+    gt_in_service_series = StepSeries.from_rows(rows, "gt_in_service")
+    gt_trip_from_52gt_open_series = StepSeries.from_rows(rows, "gt_trip_from_52gt_open")
+    gt_trip_command_readback_series = StepSeries.from_rows(rows, "gt_trip_command_readback")
+    gt_trip_latch_series = StepSeries.from_rows(rows, "gt_trip_latch")
+    observed_gt_breaker_open_ms = observed_gt_breaker_series.first_falling_edge_ms()
+    gt_breaker_open_ms = (
+        observed_gt_breaker_open_ms
+        if observed_gt_breaker_open_ms is not None
+        else automatic_gt_breaker_open_ms
+    )
     observed_bus_a_voltage = LinearSeries.from_rows(rows, "ecms_bus_a_voltage_kv")
 
     relay_operates = gt_request_ms is not None and not fault.get("relay_fail", False)
-    gt_breaker_opens = relay_operates and not fault.get("gtg_breaker_fail", False)
+    gt_breaker_opens = observed_gt_breaker_open_ms is not None or (
+        relay_operates and not fault.get("gtg_breaker_fail", False)
+    )
     grid_available_after_trip = not fault.get("grid_loss", False)
     gt_receive_available = not fault.get("gt_transformer_receive_fail", False)
     st_receive_available = not fault.get("st_transformer_receive_fail", False)
@@ -1195,9 +1221,27 @@ def main() -> int:
     elif gt_request_ms is not None and relay_trip_ms is not None:
         events.append(Event(relay_trip_ms, "86GT.FAIL", "0", "1", "ALARM", "GT protection failed", "FAULTBUS"))
     if gt_breaker_opens and gt_breaker_open_ms is not None:
+        observed_breaker = observed_gt_breaker_open_ms is not None
         events.extend([
-            Event(gt_breaker_open_ms, "52GT.CLOSED", "1", "0", "POSITION", "GT generator breaker opened"),
-            Event(gt_breaker_open_ms, "TR-GT.DIRECTION", "EXPORT", gt_post_trip_direction, "STATE", "GT main transformer post-trip direction"),
+            Event(
+                gt_breaker_open_ms,
+                "52GT.CLOSED",
+                "1",
+                "0",
+                "POSITION",
+                "Observed GT generator breaker opened while GT was in service"
+                if observed_breaker else "GT generator breaker opened",
+                "RAW_OBSERVED_ECMS" if observed_breaker else "E_DERIVED",
+            ),
+            Event(
+                gt_breaker_open_ms,
+                "TR-GT.DIRECTION",
+                "EXPORT",
+                gt_post_trip_direction,
+                "STATE",
+                "GT main transformer direction after observed breaker open"
+                if observed_breaker else "GT main transformer post-trip direction",
+            ),
         ])
     elif relay_operates and gt_breaker_open_ms is not None:
         events.append(Event(gt_breaker_open_ms, "52GT.FAIL_TO_OPEN", "0", "1", "ALARM", "GT generator breaker failed to open", "FAULTBUS"))
@@ -1208,6 +1252,10 @@ def main() -> int:
         ])
 
     observed_event_specs = [
+        ("cb_52gt_open_command", "52GT.OPEN.CMD", "COMMAND", "Observed 52GT OPEN command", "RAW_OBSERVED_COMMANDBUS"),
+        ("gt_trip_from_52gt_open", "GT.TRIP.FROM_52GT_OPEN", "TRIP_REQUEST", "GT Trip request derived after 52GT open feedback while running", "RAW_OBSERVED_PROTECTION"),
+        ("gt_trip_command_readback", "GT.TRIP.OPCUA.READBACK", "FEEDBACK", "OpenModelica received derived GT Trip over OPC UA", "RAW_OBSERVED_OPCUA"),
+        ("gt_trip_latch", "GT.TRIP.PHYSICS.LATCH", "LATCH", "Native physical Trip latch changed", "RAW_OBSERVED_PHYSICS"),
         ("fwp_hp_trip_input", "FWP-HP.TRIP.INPUT", "COMMAND", "Observed HP FWP Trip input", "RAW_OBSERVED_COMMANDBUS"),
         ("fwp_hp_vcb_trip_cmd", "VCB-A01.TRIP.CMD", "TRIP_COMMAND", "Observed VCB-A01 Trip command", "RAW_OBSERVED_ECMS"),
         ("fwp_hp_vcb_closed", "VCB-A01.CLOSED", "POSITION", "Observed VCB-A01 position", "RAW_OBSERVED_ECMS"),
@@ -1317,6 +1365,8 @@ def main() -> int:
     args.trend_output.parent.mkdir(parents=True, exist_ok=True)
     fields = [
         "ecms_time_ms", "source_time_ms", "quality", "a_config_status", "sampling_resolution",
+        "cb_52gt_open_command", "gt_in_service", "gt_trip_from_52gt_open",
+        "gt_trip_command_readback", "gt_trip_latch",
         "gt_trip_cmd", "gt_trip_request", "st_trip_request",
         "relay_86gt_operated", "cb_52gt_trip_cmd", "cb_52st_trip_cmd",
         "cb_52gt_closed", "cb_52st_closed",
@@ -1351,6 +1401,9 @@ def main() -> int:
                 commands,
                 "CB-52GT",
             )
+            observed_gt_cb_closed = observed_gt_breaker_series.bool_at(time_ms)
+            if observed_gt_cb_closed is not None:
+                gt_cb_closed = observed_gt_cb_closed
             st_cb_closed = breaker_with_automatic_trip(
                 True, st_breaker_open_ms, time_ms, commands, "CB-52ST"
             )
@@ -1465,6 +1518,17 @@ def main() -> int:
                     f"INCIDENT_{args.incident_period_ms}MS"
                     if in_incident_window else f"NORMAL_{period_ms}MS"
                 ),
+                "cb_52gt_open_command": int(
+                    cb_52gt_open_command_series.bool_at(time_ms) or False
+                ),
+                "gt_in_service": int(gt_in_service_series.bool_at(time_ms) or False),
+                "gt_trip_from_52gt_open": int(
+                    gt_trip_from_52gt_open_series.bool_at(time_ms) or False
+                ),
+                "gt_trip_command_readback": int(
+                    gt_trip_command_readback_series.bool_at(time_ms) or False
+                ),
+                "gt_trip_latch": int(gt_trip_latch_series.bool_at(time_ms) or False),
                 "gt_trip_cmd": gt_trip_cmd,
                 "gt_trip_request": int(gt_request_active),
                 "st_trip_request": int(st_request_active),

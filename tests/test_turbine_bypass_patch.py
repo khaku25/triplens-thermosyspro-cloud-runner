@@ -23,6 +23,8 @@ model CombinedCycle_TripTAC
     mode=0,
     Cvmax=1);
 equation
+  connect(Temperature.y,SourceFumees. ITemperature);
+  connect(Debit.y,SourceFumees. IMassFlow);
   connect(ConstantVanneTurbineHP.y, vanne_entree_TurbineHP.Ouv);
   connect(ConstantVanneTurbineMP.y, vanne_entree_TurbineMP.Ouv);
   connect(regulation_Niveau_BP.SortieReelle1, vanne_vapeurBP.Ouv);
@@ -45,7 +47,7 @@ class TurbineBypassPatchTests(unittest.TestCase):
         self.assertIn("connect(DoubleDebitHP.Cs, vppHPSplitter.Ce)", patched)
         self.assertIn("connect(TurbineHP.Cs, vppHPColdReheatVolume.Ce1)", patched)
         self.assertIn(
-            "ThermoSysPro.WaterSteam.Volumes.VolumeC vppHPColdReheatVolume",
+            "VPPRegularizedMixingVolume vppHPColdReheatVolume",
             patched,
         )
         self.assertIn(
@@ -62,7 +64,7 @@ class TurbineBypassPatchTests(unittest.TestCase):
         )
         self.assertIn("connect(DoubleDebitMP.Cs, vppLPSplitter.Ce)", patched)
         self.assertIn(
-            "ThermoSysPro.WaterSteam.Volumes.VolumeC vppCondenserSteamVolume",
+            "VPPRegularizedMixingVolume vppCondenserSteamVolume",
             patched,
         )
         self.assertIn(
@@ -77,8 +79,8 @@ class TurbineBypassPatchTests(unittest.TestCase):
             "connect(vppLPSprayInjector.C2, vppCondenserSteamVolume.Ce3)",
             patched,
         )
-        self.assertEqual(patched.count("dynamic_mass_balance=false"), 2)
-        self.assertEqual(patched.count("steady_state=true"), 2)
+        self.assertEqual(patched.count("dynamic_mass_balance=false"), 3)
+        self.assertEqual(patched.count("steady_state=true"), 3)
         self.assertIn("parameter Real vppValveLeak = 0", patched)
         self.assertIn("model VPPPressureDrivenBypassValve", patched)
         self.assertEqual(patched.count("VPPPressureDrivenBypassValve vpp"), 2)

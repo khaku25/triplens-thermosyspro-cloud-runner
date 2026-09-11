@@ -73,7 +73,7 @@ def load_common_trip_matrix(path: Path) -> list[CommonTripRule]:
             raise ValueError(f"common Trip matrix row {number} has an empty identifier")
         if cause_id in cause_ids:
             raise ValueError(f"duplicate common Trip cause_id: {cause_id}")
-        if source_layer not in {"COMMAND", "LAYER1_ALARM"}:
+        if source_layer not in {"COMMAND", "LAYER1_ALARM", "PROTECTION_INPUT"}:
             raise ValueError(f"{cause_id}: unsupported source_layer {source_layer!r}")
         cause_ids.add(cause_id)
         result.append(CommonTripRule(
@@ -177,7 +177,7 @@ def resolve_common_trips(
                 if row["equipment_id"].strip().upper() == equipment_id
                 and row["command"].strip().upper() == "TRIP"
             )
-        else:
+        elif rule.source_layer == "LAYER1_ALARM":
             event_time = dcs_times.get(rule.source_event_tag)
             if event_time is not None:
                 candidates.append(event_time)
