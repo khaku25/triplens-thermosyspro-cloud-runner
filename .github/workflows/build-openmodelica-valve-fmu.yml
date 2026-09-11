@@ -8,6 +8,7 @@ on:
     paths:
       - "scripts/patch_fmu_valve_controls.py"
       - "scripts/patch_turbine_bypass_model.py"
+      - "scripts/patch_pressure_loss_property_floor.py"
       - "scripts/validate_fmu_valve_smoke.py"
       - "scripts/promote_fmu_native_valve_dp.py"
       - "modelica/TripLens_Valve_Adapter_Smoke.mo"
@@ -59,6 +60,7 @@ jobs:
           python3 scripts/patch_turbine_bypass_model.py --source "$MODEL"
           python3 scripts/patch_fmu_valve_controls.py --source "$MODEL"
           python3 scripts/patch_stodola_turbine.py             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
+          python3 scripts/patch_pressure_loss_property_floor.py             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/ControlValve.mo             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo
 
       - name: Install pinned Modelica dependency
         run: |

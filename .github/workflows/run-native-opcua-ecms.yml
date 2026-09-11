@@ -24,6 +24,7 @@ on:
       - "scripts/patch_lp_fwp_opcua.py"
       - "scripts/patch_all_fwp_check_valves.py"
       - "scripts/patch_hp_ip_fwp_opcua.py"
+      - "scripts/patch_pressure_loss_property_floor.py"
       - "scripts/generate_fwp_check_valve_svg_assets.py"
       - "config/native_opcua_valve_control_points_v1.csv"
       - "config/opcua_fwp_check_valves_v1.csv"
@@ -110,6 +111,9 @@ jobs:
             --source vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
           python3 scripts/patch_stodola_turbine.py \
             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
+          python3 scripts/patch_pressure_loss_property_floor.py \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/ControlValve.mo \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo
 
       - name: Install pinned Modelica dependency
         run: |

@@ -8,6 +8,7 @@ on:
       - "scripts/run_pipeline.sh"
       - "scripts/patch_turbine_bypass_model.py"
       - "scripts/patch_stodola_turbine.py"
+      - "scripts/patch_pressure_loss_property_floor.py"
       - "scripts/render_modelica.py"
       - "scripts/build_raw_manifest.py"
       - "scripts/validate_raw_outputs.py"

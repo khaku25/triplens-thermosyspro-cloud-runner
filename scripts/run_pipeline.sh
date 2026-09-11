@@ -126,6 +126,9 @@ python3 scripts/patch_turbine_bypass_model.py \
   --source vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
 python3 scripts/patch_stodola_turbine.py \
   vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
+python3 scripts/patch_pressure_loss_property_floor.py \
+  vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/ControlValve.mo \
+  vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo
 patched_model_sha256="$(sha256sum vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo | cut -d' ' -f1)"
 
 # A new Action run owns these generated paths. Clear only run-generated data.
