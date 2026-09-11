@@ -42,6 +42,15 @@ class NativeWorkflowContractTests(unittest.TestCase):
         self.assertIn('--post-gt-trip-seconds "$LIVE_POST_GT_TRIP_S"', self.workflow)
         self.assertIn("GT-Trip observation", self.workflow)
 
+    def test_native_runtime_uses_known_dense_nonlinear_initialization(self) -> None:
+        # The expanded native state surface drops nonlinear-system density
+        # below OpenModelica's automatic sparse threshold, but that generated
+        # system has no KLU sparsity pattern. Keep DASSL and the physical model
+        # unchanged while selecting the already validated dense NLS path.
+        self.assertIn("-nlssMaxDensity=0", self.workflow)
+        self.assertNotIn("-s=ida", self.workflow)
+        self.assertNotIn("-iim=none", self.workflow)
+
 
 if __name__ == "__main__":
     unittest.main()

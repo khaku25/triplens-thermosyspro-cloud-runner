@@ -14,13 +14,15 @@ from pathlib import Path
 
 from generate_ecms import motor_feeder_state
 from opcua_common import (
+    AccessEvidence,
     BoundNode,
     DataSample,
     NodeBindingError,
     NodeContract,
     Quality,
-    assert_write_allowed,
+    assert_write_role_allowed,
     bind_nodes,
+    read_access_evidence,
     sample_from_datavalue,
 )
 
@@ -160,6 +162,9 @@ DATAVALUE_FIELDS = (
     "source_timestamp_utc", "source_time_ms", "server_timestamp_utc",
     "server_time_ms", "received_timestamp_utc", "received_time_ms", "quality",
     "namespace_uri", "namespace_index", "node_id",
+    "advertised_access_level", "advertised_user_access_level",
+    "advertised_current_write", "advertised_user_current_write",
+    "write_service_status", "write_echo_status",
 )
 
 EVENT_SPECS = (
@@ -439,10 +444,14 @@ def datavalue_rows(
     simulation_time_s: float,
     bindings: dict[str, BoundNode],
     samples: dict[str, DataSample],
+    access_evidence: dict[str, AccessEvidence],
+    write_service_status: dict[str, str],
+    write_echo_status: dict[str, str],
 ) -> list[dict[str, object]]:
     rows = []
     for field, bound in bindings.items():
         sample = samples[field]
+        advertised = access_evidence[field]
         rows.append({
             "sequence": sequence,
             "simulation_time_s": f"{simulation_time_s:.9f}",
@@ -466,8 +475,55 @@ def datavalue_rows(
             "namespace_uri": bound.contract.namespace_uri,
             "namespace_index": bound.namespace_index,
             "node_id": bound.node_id,
+            "advertised_access_level": advertised.access_level,
+            "advertised_user_access_level": advertised.user_access_level,
+            "advertised_current_write": int(
+                advertised.current_write_advertised
+            ),
+            "advertised_user_current_write": int(
+                advertised.user_current_write_advertised
+            ),
+            "write_service_status": write_service_status.get(field, "NOT_APPLICABLE"),
+            "write_echo_status": write_echo_status.get(field, "NOT_APPLICABLE"),
         })
     return rows
+
+
+def evaluate_write_echoes(
+    samples: dict[str, DataSample], written: dict[str, float]
+) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for field, expected in written.items():
+        sample = samples.get(field)
+        if sample is None:
+            result[field] = "MISSING_SAMPLE"
+            continue
+        if sample.quality != Quality.GOOD:
+            result[field] = f"UNTRUSTED_{sample.quality.value}"
+            continue
+        try:
+            actual = float(sample.value)
+        except (TypeError, ValueError):
+            result[field] = "NON_NUMERIC"
+            continue
+        result[field] = (
+            "VERIFIED" if math.isclose(actual, expected, abs_tol=1e-12)
+            else f"MISMATCH_EXPECTED_{expected:.17g}_ACTUAL_{actual:.17g}"
+        )
+    return result
+
+
+def require_verified_write_echoes(write_echo_status: dict[str, str]) -> None:
+    failures = [
+        f"{field}={status}"
+        for field, status in write_echo_status.items()
+        if status != "VERIFIED"
+    ]
+    if failures:
+        raise ValueError(
+            "OPC UA Write service lacked matching DataValue echo: "
+            + ", ".join(failures)
+        )
 
 
 def number(value: object) -> float | int:
@@ -485,10 +541,20 @@ def set_real_once(
     written: dict[str, float],
     field: str,
     ua,
+    write_service_status: dict[str, str],
 ) -> None:
     if written.get(field) != value:
-        assert_write_allowed(bound, ECMS_WRITE_ROLE)
-        bound.node.set_value(ua.Variant(value, ua.VariantType.Double))
+        # Application direction/role is always enforced before transport.  The
+        # authoritative server decision is the Write service result, followed
+        # by a DataValue echo check after the solver step.  AccessLevel remains
+        # recorded evidence because OpenModelica may advertise CurrentRead only.
+        assert_write_role_allowed(bound, ECMS_WRITE_ROLE)
+        try:
+            bound.node.set_value(ua.Variant(value, ua.VariantType.Double))
+        except Exception:
+            write_service_status[field] = "REJECTED"
+            raise
+        write_service_status[field] = "ACCEPTED"
         written[field] = value
 
 
@@ -720,11 +786,17 @@ def main() -> int:
     data_value_evidence: list[dict[str, object]] = []
     runtime_error: str | None = None
     model_namespace_uri: str | None = None
+    access_evidence: dict[str, AccessEvidence] = {}
+    write_service_status: dict[str, str] = {}
     try:
         required = {*COMMAND_NODES.values(), *(signal.node_name for signal in SIGNALS)}
         model_namespace_uri, bindings = wait_for_model_bindings(
             client, required, 60.0
         )
+        access_evidence = {
+            field: read_access_evidence(bound)
+            for field, bound in bindings.items()
+        }
         time_node = client.get_node(ua.NodeId(10004, 0))
         step_node = client.get_node(ua.NodeId(10000, 0))
         command_nodes = {
@@ -761,7 +833,10 @@ def main() -> int:
                 "vcb_a02_closed_readback": float(electrical.breaker_closed),
             }
             for field, value in updates.items():
-                set_real_once(command_nodes[field], value, written, field, ua)
+                set_real_once(
+                    command_nodes[field], value, written, field, ua,
+                    write_service_status,
+                )
             sent_ns = time.time_ns()
             next_time = request_step(step_node, time_node, current, ua, 30.0)
             row: dict[str, float | int] = {
@@ -770,10 +845,15 @@ def main() -> int:
                 "round_trip_ms": (time.time_ns() - sent_ns) / 1e6,
             }
             samples = batch_read_model_samples(client, bindings, ua)
+            write_echo_status = evaluate_write_echoes(samples, written)
             data_value_evidence.extend(
-                datavalue_rows(len(rows), next_time, bindings, samples)
+                datavalue_rows(
+                    len(rows), next_time, bindings, samples, access_evidence,
+                    write_service_status, write_echo_status,
+                )
             )
             require_trusted_model_samples(samples)
+            require_verified_write_echoes(write_echo_status)
             for field in command_nodes:
                 row[field] = int(float(samples[field].value) >= 0.5)
             for signal in SIGNALS:
@@ -839,6 +919,23 @@ def main() -> int:
         "step_node_id": 10000,
         "time_node_id": 10004,
         "scope": "OPENMODELICA_SERVER_CONTROL_ONLY",
+    }
+    report["write_authorization_and_proof"] = {
+        "application_role": ECMS_WRITE_ROLE,
+        "application_role_enforced_before_service": True,
+        "advertised_access_is_evidence_not_service_result": True,
+        "advertised_nonwritable_write_nodes": sorted(
+            field for field in COMMAND_NODES
+            if field in access_evidence and not (
+                access_evidence[field].current_write_advertised and
+                access_evidence[field].user_current_write_advertised
+            )
+        ),
+        "write_service_status": {
+            field: write_service_status.get(field, "NOT_ATTEMPTED")
+            for field in COMMAND_NODES
+        },
+        "datavalue_echo_required": True,
     }
     report["runtime_error"] = runtime_error
     if runtime_error:

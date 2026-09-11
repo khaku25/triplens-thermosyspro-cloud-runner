@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from opcua_common import (  # noqa: E402
+    AccessEvidence,
     BoundNode,
     DataSample,
     NodeAccessError,
@@ -16,8 +17,10 @@ from opcua_common import (  # noqa: E402
     NodeContract,
     Quality,
     assert_write_allowed,
+    assert_write_role_allowed,
     audit_access,
     bind_nodes,
+    read_access_evidence,
     sample_from_datavalue,
 )
 
@@ -253,10 +256,15 @@ class OPCUACommonContractTests(unittest.TestCase):
 
         audit_access({"CMD.TRIP": write_bound, "TSP.SPEED": read_bound})
         assert_write_allowed(write_bound, "ECMS_COMMAND")
+        assert_write_role_allowed(write_bound, "ECMS_COMMAND")
         with self.assertRaises(NodeAccessError):
             assert_write_allowed(write_bound, "ECMS_VIEWER")
         with self.assertRaises(NodeAccessError):
+            assert_write_role_allowed(write_bound, "ECMS_VIEWER")
+        with self.assertRaises(NodeAccessError):
             assert_write_allowed(read_bound, "ECMS_COMMAND")
+        with self.assertRaises(NodeAccessError):
+            assert_write_role_allowed(read_bound, "ECMS_COMMAND")
 
         exposed_read = BoundNode(
             contract("TSP.SPEED", "Speed"),
@@ -266,6 +274,30 @@ class OPCUACommonContractTests(unittest.TestCase):
         )
         with self.assertRaises(NodeAccessError):
             audit_access({"TSP.SPEED": exposed_read})
+
+    def test_advertised_access_is_preserved_as_evidence(self) -> None:
+        node = FakeNode(
+            "ns=1;i=10", 1, "Trip", access=1, user_access=1
+        )
+        bound = BoundNode(
+            contract("CMD.TRIP", "Trip", direction="WRITE"),
+            node,
+            1,
+            "ns=1;i=10",
+        )
+
+        evidence = read_access_evidence(bound)
+
+        self.assertIsInstance(evidence, AccessEvidence)
+        self.assertEqual(evidence.access_level, "1")
+        self.assertEqual(evidence.user_access_level, "1")
+        self.assertFalse(evidence.current_write_advertised)
+        self.assertFalse(evidence.user_current_write_advertised)
+        # Application authorization stays fail closed even when advertised
+        # access is treated as metadata rather than a service result.
+        assert_write_role_allowed(bound, "ECMS_COMMAND")
+        with self.assertRaises(NodeAccessError):
+            assert_write_role_allowed(bound, "ECMS_VIEWER")
 
 
 if __name__ == "__main__":

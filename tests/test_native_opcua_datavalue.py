@@ -15,11 +15,20 @@ from native_ecms_opcua_client import (  # noqa: E402
     build_native_events,
     datavalue_rows,
     discover_model_namespace_uri,
+    evaluate_write_echoes,
     model_node_contracts,
     require_trusted_model_samples,
+    require_verified_write_echoes,
     resolve_ll_trip_requests,
+    set_real_once,
 )
-from opcua_common import BoundNode, DataSample, NodeContract, Quality  # noqa: E402
+from opcua_common import (  # noqa: E402
+    AccessEvidence,
+    BoundNode,
+    DataSample,
+    NodeContract,
+    Quality,
+)
 
 
 MODEL_URI = "urn:openmodelica:test-model"
@@ -32,16 +41,31 @@ class FakeQualifiedName:
 
 
 class FakeNode:
-    def __init__(self, nodeid: str, namespace_index: int, name: str, children=()):
+    def __init__(
+        self, nodeid: str, namespace_index: int, name: str, children=(),
+        *, access=1, user_access=1,
+    ):
         self.nodeid = nodeid
         self._browse_name = FakeQualifiedName(namespace_index, name)
         self._children = list(children)
+        self._access = access
+        self._user_access = user_access
+        self.writes = []
 
     def get_browse_name(self):
         return self._browse_name
 
     def get_children(self):
         return list(self._children)
+
+    def get_access_level(self):
+        return self._access
+
+    def get_user_access_level(self):
+        return self._user_access
+
+    def set_value(self, value):
+        self.writes.append(value)
 
 
 class FakeStatus:
@@ -95,6 +119,13 @@ class FakeClient:
 class FakeUa:
     class AttributeIds:
         Value = 13
+
+    class VariantType:
+        Double = "Double"
+
+    @staticmethod
+    def Variant(value, variant_type):
+        return value, variant_type
 
 
 def contract(tag: str, name: str, direction: str = "READ") -> NodeContract:
@@ -167,10 +198,15 @@ class NativeOPCUADataValueTests(unittest.TestCase):
         self.assertEqual(samples["speed"].status_name, "Good")
         self.assertIs(samples["speed"].source_timestamp, now)
         self.assertIs(samples["speed"].server_timestamp, now)
-        evidence = datavalue_rows(7, 2.5, {"speed": bound}, samples)[0]
+        access = AccessEvidence("CurrentRead", "CurrentRead", False, False)
+        evidence = datavalue_rows(
+            7, 2.5, {"speed": bound}, samples, {"speed": access}, {}, {}
+        )[0]
         self.assertEqual(evidence["evidence_kind"], "MODEL_FEEDBACK")
         self.assertEqual(evidence["namespace_uri"], MODEL_URI)
         self.assertEqual(evidence["node_id"], "ns=2;i=41")
+        self.assertEqual(evidence["advertised_access_level"], "CurrentRead")
+        self.assertEqual(evidence["advertised_current_write"], 0)
 
     def test_fail_closed_on_quality_or_missing_required_source_time(self) -> None:
         now = datetime(2026, 9, 11, 12, 0, 0, tzinfo=timezone.utc)
@@ -230,6 +266,41 @@ class NativeOPCUADataValueTests(unittest.TestCase):
         )
         self.assertEqual(resolve_ll_trip_requests(True, True, False), (True, False))
         self.assertEqual(resolve_ll_trip_requests(True, False, True), (False, True))
+
+    def test_write_echo_is_required_even_after_service_acceptance(self) -> None:
+        now = datetime(2026, 9, 11, 12, 0, 0, tzinfo=timezone.utc)
+        verified = evaluate_write_echoes(
+            {"trip": sample("trip", 1.0, now)}, {"trip": 1.0}
+        )
+        self.assertEqual(verified, {"trip": "VERIFIED"})
+        require_verified_write_echoes(verified)
+
+        mismatch = evaluate_write_echoes(
+            {"trip": sample("trip", 0.0, now)}, {"trip": 1.0}
+        )
+        self.assertTrue(mismatch["trip"].startswith("MISMATCH_"))
+        with self.assertRaises(ValueError):
+            require_verified_write_echoes(mismatch)
+
+    def test_advertised_read_only_does_not_replace_write_service_and_echo(self) -> None:
+        node = FakeNode(
+            "ns=2;i=7", 2, "Trip", access=1, user_access=1
+        )
+        bound = BoundNode(
+            contract("trip", "Trip", direction="WRITE"), node, 2, str(node.nodeid)
+        )
+        written: dict[str, float] = {}
+        service: dict[str, str] = {}
+
+        set_real_once(bound, 1.0, written, "trip", FakeUa, service)
+
+        self.assertEqual(node.writes, [(1.0, "Double")])
+        self.assertEqual(service, {"trip": "ACCEPTED"})
+        now = datetime(2026, 9, 11, 12, 0, 0, tzinfo=timezone.utc)
+        status = evaluate_write_echoes(
+            {"trip": sample("trip", 1.0, now)}, written
+        )
+        require_verified_write_echoes(status)
 
 
 if __name__ == "__main__":

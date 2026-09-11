@@ -82,6 +82,22 @@ class DataSample:
     quality: Quality
 
 
+@dataclass(frozen=True)
+class AccessEvidence:
+    """Server-advertised access metadata, kept separate from write proof.
+
+    Some OpenModelica embedded-server builds advertise model variables as
+    CurrentRead even though their Write service accepts externally controlled
+    simulation variables.  The advertised bits remain important evidence, but
+    they are not equivalent to a completed or rejected Write service call.
+    """
+
+    access_level: str
+    user_access_level: str
+    current_write_advertised: bool
+    user_current_write_advertised: bool
+
+
 def _qualified_name(node: Any) -> tuple[int, str]:
     browse_name = node.get_browse_name()
     namespace_index = int(getattr(browse_name, "NamespaceIndex"))
@@ -298,6 +314,51 @@ def _has_access(access: Any, mask: int, enum_name: str) -> bool:
     return False
 
 
+def _access_text(access: Any) -> str:
+    if isinstance(access, int):
+        return str(access)
+    try:
+        values = tuple(access)
+    except TypeError:
+        return str(access)
+    names = []
+    for value in values:
+        names.append(str(getattr(value, "name", value)).rsplit(".", 1)[-1])
+    return "|".join(sorted(names))
+
+
+def read_access_evidence(bound: BoundNode) -> AccessEvidence:
+    access = bound.node.get_access_level()
+    user_access = bound.node.get_user_access_level()
+    return AccessEvidence(
+        access_level=_access_text(access),
+        user_access_level=_access_text(user_access),
+        current_write_advertised=_has_access(
+            access, CURRENT_WRITE, "CurrentWrite"
+        ),
+        user_current_write_advertised=_has_access(
+            user_access, CURRENT_WRITE, "CurrentWrite"
+        ),
+    )
+
+
+def assert_write_role_allowed(bound: BoundNode, role: str) -> None:
+    """Enforce application direction and role before any Write service call.
+
+    This check intentionally does not reinterpret advertised AccessLevel as a
+    Write service result.  The caller must fail if the service raises and must
+    verify the subsequent DataValue echo.
+    """
+
+    contract = bound.contract
+    if contract.direction != "WRITE":
+        raise NodeAccessError(f"write denied for READ node: {contract.canonical_tag}")
+    if role not in contract.write_roles:
+        raise NodeAccessError(
+            f"role {role!r} cannot write {contract.canonical_tag}"
+        )
+
+
 def audit_access(bound_nodes: Mapping[str, BoundNode]) -> None:
     """Fail if live node access contradicts the READ/WRITE contract."""
 
@@ -320,13 +381,8 @@ def audit_access(bound_nodes: Mapping[str, BoundNode]) -> None:
 def assert_write_allowed(bound: BoundNode, role: str) -> None:
     """Enforce both the application allowlist and live OPC UA access bits."""
 
+    assert_write_role_allowed(bound, role)
     contract = bound.contract
-    if contract.direction != "WRITE":
-        raise NodeAccessError(f"write denied for READ node: {contract.canonical_tag}")
-    if role not in contract.write_roles:
-        raise NodeAccessError(
-            f"role {role!r} cannot write {contract.canonical_tag}"
-        )
     if not _has_access(
         bound.node.get_access_level(), CURRENT_WRITE, "CurrentWrite"
     ) or not _has_access(
