@@ -120,13 +120,14 @@ jobs:
                 -f=selected_init.xml \
                 -iim=${{ matrix.iim }} \
                 -s=dassl \
+                -jacobian=coloredNumerical \
                 -nls=${{ matrix.nls }} \
                 -nlsLS=totalpivot \
                 -nlssMaxDensity=0.01 \
                 -newton=damped_ls \
                 -newtonFTol=1e-8 \
                 -newtonXTol=1e-8 \
-                -lv=LOG_STDOUT,LOG_ASSERT,LOG_STATS,LOG_INIT \
+                -lv=LOG_STDOUT,LOG_ASSERT,LOG_STATS,LOG_INIT,LOG_JAC \
             > build/v42/initialization.log 2>&1
           sim_status=$?
           cat build/v42/initialization.log
