@@ -39,6 +39,8 @@ model TripLens_CombinedCycle_TripTAC
   output Real vppGTGSpeedRPM "Reduced-order GT shaft speed in rpm";
   discrete Real vppGTTripAssertTime(unit="s", start=eventTime, fixed=true)
     "Simulation time at the first physical GT Trip assertion";
+  discrete Real vppSTTripAssertTime(unit="s", start=eventTime, fixed=true)
+    "Simulation time at the first physical ST Trip assertion";
 
   output Real vppGTExhaustMassFlowTH "Published GT exhaust mass flow in t/h";
   output Real vppGTExhaustTemperatureK(unit="K")
@@ -150,10 +152,13 @@ equation
   vppGTTripCmd = if vppUseExternalTripInput then
     (vppExternalTripCommand or vppExternalTripCommandNative >= 0.5)
     else enableGTTrip and time >= eventTime;
-  vppGTTripLatch = vppSTTripLatch;
+  vppGTTripLatch = vppGTTripLatchInternal;
   vppSTTripLatchPublished = vppSTTripLatch;
   when edge(vppGTTripLatch) then
     vppGTTripAssertTime = time;
+  end when;
+  when edge(vppSTTripLatchPublished) then
+    vppSTTripAssertTime = time;
   end when;
   vpp52GTTripCmd = vppGTTripLatch and
     time >= vppGTTripAssertTime + vppGTTripCommandDelay;
@@ -161,7 +166,7 @@ equation
     time >= vppGTTripAssertTime + vppGTBreakerOpenDelay);
   vpp52STTripCmd = vppSTTripLatch;
   vpp52STClosed = not (vppSTTripLatch and
-    time >= vppGTTripAssertTime + vppSTBreakerOpenDelay);
+    time >= vppSTTripAssertTime + vppSTBreakerOpenDelay);
   vppGTGPowerMW = if not vppGTTripLatch then vppGTGPowerNormalMW
     else if vpp52GTClosed then
       vppGTGPowerNormalMW*exp(

@@ -227,6 +227,11 @@ COMPONENTS = '''
   output Real vppExternalTripCommandNative(
     start=0, fixed=true, stateSelect=StateSelect.always)
     "Writable native OPC UA GT Trip command memory";
+  output Real vppExternalSTTripCommandNative(
+    start=0, fixed=true, stateSelect=StateSelect.always)
+    "Writable native OPC UA direct ST Trip command memory";
+  discrete Boolean vppGTTripLatchInternal(start=false, fixed=true)
+    "One-way resolved GT Trip latch, independent from the ST latch";
   discrete Boolean vppSTTripLatch(start=false, fixed=true)
     "One-way resolved ST Trip latch for this physical scenario";
   Real vppGTExhaustMassFlowState(
@@ -357,17 +362,24 @@ EQUATIONS = '''
   // The native OPC UA server permits writes to continuous states. A negligible
   // derivative keeps this command memory as a state without affecting physics.
   der(vppExternalTripCommandNative) = Modelica.Constants.eps*sin(time);
+  der(vppExternalSTTripCommandNative) = Modelica.Constants.eps*sin(time);
   when (vppUseExternalTripInput and
         (vppExternalTripCommand or vppExternalTripCommandNative >= 0.5)) or
+       ((not vppUseExternalTripInput) and time >= vppTripTime) then
+    vppGTTripLatchInternal = true;
+  end when;
+  when (vppUseExternalTripInput and
+        (vppExternalTripCommand or vppExternalTripCommandNative >= 0.5 or
+         vppExternalSTTripCommandNative >= 0.5)) or
        ((not vppUseExternalTripInput) and time >= vppTripTime) then
     vppSTTripLatch = true;
   end when;
   der(vppGTExhaustMassFlowState) =
-    ((if vppSTTripLatch then vppGTExhaustMassFlowTrip
+    ((if vppGTTripLatchInternal then vppGTExhaustMassFlowTrip
       else vppGTExhaustMassFlowNormal) - vppGTExhaustMassFlowState)
       /vppGTExhaustResponseTau;
   der(vppGTExhaustTemperatureState) =
-    ((if vppSTTripLatch then vppGTExhaustTemperatureTrip
+    ((if vppGTTripLatchInternal then vppGTExhaustTemperatureTrip
       else vppGTExhaustTemperatureNormal) - vppGTExhaustTemperatureState)
       /vppGTExhaustResponseTau;
   vppGTExhaustMassFlowCommand.signal = if vppUseExternalTripInput then
@@ -538,6 +550,8 @@ def patch_model(source: str) -> str:
         "der(vppHPBypassPos)",
         "der(vppLPBypassPos)",
         "vppExternalTripCommand",
+        "vppExternalSTTripCommandNative",
+        "vppGTTripLatchInternal",
         "vppGTExhaustMassFlowCommand",
     )
     for token in required:

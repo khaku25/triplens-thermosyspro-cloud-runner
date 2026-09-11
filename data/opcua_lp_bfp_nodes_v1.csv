@@ -16,14 +16,14 @@ TSP.FWP-LP.DISCHARGE_CHECK_VALVE.OPEN,OpenModelica,PHYSICAL,READ,vppLPFWPCheckVa
 TSP.FWP-LP.DISCHARGE_CHECK_VALVE.OPENING,OpenModelica,PHYSICAL,READ,vppLPFWPCheckValveOpening,vppLPFWPCheckValve.opening,Continuous discharge non-return valve position
 TSP.DRUM.LP.LEVEL,OpenModelica,PHYSICAL,READ,BallonBP.yLevel.signal,BallonBP.yLevel.signal,LP drum level
 TSP.DRUM.LP.PRESSURE,OpenModelica,PHYSICAL,READ,BallonBP.P,BallonBP.P,LP drum pressure
-TSP.DRUM.LP.FW_VALVE,OpenModelica,PHYSICAL,READ,fmuVlvLPFWFb,vanne_alimentationBP.Ouv.signal,LP feedwater valve feedback
+TSP.DRUM.LP.FW_VALVE,OpenModelica,PHYSICAL,READ,vppVlvLPFWFb,vanne_alimentationBP.Cv/vanne_alimentationBP.Cvmax,Native LP feedwater valve applied-position feedback
 TSP.TURBINE.LP.FLOW,OpenModelica,PHYSICAL,READ,vppLPTurbineSteamFlowTH,TurbineBP.Q,LP turbine steam flow
 HRSG.LP.DRUM.LEVEL.L,ECMS,ALARM,DERIVED,,TSP.DRUM.LP.LEVEL,1.65 m low alarm with 0.5 s delay and 0.02 m hysteresis
 HRSG.LP.DRUM.LEVEL.LL,ECMS,ALARM,DERIVED,,TSP.DRUM.LP.LEVEL,1.55 m low-low alarm with 0.5 s delay and 0.02 m hysteresis
 COMMON.GT_TRIP.REQUEST,ECMS,PROTECTION,WRITE,vppExternalTripCommandNative,HRSG.LP.DRUM.LEVEL.LL,LP Drum LL common GT Trip request
-COMMON.ST_TRIP.REQUEST,ECMS,PROTECTION,WRITE,vppExternalTripCommandNative,HRSG.LP.DRUM.LEVEL.LL,LP Drum LL common ST Trip request
+COMMON.ST_TRIP.REQUEST,ECMS,PROTECTION,WRITE,vppExternalSTTripCommandNative,HRSG.LP.DRUM.LEVEL.LL,LP Drum LL common ST Trip request
 GT.TRIP.CMD,OpenModelica,PROTECTION,READ,vppGTTripCmd,vppExternalTripCommandNative,Resolved GT Trip command
-GT.TRIP.LATCH,OpenModelica,PROTECTION,READ,vppGTTripLatch,vppSTTripLatch,GT Trip latch feedback
+GT.TRIP.LATCH,OpenModelica,PROTECTION,READ,vppGTTripLatch,vppGTTripLatchInternal,GT Trip latch feedback independent from ST latch
 ECMS.52GT.TRIP_CMD,OpenModelica,ELECTRICAL,READ,vpp52GTTripCmd,vppGTTripLatch,52GT Trip command feedback
 ECMS.52GT.CLOSED,OpenModelica,ELECTRICAL,READ,vpp52GTClosed,vppGTTripLatch,52GT auxiliary contact
 ST.TRIP.LATCH,OpenModelica,PROTECTION,READ,vppSTTripLatchPublished,vppSTTripLatch,ST Trip latch feedback

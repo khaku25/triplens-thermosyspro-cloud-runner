@@ -106,6 +106,8 @@ end CombinedCycle_TripTAC;
             content = path.read_text(encoding="utf-8")
             self.assertIn("OPC UA", content)
             self.assertNotIn("FMU", content)
+            self.assertIn('data-symbol-type="SPRING_CHECK_VALVE"', content)
+            self.assertIn('data-symbol-convention="ISO-10628-style"', content)
             for key in (
                 "open_node", "opening_node", "flow_node", "delta_p_node",
                 "inlet_p_node", "outlet_p_node", "resistance_node",
