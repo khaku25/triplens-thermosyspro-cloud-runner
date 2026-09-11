@@ -40,6 +40,7 @@ def main() -> None:
     parser.add_argument("--dynamic-drum", type=Path)
     parser.add_argument("--stodola-turbine", type=Path)
     parser.add_argument("--fluid-ph", type=Path)
+    parser.add_argument("--two-phase-pipe", type=Path)
     args = parser.parse_args()
 
     text = args.units_mo.read_text(encoding="utf-8")
@@ -151,6 +152,25 @@ def main() -> None:
             fluid_ph_text.replace(old, new), encoding="utf-8"
         )
         print(f"guarded generic water property iterations in {args.fluid_ph}")
+
+    if args.two_phase_pipe is not None:
+        pipe_text = args.two_phase_pipe.read_text(encoding="utf-8")
+        inlet_old = "  proc[1] = ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph(P[1], h[1]);"
+        inlet_new = """  proc[1] = ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph(
+    max(P[1], 612), if h[1] > 1.e5 then h[1] else h[2]);"""
+        outlet_old = "  proc[2] = ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph(P[N + 1], h[N + 1]);"
+        outlet_new = """  proc[2] = ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph(
+    max(P[N + 1], 612),
+    if h[N + 1] > 1.e5 then h[N + 1] else h[N]);"""
+        for old in (inlet_old, outlet_old):
+            if pipe_text.count(old) != 1:
+                raise SystemExit(
+                    f"expected one DynamicTwoPhaseFlowPipe boundary call, got {pipe_text.count(old)}"
+                )
+        pipe_text = pipe_text.replace(inlet_old, inlet_new)
+        pipe_text = pipe_text.replace(outlet_old, outlet_new)
+        args.two_phase_pipe.write_text(pipe_text, encoding="utf-8")
+        print(f"guarded two-phase pipe boundary properties in {args.two_phase_pipe}")
 
 
 if __name__ == "__main__":
