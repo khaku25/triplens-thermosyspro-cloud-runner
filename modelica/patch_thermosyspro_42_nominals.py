@@ -164,7 +164,12 @@ def main() -> None:
     if h[N + 1] > 1.e5 then h[N + 1] else h[N]);"""
         boiling_old = "    heb[i] = noEvent(if (Pb[i] > 1) then 55*(abs(Pb[i])/pcrit)^0.12*(-Modelica.Math.log10(abs(Pb[i])/pcrit))^(-0.55)*Mmol^(-0.5)*(abs(dW1[i])/dSi)^0.67 else 100);"
         boiling_new = "    heb[i] = noEvent(if (Pb[i] > 1) then 55*(abs(Pb[i])/pcrit)^0.12*(-Modelica.Math.log10(abs(Pb[i])/pcrit))^(-0.55)*Mmol^(-0.5)*(max(abs(dW1[i]), 1)/dSi)^0.67 else 100);"
-        for old in (inlet_old, outlet_old, boiling_old):
+        sat_thermal_old = "    (lsat1[i], vsat1[i]) = ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P(P[i + 1]);"
+        sat_thermal_new = "    (lsat1[i], vsat1[i]) = ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P(max(min(P[i + 1], pcrit - 1), ptriple));"
+        sat_hydraulic_old = "    (lsat2[i], vsat2[i]) = ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P((P[i] + P[i + 1])/2);"
+        sat_hydraulic_new = "    (lsat2[i], vsat2[i]) = ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P(max(min((P[i] + P[i + 1])/2, pcrit - 1), ptriple));"
+        for old in (inlet_old, outlet_old, boiling_old,
+                    sat_thermal_old, sat_hydraulic_old):
             if pipe_text.count(old) != 1:
                 raise SystemExit(
                     f"expected one DynamicTwoPhaseFlowPipe boundary call, got {pipe_text.count(old)}"
@@ -172,6 +177,8 @@ def main() -> None:
         pipe_text = pipe_text.replace(inlet_old, inlet_new)
         pipe_text = pipe_text.replace(outlet_old, outlet_new)
         pipe_text = pipe_text.replace(boiling_old, boiling_new)
+        pipe_text = pipe_text.replace(sat_thermal_old, sat_thermal_new)
+        pipe_text = pipe_text.replace(sat_hydraulic_old, sat_hydraulic_new)
         args.two_phase_pipe.write_text(pipe_text, encoding="utf-8")
         print(f"guarded two-phase pipe boundary properties in {args.two_phase_pipe}")
 
