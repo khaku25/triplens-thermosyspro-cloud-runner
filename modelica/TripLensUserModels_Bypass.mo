@@ -853,6 +853,7 @@ model CombinedCycle_TripTAC_Bypass_OMCStart
       h0=561432.6820300613),
     MelangeurHPMP(dynamic_mass_balance=true, steady_state=false,
       P0=2726700, h0=3040245.422545259),
+    vanne_vapeurMP(p_rho=14),
     lumpedStraightPipeK2(p_rho=10.66670150764929),
     VolumeCond1(dynamic_mass_balance=true, steady_state=false,
       P0=1540500, h0=194669.37425632242),
