@@ -12,6 +12,13 @@ on:
       - "scripts/build_native_opcua_dashboard.py"
       - "scripts/patch_fmu_valve_controls.py"
       - "scripts/patch_lp_fwp_opcua.py"
+      - "scripts/patch_all_fwp_check_valves.py"
+      - "scripts/generate_fwp_check_valve_svg_assets.py"
+      - "config/opcua_fwp_check_valves_v1.csv"
+      - "data/opcua_fwp_check_valve_nodes_v1.csv"
+      - "tests/test_all_fwp_check_valves.py"
+      - "tests/test_opcua_svg_assets.py"
+      - "topology/opcua/check_valves/**"
       - "data/opcua_lp_bfp_nodes_v1.csv"
       - "scripts/render_modelica.py"
       - "scripts/patch_turbine_bypass_model.py"
@@ -44,7 +51,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Verify native OPC UA contract
-        run: python3 -m unittest tests.test_native_opcua_contract -v
+        run: >-
+          python3 -m unittest
+          tests.test_native_opcua_contract
+          tests.test_all_fwp_check_valves
+          tests.test_opcua_svg_assets -v
 
       - name: Render and pin the physical plant
         run: |
@@ -64,6 +75,8 @@ jobs:
           python3 scripts/patch_fmu_valve_controls.py \
             --source vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
           python3 scripts/patch_lp_fwp_opcua.py \
+            --source vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
+          python3 scripts/patch_all_fwp_check_valves.py \
             --source vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
           python3 scripts/patch_stodola_turbine.py \
             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
@@ -107,7 +120,19 @@ jobs:
               "vppLPFWPSpeedRPM", "vppLPFWPHydraulicSpeedRPM",
               "vppLPFWPMassFlowTH",
               "vppLPFWPDeltaPPa", "vppLPFWPCheckValveOpen",
-              "vppLPFWPCheckValveOpening", "vppGTTripCmd", "vpp52GTClosed",
+              "vppLPFWPCheckValveOpening",
+              "vppHPFWPCheckValveOpen", "vppHPFWPCheckValveOpening",
+              "vppHPFWPCheckValveMassFlowTH", "vppHPFWPCheckValveDeltaPPa",
+              "vppHPFWPCheckValveInletPressurePa", "vppHPFWPCheckValveOutletPressurePa",
+              "vppHPFWPCheckValveResistancePaSPerKg",
+              "vppIPFWPCheckValveOpen", "vppIPFWPCheckValveOpening",
+              "vppIPFWPCheckValveMassFlowTH", "vppIPFWPCheckValveDeltaPPa",
+              "vppIPFWPCheckValveInletPressurePa", "vppIPFWPCheckValveOutletPressurePa",
+              "vppIPFWPCheckValveResistancePaSPerKg",
+              "vppLPFWPCheckValveMassFlowTH", "vppLPFWPCheckValveDeltaPPa",
+              "vppLPFWPCheckValveInletPressurePa", "vppLPFWPCheckValveOutletPressurePa",
+              "vppLPFWPCheckValveResistancePaSPerKg",
+              "vppGTTripCmd", "vpp52GTClosed",
               "vpp52STClosed",
           ]
           missing = [name for name in required if name not in built]

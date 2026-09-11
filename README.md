@@ -11,6 +11,16 @@ ProcessBus 변환, DCS 알람 판정, ECMS 사건 생성과 원인 추론은 수
 [`docs/TRIPLENS_WORKFLOW_BOUNDARY.md`](docs/TRIPLENS_WORKFLOW_BOUNDARY.md)를
 기준으로 합니다.
 
+## Native OPC UA topology assets
+
+현재 native 실행 경로의 시각화 파일은 `topology/opcua/`에 있습니다. SVG는
+`scripts/native_ecms_opcua_client.py`가 실제로 읽는 OPC UA BrowseName을 사용하며,
+구현된 터빈 입구·바이패스·스프레이 배선을 표시합니다. 모델 변수의 숫자 NodeId는
+런타임에 배정되므로 임의로 만들지 않고, OpenModelica namespace 0의 고정 step/time
+NodeId만 표시합니다. 상세 기준은
+[`docs/OPCUA_NATIVE_VISUAL_CONTRACT_V1.md`](docs/OPCUA_NATIVE_VISUAL_CONTRACT_V1.md)를
+참조합니다.
+
 ## MATLAB Online에서 가장 빠른 시작
 
 ZIP을 MATLAB Drive에 압축 해제한 뒤 **압축 해제된 패키지 최상위 폴더**에서
@@ -294,6 +304,15 @@ ECMSVPP
 항상 고유 진입점 `ECMSVPP` 또는 `ECMS_START`로 시작합니다.
 
 ## 검증
+
+고정 ThermoSysPro 모델의 물리 FWP 세 대(HP/IP/LP)는 토출 체크밸브를 사용합니다.
+각 체크밸브의 OPEN, 개도, 유량, 차압, 입·출구 압력, 유효 저항은 OPC UA
+READ 값이며 개별/전체 SVG는 다음 명령으로 생성·검증합니다.
+
+```bash
+python3 scripts/generate_fwp_check_valve_svg_assets.py
+python3 scripts/generate_fwp_check_valve_svg_assets.py --check
+```
 
 ```bash
 python3 -m unittest discover -s tests -v
