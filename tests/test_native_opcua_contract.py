@@ -125,7 +125,7 @@ class NativeOPCUAContractTests(unittest.TestCase):
         self.assertIn('LIVE_STEP_SIZE_S: "0.04"', workflow)
         self.assertIn('LIVE_COMMAND_TIME_S: "20"', workflow)
         self.assertIn("--intervals 2500", workflow)
-        self.assertIn("scripts/patch_fmu_valve_controls.py", workflow)
+        self.assertNotIn("scripts/patch_fmu_valve_controls.py", workflow)
         self.assertIn("scripts/patch_lp_fwp_opcua.py", workflow)
         self.assertIn("scripts/patch_all_fwp_check_valves.py", workflow)
         self.assertIn("modelica/TripLens_PumpPhysics.mo", workflow)

@@ -10,7 +10,6 @@ on:
       - "modelica/TripLens_CombinedCycle_TripTAC.mo.tpl"
       - "scripts/native_ecms_opcua_client.py"
       - "scripts/build_native_opcua_dashboard.py"
-      - "scripts/patch_fmu_valve_controls.py"
       - "scripts/patch_lp_fwp_opcua.py"
       - "scripts/patch_all_fwp_check_valves.py"
       - "scripts/generate_fwp_check_valve_svg_assets.py"
@@ -71,8 +70,6 @@ jobs:
           git -C vendor/ThermoSysPro checkout --detach "$THERMOSYSPRO_COMMIT"
           test "$(git -C vendor/ThermoSysPro rev-parse HEAD)" = "$THERMOSYSPRO_COMMIT"
           python3 scripts/patch_turbine_bypass_model.py \
-            --source vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
-          python3 scripts/patch_fmu_valve_controls.py \
             --source vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
           python3 scripts/patch_lp_fwp_opcua.py \
             --source vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
