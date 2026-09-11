@@ -6,6 +6,8 @@ loadModel(Modelica, {"3.2.3"});
 getErrorString();
 loadFile("/workspace/vendor/ThermoSysPro/ThermoSysPro/package.mo");
 getErrorString();
+loadFile("/workspace/modelica/TripLens_PumpPhysics.mo");
+getErrorString();
 loadFile("/workspace/build/TripLens_CombinedCycle_TripTAC.mo");
 getErrorString();
 cd("/workspace/build");

@@ -11,6 +11,8 @@ TSP.FWP-LP.MASS_FLOW,OpenModelica,PHYSICAL,READ,vppLPFWPMassFlowTH,PompeAlimBP.Q
 TSP.FWP-LP.VOLUME_FLOW,OpenModelica,PHYSICAL,READ,vppLPFWPVolumeFlowM3S,PompeAlimBP.Qv,Solved pump volume flow
 TSP.FWP-LP.DELTA_P,OpenModelica,PHYSICAL,READ,vppLPFWPDeltaPPa,PompeAlimBP.deltaP,Solved pump differential pressure
 TSP.FWP-LP.MECH_POWER,OpenModelica,PHYSICAL,READ,vppLPFWPMechanicalPowerW,PompeAlimBP.Wm,Solved pump mechanical power
+TSP.FWP-LP.DISCHARGE_CHECK_VALVE.OPEN,OpenModelica,PHYSICAL,READ,vppLPFWPCheckValveOpen,vppLPFWPCheckValve.ouvert,Discharge non-return valve open feedback
+TSP.FWP-LP.DISCHARGE_CHECK_VALVE.OPENING,OpenModelica,PHYSICAL,READ,vppLPFWPCheckValveOpening,vppLPFWPCheckValve.opening,Continuous discharge non-return valve position
 TSP.DRUM.LP.LEVEL,OpenModelica,PHYSICAL,READ,BallonBP.yLevel.signal,BallonBP.yLevel.signal,LP drum level
 TSP.DRUM.LP.PRESSURE,OpenModelica,PHYSICAL,READ,BallonBP.P,BallonBP.P,LP drum pressure
 TSP.DRUM.LP.FW_VALVE,OpenModelica,PHYSICAL,READ,fmuVlvLPFWFb,vanne_alimentationBP.Ouv.signal,LP feedwater valve feedback

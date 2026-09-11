@@ -348,6 +348,17 @@
       "unit": "W",
       "aliases": ["PompeAlimBP.Wm", "vppLPFWPMechanicalPowerW", "fwp_lp_mechanical_power_w"]
     },
+    "fwp_lp_check_valve_open": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": ["TSP.FWP-LP.DISCHARGE_CHECK_VALVE.OPEN", "vppLPFWPCheckValveOpen", "fwp_lp_check_valve_open"]
+    },
+    "fwp_lp_check_valve_opening": {
+      "required": false,
+      "unit": "pu",
+      "aliases": ["TSP.FWP-LP.DISCHARGE_CHECK_VALVE.OPENING", "vppLPFWPCheckValveOpening", "fwp_lp_check_valve_opening"]
+    },
     "lp_drum_level_l": {
       "required": false,
       "unit": "BOOL",

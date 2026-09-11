@@ -67,6 +67,8 @@ SIGNALS = (
     Signal("lp_fwp_volume_flow_m3_s", "vppLPFWPVolumeFlowM3S", "m3/s", "DCS2"),
     Signal("lp_fwp_delta_p_pa", "vppLPFWPDeltaPPa", "Pa", "DCS2"),
     Signal("lp_fwp_mechanical_power_w", "vppLPFWPMechanicalPowerW", "W", "DCS2"),
+    Signal("lp_fwp_check_valve_open", "vppLPFWPCheckValveOpen", "BOOL", "DCS2"),
+    Signal("lp_fwp_check_valve_opening", "vppLPFWPCheckValveOpening", "pu", "DCS2"),
     Signal("stg_power_w", "Alternateur.Welec", "W", "DCS1"),
     Signal("gt_exhaust_flow_th", "vppGTExhaustMassFlowTH", "t/h", "DCS1"),
     Signal("gt_exhaust_temperature_k", "vppGTExhaustTemperatureK", "K", "DCS1"),
@@ -215,6 +217,10 @@ def validate_lp_bfp(rows: list[dict[str, float | int]], command_time: float) -> 
         for field in ("vcb_a02_closed_readback", "lp_fwp_motor_energized"):
             if not any(int(row[field]) == 0 for row in after):
                 errors.append(f"state did not clear: {field}")
+        if not any(int(row["lp_fwp_check_valve_open"]) == 0 for row in after):
+            errors.append("LP FWP discharge check valve did not close")
+        if float(post["lp_fwp_check_valve_opening"]) >= 0.1:
+            errors.append("LP FWP discharge check valve remained materially open")
         if float(post["lp_fwp_speed_rpm"]) >= float(pre["lp_fwp_speed_rpm"]) - 50:
             errors.append("PompeAlimBP did not coast down")
         if float(post["lp_fwp_mass_flow_th"]) >= float(pre["lp_fwp_mass_flow_th"]):
@@ -259,7 +265,7 @@ def main() -> int:
     parser.add_argument("--endpoint", default="opc.tcp://127.0.0.1:4841")
     parser.add_argument("--scenario", choices=("lp-bfp-trip",), default="lp-bfp-trip")
     parser.add_argument("--stop-time", type=float, default=80.0)
-    parser.add_argument("--step-size", type=float, default=0.04)
+    parser.add_argument("--step-size", type=float, default=0.05)
     parser.add_argument("--command-time", type=float, default=0.20)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()

@@ -21,7 +21,7 @@ from native_ecms_opcua_client import (  # noqa: E402
 class NativeOPCUAContractTests(unittest.TestCase):
     def test_inventory_and_configured_lp_rules(self) -> None:
         self.assertEqual(PROTOCOL, "TRIPLENS-NATIVE-OPCUA/1")
-        self.assertGreaterEqual(len(SIGNALS), 40)
+        self.assertGreaterEqual(len(SIGNALS), 42)
         low, low_low, trips_gt, trips_st = load_lp_rules()
         self.assertEqual((low.threshold, low_low.threshold), (1.65, 1.55))
         self.assertEqual((low.delay_s, low_low.delay_s), (0.5, 0.5))
@@ -47,6 +47,8 @@ class NativeOPCUAContractTests(unittest.TestCase):
                 "lp_fwp_motor_energized": int(not tripped),
                 "lp_fwp_speed_rpm": 700.0 if tripped else 1400.0,
                 "lp_fwp_mass_flow_th": 100.0 if tripped else 700.0,
+                "lp_fwp_check_valve_open": int(not tripped),
+                "lp_fwp_check_valve_opening": 0.01 if tripped else 1.0,
                 "lp_drum_level_m": 1.45 if tripped else 1.75,
                 "lp_drum_level_l_alarm": int(tripped),
                 "lp_drum_level_ll_alarm": int(tripped),
@@ -72,22 +74,32 @@ class NativeOPCUAContractTests(unittest.TestCase):
             COMMAND_NODES["vcb_a02_closed_readback"],
         ):
             self.assertIn(name, source)
-        self.assertIn("connect(vppLPFWPSpeedCommand, PompeAlimBP.rpm_or_mpower)", source)
-        self.assertIn("parameter Real vppLPFWPNumericalSpeedFloorRPM = 700", source)
-        self.assertIn(
-            "fmuVlvCondExtractionTarget*vppLPFWPDischargeMultiplier", source
-        )
+        self.assertIn("TripLens_PumpPhysics.BreakerInertialPumpDrive", source)
+        self.assertIn("TripLens_PumpPhysics.SpringLoadedCheckValve", source)
+        self.assertIn("connect(vppLPFWPDrive.speedCommand, PompeAlimBP.rpm_or_mpower)", source)
+        self.assertIn("connect(PompeAlimBP.C2, vppLPFWPCheckValve.C1)", source)
+        self.assertIn("connect(vppLPFWPCheckValve.C2, vanne_extraction.C1)", source)
+        self.assertNotIn("fmuVlvCondExtractionTarget*vppLPFWPDischargeMultiplier", source)
         self.assertIn("vppLPFWPMassFlowTH = 3.6*PompeAlimBP.Q", source)
 
-    def test_tag_contract_has_all_27_scenario_tags(self) -> None:
+        package = (ROOT / "modelica/TripLens_PumpPhysics.mo").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("model BreakerInertialPumpDrive", package)
+        self.assertIn("model SpringLoadedCheckValve", package)
+
+    def test_tag_contract_has_all_29_scenario_tags(self) -> None:
         path = ROOT / "data/opcua_lp_bfp_nodes_v1.csv"
         with path.open(encoding="utf-8-sig", newline="") as stream:
             rows = list(csv.DictReader(stream))
-        self.assertEqual(len(rows), 27)
-        self.assertEqual(len({row["canonical_tag"] for row in rows}), 27)
+        self.assertEqual(len(rows), 29)
+        self.assertEqual(len({row["canonical_tag"] for row in rows}), 29)
         tags = {row["canonical_tag"]: row for row in rows}
         self.assertEqual(tags["ECMS.VCB-A02.CLOSED"]["direction"], "WRITE")
         self.assertEqual(tags["TSP.FWP-LP.SPEED_RPM"]["direction"], "READ")
+        self.assertEqual(
+            tags["TSP.FWP-LP.DISCHARGE_CHECK_VALVE.OPEN"]["direction"], "READ"
+        )
         self.assertEqual(tags["HRSG.LP.DRUM.LEVEL.LL"]["direction"], "DERIVED")
 
     def test_workflow_builds_and_runs_lp_scenario(self) -> None:
@@ -95,11 +107,16 @@ class NativeOPCUAContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("-embeddedServer=opc-ua", workflow)
-        self.assertIn('LIVE_STOP_TIME_S: "100"', workflow)
-        self.assertIn('LIVE_STEP_SIZE_S: "0.02"', workflow)
+        self.assertIn('LIVE_STOP_TIME_S: "80"', workflow)
+        self.assertIn('LIVE_STEP_SIZE_S: "0.05"', workflow)
         self.assertIn("--intervals 2000", workflow)
         self.assertIn("scripts/patch_fmu_valve_controls.py", workflow)
         self.assertIn("scripts/patch_lp_fwp_opcua.py", workflow)
+        self.assertIn("modelica/TripLens_PumpPhysics.mo", workflow)
+        build = (ROOT / "modelica/build_native_opcua.mos.tpl").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('loadFile("/workspace/modelica/TripLens_PumpPhysics.mo")', build)
         self.assertIn("--scenario lp-bfp-trip", workflow)
         self.assertIn('"vppVCBA02ClosedNative"', workflow)
         self.assertNotIn("live_fmu_gateway.py", workflow)

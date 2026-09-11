@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "modelica/build_native_opcua.mos.tpl"
+      - "modelica/TripLens_PumpPhysics.mo"
       - "modelica/TripLens_CombinedCycle_TripTAC.mo.tpl"
       - "scripts/native_ecms_opcua_client.py"
       - "scripts/build_native_opcua_dashboard.py"
@@ -32,10 +33,11 @@ jobs:
     env:
       OPENMODELICA_IMAGE: openmodelica/openmodelica:v1.27.0-minimal
       THERMOSYSPRO_COMMIT: db81ae1b5a6a85f6c6c7693244cafa6087e18ff5
-      # A de-energized LP feedwater pump coasts to zero. An 80 s window reaches
-      # the unchanged configured LL threshold while retaining 2000 OPC UA steps.
+      # The previously validated LP discharge check valve closes before reverse
+      # flow; the unchanged L/LL thresholds occur near 32/56 s after Trip.
+      # Keep 20 ms OPC UA capture and enough margin for the GT/ST return path.
       LIVE_STOP_TIME_S: "80"
-      LIVE_STEP_SIZE_S: "0.04"
+      LIVE_STEP_SIZE_S: "0.05"
     steps:
       - uses: actions/checkout@v4
 
@@ -101,7 +103,8 @@ jobs:
               "vppLPFWPTripLatchNative", "vppVCBA02TripCommandNative",
               "vppVCBA02ClosedNative", "vppLPFWPMotorEnergized",
               "vppLPFWPSpeedRPM", "vppLPFWPMassFlowTH",
-              "vppLPFWPDeltaPPa", "vppGTTripCmd", "vpp52GTClosed",
+              "vppLPFWPDeltaPPa", "vppLPFWPCheckValveOpen",
+              "vppLPFWPCheckValveOpening", "vppGTTripCmd", "vpp52GTClosed",
               "vpp52STClosed",
           ]
           missing = [name for name in required if name not in built]
