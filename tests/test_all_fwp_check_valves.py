@@ -66,6 +66,26 @@ end CombinedCycle_TripTAC;
                 "OutletPressurePa", "ResistancePaSPerKg",
             ):
                 self.assertIn(f"vpp{level}FWPCheckValve{suffix}", patched)
+            for suffix in (
+                "DeltaPPa", "InletPressurePa", "OutletPressurePa",
+                "ResistancePaSPerKg",
+            ):
+                self.assertIn(
+                    f"discrete output Real vpp{level}FWPCheckValve{suffix}",
+                    patched,
+                )
+                self.assertNotIn(
+                    f"\n  vpp{level}FWPCheckValve{suffix} = ", patched
+                )
+        self.assertIn(
+            "when sample(vppFWPCheckValveTelemetrySamplePeriodS,", patched
+        )
+        self.assertEqual(
+            patched.count("    vppHPFWPCheckValveDeltaPPa =")
+            + patched.count("    vppIPFWPCheckValveDeltaPPa =")
+            + patched.count("    vppLPFWPCheckValveDeltaPPa ="),
+            3,
+        )
 
     def test_contract_has_three_valves_and_all_21_physical_read_nodes(self):
         self.assertEqual(len(self.nodes), 21)

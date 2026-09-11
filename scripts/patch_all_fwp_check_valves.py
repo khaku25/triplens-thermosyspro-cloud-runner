@@ -24,6 +24,8 @@ REQUIRED_MARKERS = (
 
 DECLARATIONS = f'''
   // {MARKER}
+  parameter Real vppFWPCheckValveTelemetrySamplePeriodS(unit="s") = 0.02
+    "Sampling period for read-only hydraulic telemetry outside the plant DAE";
   TripLens_PumpPhysics.SpringLoadedCheckValve vppHPFWPCheckValve(
     closeFlow=20,
     closedResistance=1e5);
@@ -34,24 +36,24 @@ DECLARATIONS = f'''
   output Boolean vppHPFWPCheckValveOpen;
   output Real vppHPFWPCheckValveOpening(min=0, max=1);
   output Real vppHPFWPCheckValveMassFlowTH(unit="t/h");
-  output Real vppHPFWPCheckValveDeltaPPa(unit="Pa");
-  output Real vppHPFWPCheckValveInletPressurePa(unit="Pa");
-  output Real vppHPFWPCheckValveOutletPressurePa(unit="Pa");
-  output Real vppHPFWPCheckValveResistancePaSPerKg(unit="Pa.s/kg");
+  discrete output Real vppHPFWPCheckValveDeltaPPa(start=0, fixed=true, unit="Pa");
+  discrete output Real vppHPFWPCheckValveInletPressurePa(start=0, fixed=true, unit="Pa");
+  discrete output Real vppHPFWPCheckValveOutletPressurePa(start=0, fixed=true, unit="Pa");
+  discrete output Real vppHPFWPCheckValveResistancePaSPerKg(start=0, fixed=true, unit="Pa.s/kg");
 
   output Boolean vppIPFWPCheckValveOpen;
   output Real vppIPFWPCheckValveOpening(min=0, max=1);
   output Real vppIPFWPCheckValveMassFlowTH(unit="t/h");
-  output Real vppIPFWPCheckValveDeltaPPa(unit="Pa");
-  output Real vppIPFWPCheckValveInletPressurePa(unit="Pa");
-  output Real vppIPFWPCheckValveOutletPressurePa(unit="Pa");
-  output Real vppIPFWPCheckValveResistancePaSPerKg(unit="Pa.s/kg");
+  discrete output Real vppIPFWPCheckValveDeltaPPa(start=0, fixed=true, unit="Pa");
+  discrete output Real vppIPFWPCheckValveInletPressurePa(start=0, fixed=true, unit="Pa");
+  discrete output Real vppIPFWPCheckValveOutletPressurePa(start=0, fixed=true, unit="Pa");
+  discrete output Real vppIPFWPCheckValveResistancePaSPerKg(start=0, fixed=true, unit="Pa.s/kg");
 
   output Real vppLPFWPCheckValveMassFlowTH(unit="t/h");
-  output Real vppLPFWPCheckValveDeltaPPa(unit="Pa");
-  output Real vppLPFWPCheckValveInletPressurePa(unit="Pa");
-  output Real vppLPFWPCheckValveOutletPressurePa(unit="Pa");
-  output Real vppLPFWPCheckValveResistancePaSPerKg(unit="Pa.s/kg");
+  discrete output Real vppLPFWPCheckValveDeltaPPa(start=0, fixed=true, unit="Pa");
+  discrete output Real vppLPFWPCheckValveInletPressurePa(start=0, fixed=true, unit="Pa");
+  discrete output Real vppLPFWPCheckValveOutletPressurePa(start=0, fixed=true, unit="Pa");
+  discrete output Real vppLPFWPCheckValveResistancePaSPerKg(start=0, fixed=true, unit="Pa.s/kg");
 '''
 
 EQUATIONS = '''
@@ -63,27 +65,30 @@ EQUATIONS = '''
   vppHPFWPCheckValveOpen = vppHPFWPCheckValve.ouvert;
   vppHPFWPCheckValveOpening = vppHPFWPCheckValve.opening;
   vppHPFWPCheckValveMassFlowTH = 3.6*vppHPFWPCheckValve.Q;
-  vppHPFWPCheckValveDeltaPPa = vppHPFWPCheckValve.deltaP;
-  vppHPFWPCheckValveInletPressurePa = vppHPFWPCheckValve.C1.P;
-  vppHPFWPCheckValveOutletPressurePa = vppHPFWPCheckValve.C2.P;
-  vppHPFWPCheckValveResistancePaSPerKg =
-    vppHPFWPCheckValve.effectiveResistance;
 
   vppIPFWPCheckValveOpen = vppIPFWPCheckValve.ouvert;
   vppIPFWPCheckValveOpening = vppIPFWPCheckValve.opening;
   vppIPFWPCheckValveMassFlowTH = 3.6*vppIPFWPCheckValve.Q;
-  vppIPFWPCheckValveDeltaPPa = vppIPFWPCheckValve.deltaP;
-  vppIPFWPCheckValveInletPressurePa = vppIPFWPCheckValve.C1.P;
-  vppIPFWPCheckValveOutletPressurePa = vppIPFWPCheckValve.C2.P;
-  vppIPFWPCheckValveResistancePaSPerKg =
-    vppIPFWPCheckValve.effectiveResistance;
 
   vppLPFWPCheckValveMassFlowTH = 3.6*vppLPFWPCheckValve.Q;
-  vppLPFWPCheckValveDeltaPPa = vppLPFWPCheckValve.deltaP;
-  vppLPFWPCheckValveInletPressurePa = vppLPFWPCheckValve.C1.P;
-  vppLPFWPCheckValveOutletPressurePa = vppLPFWPCheckValve.C2.P;
-  vppLPFWPCheckValveResistancePaSPerKg =
-    vppLPFWPCheckValve.effectiveResistance;
+  // These four values per valve are observability-only. Sampling prevents
+  // OpenModelica from replacing native hydraulic iteration variables with
+  // top-level telemetry aliases in the initial nonlinear system.
+  when sample(vppFWPCheckValveTelemetrySamplePeriodS,
+      vppFWPCheckValveTelemetrySamplePeriodS) then
+    vppHPFWPCheckValveDeltaPPa = vppHPFWPCheckValve.deltaP;
+    vppHPFWPCheckValveInletPressurePa = vppHPFWPCheckValve.C1.P;
+    vppHPFWPCheckValveOutletPressurePa = vppHPFWPCheckValve.C2.P;
+    vppHPFWPCheckValveResistancePaSPerKg = vppHPFWPCheckValve.effectiveResistance;
+    vppIPFWPCheckValveDeltaPPa = vppIPFWPCheckValve.deltaP;
+    vppIPFWPCheckValveInletPressurePa = vppIPFWPCheckValve.C1.P;
+    vppIPFWPCheckValveOutletPressurePa = vppIPFWPCheckValve.C2.P;
+    vppIPFWPCheckValveResistancePaSPerKg = vppIPFWPCheckValve.effectiveResistance;
+    vppLPFWPCheckValveDeltaPPa = vppLPFWPCheckValve.deltaP;
+    vppLPFWPCheckValveInletPressurePa = vppLPFWPCheckValve.C1.P;
+    vppLPFWPCheckValveOutletPressurePa = vppLPFWPCheckValve.C2.P;
+    vppLPFWPCheckValveResistancePaSPerKg = vppLPFWPCheckValve.effectiveResistance;
+  end when;
 
 '''
 
@@ -153,6 +158,14 @@ def patch_model(source: str) -> str:
     ):
         if token not in source:
             raise AssertionError(f"missing physical check-valve connection {token}")
+    for level in ("HP", "IP", "LP"):
+        for suffix in (
+            "DeltaPPa", "InletPressurePa", "OutletPressurePa",
+            "ResistancePaSPerKg",
+        ):
+            token = f"discrete output Real vpp{level}FWPCheckValve{suffix}"
+            if token not in source:
+                raise AssertionError(f"unsampled check-valve telemetry {token}")
     return source
 
 
