@@ -1,0 +1,8 @@
+asset_id,equipment_id,system,title_ko,actuator_kind,position_node,flow_node,command_source,inlet,outlet,svg,notes
+HP_TURB_ADM_VLV,HP-TURB-ADM-VLV,ST,HP 터빈 입구 조절밸브,CONTROL_VALVE,vppHPAdmissionPos,vppHPTurbineSteamFlowTH,vppSTTripLatch,HP MAIN STEAM,HP TURBINE,topology/opcua/valves/hp-turb-adm-vlv.svg,Trip 시 닫힘; 개도와 터빈 유량은 OPC UA 읽기 전용
+IP_TURB_ADM_VLV,IP-TURB-ADM-VLV,ST,IP 터빈 입구 조절밸브,CONTROL_VALVE,vppIPAdmissionPos,vppIPTurbineSteamFlowTH,vppSTTripLatch,HOT REHEAT,IP TURBINE,topology/opcua/valves/ip-turb-adm-vlv.svg,Trip 시 닫힘; ThermoSysPro MP는 TripLens IP로 표시
+LP_DRUM_ADM_VLV,LP-DRUM-ADM-VLV,ST,LP 드럼 증기 입구밸브,CONTROL_VALVE,vppLPDrumAdmissionMultiplier,vppLPTurbineSteamFlowTH,vppSTTripLatch,LP DRUM STEAM,LP TURBINE,topology/opcua/valves/lp-drum-adm-vlv.svg,LPBP가 아닌 LP 드럼 증기 유입 경로; Trip 시 닫힘
+HP_BYPASS_VLV,HP-BYPASS-VLV,ST_BYPASS,HP 터빈 바이패스 밸브,BYPASS_VALVE,vppHPBypassPos,vppHPBypassMassFlowTH,vppSTTripLatch,HP MAIN STEAM,COLD REHEAT,topology/opcua/valves/hp-bypass-vlv.svg,Trip 시 열림; HP 터빈만 우회
+LP_BYPASS_VLV,LP-BYPASS-VLV,ST_BYPASS,LP 터빈 바이패스 밸브,BYPASS_VALVE,vppLPBypassPos,vppLPBypassMassFlowTH,vppSTTripLatch,HOT REHEAT,CONDENSER,topology/opcua/valves/lp-bypass-vlv.svg,Trip 시 열림; IP/LP 터빈열 우회
+HP_SPRAY_VLV,HP-SPRAY-VLV,ST_BYPASS,HP 바이패스 스프레이,SPRAY_FLOW_SOURCE,vppHPSprayPos,vppHPSprayMassFlowTH,vppSTTripLatch,SPRAY WATER,HP BYPASS HEADER,topology/opcua/valves/hp-spray-vlv.svg,ThermoSysPro 구현은 제어밸브가 아니라 유량원+인젝터; Trip 시 활성
+LP_SPRAY_VLV,LP-SPRAY-VLV,ST_BYPASS,LP 바이패스 스프레이,SPRAY_FLOW_SOURCE,vppLPSprayPos,vppLPSprayMassFlowTH,vppSTTripLatch,SPRAY WATER,LP BYPASS HEADER,topology/opcua/valves/lp-spray-vlv.svg,ThermoSysPro 구현은 제어밸브가 아니라 유량원+인젝터; Trip 시 활성

@@ -1,0 +1,133 @@
+{
+  "schema_version": "1.0",
+  "scope": "NATIVE_OPENMODELICA_OPCUA_CURRENT_CONTRACT",
+  "endpoint_default": "opc.tcp://127.0.0.1:4841",
+  "node_locator": "BrowseName",
+  "write_nodes": [
+    {
+      "browse_name": "vppExternalTripCommandNative",
+      "type": "Double",
+      "semantics": "0/1 GT Trip"
+    }
+  ],
+  "solver_control_nodes": [
+    {
+      "node_id": "ns=0;i=10000",
+      "browse_name": "OpenModelica.step",
+      "access": "WRITE"
+    },
+    {
+      "node_id": "ns=0;i=10004",
+      "browse_name": "OpenModelica.time",
+      "access": "READ"
+    }
+  ],
+  "actuator_asset_count": 7,
+  "overview_svg": "opcua_actuator_overview.svg",
+  "process_wiring_svg": "opcua_process_wiring.svg",
+  "assets": [
+    {
+      "asset_id": "HP_TURB_ADM_VLV",
+      "equipment_id": "HP-TURB-ADM-VLV",
+      "system": "ST",
+      "title_ko": "HP 터빈 입구 조절밸브",
+      "actuator_kind": "CONTROL_VALVE",
+      "position_node": "vppHPAdmissionPos",
+      "flow_node": "vppHPTurbineSteamFlowTH",
+      "command_source": "vppSTTripLatch",
+      "inlet": "HP MAIN STEAM",
+      "outlet": "HP TURBINE",
+      "svg": "topology/opcua/valves/hp-turb-adm-vlv.svg",
+      "notes": "Trip 시 닫힘; 개도와 터빈 유량은 OPC UA 읽기 전용"
+    },
+    {
+      "asset_id": "IP_TURB_ADM_VLV",
+      "equipment_id": "IP-TURB-ADM-VLV",
+      "system": "ST",
+      "title_ko": "IP 터빈 입구 조절밸브",
+      "actuator_kind": "CONTROL_VALVE",
+      "position_node": "vppIPAdmissionPos",
+      "flow_node": "vppIPTurbineSteamFlowTH",
+      "command_source": "vppSTTripLatch",
+      "inlet": "HOT REHEAT",
+      "outlet": "IP TURBINE",
+      "svg": "topology/opcua/valves/ip-turb-adm-vlv.svg",
+      "notes": "Trip 시 닫힘; ThermoSysPro MP는 TripLens IP로 표시"
+    },
+    {
+      "asset_id": "LP_DRUM_ADM_VLV",
+      "equipment_id": "LP-DRUM-ADM-VLV",
+      "system": "ST",
+      "title_ko": "LP 드럼 증기 입구밸브",
+      "actuator_kind": "CONTROL_VALVE",
+      "position_node": "vppLPDrumAdmissionMultiplier",
+      "flow_node": "vppLPTurbineSteamFlowTH",
+      "command_source": "vppSTTripLatch",
+      "inlet": "LP DRUM STEAM",
+      "outlet": "LP TURBINE",
+      "svg": "topology/opcua/valves/lp-drum-adm-vlv.svg",
+      "notes": "LPBP가 아닌 LP 드럼 증기 유입 경로; Trip 시 닫힘"
+    },
+    {
+      "asset_id": "HP_BYPASS_VLV",
+      "equipment_id": "HP-BYPASS-VLV",
+      "system": "ST_BYPASS",
+      "title_ko": "HP 터빈 바이패스 밸브",
+      "actuator_kind": "BYPASS_VALVE",
+      "position_node": "vppHPBypassPos",
+      "flow_node": "vppHPBypassMassFlowTH",
+      "command_source": "vppSTTripLatch",
+      "inlet": "HP MAIN STEAM",
+      "outlet": "COLD REHEAT",
+      "svg": "topology/opcua/valves/hp-bypass-vlv.svg",
+      "notes": "Trip 시 열림; HP 터빈만 우회"
+    },
+    {
+      "asset_id": "LP_BYPASS_VLV",
+      "equipment_id": "LP-BYPASS-VLV",
+      "system": "ST_BYPASS",
+      "title_ko": "LP 터빈 바이패스 밸브",
+      "actuator_kind": "BYPASS_VALVE",
+      "position_node": "vppLPBypassPos",
+      "flow_node": "vppLPBypassMassFlowTH",
+      "command_source": "vppSTTripLatch",
+      "inlet": "HOT REHEAT",
+      "outlet": "CONDENSER",
+      "svg": "topology/opcua/valves/lp-bypass-vlv.svg",
+      "notes": "Trip 시 열림; IP/LP 터빈열 우회"
+    },
+    {
+      "asset_id": "HP_SPRAY_VLV",
+      "equipment_id": "HP-SPRAY-VLV",
+      "system": "ST_BYPASS",
+      "title_ko": "HP 바이패스 스프레이",
+      "actuator_kind": "SPRAY_FLOW_SOURCE",
+      "position_node": "vppHPSprayPos",
+      "flow_node": "vppHPSprayMassFlowTH",
+      "command_source": "vppSTTripLatch",
+      "inlet": "SPRAY WATER",
+      "outlet": "HP BYPASS HEADER",
+      "svg": "topology/opcua/valves/hp-spray-vlv.svg",
+      "notes": "ThermoSysPro 구현은 제어밸브가 아니라 유량원+인젝터; Trip 시 활성"
+    },
+    {
+      "asset_id": "LP_SPRAY_VLV",
+      "equipment_id": "LP-SPRAY-VLV",
+      "system": "ST_BYPASS",
+      "title_ko": "LP 바이패스 스프레이",
+      "actuator_kind": "SPRAY_FLOW_SOURCE",
+      "position_node": "vppLPSprayPos",
+      "flow_node": "vppLPSprayMassFlowTH",
+      "command_source": "vppSTTripLatch",
+      "inlet": "SPRAY WATER",
+      "outlet": "LP BYPASS HEADER",
+      "svg": "topology/opcua/valves/lp-spray-vlv.svg",
+      "notes": "ThermoSysPro 구현은 제어밸브가 아니라 유량원+인젝터; Trip 시 활성"
+    }
+  ],
+  "limitations": [
+    "Valve feedback is application-read-only in the current contract.",
+    "No independent OPC UA valve command nodes are claimed.",
+    "Spray actuators are implemented as controlled flow sources and injectors."
+  ]
+}
