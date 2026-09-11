@@ -89,81 +89,40 @@ def valve_symbol(kind: str) -> str:
         return """
     <g data-symbol-type="FLOW_SOURCE_INJECTOR" data-symbol-convention="ISO-10628-style"
       aria-label="Model flow source and spray injector">
-      <circle class="valve" cx="562" cy="260" r="34"/>
-      <path d="M544 260H577M565 248L579 260L565 272" fill="none"
-        stroke="#d9f4ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M604 238L636 260L604 282Z" fill="#153c52" stroke="#40c4ff" stroke-width="3"/>
-      <circle cx="641" cy="250" r="3.5" fill="#4da3ff"/>
-      <circle cx="649" cy="260" r="3.5" fill="#4da3ff"/>
-      <circle cx="641" cy="270" r="3.5" fill="#4da3ff"/>
+      <path class="water" d="M40 280H166M346 280H472"/>
+      <circle class="valve" cx="215" cy="280" r="49"/>
+      <path d="M187 280H236M218 260L241 280L218 300" fill="none"
+        stroke="#d9f4ff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M275 245L341 280L275 315Z" fill="#153c52" stroke="#40c4ff" stroke-width="6"/>
+      <circle cx="356" cy="260" r="7" fill="#4da3ff"/>
+      <circle cx="370" cy="280" r="7" fill="#4da3ff"/>
+      <circle cx="356" cy="300" r="7" fill="#4da3ff"/>
     </g>
 """
     return """
     <g data-symbol-type="ACTUATED_CONTROL_VALVE" data-symbol-convention="ISO-10628-style"
       data-actuator="DIAPHRAGM" aria-label="Actuated control valve">
-      <polygon class="valve" points="530,225 580,260 530,295"/>
-      <polygon class="valve" points="630,225 580,260 630,295"/>
-      <line x1="580" y1="190" x2="580" y2="225" stroke="#40c4ff" stroke-width="4"/>
-      <path d="M548 188Q580 150 612 188Z" fill="#153c52" stroke="#40c4ff" stroke-width="3"/>
-      <line x1="548" y1="188" x2="612" y2="188" stroke="#40c4ff" stroke-width="3"/>
+      <path class="steam" d="M40 300H170M342 300H472"/>
+      <polygon class="valve" points="170,245 256,300 170,355"/>
+      <polygon class="valve" points="342,245 256,300 342,355"/>
+      <line x1="256" y1="175" x2="256" y2="245" stroke="#40c4ff" stroke-width="8"/>
+      <path d="M205 175Q256 105 307 175Z" fill="#153c52" stroke="#40c4ff" stroke-width="6"/>
+      <line x1="205" y1="175" x2="307" y2="175" stroke="#40c4ff" stroke-width="6"/>
     </g>
 """
 
 
 def render_asset(asset: Asset) -> str:
-    process_class = "water" if asset.actuator_kind == "SPRAY_FLOW_SOURCE" else "steam"
-    process_arrow = "waterArrow" if process_class == "water" else "steamArrow"
-    honest_note = (
-        "FLOW SOURCE + INJECTOR (not a native valve body)"
-        if asset.actuator_kind == "SPRAY_FLOW_SOURCE"
-        else "NATIVE PHYSICAL ACTUATOR"
-    )
-    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="720" viewBox="0 0 1160 720"
-  role="img" aria-labelledby="title desc" data-protocol="OPC UA" data-endpoint="{ENDPOINT}"
+    symbol = valve_symbol(asset.actuator_kind).strip()
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"
+  role="img" aria-labelledby="title" data-protocol="OPC UA" data-endpoint="{ENDPOINT}"
   data-equipment-id="{esc(asset.equipment_id)}">
-  <title id="title">{esc(asset.title_ko)} OPC UA wiring</title>
-  <desc id="desc">Native OpenModelica actuator and read-only OPC UA feedback wiring.</desc>
+  <title id="title">{esc(asset.title_ko)}</title>
   <style>{STYLE}</style>
-  {DEFS}
-  <rect class="bg" width="1160" height="720"/>
-  <rect class="panel" x="22" y="20" width="1116" height="675" rx="18"/>
-  <text class="title" x="52" y="62">{esc(asset.title_ko)} · {esc(asset.equipment_id)}</text>
-  <text class="sub" x="52" y="88">Native OpenModelica ⇄ OPC UA ⇄ ECMS · application binding uses BrowseName</text>
-  <rect class="badge" x="790" y="44" width="303" height="28" rx="14"/>
-  <text class="badgeText" x="941" y="63" text-anchor="middle">{honest_note}</text>
-
-  <rect class="equip" x="70" y="220" width="215" height="80" rx="14"/>
-  <text class="label" x="177" y="250" text-anchor="middle">{esc(asset.inlet)}</text>
-  <text class="small" x="177" y="276" text-anchor="middle">process inlet</text>
-  <path class="{process_class}" d="M285 260H515" marker-end="url(#{process_arrow})"/>
-  {valve_symbol(asset.actuator_kind)}
-  <path class="{process_class}" d="M645 260H865" marker-end="url(#{process_arrow})"/>
-  <rect class="equip" x="865" y="220" width="220" height="80" rx="14"/>
-  <text class="label" x="975" y="250" text-anchor="middle">{esc(asset.outlet)}</text>
-  <text class="small" x="975" y="276" text-anchor="middle">process outlet</text>
-
-  <rect class="logic" x="70" y="390" width="350" height="135" rx="14"/>
-  <text class="label" x="95" y="422">INTERNAL ACTUATOR LOGIC</text>
-  <text class="mono" x="95" y="452" data-opcua-browse-name="{esc(asset.command_source)}">{esc(asset.command_source)}</text>
-  <text class="small" x="95" y="480">source: resolved Trip latch · OPC UA READ_ONLY</text>
-  <text class="small" x="95" y="505">no independent valve write node in current contract</text>
-  <path class="signal" d="M420 456H580V315" marker-end="url(#signalArrow)"/>
-
-  <rect class="opc" x="650" y="370" width="435" height="205" rx="14"/>
-  <text class="label" x="675" y="404">OPC UA FEEDBACK</text>
-  <rect class="io" x="675" y="425" width="385" height="52" rx="8" data-opcua-access="READ_ONLY"
-    data-opcua-browse-name="{esc(asset.position_node)}"/>
-  <text class="mono" x="690" y="448">BrowseName: {esc(asset.position_node)}</text>
-  <text class="small" x="690" y="469">position · pu · READ_ONLY</text>
-  <rect class="io" x="675" y="492" width="385" height="52" rx="8" data-opcua-access="READ_ONLY"
-    data-opcua-browse-name="{esc(asset.flow_node)}"/>
-  <text class="mono" x="690" y="515">BrowseName: {esc(asset.flow_node)}</text>
-  <text class="small" x="690" y="536">physical flow · t/h · READ_ONLY</text>
-  <path class="signal" d="M580 315V345H650V425" marker-end="url(#signalArrow)"/>
-
-  <text class="warn" x="70" y="625">{esc(asset.notes)}</text>
-  <text class="muted" x="70" y="653">Endpoint default: {ENDPOINT} · Model-variable numeric NodeIds are discovered at runtime by BrowseName.</text>
-  <text class="muted" x="70" y="674">ISO 10628-style process symbol · model-derived visual contract · not an operating, isolation, or LOTO drawing</text>
+  <g data-opcua-access="READ_ONLY" data-opcua-position="{esc(asset.position_node)}"
+    data-opcua-flow="{esc(asset.flow_node)}" data-command-source="{esc(asset.command_source)}">
+    {symbol}
+  </g>
 </svg>
 '''
 

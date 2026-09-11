@@ -1,8 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="720" viewBox="0 0 1160 720"
-  role="img" aria-labelledby="title desc" data-protocol="OPC UA" data-endpoint="opc.tcp://127.0.0.1:4841"
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"
+  role="img" aria-labelledby="title" data-protocol="OPC UA" data-endpoint="opc.tcp://127.0.0.1:4841"
   data-equipment-id="LP-DRUM-ADM-VLV">
-  <title id="title">LP 드럼 증기 입구밸브 OPC UA wiring</title>
-  <desc id="desc">Native OpenModelica actuator and read-only OPC UA feedback wiring.</desc>
+  <title id="title">LP 드럼 증기 입구밸브</title>
   <style>
   .bg{fill:#07111f}.panel{fill:#0d1b2d;stroke:#31445d;stroke-width:2}
   .title{fill:#f4f8ff;font:700 25px Arial,sans-serif}.sub{fill:#9fb2c9;font:14px Arial,sans-serif}
@@ -15,59 +14,16 @@
   .io{fill:#12283a;stroke:#4bb8d8;stroke-width:1.5}.warn{fill:#ffd166;font:12px Arial,sans-serif}
   .badge{fill:#173b2b;stroke:#4dd599;stroke-width:1.5}.badgeText{fill:#87efbd;font:700 10px Arial,sans-serif}
 </style>
-  
-  <defs>
-    <marker id="steamArrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#ff725e"/></marker>
-    <marker id="waterArrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#4da3ff"/></marker>
-    <marker id="signalArrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#b899ff"/></marker>
-  </defs>
-
-  <rect class="bg" width="1160" height="720"/>
-  <rect class="panel" x="22" y="20" width="1116" height="675" rx="18"/>
-  <text class="title" x="52" y="62">LP 드럼 증기 입구밸브 · LP-DRUM-ADM-VLV</text>
-  <text class="sub" x="52" y="88">Native OpenModelica ⇄ OPC UA ⇄ ECMS · application binding uses BrowseName</text>
-  <rect class="badge" x="790" y="44" width="303" height="28" rx="14"/>
-  <text class="badgeText" x="941" y="63" text-anchor="middle">NATIVE PHYSICAL ACTUATOR</text>
-
-  <rect class="equip" x="70" y="220" width="215" height="80" rx="14"/>
-  <text class="label" x="177" y="250" text-anchor="middle">LP DRUM STEAM</text>
-  <text class="small" x="177" y="276" text-anchor="middle">process inlet</text>
-  <path class="steam" d="M285 260H515" marker-end="url(#steamArrow)"/>
-  
+  <g data-opcua-access="READ_ONLY" data-opcua-position="vppLPDrumAdmissionMultiplier"
+    data-opcua-flow="vppLPTurbineSteamFlowTH" data-command-source="vppSTTripLatch">
     <g data-symbol-type="ACTUATED_CONTROL_VALVE" data-symbol-convention="ISO-10628-style"
       data-actuator="DIAPHRAGM" aria-label="Actuated control valve">
-      <polygon class="valve" points="530,225 580,260 530,295"/>
-      <polygon class="valve" points="630,225 580,260 630,295"/>
-      <line x1="580" y1="190" x2="580" y2="225" stroke="#40c4ff" stroke-width="4"/>
-      <path d="M548 188Q580 150 612 188Z" fill="#153c52" stroke="#40c4ff" stroke-width="3"/>
-      <line x1="548" y1="188" x2="612" y2="188" stroke="#40c4ff" stroke-width="3"/>
+      <path class="steam" d="M40 300H170M342 300H472"/>
+      <polygon class="valve" points="170,245 256,300 170,355"/>
+      <polygon class="valve" points="342,245 256,300 342,355"/>
+      <line x1="256" y1="175" x2="256" y2="245" stroke="#40c4ff" stroke-width="8"/>
+      <path d="M205 175Q256 105 307 175Z" fill="#153c52" stroke="#40c4ff" stroke-width="6"/>
+      <line x1="205" y1="175" x2="307" y2="175" stroke="#40c4ff" stroke-width="6"/>
     </g>
-
-  <path class="steam" d="M645 260H865" marker-end="url(#steamArrow)"/>
-  <rect class="equip" x="865" y="220" width="220" height="80" rx="14"/>
-  <text class="label" x="975" y="250" text-anchor="middle">LP TURBINE</text>
-  <text class="small" x="975" y="276" text-anchor="middle">process outlet</text>
-
-  <rect class="logic" x="70" y="390" width="350" height="135" rx="14"/>
-  <text class="label" x="95" y="422">INTERNAL ACTUATOR LOGIC</text>
-  <text class="mono" x="95" y="452" data-opcua-browse-name="vppSTTripLatch">vppSTTripLatch</text>
-  <text class="small" x="95" y="480">source: resolved Trip latch · OPC UA READ_ONLY</text>
-  <text class="small" x="95" y="505">no independent valve write node in current contract</text>
-  <path class="signal" d="M420 456H580V315" marker-end="url(#signalArrow)"/>
-
-  <rect class="opc" x="650" y="370" width="435" height="205" rx="14"/>
-  <text class="label" x="675" y="404">OPC UA FEEDBACK</text>
-  <rect class="io" x="675" y="425" width="385" height="52" rx="8" data-opcua-access="READ_ONLY"
-    data-opcua-browse-name="vppLPDrumAdmissionMultiplier"/>
-  <text class="mono" x="690" y="448">BrowseName: vppLPDrumAdmissionMultiplier</text>
-  <text class="small" x="690" y="469">position · pu · READ_ONLY</text>
-  <rect class="io" x="675" y="492" width="385" height="52" rx="8" data-opcua-access="READ_ONLY"
-    data-opcua-browse-name="vppLPTurbineSteamFlowTH"/>
-  <text class="mono" x="690" y="515">BrowseName: vppLPTurbineSteamFlowTH</text>
-  <text class="small" x="690" y="536">physical flow · t/h · READ_ONLY</text>
-  <path class="signal" d="M580 315V345H650V425" marker-end="url(#signalArrow)"/>
-
-  <text class="warn" x="70" y="625">LPBP가 아닌 LP 드럼 증기 유입 경로; Trip 시 닫힘</text>
-  <text class="muted" x="70" y="653">Endpoint default: opc.tcp://127.0.0.1:4841 · Model-variable numeric NodeIds are discovered at runtime by BrowseName.</text>
-  <text class="muted" x="70" y="674">ISO 10628-style process symbol · model-derived visual contract · not an operating, isolation, or LOTO drawing</text>
+  </g>
 </svg>
