@@ -10,6 +10,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
 PATCHER = ROOT / "scripts" / "patch_all_fwp_check_valves.py"
 GENERATOR = ROOT / "scripts" / "generate_fwp_check_valve_svg_assets.py"
 NODE_CONTRACT = ROOT / "data" / "opcua_fwp_check_valve_nodes_v1.csv"
