@@ -1,0 +1,262 @@
+{
+  "schema_version": "1.0",
+  "scope": "FMU_CONNECTED_VALVES",
+  "control_point_source": "config/fmu_valve_control_points_v1.csv",
+  "port_source": "data/fmu_valve_ports_v1.csv",
+  "overview_svg": "fmu_valves_overview.svg",
+  "asset_count": 12,
+  "assets": [
+    {
+      "control_point_id": "HP_FWCV",
+      "equipment_id": "HP-FWCV",
+      "system": "HRSG",
+      "service_ko": "HP 드럼 급수조절밸브",
+      "svg": "valves/hp-fwcv.svg",
+      "fmu_ports": [
+        "FMU.VLV.HP_FWCV.MODE_AUTO",
+        "FMU.VLV.HP_FWCV.MAN_CMD",
+        "FMU.VLV.HP_FWCV.FAULT_ENABLE",
+        "FMU.VLV.HP_FWCV.FAULT_VALUE",
+        "FMU.VLV.HP_FWCV.AUTO_CMD",
+        "FMU.VLV.HP_FWCV.CMD",
+        "FMU.VLV.HP_FWCV.FB",
+        "FMU.VLV.HP_FWCV.DEVIATION",
+        "FMU.VLV.HP_FWCV.FAULT_ACTIVE",
+        "FMU.VLV.HP_FWCV.CV",
+        "FMU.VLV.HP_FWCV.MASS_FLOW",
+        "FMU.VLV.HP_FWCV.DP"
+      ]
+    },
+    {
+      "control_point_id": "HP_STEAM_VLV",
+      "equipment_id": "HP-STM-VLV",
+      "system": "HRSG",
+      "service_ko": "HP 드럼 증기밸브",
+      "svg": "valves/hp-steam-vlv.svg",
+      "fmu_ports": [
+        "FMU.VLV.HP_STEAM_VLV.MODE_AUTO",
+        "FMU.VLV.HP_STEAM_VLV.MAN_CMD",
+        "FMU.VLV.HP_STEAM_VLV.FAULT_ENABLE",
+        "FMU.VLV.HP_STEAM_VLV.FAULT_VALUE",
+        "FMU.VLV.HP_STEAM_VLV.AUTO_CMD",
+        "FMU.VLV.HP_STEAM_VLV.CMD",
+        "FMU.VLV.HP_STEAM_VLV.FB",
+        "FMU.VLV.HP_STEAM_VLV.DEVIATION",
+        "FMU.VLV.HP_STEAM_VLV.FAULT_ACTIVE",
+        "FMU.VLV.HP_STEAM_VLV.CV",
+        "FMU.VLV.HP_STEAM_VLV.MASS_FLOW",
+        "FMU.VLV.HP_STEAM_VLV.DP"
+      ]
+    },
+    {
+      "control_point_id": "IP_FWCV",
+      "equipment_id": "IP-FWCV",
+      "system": "HRSG",
+      "service_ko": "IP 드럼 급수조절밸브",
+      "svg": "valves/ip-fwcv.svg",
+      "fmu_ports": [
+        "FMU.VLV.IP_FWCV.MODE_AUTO",
+        "FMU.VLV.IP_FWCV.MAN_CMD",
+        "FMU.VLV.IP_FWCV.FAULT_ENABLE",
+        "FMU.VLV.IP_FWCV.FAULT_VALUE",
+        "FMU.VLV.IP_FWCV.AUTO_CMD",
+        "FMU.VLV.IP_FWCV.CMD",
+        "FMU.VLV.IP_FWCV.FB",
+        "FMU.VLV.IP_FWCV.DEVIATION",
+        "FMU.VLV.IP_FWCV.FAULT_ACTIVE",
+        "FMU.VLV.IP_FWCV.CV",
+        "FMU.VLV.IP_FWCV.MASS_FLOW",
+        "FMU.VLV.IP_FWCV.DP"
+      ]
+    },
+    {
+      "control_point_id": "IP_STEAM_VLV",
+      "equipment_id": "IP-STM-VLV",
+      "system": "HRSG",
+      "service_ko": "IP 드럼 증기밸브",
+      "svg": "valves/ip-steam-vlv.svg",
+      "fmu_ports": [
+        "FMU.VLV.IP_STEAM_VLV.MODE_AUTO",
+        "FMU.VLV.IP_STEAM_VLV.MAN_CMD",
+        "FMU.VLV.IP_STEAM_VLV.FAULT_ENABLE",
+        "FMU.VLV.IP_STEAM_VLV.FAULT_VALUE",
+        "FMU.VLV.IP_STEAM_VLV.AUTO_CMD",
+        "FMU.VLV.IP_STEAM_VLV.CMD",
+        "FMU.VLV.IP_STEAM_VLV.FB",
+        "FMU.VLV.IP_STEAM_VLV.DEVIATION",
+        "FMU.VLV.IP_STEAM_VLV.FAULT_ACTIVE",
+        "FMU.VLV.IP_STEAM_VLV.CV",
+        "FMU.VLV.IP_STEAM_VLV.MASS_FLOW",
+        "FMU.VLV.IP_STEAM_VLV.DP"
+      ]
+    },
+    {
+      "control_point_id": "LP_STEAM_VLV",
+      "equipment_id": "LP-STM-VLV",
+      "system": "HRSG",
+      "service_ko": "LP 드럼 증기조절밸브",
+      "svg": "valves/lp-steam-vlv.svg",
+      "fmu_ports": [
+        "FMU.VLV.LP_STEAM_VLV.MODE_AUTO",
+        "FMU.VLV.LP_STEAM_VLV.MAN_CMD",
+        "FMU.VLV.LP_STEAM_VLV.FAULT_ENABLE",
+        "FMU.VLV.LP_STEAM_VLV.FAULT_VALUE",
+        "FMU.VLV.LP_STEAM_VLV.AUTO_CMD",
+        "FMU.VLV.LP_STEAM_VLV.CMD",
+        "FMU.VLV.LP_STEAM_VLV.FB",
+        "FMU.VLV.LP_STEAM_VLV.DEVIATION",
+        "FMU.VLV.LP_STEAM_VLV.FAULT_ACTIVE",
+        "FMU.VLV.LP_STEAM_VLV.CV",
+        "FMU.VLV.LP_STEAM_VLV.MASS_FLOW",
+        "FMU.VLV.LP_STEAM_VLV.DP"
+      ]
+    },
+    {
+      "control_point_id": "LP_FW_VLV",
+      "equipment_id": "LP-FW-VLV",
+      "system": "HRSG",
+      "service_ko": "LP 드럼 급수밸브",
+      "svg": "valves/lp-fw-vlv.svg",
+      "fmu_ports": [
+        "FMU.VLV.LP_FW_VLV.MODE_AUTO",
+        "FMU.VLV.LP_FW_VLV.MAN_CMD",
+        "FMU.VLV.LP_FW_VLV.FAULT_ENABLE",
+        "FMU.VLV.LP_FW_VLV.FAULT_VALUE",
+        "FMU.VLV.LP_FW_VLV.AUTO_CMD",
+        "FMU.VLV.LP_FW_VLV.CMD",
+        "FMU.VLV.LP_FW_VLV.FB",
+        "FMU.VLV.LP_FW_VLV.DEVIATION",
+        "FMU.VLV.LP_FW_VLV.FAULT_ACTIVE",
+        "FMU.VLV.LP_FW_VLV.CV",
+        "FMU.VLV.LP_FW_VLV.MASS_FLOW",
+        "FMU.VLV.LP_FW_VLV.DP"
+      ]
+    },
+    {
+      "control_point_id": "LP_TO_HPIP_FW_VLV",
+      "equipment_id": "LP-HPIP-FW-VLV",
+      "system": "HRSG",
+      "service_ko": "LP 계통에서 HP/IP 계통으로 가는 급수밸브",
+      "svg": "valves/lp-to-hpip-fw-vlv.svg",
+      "fmu_ports": [
+        "FMU.VLV.LP_TO_HPIP_FW_VLV.MODE_AUTO",
+        "FMU.VLV.LP_TO_HPIP_FW_VLV.MAN_CMD",
+        "FMU.VLV.LP_TO_HPIP_FW_VLV.FAULT_ENABLE",
+        "FMU.VLV.LP_TO_HPIP_FW_VLV.FAULT_VALUE",
+        "FMU.VLV.LP_TO_HPIP_FW_VLV.AUTO_CMD",
+        "FMU.VLV.LP_TO_HPIP_FW_VLV.CMD",
+        "FMU.VLV.LP_TO_HPIP_FW_VLV.FB",
+        "FMU.VLV.LP_TO_HPIP_FW_VLV.DEVIATION",
+        "FMU.VLV.LP_TO_HPIP_FW_VLV.FAULT_ACTIVE",
+        "FMU.VLV.LP_TO_HPIP_FW_VLV.CV",
+        "FMU.VLV.LP_TO_HPIP_FW_VLV.MASS_FLOW",
+        "FMU.VLV.LP_TO_HPIP_FW_VLV.DP"
+      ]
+    },
+    {
+      "control_point_id": "COND_EXTRACTION_VLV",
+      "equipment_id": "COND-EXT-VLV",
+      "system": "BOP",
+      "service_ko": "복수기 수위조절 추출밸브",
+      "svg": "valves/cond-extraction-vlv.svg",
+      "fmu_ports": [
+        "FMU.VLV.COND_EXTRACTION_VLV.MODE_AUTO",
+        "FMU.VLV.COND_EXTRACTION_VLV.MAN_CMD",
+        "FMU.VLV.COND_EXTRACTION_VLV.FAULT_ENABLE",
+        "FMU.VLV.COND_EXTRACTION_VLV.FAULT_VALUE",
+        "FMU.VLV.COND_EXTRACTION_VLV.AUTO_CMD",
+        "FMU.VLV.COND_EXTRACTION_VLV.CMD",
+        "FMU.VLV.COND_EXTRACTION_VLV.FB",
+        "FMU.VLV.COND_EXTRACTION_VLV.DEVIATION",
+        "FMU.VLV.COND_EXTRACTION_VLV.FAULT_ACTIVE",
+        "FMU.VLV.COND_EXTRACTION_VLV.CV",
+        "FMU.VLV.COND_EXTRACTION_VLV.MASS_FLOW",
+        "FMU.VLV.COND_EXTRACTION_VLV.DP"
+      ]
+    },
+    {
+      "control_point_id": "HP_TURB_ADM_VLV",
+      "equipment_id": "HP-TURB-ADM-VLV",
+      "system": "ST",
+      "service_ko": "HP 터빈 입구 조절밸브",
+      "svg": "valves/hp-turb-adm-vlv.svg",
+      "fmu_ports": [
+        "FMU.VLV.HP_TURB_ADM_VLV.MODE_AUTO",
+        "FMU.VLV.HP_TURB_ADM_VLV.MAN_CMD",
+        "FMU.VLV.HP_TURB_ADM_VLV.FAULT_ENABLE",
+        "FMU.VLV.HP_TURB_ADM_VLV.FAULT_VALUE",
+        "FMU.VLV.HP_TURB_ADM_VLV.AUTO_CMD",
+        "FMU.VLV.HP_TURB_ADM_VLV.CMD",
+        "FMU.VLV.HP_TURB_ADM_VLV.FB",
+        "FMU.VLV.HP_TURB_ADM_VLV.DEVIATION",
+        "FMU.VLV.HP_TURB_ADM_VLV.FAULT_ACTIVE",
+        "FMU.VLV.HP_TURB_ADM_VLV.CV",
+        "FMU.VLV.HP_TURB_ADM_VLV.MASS_FLOW",
+        "FMU.VLV.HP_TURB_ADM_VLV.DP"
+      ]
+    },
+    {
+      "control_point_id": "HP_FW_ISO_VLV",
+      "equipment_id": "HP-FW-ISO-VLV",
+      "system": "HRSG",
+      "service_ko": "HP 급수펌프 토출측 밸브",
+      "svg": "valves/hp-fw-iso-vlv.svg",
+      "fmu_ports": [
+        "FMU.VLV.HP_FW_ISO_VLV.MODE_AUTO",
+        "FMU.VLV.HP_FW_ISO_VLV.MAN_CMD",
+        "FMU.VLV.HP_FW_ISO_VLV.FAULT_ENABLE",
+        "FMU.VLV.HP_FW_ISO_VLV.FAULT_VALUE",
+        "FMU.VLV.HP_FW_ISO_VLV.AUTO_CMD",
+        "FMU.VLV.HP_FW_ISO_VLV.CMD",
+        "FMU.VLV.HP_FW_ISO_VLV.FB",
+        "FMU.VLV.HP_FW_ISO_VLV.DEVIATION",
+        "FMU.VLV.HP_FW_ISO_VLV.FAULT_ACTIVE",
+        "FMU.VLV.HP_FW_ISO_VLV.CV",
+        "FMU.VLV.HP_FW_ISO_VLV.MASS_FLOW",
+        "FMU.VLV.HP_FW_ISO_VLV.DP"
+      ]
+    },
+    {
+      "control_point_id": "IP_FW_ISO_VLV",
+      "equipment_id": "IP-FW-ISO-VLV",
+      "system": "HRSG",
+      "service_ko": "IP 급수펌프 토출측 밸브",
+      "svg": "valves/ip-fw-iso-vlv.svg",
+      "fmu_ports": [
+        "FMU.VLV.IP_FW_ISO_VLV.MODE_AUTO",
+        "FMU.VLV.IP_FW_ISO_VLV.MAN_CMD",
+        "FMU.VLV.IP_FW_ISO_VLV.FAULT_ENABLE",
+        "FMU.VLV.IP_FW_ISO_VLV.FAULT_VALUE",
+        "FMU.VLV.IP_FW_ISO_VLV.AUTO_CMD",
+        "FMU.VLV.IP_FW_ISO_VLV.CMD",
+        "FMU.VLV.IP_FW_ISO_VLV.FB",
+        "FMU.VLV.IP_FW_ISO_VLV.DEVIATION",
+        "FMU.VLV.IP_FW_ISO_VLV.FAULT_ACTIVE",
+        "FMU.VLV.IP_FW_ISO_VLV.CV",
+        "FMU.VLV.IP_FW_ISO_VLV.MASS_FLOW",
+        "FMU.VLV.IP_FW_ISO_VLV.DP"
+      ]
+    },
+    {
+      "control_point_id": "IP_TURB_ADM_VLV",
+      "equipment_id": "IP-TURB-ADM-VLV",
+      "system": "ST",
+      "service_ko": "IP 터빈 입구 조절밸브",
+      "svg": "valves/ip-turb-adm-vlv.svg",
+      "fmu_ports": [
+        "FMU.VLV.IP_TURB_ADM_VLV.MODE_AUTO",
+        "FMU.VLV.IP_TURB_ADM_VLV.MAN_CMD",
+        "FMU.VLV.IP_TURB_ADM_VLV.FAULT_ENABLE",
+        "FMU.VLV.IP_TURB_ADM_VLV.FAULT_VALUE",
+        "FMU.VLV.IP_TURB_ADM_VLV.AUTO_CMD",
+        "FMU.VLV.IP_TURB_ADM_VLV.CMD",
+        "FMU.VLV.IP_TURB_ADM_VLV.FB",
+        "FMU.VLV.IP_TURB_ADM_VLV.DEVIATION",
+        "FMU.VLV.IP_TURB_ADM_VLV.FAULT_ACTIVE",
+        "FMU.VLV.IP_TURB_ADM_VLV.CV",
+        "FMU.VLV.IP_TURB_ADM_VLV.MASS_FLOW",
+        "FMU.VLV.IP_TURB_ADM_VLV.DP"
+      ]
+    }
+  ]
+}

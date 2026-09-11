@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" viewBox="0 0 1000 700" role="img" aria-labelledby="title desc" data-control-point-id="LP_FW_VLV" data-equipment-id="LP-FW-VLV">
+  <title id="title">LP-FW-VLV FMU valve detail</title>
+  <desc id="desc">LP 드럼 급수밸브의 AUTO/MAN 명령, 고장 주입, 적용 개도와 ThermoSysPro 물리 출력을 표시한다.</desc>
+  <defs>
+    <style>
+      .bg{fill:#f3f6f9}.panel{fill:#fff;stroke:#d5dfe7;stroke-width:2}.title{font:700 25px Arial,'Noto Sans KR',sans-serif;fill:#17324a}.subtitle{font:14px Arial,'Noto Sans KR',sans-serif;fill:#607585}
+      .pipe{fill:none;stroke:#3481b8;stroke-width:8;stroke-linecap:round}.valve{fill:#fff;stroke:#7b43a1;stroke-width:4}.equip{font:700 17px Arial,'Noto Sans KR',sans-serif;fill:#263d50;text-anchor:middle}.native{font:12px monospace;fill:#627686;text-anchor:middle}
+      .signal{fill:none;stroke:#d08b28;stroke-width:3;stroke-dasharray:7 5}.signal-box{fill:#fff8e7;stroke:#d08b28;stroke-width:2}.signal-text{font:700 13px Arial,sans-serif;fill:#664917;text-anchor:middle}
+      .port rect{stroke-width:2}.input-card rect{fill:#fff8e7;stroke:#d08b28}.output-card rect{fill:#edf7f2;stroke:#34855c}.role{font:700 11px Arial,sans-serif;fill:#526574}.port-name{font:700 15px monospace;fill:#203b50}.value{font:13px monospace;fill:#246246}.footer{font:12px Arial,'Noto Sans KR',sans-serif;fill:#657986}
+    </style>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#3481b8"/></marker>
+    <marker id="signal-arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#d08b28"/></marker>
+  </defs>
+  <rect class="bg" width="1000" height="700"/>
+  <rect class="panel" x="24" y="22" width="952" height="650" rx="18"/>
+  <text class="title" x="55" y="62">LP-FW-VLV · LP drum feedwater valve</text>
+  <text class="subtitle" x="55" y="88">HRSG · ThermoSysPro.WaterSteam.PressureLosses.ControlValve</text>
+
+  <path class="pipe" d="M80 185 H385 M615 185 H920" marker-end="url(#arrow)"/>
+  <path class="valve" d="M385 145 L500 185 L385 225 Z M615 145 L500 185 L615 225 Z"/>
+  <text class="equip" x="500" y="129">LP_FW_VLV</text>
+  <text class="native" x="500" y="251">vanne_alimentationBP</text>
+  <text class="subtitle" x="80" y="166">INLET · C1.P</text>
+  <text class="subtitle" x="790" y="166">OUTLET · C2.P</text>
+
+  <rect class="signal-box" x="72" y="275" width="135" height="48" rx="8"/><text class="signal-text" x="139" y="305">AUTO CMD</text>
+  <rect class="signal-box" x="237" y="275" width="135" height="48" rx="8"/><text class="signal-text" x="304" y="305">MAN CMD</text>
+  <rect class="signal-box" x="402" y="275" width="135" height="48" rx="8"/><text class="signal-text" x="469" y="305">AUTO / MAN</text>
+  <rect class="signal-box" x="567" y="275" width="135" height="48" rx="8"/><text class="signal-text" x="634" y="305">FAULT GATE</text>
+  <rect class="signal-box" x="732" y="275" width="190" height="48" rx="8"/><text class="signal-text" x="827" y="305">APPLIED POSITION</text>
+  <path class="signal" d="M207 299 H402 M372 299 H402 M537 299 H567 M702 299 H732 M827 275 V235" marker-end="url(#signal-arrow)"/>
+
+  
+    <g class="port input-card" id="port-fmu.vlv.lp-fw-vlv.mode-auto" data-bind="FMU.VLV.LP_FW_VLV.MODE_AUTO" data-direction="INPUT" data-role="AUTO_MAN_SELECT">
+      <rect x="55" y="360" width="210" height="78" rx="10"/>
+      <text class="role" x="69" y="383">AUTO MAN SELECT</text>
+      <text class="port-name" x="69" y="405">MODE_AUTO</text>
+      <text class="value" x="251" y="425" text-anchor="end" data-value-for="FMU.VLV.LP_FW_VLV.MODE_AUTO">-- BOOL</text>
+    </g>
+    <g class="port input-card" id="port-fmu.vlv.lp-fw-vlv.man-cmd" data-bind="FMU.VLV.LP_FW_VLV.MAN_CMD" data-direction="INPUT" data-role="MANUAL_COMMAND">
+      <rect x="285" y="360" width="210" height="78" rx="10"/>
+      <text class="role" x="299" y="383">MANUAL COMMAND</text>
+      <text class="port-name" x="299" y="405">MAN_CMD</text>
+      <text class="value" x="481" y="425" text-anchor="end" data-value-for="FMU.VLV.LP_FW_VLV.MAN_CMD">-- pu</text>
+    </g>
+    <g class="port input-card" id="port-fmu.vlv.lp-fw-vlv.fault-enable" data-bind="FMU.VLV.LP_FW_VLV.FAULT_ENABLE" data-direction="INPUT" data-role="FAULT_ENABLE">
+      <rect x="515" y="360" width="210" height="78" rx="10"/>
+      <text class="role" x="529" y="383">FAULT ENABLE</text>
+      <text class="port-name" x="529" y="405">FAULT_ENABLE</text>
+      <text class="value" x="711" y="425" text-anchor="end" data-value-for="FMU.VLV.LP_FW_VLV.FAULT_ENABLE">-- BOOL</text>
+    </g>
+    <g class="port input-card" id="port-fmu.vlv.lp-fw-vlv.fault-value" data-bind="FMU.VLV.LP_FW_VLV.FAULT_VALUE" data-direction="INPUT" data-role="FAULT_FORCED_VALUE">
+      <rect x="745" y="360" width="210" height="78" rx="10"/>
+      <text class="role" x="759" y="383">FAULT FORCED VALUE</text>
+      <text class="port-name" x="759" y="405">FAULT_VALUE</text>
+      <text class="value" x="941" y="425" text-anchor="end" data-value-for="FMU.VLV.LP_FW_VLV.FAULT_VALUE">-- pu</text>
+    </g>
+    <g class="port output-card" id="port-fmu.vlv.lp-fw-vlv.auto-cmd" data-bind="FMU.VLV.LP_FW_VLV.AUTO_CMD" data-direction="OUTPUT" data-role="AUTOMATIC_COMMAND">
+      <rect x="55" y="454" width="210" height="78" rx="10"/>
+      <text class="role" x="69" y="477">AUTOMATIC COMMAND</text>
+      <text class="port-name" x="69" y="499">AUTO_CMD</text>
+      <text class="value" x="251" y="519" text-anchor="end" data-value-for="FMU.VLV.LP_FW_VLV.AUTO_CMD">-- pu</text>
+    </g>
+    <g class="port output-card" id="port-fmu.vlv.lp-fw-vlv.cmd" data-bind="FMU.VLV.LP_FW_VLV.CMD" data-direction="OUTPUT" data-role="SELECTED_COMMAND">
+      <rect x="285" y="454" width="210" height="78" rx="10"/>
+      <text class="role" x="299" y="477">SELECTED COMMAND</text>
+      <text class="port-name" x="299" y="499">CMD</text>
+      <text class="value" x="481" y="519" text-anchor="end" data-value-for="FMU.VLV.LP_FW_VLV.CMD">-- pu</text>
+    </g>
+    <g class="port output-card" id="port-fmu.vlv.lp-fw-vlv.fb" data-bind="FMU.VLV.LP_FW_VLV.FB" data-direction="OUTPUT" data-role="APPLIED_POSITION">
+      <rect x="515" y="454" width="210" height="78" rx="10"/>
+      <text class="role" x="529" y="477">APPLIED POSITION</text>
+      <text class="port-name" x="529" y="499">FB</text>
+      <text class="value" x="711" y="519" text-anchor="end" data-value-for="FMU.VLV.LP_FW_VLV.FB">-- pu</text>
+    </g>
+    <g class="port output-card" id="port-fmu.vlv.lp-fw-vlv.deviation" data-bind="FMU.VLV.LP_FW_VLV.DEVIATION" data-direction="OUTPUT" data-role="COMMAND_FEEDBACK_DEVIATION">
+      <rect x="745" y="454" width="210" height="78" rx="10"/>
+      <text class="role" x="759" y="477">COMMAND FEEDBACK DEVIATI…</text>
+      <text class="port-name" x="759" y="499">DEVIATION</text>
+      <text class="value" x="941" y="519" text-anchor="end" data-value-for="FMU.VLV.LP_FW_VLV.DEVIATION">-- pu</text>
+    </g>
+    <g class="port output-card" id="port-fmu.vlv.lp-fw-vlv.fault-active" data-bind="FMU.VLV.LP_FW_VLV.FAULT_ACTIVE" data-direction="OUTPUT" data-role="FAULT_STATUS">
+      <rect x="55" y="548" width="210" height="78" rx="10"/>
+      <text class="role" x="69" y="571">FAULT STATUS</text>
+      <text class="port-name" x="69" y="593">FAULT_ACTIVE</text>
+      <text class="value" x="251" y="613" text-anchor="end" data-value-for="FMU.VLV.LP_FW_VLV.FAULT_ACTIVE">-- BOOL</text>
+    </g>
+    <g class="port output-card" id="port-fmu.vlv.lp-fw-vlv.cv" data-bind="FMU.VLV.LP_FW_VLV.CV" data-direction="OUTPUT" data-role="SOLVED_CV">
+      <rect x="285" y="548" width="210" height="78" rx="10"/>
+      <text class="role" x="299" y="571">SOLVED CV</text>
+      <text class="port-name" x="299" y="593">CV</text>
+      <text class="value" x="481" y="613" text-anchor="end" data-value-for="FMU.VLV.LP_FW_VLV.CV">-- Cv</text>
+    </g>
+    <g class="port output-card" id="port-fmu.vlv.lp-fw-vlv.mass-flow" data-bind="FMU.VLV.LP_FW_VLV.MASS_FLOW" data-direction="OUTPUT" data-role="SOLVED_MASS_FLOW">
+      <rect x="515" y="548" width="210" height="78" rx="10"/>
+      <text class="role" x="529" y="571">SOLVED MASS FLOW</text>
+      <text class="port-name" x="529" y="593">MASS_FLOW</text>
+      <text class="value" x="711" y="613" text-anchor="end" data-value-for="FMU.VLV.LP_FW_VLV.MASS_FLOW">-- t/h</text>
+    </g>
+    <g class="port output-card" id="port-fmu.vlv.lp-fw-vlv.dp" data-bind="FMU.VLV.LP_FW_VLV.DP" data-direction="OUTPUT" data-role="SOLVED_PRESSURE_DROP">
+      <rect x="745" y="548" width="210" height="78" rx="10"/>
+      <text class="role" x="759" y="571">SOLVED PRESSURE DROP</text>
+      <text class="port-name" x="759" y="593">DP</text>
+      <text class="value" x="941" y="613" text-anchor="end" data-value-for="FMU.VLV.LP_FW_VLV.DP">-- Pa</text>
+    </g>
+  <text class="footer" x="55" y="655">FMU_CONNECTED · data-bind/data-value-for ready for OPC UA and web updates · virtual model visualization</text>
+</svg>

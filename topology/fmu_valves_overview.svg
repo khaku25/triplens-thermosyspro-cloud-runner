@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
+  <title id="title">TripLens FMU valve visualization index</title>
+  <desc id="desc">ThermoSysPro 3.1 전체 모델에 FMU로 연결된 12개 밸브의 개별 SVG 진입 화면이다.</desc>
+  <style>
+    .bg{fill:#f3f6f9}.panel{fill:#fff;stroke:#d5dfe7;stroke-width:2}.title{font:700 27px Arial,'Noto Sans KR',sans-serif;fill:#17324a}.sub{font:14px Arial,'Noto Sans KR',sans-serif;fill:#607585}.card rect{stroke-width:2}.card{cursor:pointer}.system{font:700 12px Arial,sans-serif;fill:#5f7180}.equipment{font:700 17px Arial,sans-serif;fill:#203b50;text-anchor:middle}.service{font:13px Arial,'Noto Sans KR',sans-serif;fill:#3e5668;text-anchor:middle}.native{font:10px monospace;fill:#6c7d89;text-anchor:middle}
+  </style>
+  <rect class="bg" width="1200" height="650"/><rect class="panel" x="20" y="20" width="1160" height="610" rx="18"/>
+  <text class="title" x="45" y="61">TripLens · FMU Valve SVG Index</text>
+  <text class="sub" x="45" y="88">12/12 FMU_CONNECTED · AUTO/MAN, CMD, fault injection, FB, Cv, mass flow and pressure drop</text>
+  
+    <a href="valves/hp-fwcv.svg">
+      <g class="card" data-view="valves/hp-fwcv.svg" data-control-point-id="HP_FWCV">
+        <rect x="45" y="145" width="255" height="118" rx="14" fill="#edf5fb" stroke="#397eaf"/>
+        <text class="system" x="63" y="172">HRSG</text>
+        <text class="equipment" x="172" y="202">HP-FWCV</text>
+        <text class="service" x="172" y="228">HP drum feedwater control valve</text>
+        <text class="native" x="172" y="250">vanne_alimentationHP</text>
+      </g>
+    </a>
+    <a href="valves/hp-steam-vlv.svg">
+      <g class="card" data-view="valves/hp-steam-vlv.svg" data-control-point-id="HP_STEAM_VLV">
+        <rect x="330" y="145" width="255" height="118" rx="14" fill="#edf5fb" stroke="#397eaf"/>
+        <text class="system" x="348" y="172">HRSG</text>
+        <text class="equipment" x="457" y="202">HP-STM-VLV</text>
+        <text class="service" x="457" y="228">HP drum steam valve</text>
+        <text class="native" x="457" y="250">vanne_vapeurHP</text>
+      </g>
+    </a>
+    <a href="valves/ip-fwcv.svg">
+      <g class="card" data-view="valves/ip-fwcv.svg" data-control-point-id="IP_FWCV">
+        <rect x="615" y="145" width="255" height="118" rx="14" fill="#edf5fb" stroke="#397eaf"/>
+        <text class="system" x="633" y="172">HRSG</text>
+        <text class="equipment" x="742" y="202">IP-FWCV</text>
+        <text class="service" x="742" y="228">IP drum feedwater control valve</text>
+        <text class="native" x="742" y="250">vanne_alimentationMP</text>
+      </g>
+    </a>
+    <a href="valves/ip-steam-vlv.svg">
+      <g class="card" data-view="valves/ip-steam-vlv.svg" data-control-point-id="IP_STEAM_VLV">
+        <rect x="900" y="145" width="255" height="118" rx="14" fill="#edf5fb" stroke="#397eaf"/>
+        <text class="system" x="918" y="172">HRSG</text>
+        <text class="equipment" x="1027" y="202">IP-STM-VLV</text>
+        <text class="service" x="1027" y="228">IP drum steam valve</text>
+        <text class="native" x="1027" y="250">vanne_vapeurMP</text>
+      </g>
+    </a>
+    <a href="valves/lp-steam-vlv.svg">
+      <g class="card" data-view="valves/lp-steam-vlv.svg" data-control-point-id="LP_STEAM_VLV">
+        <rect x="45" y="295" width="255" height="118" rx="14" fill="#edf5fb" stroke="#397eaf"/>
+        <text class="system" x="63" y="322">HRSG</text>
+        <text class="equipment" x="172" y="352">LP-STM-VLV</text>
+        <text class="service" x="172" y="378">LP drum steam control valve</text>
+        <text class="native" x="172" y="400">vanne_vapeurBP</text>
+      </g>
+    </a>
+    <a href="valves/lp-fw-vlv.svg">
+      <g class="card" data-view="valves/lp-fw-vlv.svg" data-control-point-id="LP_FW_VLV">
+        <rect x="330" y="295" width="255" height="118" rx="14" fill="#edf5fb" stroke="#397eaf"/>
+        <text class="system" x="348" y="322">HRSG</text>
+        <text class="equipment" x="457" y="352">LP-FW-VLV</text>
+        <text class="service" x="457" y="378">LP drum feedwater valve</text>
+        <text class="native" x="457" y="400">vanne_alimentationBP</text>
+      </g>
+    </a>
+    <a href="valves/lp-to-hpip-fw-vlv.svg">
+      <g class="card" data-view="valves/lp-to-hpip-fw-vlv.svg" data-control-point-id="LP_TO_HPIP_FW_VLV">
+        <rect x="615" y="295" width="255" height="118" rx="14" fill="#edf5fb" stroke="#397eaf"/>
+        <text class="system" x="633" y="322">HRSG</text>
+        <text class="equipment" x="742" y="352">LP-HPIP-FW-VLV</text>
+        <text class="service" x="742" y="378">LP-to-HP/IP feedwater valve</text>
+        <text class="native" x="742" y="400">Vanne_alimentationMPHP</text>
+      </g>
+    </a>
+    <a href="valves/cond-extraction-vlv.svg">
+      <g class="card" data-view="valves/cond-extraction-vlv.svg" data-control-point-id="COND_EXTRACTION_VLV">
+        <rect x="900" y="295" width="255" height="118" rx="14" fill="#edf7f2" stroke="#39865f"/>
+        <text class="system" x="918" y="322">BOP</text>
+        <text class="equipment" x="1027" y="352">COND-EXT-VLV</text>
+        <text class="service" x="1027" y="378">Condenser extraction control valve</text>
+        <text class="native" x="1027" y="400">vanne_extraction</text>
+      </g>
+    </a>
+    <a href="valves/hp-turb-adm-vlv.svg">
+      <g class="card" data-view="valves/hp-turb-adm-vlv.svg" data-control-point-id="HP_TURB_ADM_VLV">
+        <rect x="45" y="445" width="255" height="118" rx="14" fill="#f3effa" stroke="#7751a4"/>
+        <text class="system" x="63" y="472">ST</text>
+        <text class="equipment" x="172" y="502">HP-TURB-ADM-VLV</text>
+        <text class="service" x="172" y="528">HP turbine admission valve</text>
+        <text class="native" x="172" y="550">vanne_entree_TurbineHP</text>
+      </g>
+    </a>
+    <a href="valves/hp-fw-iso-vlv.svg">
+      <g class="card" data-view="valves/hp-fw-iso-vlv.svg" data-control-point-id="HP_FW_ISO_VLV">
+        <rect x="330" y="445" width="255" height="118" rx="14" fill="#edf5fb" stroke="#397eaf"/>
+        <text class="system" x="348" y="472">HRSG</text>
+        <text class="equipment" x="457" y="502">HP-FW-ISO-VLV</text>
+        <text class="service" x="457" y="528">HP feedwater pump discharge valve</text>
+        <text class="native" x="457" y="550">Vanne_alimentationMPHP1</text>
+      </g>
+    </a>
+    <a href="valves/ip-fw-iso-vlv.svg">
+      <g class="card" data-view="valves/ip-fw-iso-vlv.svg" data-control-point-id="IP_FW_ISO_VLV">
+        <rect x="615" y="445" width="255" height="118" rx="14" fill="#edf5fb" stroke="#397eaf"/>
+        <text class="system" x="633" y="472">HRSG</text>
+        <text class="equipment" x="742" y="502">IP-FW-ISO-VLV</text>
+        <text class="service" x="742" y="528">IP feedwater pump discharge valve</text>
+        <text class="native" x="742" y="550">Vanne_alimentationMPHP2</text>
+      </g>
+    </a>
+    <a href="valves/ip-turb-adm-vlv.svg">
+      <g class="card" data-view="valves/ip-turb-adm-vlv.svg" data-control-point-id="IP_TURB_ADM_VLV">
+        <rect x="900" y="445" width="255" height="118" rx="14" fill="#f3effa" stroke="#7751a4"/>
+        <text class="system" x="918" y="472">ST</text>
+        <text class="equipment" x="1027" y="502">IP-TURB-ADM-VLV</text>
+        <text class="service" x="1027" y="528">IP turbine admission valve</text>
+        <text class="native" x="1027" y="550">vanne_entree_TurbineMP</text>
+      </g>
+    </a>
+  <text class="sub" x="45" y="615">ThermoSysPro 3.1 main · visualization asset · not for operation, maintenance or LOTO</text>
+</svg>
