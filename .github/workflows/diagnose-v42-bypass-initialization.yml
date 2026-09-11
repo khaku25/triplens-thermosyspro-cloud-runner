@@ -77,7 +77,9 @@ jobs:
             --stodola-turbine \
             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo \
             --fluid-ph \
-            vendor/ThermoSysPro/ThermoSysPro/Properties/Fluid/Ph.mo
+            vendor/ThermoSysPro/ThermoSysPro/Properties/Fluid/Ph.mo \
+            --two-phase-pipe \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/HeatExchangers/DynamicTwoPhaseFlowPipe.mo
 
       - name: Install Modelica 4.0.0
         run: |
