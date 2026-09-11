@@ -34,10 +34,14 @@
   <text class="small" x="177" y="276" text-anchor="middle">process inlet</text>
   <path class="steam" d="M285 260H515" marker-end="url(#steamArrow)"/>
   
-    <polygon class="valve" points="530,225 580,260 530,295"/>
-    <polygon class="valve" points="630,225 580,260 630,295"/>
-    <line x1="580" y1="205" x2="580" y2="250" stroke="#40c4ff" stroke-width="4"/>
-    <circle cx="580" cy="195" r="10" fill="#40c4ff"/>
+    <g data-symbol-type="ACTUATED_CONTROL_VALVE" data-symbol-convention="ISO-10628-style"
+      data-actuator="DIAPHRAGM" aria-label="Actuated control valve">
+      <polygon class="valve" points="530,225 580,260 530,295"/>
+      <polygon class="valve" points="630,225 580,260 630,295"/>
+      <line x1="580" y1="190" x2="580" y2="225" stroke="#40c4ff" stroke-width="4"/>
+      <path d="M548 188Q580 150 612 188Z" fill="#153c52" stroke="#40c4ff" stroke-width="3"/>
+      <line x1="548" y1="188" x2="612" y2="188" stroke="#40c4ff" stroke-width="3"/>
+    </g>
 
   <path class="steam" d="M645 260H865" marker-end="url(#steamArrow)"/>
   <rect class="equip" x="865" y="220" width="220" height="80" rx="14"/>
@@ -65,5 +69,5 @@
 
   <text class="warn" x="70" y="625">Trip 시 닫힘; 개도와 터빈 유량은 OPC UA 읽기 전용</text>
   <text class="muted" x="70" y="653">Endpoint default: opc.tcp://127.0.0.1:4841 · Model-variable numeric NodeIds are discovered at runtime by BrowseName.</text>
-  <text class="muted" x="70" y="674">Visual contract only · not an operating, isolation, or LOTO drawing</text>
+  <text class="muted" x="70" y="674">ISO 10628-style process symbol · model-derived visual contract · not an operating, isolation, or LOTO drawing</text>
 </svg>
