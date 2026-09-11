@@ -41,6 +41,7 @@ class NativeInitDiagnosticWorkflowTests(unittest.TestCase):
         )
         self.assertIn('method="dassl"', build_template)
         self.assertIn('INIT_STOP_TIME_S: "0.04"', self.diagnostic)
+        self.assertIn("--intervals 10", self.diagnostic)
         self.assertIn("-lv=LOG_SUCCESS,LOG_NLS", self.diagnostic)
         self.assertIn("The initialization finished successfully", self.diagnostic)
         self.assertIn("build/TripLens_Native_OPCUA_info.json", self.diagnostic)

@@ -57,7 +57,7 @@ jobs:
           python3 scripts/render_modelica.py \
             --external-trip-input \
             --stop-time "$INIT_STOP_TIME_S" \
-            --intervals 1
+            --intervals 10
           git clone --no-checkout \
             https://github.com/Dwarf-Planet-Project/ThermoSysPro.git \
             vendor/ThermoSysPro
