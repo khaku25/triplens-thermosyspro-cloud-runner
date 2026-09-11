@@ -38,6 +38,7 @@ def main() -> None:
     parser.add_argument("--if97-packages", type=Path)
     parser.add_argument("--integrator", type=Path)
     parser.add_argument("--dynamic-drum", type=Path)
+    parser.add_argument("--stodola-turbine", type=Path)
     args = parser.parse_args()
 
     text = args.units_mo.read_text(encoding="utf-8")
@@ -113,6 +114,25 @@ def main() -> None:
         drum_text = drum_text.replace(initial_anchor, initial_replacement)
         args.dynamic_drum.write_text(drum_text, encoding="utf-8")
         print(f"enabled explicit DynamicDrum enthalpy starts in {args.dynamic_drum}")
+
+    if args.stodola_turbine is not None:
+        turbine_text = args.stodola_turbine.read_text(encoding="utf-8")
+        anchor = '  parameter Integer mode_ps = 0 "IF97 region after isentropic expansion. 1:liquid - 2:steam - 4:saturation line - 0:automatic";'
+        replacement = anchor + """
+  parameter Units.SI.SpecificEnthalpy h_property_min = 1.e5
+    "Lower evaluation guard used only during nonlinear iterations";"""
+        pros1_old = "  pros1 = ThermoSysPro.Properties.Fluid.Ph(Ps, Hrs, mode_s, fluid);"
+        pros1_new = "  pros1 = ThermoSysPro.Properties.Fluid.Ph(Ps, max(Hrs, h_property_min), mode_s, fluid);"
+        pros_old = "  pros = ThermoSysPro.Properties.Fluid.Ph(Ps, Cs.h, mode_s, fluid);"
+        pros_new = "  pros = ThermoSysPro.Properties.Fluid.Ph(Ps, max(Cs.h, h_property_min), mode_s, fluid);"
+        for old in (anchor, pros1_old, pros_old):
+            if turbine_text.count(old) != 1:
+                raise SystemExit(f"expected one StodolaTurbine anchor, got {turbine_text.count(old)}: {old}")
+        turbine_text = turbine_text.replace(anchor, replacement)
+        turbine_text = turbine_text.replace(pros1_old, pros1_new)
+        turbine_text = turbine_text.replace(pros_old, pros_new)
+        args.stodola_turbine.write_text(turbine_text, encoding="utf-8")
+        print(f"guarded StodolaTurbine property iterations in {args.stodola_turbine}")
 
 
 if __name__ == "__main__":
