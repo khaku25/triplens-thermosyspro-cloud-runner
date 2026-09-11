@@ -864,7 +864,7 @@ model CombinedCycle_TripTAC_Bypass_OMCStart
     MelangeurPostTMP1(steady_state=false, P0=476800,
       h0=3018320.043117248),
     vppHPColdReheatVolume(steady_state=false, P0=2726700,
-      h0=3046260),
+      h0=3040245.422545259),
     vppCondenserSteamVolume(steady_state=false, P0=6136,
       h0=2401030),
     TurbineHP(Cs(h(start=3046003.380872726))),
