@@ -6,6 +6,7 @@
     .bus{stroke:#2862bb;stroke-width:16;stroke-linecap:round}.wire{stroke:#376fc7;stroke-width:4;fill:none}.closed{fill:#e04f47;stroke:#9e2925;stroke-width:2}
     .open{fill:#fff;stroke:#7b8994;stroke-width:3}.label{font:700 14px Arial,sans-serif;fill:#243746;text-anchor:middle}.tag{font:12px Arial,sans-serif;fill:#617584;text-anchor:middle}
     .m{fill:#e8f5ee;stroke:#3b9464;stroke-width:2}.a{fill:#fff5df;stroke:#d79a2b;stroke-width:2}.note{font:13px Arial,sans-serif;fill:#5d7080}
+    .bad-pill{fill:#fef3f2;stroke:#b42318;stroke-width:1.5}.bad-text{font:700 10px Arial,sans-serif;fill:#b42318;text-anchor:middle}.bad-dot{fill:#b42318;stroke:#7a271a;stroke-width:1.5}
   </style></defs>
   <rect class="bg" width="1500" height="900"/><rect class="panel" x="25" y="24" width="1450" height="835" rx="18"/>
   <text class="title" x="55" y="67">TripLens ECMS VPP — 6.9 kV SWGR</text>
@@ -24,6 +25,17 @@
   <g id="feeders-b">
     <path class="wire" d="M895 245 V390"/><rect class="closed" x="880" y="315" width="30" height="32" rx="3"/><text class="tag" x="895" y="305">VCB-B01</text><rect class="a" x="820" y="390" width="150" height="54" rx="8"/><text class="label" x="895" y="414">IP 급수펌프</text><text class="tag" x="895" y="434">FWP-IP · A</text><rect class="m" x="822" y="466" width="146" height="64" rx="8"/><text class="tag" x="895" y="490">M · IP FW FLOW</text><text class="tag" x="895" y="512" font-size="7">TSP.DRUM.IP.FW_FLOW</text>
   </g>
+  <!-- Static contract roots default fail-closed. Runtime code must replace BAD/UNBOUND. -->
+  <g id="cb-cb-52gt" data-bind="CB-52GT command; CLOSED; TRIP_LATCH" data-quality="BAD" data-state="UNBOUND"><title>CB-52GT — BAD / UNBOUND</title><rect class="bad-pill" x="80" y="555" width="155" height="30" rx="8"/><text class="bad-text" x="157" y="574">52GT · UNBOUND</text></g>
+  <g id="cb-cb-52st" data-bind="CB-52ST command; CLOSED; TRIP_LATCH" data-quality="BAD" data-state="UNBOUND"><title>CB-52ST — BAD / UNBOUND</title><rect class="bad-pill" x="250" y="555" width="155" height="30" rx="8"/><text class="bad-text" x="327" y="574">52ST · UNBOUND</text></g>
+  <g id="cb-cb-in-a" data-bind="CB-IN-A command; CLOSED; TRIP_LATCH" data-quality="BAD" data-state="UNBOUND"><title>CB-IN-A — BAD / UNBOUND</title><rect class="bad-pill" x="420" y="555" width="155" height="30" rx="8"/><text class="bad-text" x="497" y="574">IN-A · UNBOUND</text></g>
+  <g id="cb-cb-in-b" data-bind="CB-IN-B command; CLOSED; TRIP_LATCH" data-quality="BAD" data-state="UNBOUND"><title>CB-IN-B — BAD / UNBOUND</title><rect class="bad-pill" x="590" y="555" width="155" height="30" rx="8"/><text class="bad-text" x="667" y="574">IN-B · UNBOUND</text></g>
+  <g id="cb-cb-tie-ab" data-bind="CB-TIE-AB command; CLOSED; TRIP_LATCH" data-quality="BAD" data-state="UNBOUND"><title>CB-TIE-AB — BAD / UNBOUND</title><rect class="bad-pill" x="760" y="555" width="155" height="30" rx="8"/><text class="bad-text" x="837" y="574">TIE-AB · UNBOUND</text></g>
+  <g id="cb-vcb-a01" data-bind="VCB-A01 command; CLOSED; TRIP_LATCH" data-quality="BAD" data-state="UNBOUND"><title>VCB-A01 — BAD / UNBOUND</title><rect class="bad-pill" x="930" y="555" width="155" height="30" rx="8"/><text class="bad-text" x="1007" y="574">A01 · UNBOUND</text></g>
+  <g id="cb-vcb-b01" data-bind="VCB-B01 command; CLOSED; TRIP_LATCH" data-quality="BAD" data-state="UNBOUND"><title>VCB-B01 — BAD / UNBOUND</title><rect class="bad-pill" x="1100" y="555" width="155" height="30" rx="8"/><text class="bad-text" x="1177" y="574">B01 · UNBOUND</text></g>
+  <g id="cb-vcb-a02" data-bind="VCB-A02 command; CLOSED; TRIP_LATCH" data-quality="BAD" data-state="UNBOUND"><title>VCB-A02 — BAD / UNBOUND</title><rect class="bad-pill" x="1270" y="555" width="155" height="30" rx="8"/><text class="bad-text" x="1347" y="574">A02 · UNBOUND</text></g>
+  <g id="bus-a" data-bind="ECMS.BUS-A.VOLTAGE_KV" data-quality="BAD" data-state="UNBOUND"><title>BUS-A voltage — BAD / UNBOUND</title><circle class="bad-dot" cx="95" cy="245" r="8"/></g>
+  <g id="bus-b" data-bind="ECMS.BUS-B.VOLTAGE_KV" data-quality="BAD" data-state="UNBOUND"><title>BUS-B voltage — BAD / UNBOUND</title><circle class="bad-dot" cx="1405" cy="245" r="8"/></g>
   <rect class="m" x="80" y="620" width="620" height="100" rx="10"/><text class="label" x="390" y="650">M 잠금 원칙</text><text class="note" x="105" y="680">초록 태그의 ID·단위·ThermoSysPro 매핑은 Editor에서 수정할 수 없음.</text><text class="note" x="105" y="704">유량이 존재한다고 차단기 CLOSED라고 단정하지 않고 물리 연계만 표시함.</text>
   <rect class="a" x="800" y="620" width="620" height="100" rx="10"/><text class="label" x="1110" y="650">A 편집 원칙</text><text class="note" x="825" y="680">BUS 배치·피더번호·정격·정상 차단기 상태는 별도 A CSV에서 변경 가능.</text><text class="note" x="825" y="704">확정 전 값은 PROVISIONAL로 유지하고 ECMS 출력에도 상태를 기록함.</text>
   <text class="note" x="55" y="830">실행 범위: FWP-HP/IP/LP만 · RECIRC/COP(COND)/CW는 OUT_OF_SCOPE · 실제 발전소 화면 복제본 아님</text>
