@@ -124,7 +124,8 @@ jobs:
 
       - name: Prove ECMS command to native physics and back
         run: |
-          docker run --rm --network host \
+          native_container="triplens-native-opcua-${GITHUB_RUN_ID}"
+          docker run --rm --name "$native_container" --network host \
             -v "$PWD/build:/workspace/build" \
             -w /workspace/build \
             "$OPENMODELICA_IMAGE" \
@@ -134,7 +135,7 @@ jobs:
               -r=TripLens_Native_OPCUA_res.csv \
             > outputs/native-opcua/openmodelica-native.log 2>&1 &
           native_pid=$!
-          trap 'kill "$native_pid" 2>/dev/null || true' EXIT
+          trap 'docker rm -f "$native_container" >/dev/null 2>&1 || true' EXIT
           if ! python3 scripts/native_ecms_opcua_client.py \
               --scenario lp-bfp-trip \
               --stop-time "$LIVE_STOP_TIME_S" \
@@ -147,7 +148,7 @@ jobs:
           # The proof ends when LL, both trip latches, and both open breaker
           # contacts have returned through OPC UA. Stop the paused native
           # executable at that terminal scenario state.
-          kill "$native_pid" 2>/dev/null || true
+          docker rm -f "$native_container" >/dev/null 2>&1 || true
           wait "$native_pid" || true
           trap - EXIT
           python3 scripts/build_native_opcua_dashboard.py \
