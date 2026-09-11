@@ -52,6 +52,23 @@ ECMSVPP
 - 화면의 저장하지 않은 A/Command 값으로 바로 MATLAB VPP 실행
 - 현재 화면값으로 Overview/6.9 kV 상세 SVG 생성
 
+### FMU 밸브 SVG
+
+[`topology/fmu_valves_overview.svg`](topology/fmu_valves_overview.svg)은
+ThermoSysPro 3.1 전체 모델에 FMU로 연결된 12개 밸브의 시각화 인덱스입니다.
+각 설비 상세 SVG는 `topology/valves/`에 있으며 AUTO/MAN 선택, 자동·수동 명령,
+선택 CMD, 고장 주입, 적용 FB, 편차, Cv, 질량유량과 차압을 한 화면에 표시합니다.
+
+SVG 값 요소의 `data-bind`와 `data-value-for`는
+[`data/fmu_valve_ports_v1.csv`](data/fmu_valve_ports_v1.csv)의 실제 포트명과
+일치합니다. 전체 파일 매핑은
+[`topology/valve_svg_manifest.json`](topology/valve_svg_manifest.json)에 있습니다.
+포트 계약이 변경되면 다음 명령으로 SVG를 재생성합니다.
+
+```bash
+python3 scripts/generate_valve_svg_assets.py
+```
+
 배선의 **모양과 설비 위치**는 사용자가 바꿀 수 있지만, 잘못된 계통을
 사실처럼 만드는 것을 막기 위해 설비 ID와 배선 시작점·종점·계통은 잠겨 있습니다.
 즉 요청한 대로 기존 접속관계는 유지하면서 모든 배선을 직각으로 편집합니다.
