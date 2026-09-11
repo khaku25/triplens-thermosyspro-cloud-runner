@@ -1,0 +1,67 @@
+name: Verify ThermoSysPro 3.1 bypass trip
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/verify-v31-bypass-trip.yml"
+      - "scripts/run_pipeline.sh"
+      - "scripts/patch_turbine_bypass_model.py"
+      - "scripts/patch_stodola_turbine.py"
+      - "scripts/render_modelica.py"
+      - "scripts/build_raw_manifest.py"
+      - "scripts/validate_raw_outputs.py"
+      - "modelica/TripLens_CombinedCycle_TripTAC.mo.tpl"
+      - "modelica/run.mos.tpl"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-v31-bypass-trip-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out runner
+        uses: actions/checkout@v4
+
+      - name: Run 10-second physical trip transient
+        env:
+          OPENMODELICA_DEPENDENCY_TIMEOUT: 5m
+          OPENMODELICA_SIMULATION_TIMEOUT: 20m
+        run: |
+          chmod +x scripts/run_pipeline.sh
+          scripts/run_pipeline.sh 2 5 10 10000 incident_1ms
+
+      - name: Prove ThermoSysPro 3.1 source identity
+        run: |
+          package_file="vendor/ThermoSysPro/ThermoSysPro/package.mo"
+          grep -Eq 'ThermoSysPro Version 3\.1' "$package_file"
+          grep -Eq 'version[[:space:]]*=[[:space:]]*"3\.1"' "$package_file"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          expected = "db81ae1b5a6a85f6c6c7693244cafa6087e18ff5"
+          manifest = json.loads(Path("outputs/raw-manifest.json").read_text())
+          actual = manifest["runtime"]["thermosyspro_commit"]
+          if actual != expected:
+              raise SystemExit(f"unexpected ThermoSysPro commit: {actual}")
+          print(f"THERMOSYSPRO_31_SOURCE_PASS commit={actual}")
+          PY
+
+      - name: Upload physical acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: thermosyspro-31-bypass-acceptance-${{ github.run_number }}
+          path: |
+            outputs/thermosyspro-raw.csv
+            outputs/raw-manifest.json
+            build/openmodelica-run.log
+          if-no-files-found: error
+          retention-days: 30
