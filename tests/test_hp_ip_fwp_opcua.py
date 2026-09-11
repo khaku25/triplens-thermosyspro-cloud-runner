@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import importlib.util
+import math
 import sys
 import unittest
 from pathlib import Path
@@ -94,6 +95,23 @@ class HPIPFWPOPCUATests(unittest.TestCase):
         )
         self.assertIn("vppHPFWPDrive.breakerClosed.signal", patched)
         self.assertIn("vppIPFWPDrive.breakerClosed.signal", patched)
+
+    def test_affinity_load_preload_matches_pinned_nominal_point(self) -> None:
+        omega = 1400 * math.pi / 30
+        regularization_omega = 30 * math.pi / 30
+        operating_points = (
+            (6125061.295700202, 45, 41810),
+            (220732.6496544388, 25, 1531),
+        )
+        for power_w, friction_nm, preload_nm in operating_points:
+            hydraulic_torque_nm = (
+                power_w * omega / (omega**2 + regularization_omega**2)
+            )
+            self.assertAlmostEqual(
+                preload_nm,
+                hydraulic_torque_nm + friction_nm,
+                delta=6,
+            )
 
     def test_existing_check_valve_patch_remains_sole_nrv_owner(self) -> None:
         patched = self.patcher.patch_model(patched_input())
