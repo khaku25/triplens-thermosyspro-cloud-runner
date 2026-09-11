@@ -36,6 +36,10 @@ class NativeWorkflowContractTests(unittest.TestCase):
         self.assertIn("row count mismatch: expected", self.workflow)
         self.assertIn("vppExternalSTTripCommandNative", self.workflow)
         self.assertIn("contracted OPC UA variables", self.workflow)
+        self.assertIn("native WRITE contract mismatch: expected 58", self.workflow)
+        self.assertIn('attrs.get("causality") != "input"', self.workflow)
+        self.assertIn('attrs.get("isValueChangeable") != "true"', self.workflow)
+        self.assertIn("duplicate inputIndex values", self.workflow)
 
     def test_lp_proof_keeps_gt_plus_30_second_terminal_condition(self) -> None:
         self.assertIn('LIVE_POST_GT_TRIP_S: "30"', self.workflow)

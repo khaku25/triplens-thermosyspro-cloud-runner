@@ -79,7 +79,7 @@ def declarations() -> str:
     lines = [
         f"  // {MARKER}",
         "  parameter Real vppValvePressureSamplePeriodS(unit=\"s\") = 0.02",
-        '    "Sampling period for OPC UA pressure-drop telemetry";',
+        '    "Sampling period for the causal extraction-valve boundary and pressure-drop telemetry";',
     ]
     for point in POINTS:
         stem = f"vppVlv{point.suffix}"
@@ -103,6 +103,11 @@ def declarations() -> str:
             '    "Sampled pressure drop kept outside the continuous plant DAE";',
             f"  Real {stem}Target(min=0, max=1);",
         ))
+        if point.control_point_id == "COND_EXTRACTION_VLV":
+            lines.extend((
+                f"  discrete Real {stem}Applied(start={point.initial:g}, fixed=true, min=0, max=1)",
+                '    "Causal physical position held between 20 ms control scans";',
+            ))
     return "\n".join(lines) + "\n\n"
 
 
@@ -116,7 +121,9 @@ def equations() -> str:
             f"  {stem}Target = if {stem}FaultEnableNative >= 0.5 then {clamp(stem + 'FaultValueNative')} else {stem}Cmd;",
             f"  {stem}FaultActive = {stem}FaultEnableNative >= 0.5;",
         ))
-        if point.dynamic_state:
+        if point.control_point_id == "COND_EXTRACTION_VLV":
+            lines.append(f"  {stem}Fb = {stem}Applied;")
+        elif point.dynamic_state:
             lines.append(f"  {stem}Fb = {point.dynamic_state};")
         else:
             lines.append(f"  {stem}Fb = {stem}Target;")
@@ -127,14 +134,15 @@ def equations() -> str:
             f"  {stem}MassFlowTH = 3.6*{point.object_name}.Q;",
             "",
         ))
-    # Directly aliasing all connector pressures into continuous output equations
-    # changes OpenModelica's tearing of the legacy plant initialization system.
-    # Sample read-only telemetry only after initialization instead. This retains
-    # all twelve OPC UA BrowseNames without adding their pressure differences to
-    # the continuous hydraulic DAE.
+    # The generated initialization trace places only the condenser extraction
+    # valve's AutoCmd -> Cmd -> Fb -> Cv chain inside the giant torn hydraulic
+    # system. Keep its command tags live, but apply Target through one 20 ms
+    # zero-order hold initialized at the original 0.8 position. Other valve
+    # commands remain continuous. Pressure telemetry shares the same event.
     lines.extend((
         "  when sample(vppValvePressureSamplePeriodS,",
         "      vppValvePressureSamplePeriodS) then",
+        "    vppVlvCondExtractionApplied = vppVlvCondExtractionTarget;",
         *(
             f"    vppVlv{point.suffix}DPPa = "
             f"{point.object_name}.C1.P - {point.object_name}.C2.P;"
@@ -245,6 +253,10 @@ def patch_model(source: str) -> str:
             raise AssertionError(
                 f"{point.control_point_id}: physical valve input is not singly driven"
             )
+    if "discrete Real vppVlvCondExtractionApplied" not in source:
+        raise AssertionError("condenser extraction causal boundary is missing")
+    if "vppVlvCondExtractionFb = vppVlvCondExtractionApplied" not in source:
+        raise AssertionError("condenser extraction feedback bypasses causal boundary")
     return source
 
 

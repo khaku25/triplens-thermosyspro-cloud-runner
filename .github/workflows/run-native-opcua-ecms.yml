@@ -141,10 +141,11 @@ jobs:
           from pathlib import Path
 
           root = ET.parse("build/TripLens_Native_OPCUA_init.xml").getroot()
-          built = {
-              item.attrib["name"] for item in root.iter()
+          variables = {
+              item.attrib["name"]: item for item in root.iter()
               if item.tag.endswith("ScalarVariable") and "name" in item.attrib
           }
+          built = set(variables)
 
           contracts = (
               (Path("data/opcua_native_valve_nodes_v1.csv"), 144),
@@ -152,6 +153,7 @@ jobs:
               (Path("data/opcua_lp_bfp_nodes_v1.csv"), None),
           )
           required_by_source = {}
+          write_names = []
           for path, expected_rows in contracts:
               with path.open(newline="", encoding="utf-8-sig") as stream:
                   rows = list(csv.DictReader(stream))
@@ -167,6 +169,12 @@ jobs:
               if not names:
                   raise SystemExit(f"{path} contains no OPC UA BrowseNames")
               required_by_source[str(path)] = names
+              write_names.extend(
+                  row["opcua_browse_name"].strip()
+                  for row in rows
+                  if row.get("direction", "").strip().upper() == "WRITE"
+                  and row.get("opcua_browse_name", "").strip()
+              )
 
           if "vppVCBA02ClosedNative" not in required_by_source[
               "data/opcua_lp_bfp_nodes_v1.csv"
@@ -189,12 +197,40 @@ jobs:
                   "native init.xml missing contracted OPC UA variables: "
                   + ", ".join(missing)
               )
+          write_names = sorted(set(write_names))
+          if len(write_names) != 58:
+              raise SystemExit(
+                  f"native WRITE contract mismatch: expected 58, got {len(write_names)}"
+              )
+          invalid_inputs = []
+          input_indexes = []
+          for name in write_names:
+              attrs = variables[name].attrib
+              try:
+                  input_index = int(attrs.get("inputIndex", "-1"))
+              except ValueError:
+                  input_index = -1
+              if (
+                  attrs.get("causality") != "input"
+                  or attrs.get("isValueChangeable") != "true"
+                  or input_index < 0
+              ):
+                  invalid_inputs.append(name)
+              input_indexes.append(input_index)
+          if invalid_inputs:
+              raise SystemExit(
+                  "native WRITE nodes are not changeable top-level inputs: "
+                  + ", ".join(invalid_inputs)
+              )
+          if len(set(input_indexes)) != len(input_indexes):
+              raise SystemExit("native WRITE nodes have duplicate inputIndex values")
           Path("build/native-opcua-input-contract.txt").write_text(
               "\n".join(required) + "\n", encoding="utf-8"
           )
           print(
               "NATIVE_INIT_XML_CONTRACT_PASS "
               f"unique_nodes={len(required)} "
+              f"write_inputs={len(write_names)} "
               f"valve_rows={len(required_by_source[str(contracts[0][0])])} "
               f"hp_ip_rows={len(required_by_source[str(contracts[1][0])])} "
               f"lp_bfp_nodes={len(required_by_source[str(contracts[2][0])])}"

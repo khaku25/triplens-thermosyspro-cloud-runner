@@ -89,6 +89,29 @@ class NativeOpenModelicaValveAdapterTests(unittest.TestCase):
         self.assertEqual(self.patched.count("discrete output Real vppVlv"), 12)
         self.assertNotIn("output discrete Real", self.patched)
 
+    def test_only_condenser_extraction_physical_position_is_sampled(self) -> None:
+        self.assertEqual(self.patched.count("when sample("), 1)
+        for point in POINTS:
+            stem = f"vppVlv{point.suffix}"
+            self.assertIn(f"Real {stem}Target(min=0, max=1);", self.patched)
+            self.assertIn(f"\n  {stem}Target = if", self.patched)
+        self.assertEqual(self.patched.count("discrete Real vppVlv"), 1)
+        self.assertIn(
+            "discrete Real vppVlvCondExtractionApplied(start=0.8, "
+            "fixed=true, min=0, max=1)",
+            self.patched,
+        )
+        self.assertIn(
+            "    vppVlvCondExtractionApplied = "
+            "vppVlvCondExtractionTarget;",
+            self.patched,
+        )
+        self.assertIn(
+            "vppVlvCondExtractionFb = vppVlvCondExtractionApplied;",
+            self.patched,
+        )
+        self.assertNotIn("when {initial(), sample(", self.patched)
+
     def test_48_native_commands_are_top_level_opcua_inputs_not_dae_states(self) -> None:
         inputs = 0
         for point in POINTS:
