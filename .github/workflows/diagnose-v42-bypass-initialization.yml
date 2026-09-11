@@ -114,20 +114,19 @@ jobs:
               "$OPENMODELICA_IMAGE" \
               "./${{ matrix.executable }}" \
                 -startTime=0 \
-                -stopTime=0.1 \
-                -stepSize=0.01 \
+                -stopTime=1 \
+                -stepSize=0.1 \
                 -tolerance=0.001 \
                 -f=selected_init.xml \
                 -iim=${{ matrix.iim }} \
                 -s=dassl \
-                -jacobian=coloredNumerical \
                 -nls=${{ matrix.nls }} \
                 -nlsLS=totalpivot \
                 -nlssMaxDensity=0.01 \
                 -newton=damped_ls \
                 -newtonFTol=1e-8 \
                 -newtonXTol=1e-8 \
-                -lv=LOG_STDOUT,LOG_ASSERT,LOG_STATS,LOG_INIT,LOG_JAC \
+                -lv=LOG_STDOUT,LOG_ASSERT,LOG_STATS,LOG_INIT \
             > build/v42/initialization.log 2>&1
           sim_status=$?
           cat build/v42/initialization.log
