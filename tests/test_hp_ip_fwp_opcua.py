@@ -63,6 +63,14 @@ class HPIPFWPOPCUATests(unittest.TestCase):
             "connect(vppIPFWPHydraulicSpeedCommand, PompeAlimMP.rpm_or_mpower);",
             patched,
         )
+        self.assertIn("vppHPFWPNominalMechanicalPowerW*noEvent(", patched)
+        self.assertIn("vppIPFWPNominalMechanicalPowerW*noEvent(", patched)
+        self.assertNotIn(
+            "vppHPFWPDrive.pumpPower.signal = PompeAlimHP.Wm", patched
+        )
+        self.assertNotIn(
+            "vppIPFWPDrive.pumpPower.signal = PompeAlimMP.Wm", patched
+        )
 
     def test_run_and_breaker_are_independent_fail_closed_boundaries(self) -> None:
         patched = self.patcher.patch_model(patched_input())
@@ -126,7 +134,13 @@ class HPIPFWPOPCUATests(unittest.TestCase):
         forbidden = ("live_fmu_gateway", "fmi2", "Simulink")
         self.assertFalse(any(token in source for token in forbidden))
         for level, pump in (("HP", "PompeAlimHP"), ("IP", "PompeAlimMP")):
-            self.assertIn(f"vpp{level}FWPDrive.pumpPower.signal = {pump}.Wm", source)
+            self.assertIn(
+                f"vpp{level}FWPNominalMechanicalPowerW*noEvent(",
+                source,
+            )
+            self.assertNotIn(
+                f"vpp{level}FWPDrive.pumpPower.signal = {pump}.Wm", source
+            )
             self.assertIn(f"vpp{level}FWPMassFlowTH = 3.6*{pump}.Q", source)
             self.assertIn(f"vpp{level}FWPVolumeFlowM3S = {pump}.Qv", source)
             self.assertIn(f"vpp{level}FWPDeltaPPa = {pump}.deltaP", source)

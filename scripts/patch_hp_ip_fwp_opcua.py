@@ -28,14 +28,18 @@ DECLARATIONS = f'''
     nominalSpeedRpm=1400,
     J=900,
     frictionTorqueNominal=45,
-    initialTorque=9000,
+    initialTorque=41810,
     torqueLimit=1.2e5);
   TripLens_PumpPhysics.BreakerInertialPumpDrive vppIPFWPDrive(
     nominalSpeedRpm=1400,
     J=350,
     frictionTorqueNominal=25,
-    initialTorque=5000,
+    initialTorque=1531,
     torqueLimit=8e4);
+  parameter Real vppHPFWPNominalMechanicalPowerW(unit="W") = 6125061.295700202
+    "Pinned 1400 rpm HP pump load used by the causal shaft-load boundary";
+  parameter Real vppIPFWPNominalMechanicalPowerW(unit="W") = 220732.6496544388
+    "Pinned 1400 rpm IP pump load used by the causal shaft-load boundary";
   parameter Real vppHPFWPHydraulicSpeedFloorRPM(unit="rev/min") = 700
     "Numerical floor for the HP static-pump curve; shaft speed remains physical";
   parameter Real vppIPFWPHydraulicSpeedFloorRPM(unit="rev/min") = 700
@@ -82,13 +86,19 @@ EQUATIONS = '''
     vppVCBB01ClosedNative >= 0.5;
 
   vppHPFWPDrive.breakerClosed.signal = vppHPFWPMotorEnergized;
-  vppHPFWPDrive.pumpPower.signal = PompeAlimHP.Wm;
+  // Keep shaft load causal. Feeding PompeAlimHP.Wm directly back into the
+  // drive closes the legacy plant's largest nonlinear initialization system.
+  // The centrifugal-pump affinity law P ~ rpm^3 preserves coastdown loading
+  // without adding that thermohydraulic algebraic feedback edge.
+  vppHPFWPDrive.pumpPower.signal = vppHPFWPNominalMechanicalPowerW*noEvent(
+    (max(vppHPFWPDrive.speedRpm, 0)/vppHPFWPDrive.nominalSpeedRpm)^3);
   vppHPFWPHydraulicSpeedCommand.signal = noEvent(max(
     vppHPFWPHydraulicSpeedFloorRPM, vppHPFWPDrive.speedRpm));
   connect(vppHPFWPHydraulicSpeedCommand, PompeAlimHP.rpm_or_mpower);
 
   vppIPFWPDrive.breakerClosed.signal = vppIPFWPMotorEnergized;
-  vppIPFWPDrive.pumpPower.signal = PompeAlimMP.Wm;
+  vppIPFWPDrive.pumpPower.signal = vppIPFWPNominalMechanicalPowerW*noEvent(
+    (max(vppIPFWPDrive.speedRpm, 0)/vppIPFWPDrive.nominalSpeedRpm)^3);
   vppIPFWPHydraulicSpeedCommand.signal = noEvent(max(
     vppIPFWPHydraulicSpeedFloorRPM, vppIPFWPDrive.speedRpm));
   connect(vppIPFWPHydraulicSpeedCommand, PompeAlimMP.rpm_or_mpower);
@@ -164,6 +174,8 @@ def patch_model(source: str) -> str:
         "vppIPFWPMotorEnergized = vppFWPIPRunEnableNative >= 0.5 and",
         "connect(vppHPFWPHydraulicSpeedCommand, PompeAlimHP.rpm_or_mpower)",
         "connect(vppIPFWPHydraulicSpeedCommand, PompeAlimMP.rpm_or_mpower)",
+        "vppHPFWPNominalMechanicalPowerW*noEvent(",
+        "vppIPFWPNominalMechanicalPowerW*noEvent(",
         "vppHPFWPMassFlowTH = 3.6*PompeAlimHP.Q",
         "vppIPFWPMassFlowTH = 3.6*PompeAlimMP.Q",
     )

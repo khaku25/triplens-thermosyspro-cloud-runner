@@ -2,6 +2,12 @@ name: Verify native OpenModelica ECMS physical link
 
 on:
   workflow_dispatch:
+    inputs:
+      nls_diagnostics:
+        description: "Enable OpenModelica nonlinear-system diagnostics (logging only)"
+        required: false
+        default: false
+        type: boolean
   pull_request:
     branches: [main]
     paths:
@@ -62,6 +68,9 @@ jobs:
       LIVE_STEP_SIZE_S: "0.04"
       LIVE_COMMAND_TIME_S: "20"
       LIVE_POST_GT_TRIP_S: "30"
+      # This changes logging only; the production integrator/NLS configuration
+      # remains identical to the normal blind-test path.
+      OPENMODELICA_LOG_FLAGS: ${{ inputs.nls_diagnostics && '-lv=LOG_NLS' || '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -205,6 +214,7 @@ jobs:
             ./TripLens_Native_OPCUA \
               -embeddedServer=opc-ua \
               -embeddedServerPort=4841 \
+              $OPENMODELICA_LOG_FLAGS \
               -r=TripLens_Native_OPCUA_res.csv \
             > outputs/native-opcua/openmodelica-native.log 2>&1 &
           native_pid=$!
@@ -245,5 +255,7 @@ jobs:
             outputs/native-opcua/**
             build/native-opcua-build.log
             build/native-opcua-input-contract.txt
+            build/TripLens_Native_OPCUA_info.json
+            build/TripLens_Native_OPCUA_init.xml
           if-no-files-found: warn
           retention-days: 30

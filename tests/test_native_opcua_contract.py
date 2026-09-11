@@ -203,7 +203,14 @@ class NativeOPCUAContractTests(unittest.TestCase):
         self.assertNotIn("-nls=kinsol", workflow)
         self.assertNotIn("-nlsLS=klu", workflow)
         self.assertIn('docker rm -f "$native_container"', workflow)
-        self.assertIn('"vppVCBA02ClosedNative"', workflow)
+        self.assertIn("data/opcua_lp_bfp_nodes_v1.csv", workflow)
+        with (ROOT / "data/opcua_lp_bfp_nodes_v1.csv").open(
+            encoding="utf-8-sig", newline=""
+        ) as stream:
+            contracted_nodes = {
+                row["opcua_browse_name"] for row in csv.DictReader(stream)
+            }
+        self.assertIn("vppVCBA02ClosedNative", contracted_nodes)
         self.assertNotIn("live_fmu_gateway.py", workflow)
 
     def test_client_uses_stable_native_step_nodes(self) -> None:

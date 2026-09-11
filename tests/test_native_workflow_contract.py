@@ -42,6 +42,16 @@ class NativeWorkflowContractTests(unittest.TestCase):
         self.assertIn('--post-gt-trip-seconds "$LIVE_POST_GT_TRIP_S"', self.workflow)
         self.assertIn("GT-Trip observation", self.workflow)
 
+    def test_nls_diagnostics_are_opt_in_logging_only(self) -> None:
+        self.assertIn("nls_diagnostics:", self.workflow)
+        self.assertIn("default: false", self.workflow)
+        self.assertIn("-lv=LOG_NLS", self.workflow)
+        self.assertIn("$OPENMODELICA_LOG_FLAGS", self.workflow)
+        self.assertIn("build/TripLens_Native_OPCUA_info.json", self.workflow)
+        self.assertIn("build/TripLens_Native_OPCUA_init.xml", self.workflow)
+        for solver_flag in ("-nls=", "-nlsLS=", "-nlssMaxDensity=", "-s=ida"):
+            self.assertNotIn(solver_flag, self.workflow)
+
     def test_native_runtime_keeps_proven_default_dassl_solver(self) -> None:
         # Valve pressure telemetry is sampled outside the continuous DAE, so
         # the native proof can retain the validated default DASSL runtime.
