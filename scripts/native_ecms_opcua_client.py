@@ -24,7 +24,9 @@ class Signal:
 
 SIGNALS = (
     Signal("gt_trip_latch", "vppSTTripLatch", "BOOL", "DCS1"),
+    Signal("stg_power_w", "Alternateur.Welec", "W", "DCS1"),
     Signal("gt_exhaust_flow_th", "vppGTExhaustMassFlowTH", "t/h", "DCS1"),
+    Signal("gt_exhaust_temperature_k", "vppGTExhaustTemperatureK", "K", "DCS1"),
     Signal("hp_turbine_flow_th", "vppHPTurbineSteamFlowTH", "t/h", "DCS1"),
     Signal("ip_turbine_flow_th", "vppIPTurbineSteamFlowTH", "t/h", "DCS1"),
     Signal("lp_turbine_flow_th", "vppLPTurbineSteamFlowTH", "t/h", "DCS1"),

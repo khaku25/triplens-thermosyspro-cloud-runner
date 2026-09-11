@@ -256,6 +256,13 @@ def main() -> int:
         default=None,
         help="Explicitly enable/disable the legacy synthesized gt_trip_cmd field.",
     )
+    parser.add_argument(
+        "--observed-gt-trip-source",
+        help=(
+            "Exact RAW BOOL column to publish as gt_trip_cmd. Unlike the legacy "
+            "option, this copies an observed command and never synthesizes an edge."
+        ),
+    )
     args = parser.parse_args()
 
     event_time, legacy_gt_trip_cmd = resolve_event_time(args)
@@ -291,6 +298,18 @@ def main() -> int:
 
     time_source = resolved["time_s"]
     assert time_source is not None
+    observed_gt_trip_source = None
+    if args.observed_gt_trip_source:
+        observed_gt_trip_source = resolve_column(headers, [args.observed_gt_trip_source])
+        if observed_gt_trip_source is None:
+            raise ValueError(
+                "observed GT Trip source column was not found: "
+                + args.observed_gt_trip_source
+            )
+        if legacy_gt_trip_cmd:
+            raise ValueError(
+                "--observed-gt-trip-source and --legacy-gt-trip-cmd are mutually exclusive"
+            )
 
     canonical_targets = [target for target in signals if target != "time_s"]
     mapped_present = [
@@ -301,10 +320,12 @@ def main() -> int:
         consumed_sources.update(
             matching_columns(headers, list(definition.get("aliases", [])))
         )
+    if observed_gt_trip_source is not None:
+        consumed_sources.add(observed_gt_trip_source)
     used_fields = {"scenario_id", "time_s", *canonical_targets}
     if event_time is not None:
         used_fields.add("event_marker")
-    if legacy_gt_trip_cmd:
+    if legacy_gt_trip_cmd or observed_gt_trip_source is not None:
         used_fields.add("gt_trip_cmd")
 
     dynamic_sources: dict[str, str] = {}
@@ -324,7 +345,7 @@ def main() -> int:
     output_fields = ["scenario_id", "time_s"]
     if event_time is not None:
         output_fields.append("event_marker")
-    if legacy_gt_trip_cmd:
+    if legacy_gt_trip_cmd or observed_gt_trip_source is not None:
         output_fields.append("gt_trip_cmd")
     output_fields.extend(canonical_targets)
     output_fields.extend(dynamic_sources)
@@ -346,6 +367,13 @@ def main() -> int:
             target_row["event_marker"] = int(time_s >= event_time)
         if legacy_gt_trip_cmd:
             target_row["gt_trip_cmd"] = int(time_s >= event_time)
+        elif observed_gt_trip_source is not None:
+            target_row["gt_trip_cmd"] = normalize_typed_value(
+                source_row[observed_gt_trip_source],
+                "gt_trip_cmd",
+                {"data_type": "BOOL"},
+                row_index,
+            )
 
         for target in canonical_targets:
             source = resolved[target]
@@ -401,6 +429,10 @@ def main() -> int:
         "scenario_id": args.scenario_id,
         "reference_event_time_s": event_time,
         "legacy_gt_trip_cmd": legacy_gt_trip_cmd,
+        "observed_gt_trip_source": (
+            canonical_header(observed_gt_trip_source)
+            if observed_gt_trip_source is not None else None
+        ),
         "source_column_count": len(headers),
         "processbus_field_count": len(output_fields),
         "duplicate_time_rows_collapsed": duplicate_time_rows_collapsed,

@@ -161,11 +161,12 @@ mAllGrid = uigridlayout(mAllTab,[1 1]); mAllGrid.Padding = [0 0 0 0];
 mAllTable = uitable(mAllGrid,"Data",mTags); mAllTable.ColumnEditable = false(1,width(mTags));
 
 actionTab = uitab(tabs,"Title","저장");
-actionGrid = uigridlayout(actionTab,[7 1]); actionGrid.RowHeight = repmat({38},1,7); actionGrid.Padding = [10 10 10 10];
+actionGrid = uigridlayout(actionTab,[8 1]); actionGrid.RowHeight = repmat({38},1,8); actionGrid.Padding = [10 10 10 10];
 try, actionGrid.Scrollable = "on"; catch, end
 uibutton(actionGrid,"Text","A 설정 검증","ButtonPushedFcn",@validateA);
 uibutton(actionGrid,"Text","A 설정 CSV 저장","FontWeight","bold","ButtonPushedFcn",@saveA);
 uibutton(actionGrid,"Text","현재 A/Command로 실행","FontWeight","bold","ButtonPushedFcn",@runCurrentCase);
+uibutton(actionGrid,"Text","GitHub OPC UA 검증 GT Trip 실행","FontWeight","bold","ButtonPushedFcn",@runGitHubCase);
 uibutton(actionGrid,"Text","레이아웃 JSON 저장","ButtonPushedFcn",@saveLayout);
 uibutton(actionGrid,"Text","레이아웃 JSON 불러오기","ButtonPushedFcn",@loadLayout);
 uilabel(actionGrid,"Text","M CSV는 저장 버튼이 없습니다.","FontWeight","bold","FontColor",[0.12 0.48 0.34]);
@@ -549,6 +550,33 @@ end
         catch caught
             statusLabel.Text="VPP 실행 실패";
             uialert(fig,caught.message,"VPP 실행 오류","Icon","error");
+        end
+    end
+
+    function runGitHubCase(~,~)
+        messages=collectAErrors();
+        if ~isempty(messages)
+            uialert(fig,join(messages,newline),"실행 중단","Icon","error"); return;
+        end
+        expectedBridge=fullfile(rootDir,"ECMS_GITHUB.m");
+        if ~isfile(expectedBridge)
+            uialert(fig,"ECMS_GITHUB.m을 찾지 못했습니다.", ...
+                "GitHub bridge 없음","Icon","warning"); return;
+        end
+        try
+            addpath(rootDir,"-begin"); rehash;
+            clear ECMS_GITHUB;
+            assert(string(which("ECMS_GITHUB"))==string(expectedBridge), ...
+                "TripLens:WrongGitHubBridge", ...
+                "다른 ECMS_GITHUB 함수가 현재 패키지를 가리고 있습니다.");
+            statusLabel.Text="GitHub OPC UA ThermoSysPro 3.1 실행 중…"; drawnow;
+            ECMS_GITHUB("PackageRoot",rootDir, ...
+                "SettingsTable",settingsTable.Data, ...
+                "EquipmentTable",equipmentTable.Data);
+            statusLabel.Text="GitHub OPC UA 결과를 Cloud ECMS로 가져왔습니다";
+        catch caught
+            statusLabel.Text="GitHub OPC UA 실행 실패";
+            uialert(fig,caught.message,"GitHub OPC UA 오류","Icon","error");
         end
     end
 

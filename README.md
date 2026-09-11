@@ -20,19 +20,43 @@ ZIP을 MATLAB Drive에 압축 해제한 뒤 **압축 해제된 패키지 최상�
 ECMSVPP
 ```
 
-큰 버튼 네 개가 있는 시작 화면이 열립니다.
+큰 버튼 다섯 개가 있는 시작 화면이 열립니다.
 
 | 버튼/명령 | 하는 일 |
 |---|---|
 | `ECMS_START` | ECMS 배선·A 설정·Command를 편집 |
 | `ECMS_RUN` | 현재 기본 CSV로 새 MATLAB VPP Run을 생성 |
 | `ECMS_RESULT` | 마지막으로 완전히 생성된 Run을 열고, 없으면 번들 예제를 열기 |
+| `ECMS_GITHUB` | GitHub의 MATLAB→OPC UA→ThermoSysPro 3.1 실행을 호출하고 물리 결과를 Cloud ECMS로 가져오기 |
 | `ECMS_DIAGNOSE` | 누락 파일·구형 함수 가림·6.9 kV 계약을 읽기 전용으로 점검 |
 | `ECMS_SELF_TEST` | 정상·계통상실·펌프 Trip을 임시 폴더에서 자체 시험 |
 
 `run_cloud_result`는 계산기가 아니라 **이미 생성된 결과를 그리는 내부
 뷰어**입니다. 새 계산을 만들려면 `ECMS_RUN` 또는 Editor의
 `현재 A/Command로 실행`을 누릅니다.
+
+### GitHub OPC UA와 Cloud ECMS 연결
+
+`ECMS_GITHUB`은 `khaku25/triplens-matlab-cosim-runner`의 검증된
+`matlab-native-opcua-ecms.yml`을 호출합니다. GitHub에서는 Simulink가 GT Trip
+명령을 만든 뒤 OPC UA로 native OpenModelica/ThermoSysPro 3.1에 쓰고, 같은
+연결로 물리 피드백을 읽습니다. 내려받은 수신 CSV는 변경하지 않으며, ProcessBus,
+DCS1/DCS2, ECMS 계산은 이 Cloud 패키지에서만 수행합니다.
+
+먼저 GitHub fine-grained token에 해당 저장소의 **Actions read/write** 권한을 주고,
+토큰을 파일이나 MATLAB 코드에 적지 말고 환경변수로만 설정합니다.
+
+```matlab
+setenv("TRIPLENS_GITHUB_TOKEN","github에서 만든 토큰")
+ECMS_GITHUB
+```
+
+실행 후 `runs/MATLAB_GITHUB_OPCUA_*`에 원본 OPC UA 수신 CSV, 증명 JSON,
+ProcessBus, DCS1/DCS2 및 ECMS 결과가 함께 저장되고 `ECMS_RESULT`가 같은 결과를
+다시 엽니다. Editor의 `GitHub OPC UA 검증 GT Trip 실행` 버튼은 현재 A 설정과
+설비표를 후단 Cloud 계산에 적용합니다. 원격 물리 명령은 현재 검증 계약대로
+0.25초 GT Trip 한 종류이며, Editor의 임의 Command 큐를 원격 물리에 보내지는
+않습니다.
 
 처음 `ECMS_RESULT`에서 열리는 번들 예제는 화면과 파일 구조 확인용
 `BUNDLED_SYNTHETIC_DEMO`이며 실제 ThermoSysPro 계산으로 표시되지 않습니다.

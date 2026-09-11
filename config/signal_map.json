@@ -44,6 +44,7 @@
       "aliases": [
         "vppGTExhaustMassFlowTH",
         "Debit.y.signal",
+        "gt_exhaust_flow_th",
         "gt_exhaust_mass_flow_t_h"
       ],
       "source_multipliers": {
@@ -115,6 +116,7 @@
       "aliases": [
         "vppHPTurbineSteamFlowTH",
         "TurbineHP.Q",
+        "hp_turbine_flow_th",
         "hp_steam_flow_t_h"
       ],
       "source_multipliers": {
@@ -127,6 +129,7 @@
       "aliases": [
         "vppIPTurbineSteamFlowTH",
         "TurbineMP.Q",
+        "ip_turbine_flow_th",
         "ip_steam_flow_t_h"
       ],
       "source_multipliers": {
@@ -139,6 +142,7 @@
       "aliases": [
         "vppLPTurbineSteamFlowTH",
         "TurbineBP.Q",
+        "lp_turbine_flow_th",
         "lp_steam_flow_t_h"
       ],
       "source_multipliers": {
@@ -151,6 +155,7 @@
       "aliases": [
         "vppHPBypassMassFlowTH",
         "vppHPBypassMassFlow",
+        "hp_bypass_flow_th",
         "hp_bypass_steam_flow_t_h"
       ],
       "source_multipliers": {
@@ -163,6 +168,7 @@
       "aliases": [
         "vppLPBypassMassFlowTH",
         "vppLPBypassMassFlow",
+        "lp_bypass_flow_th",
         "lp_bypass_steam_flow_t_h"
       ],
       "source_multipliers": {
@@ -175,6 +181,7 @@
       "aliases": [
         "vppHPSprayMassFlowTH",
         "vppHPSprayMassFlow",
+        "hp_spray_flow_th",
         "hp_bypass_spray_flow_t_h"
       ],
       "source_multipliers": {
@@ -187,6 +194,7 @@
       "aliases": [
         "vppLPSprayMassFlowTH",
         "vppLPSprayMassFlow",
+        "lp_spray_flow_th",
         "lp_bypass_spray_flow_t_h"
       ],
       "source_multipliers": {
