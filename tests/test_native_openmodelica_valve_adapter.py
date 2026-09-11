@@ -64,11 +64,29 @@ class NativeOpenModelicaValveAdapterTests(unittest.TestCase):
             self.assertIn(f"{stem}Cv = {point.object_name}.Cv", self.patched)
             self.assertIn(f"{stem}MassFlowTH = 3.6*{point.object_name}.Q", self.patched)
             self.assertIn(
-                f"{stem}DPPa = {point.object_name}.C1.P - {point.object_name}.C2.P",
+                f"output discrete Real {stem}DPPa",
+                self.patched,
+            )
+            sampled = (
+                f"    {stem}DPPa = "
+                f"{point.object_name}.C1.P - {point.object_name}.C2.P;"
+            )
+            self.assertIn(sampled, self.patched)
+            self.assertNotIn(
+                f"\n  {stem}DPPa = ",
                 self.patched,
             )
             if point.original_connect:
                 self.assertNotIn(f"connect({point.original_connect})", self.patched)
+
+    def test_pressure_drop_telemetry_is_outside_continuous_initialization_dae(self) -> None:
+        self.assertIn(
+            "when sample(vppValvePressureSamplePeriodS,\n"
+            "      vppValvePressureSamplePeriodS) then",
+            self.patched,
+        )
+        self.assertNotIn("when {initial(), sample(", self.patched)
+        self.assertEqual(self.patched.count("output discrete Real vppVlv"), 12)
 
     def test_48_native_command_memories_are_live_writable_states(self) -> None:
         derivatives = 0
