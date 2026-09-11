@@ -22,7 +22,7 @@ from native_ecms_opcua_client import (  # noqa: E402
 class NativeOPCUAContractTests(unittest.TestCase):
     def test_inventory_and_configured_lp_rules(self) -> None:
         self.assertEqual(PROTOCOL, "TRIPLENS-NATIVE-OPCUA/1")
-        self.assertGreaterEqual(len(SIGNALS), 43)
+        self.assertGreaterEqual(len(SIGNALS), 62)
         low, low_low, trips_gt, trips_st = load_lp_rules()
         self.assertEqual((low.threshold, low_low.threshold), (1.65, 1.55))
         self.assertEqual((low.delay_s, low_low.delay_s), (0.5, 0.5))
@@ -125,8 +125,9 @@ class NativeOPCUAContractTests(unittest.TestCase):
         self.assertIn('LIVE_STEP_SIZE_S: "0.04"', workflow)
         self.assertIn('LIVE_COMMAND_TIME_S: "20"', workflow)
         self.assertIn("--intervals 2500", workflow)
-        self.assertIn("scripts/patch_fmu_valve_controls.py", workflow)
+        self.assertNotIn("scripts/patch_fmu_valve_controls.py", workflow)
         self.assertIn("scripts/patch_lp_fwp_opcua.py", workflow)
+        self.assertIn("scripts/patch_all_fwp_check_valves.py", workflow)
         self.assertIn("modelica/TripLens_PumpPhysics.mo", workflow)
         build = (ROOT / "modelica/build_native_opcua.mos.tpl").read_text(
             encoding="utf-8"

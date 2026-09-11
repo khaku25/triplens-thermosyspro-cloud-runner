@@ -1,0 +1,22 @@
+canonical_tag,owner,layer,direction,opcua_browse_name,source,role
+TSP.FWP-HP.DISCHARGE_CHECK_VALVE.OPEN,OpenModelica,PHYSICAL,READ,vppHPFWPCheckValveOpen,vppHPFWPCheckValve.ouvert,HP FWP discharge non-return valve open feedback
+TSP.FWP-HP.DISCHARGE_CHECK_VALVE.OPENING,OpenModelica,PHYSICAL,READ,vppHPFWPCheckValveOpening,vppHPFWPCheckValve.opening,HP FWP discharge non-return valve continuous position
+TSP.FWP-HP.DISCHARGE_CHECK_VALVE.MASS_FLOW,OpenModelica,PHYSICAL,READ,vppHPFWPCheckValveMassFlowTH,vppHPFWPCheckValve.Q,HP FWP discharge non-return valve solved mass flow
+TSP.FWP-HP.DISCHARGE_CHECK_VALVE.DELTA_P,OpenModelica,PHYSICAL,READ,vppHPFWPCheckValveDeltaPPa,vppHPFWPCheckValve.deltaP,HP FWP discharge non-return valve solved differential pressure
+TSP.FWP-HP.DISCHARGE_CHECK_VALVE.INLET_P,OpenModelica,PHYSICAL,READ,vppHPFWPCheckValveInletPressurePa,vppHPFWPCheckValve.C1.P,HP FWP discharge non-return valve inlet pressure
+TSP.FWP-HP.DISCHARGE_CHECK_VALVE.OUTLET_P,OpenModelica,PHYSICAL,READ,vppHPFWPCheckValveOutletPressurePa,vppHPFWPCheckValve.C2.P,HP FWP discharge non-return valve outlet pressure
+TSP.FWP-HP.DISCHARGE_CHECK_VALVE.RESISTANCE,OpenModelica,PHYSICAL,READ,vppHPFWPCheckValveResistancePaSPerKg,vppHPFWPCheckValve.effectiveResistance,HP FWP discharge non-return valve effective hydraulic resistance
+TSP.FWP-IP.DISCHARGE_CHECK_VALVE.OPEN,OpenModelica,PHYSICAL,READ,vppIPFWPCheckValveOpen,vppIPFWPCheckValve.ouvert,IP FWP discharge non-return valve open feedback
+TSP.FWP-IP.DISCHARGE_CHECK_VALVE.OPENING,OpenModelica,PHYSICAL,READ,vppIPFWPCheckValveOpening,vppIPFWPCheckValve.opening,IP FWP discharge non-return valve continuous position
+TSP.FWP-IP.DISCHARGE_CHECK_VALVE.MASS_FLOW,OpenModelica,PHYSICAL,READ,vppIPFWPCheckValveMassFlowTH,vppIPFWPCheckValve.Q,IP FWP discharge non-return valve solved mass flow
+TSP.FWP-IP.DISCHARGE_CHECK_VALVE.DELTA_P,OpenModelica,PHYSICAL,READ,vppIPFWPCheckValveDeltaPPa,vppIPFWPCheckValve.deltaP,IP FWP discharge non-return valve solved differential pressure
+TSP.FWP-IP.DISCHARGE_CHECK_VALVE.INLET_P,OpenModelica,PHYSICAL,READ,vppIPFWPCheckValveInletPressurePa,vppIPFWPCheckValve.C1.P,IP FWP discharge non-return valve inlet pressure
+TSP.FWP-IP.DISCHARGE_CHECK_VALVE.OUTLET_P,OpenModelica,PHYSICAL,READ,vppIPFWPCheckValveOutletPressurePa,vppIPFWPCheckValve.C2.P,IP FWP discharge non-return valve outlet pressure
+TSP.FWP-IP.DISCHARGE_CHECK_VALVE.RESISTANCE,OpenModelica,PHYSICAL,READ,vppIPFWPCheckValveResistancePaSPerKg,vppIPFWPCheckValve.effectiveResistance,IP FWP discharge non-return valve effective hydraulic resistance
+TSP.FWP-LP.DISCHARGE_CHECK_VALVE.OPEN,OpenModelica,PHYSICAL,READ,vppLPFWPCheckValveOpen,vppLPFWPCheckValve.ouvert,LP FWP discharge non-return valve open feedback
+TSP.FWP-LP.DISCHARGE_CHECK_VALVE.OPENING,OpenModelica,PHYSICAL,READ,vppLPFWPCheckValveOpening,vppLPFWPCheckValve.opening,LP FWP discharge non-return valve continuous position
+TSP.FWP-LP.DISCHARGE_CHECK_VALVE.MASS_FLOW,OpenModelica,PHYSICAL,READ,vppLPFWPCheckValveMassFlowTH,vppLPFWPCheckValve.Q,LP FWP discharge non-return valve solved mass flow
+TSP.FWP-LP.DISCHARGE_CHECK_VALVE.DELTA_P,OpenModelica,PHYSICAL,READ,vppLPFWPCheckValveDeltaPPa,vppLPFWPCheckValve.deltaP,LP FWP discharge non-return valve solved differential pressure
+TSP.FWP-LP.DISCHARGE_CHECK_VALVE.INLET_P,OpenModelica,PHYSICAL,READ,vppLPFWPCheckValveInletPressurePa,vppLPFWPCheckValve.C1.P,LP FWP discharge non-return valve inlet pressure
+TSP.FWP-LP.DISCHARGE_CHECK_VALVE.OUTLET_P,OpenModelica,PHYSICAL,READ,vppLPFWPCheckValveOutletPressurePa,vppLPFWPCheckValve.C2.P,LP FWP discharge non-return valve outlet pressure
+TSP.FWP-LP.DISCHARGE_CHECK_VALVE.RESISTANCE,OpenModelica,PHYSICAL,READ,vppLPFWPCheckValveResistancePaSPerKg,vppLPFWPCheckValve.effectiveResistance,LP FWP discharge non-return valve effective hydraulic resistance

@@ -364,6 +364,103 @@
       "unit": "pu",
       "aliases": ["TSP.FWP-LP.DISCHARGE_CHECK_VALVE.OPENING", "vppLPFWPCheckValveOpening", "fwp_lp_check_valve_opening"]
     },
+    "fwp_hp_check_valve_open": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": ["TSP.FWP-HP.DISCHARGE_CHECK_VALVE.OPEN", "vppHPFWPCheckValveOpen", "fwp_hp_check_valve_open"]
+    },
+    "fwp_hp_check_valve_opening": {
+      "required": false,
+      "unit": "pu",
+      "aliases": ["TSP.FWP-HP.DISCHARGE_CHECK_VALVE.OPENING", "vppHPFWPCheckValveOpening", "fwp_hp_check_valve_opening"]
+    },
+    "fwp_hp_check_valve_mass_flow_t_h": {
+      "required": false,
+      "unit": "t/h",
+      "aliases": ["TSP.FWP-HP.DISCHARGE_CHECK_VALVE.MASS_FLOW", "vppHPFWPCheckValveMassFlowTH", "fwp_hp_check_valve_mass_flow_t_h"]
+    },
+    "fwp_hp_check_valve_delta_p_pa": {
+      "required": false,
+      "unit": "Pa",
+      "aliases": ["TSP.FWP-HP.DISCHARGE_CHECK_VALVE.DELTA_P", "vppHPFWPCheckValveDeltaPPa", "fwp_hp_check_valve_delta_p_pa"]
+    },
+    "fwp_hp_check_valve_inlet_p_pa": {
+      "required": false,
+      "unit": "Pa",
+      "aliases": ["TSP.FWP-HP.DISCHARGE_CHECK_VALVE.INLET_P", "vppHPFWPCheckValveInletPressurePa", "fwp_hp_check_valve_inlet_p_pa"]
+    },
+    "fwp_hp_check_valve_outlet_p_pa": {
+      "required": false,
+      "unit": "Pa",
+      "aliases": ["TSP.FWP-HP.DISCHARGE_CHECK_VALVE.OUTLET_P", "vppHPFWPCheckValveOutletPressurePa", "fwp_hp_check_valve_outlet_p_pa"]
+    },
+    "fwp_hp_check_valve_resistance_pa_s_kg": {
+      "required": false,
+      "unit": "Pa.s/kg",
+      "aliases": ["TSP.FWP-HP.DISCHARGE_CHECK_VALVE.RESISTANCE", "vppHPFWPCheckValveResistancePaSPerKg", "fwp_hp_check_valve_resistance_pa_s_kg"]
+    },
+    "fwp_ip_check_valve_open": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": ["TSP.FWP-IP.DISCHARGE_CHECK_VALVE.OPEN", "vppIPFWPCheckValveOpen", "fwp_ip_check_valve_open"]
+    },
+    "fwp_ip_check_valve_opening": {
+      "required": false,
+      "unit": "pu",
+      "aliases": ["TSP.FWP-IP.DISCHARGE_CHECK_VALVE.OPENING", "vppIPFWPCheckValveOpening", "fwp_ip_check_valve_opening"]
+    },
+    "fwp_ip_check_valve_mass_flow_t_h": {
+      "required": false,
+      "unit": "t/h",
+      "aliases": ["TSP.FWP-IP.DISCHARGE_CHECK_VALVE.MASS_FLOW", "vppIPFWPCheckValveMassFlowTH", "fwp_ip_check_valve_mass_flow_t_h"]
+    },
+    "fwp_ip_check_valve_delta_p_pa": {
+      "required": false,
+      "unit": "Pa",
+      "aliases": ["TSP.FWP-IP.DISCHARGE_CHECK_VALVE.DELTA_P", "vppIPFWPCheckValveDeltaPPa", "fwp_ip_check_valve_delta_p_pa"]
+    },
+    "fwp_ip_check_valve_inlet_p_pa": {
+      "required": false,
+      "unit": "Pa",
+      "aliases": ["TSP.FWP-IP.DISCHARGE_CHECK_VALVE.INLET_P", "vppIPFWPCheckValveInletPressurePa", "fwp_ip_check_valve_inlet_p_pa"]
+    },
+    "fwp_ip_check_valve_outlet_p_pa": {
+      "required": false,
+      "unit": "Pa",
+      "aliases": ["TSP.FWP-IP.DISCHARGE_CHECK_VALVE.OUTLET_P", "vppIPFWPCheckValveOutletPressurePa", "fwp_ip_check_valve_outlet_p_pa"]
+    },
+    "fwp_ip_check_valve_resistance_pa_s_kg": {
+      "required": false,
+      "unit": "Pa.s/kg",
+      "aliases": ["TSP.FWP-IP.DISCHARGE_CHECK_VALVE.RESISTANCE", "vppIPFWPCheckValveResistancePaSPerKg", "fwp_ip_check_valve_resistance_pa_s_kg"]
+    },
+    "fwp_lp_check_valve_mass_flow_t_h": {
+      "required": false,
+      "unit": "t/h",
+      "aliases": ["TSP.FWP-LP.DISCHARGE_CHECK_VALVE.MASS_FLOW", "vppLPFWPCheckValveMassFlowTH", "fwp_lp_check_valve_mass_flow_t_h"]
+    },
+    "fwp_lp_check_valve_delta_p_pa": {
+      "required": false,
+      "unit": "Pa",
+      "aliases": ["TSP.FWP-LP.DISCHARGE_CHECK_VALVE.DELTA_P", "vppLPFWPCheckValveDeltaPPa", "fwp_lp_check_valve_delta_p_pa"]
+    },
+    "fwp_lp_check_valve_inlet_p_pa": {
+      "required": false,
+      "unit": "Pa",
+      "aliases": ["TSP.FWP-LP.DISCHARGE_CHECK_VALVE.INLET_P", "vppLPFWPCheckValveInletPressurePa", "fwp_lp_check_valve_inlet_p_pa"]
+    },
+    "fwp_lp_check_valve_outlet_p_pa": {
+      "required": false,
+      "unit": "Pa",
+      "aliases": ["TSP.FWP-LP.DISCHARGE_CHECK_VALVE.OUTLET_P", "vppLPFWPCheckValveOutletPressurePa", "fwp_lp_check_valve_outlet_p_pa"]
+    },
+    "fwp_lp_check_valve_resistance_pa_s_kg": {
+      "required": false,
+      "unit": "Pa.s/kg",
+      "aliases": ["TSP.FWP-LP.DISCHARGE_CHECK_VALVE.RESISTANCE", "vppLPFWPCheckValveResistancePaSPerKg", "fwp_lp_check_valve_resistance_pa_s_kg"]
+    },
     "lp_drum_level_l": {
       "required": false,
       "unit": "BOOL",

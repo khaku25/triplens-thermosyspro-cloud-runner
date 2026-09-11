@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="760" viewBox="0 0 1160 760"
+  role="img" aria-labelledby="title desc" data-protocol="OPC UA" data-endpoint="opc.tcp://127.0.0.1:4841"
+  data-equipment-id="FWP-IP-DISCHARGE-NRV">
+  <title id="title">IP FWP DISCHARGE CHECK VALVE OPC UA physical feedback</title>
+  <desc id="desc">Passive physical non-return valve after PompeAlimMP with seven read-only solved values.</desc>
+  <style>
+  .bg{fill:#07111f}.panel{fill:#0d1b2d;stroke:#31445d;stroke-width:2}
+  .title{fill:#f4f8ff;font:700 24px Arial,sans-serif}.sub{fill:#9fb2c9;font:14px Arial,sans-serif}
+  .label{fill:#eef5ff;font:700 14px Arial,sans-serif}.small{fill:#b7c7da;font:12px Arial,sans-serif}
+  .mono{fill:#d9e8ff;font:11px Consolas,monospace}.muted{fill:#8397ad;font:11px Arial,sans-serif}
+  .equip{fill:#14283e;stroke:#5c7998;stroke-width:2}.pump{fill:#153c52;stroke:#40c4ff;stroke-width:3}
+  .nrv{fill:#173b2b;stroke:#4dd599;stroke-width:3}.water{fill:none;stroke:#4da3ff;stroke-width:6}
+  .io{fill:#12283a;stroke:#4bb8d8;stroke-width:1.5}.passive{fill:#3a2e17;stroke:#ffd166;stroke-width:1.5}
+  .badge{fill:#173b2b;stroke:#4dd599;stroke-width:1.5}.badgeText{fill:#87efbd;font:700 10px Arial,sans-serif}
+</style>
+  <defs><marker id="waterArrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+    <path d="M0 0L10 5L0 10Z" fill="#4da3ff"/></marker></defs>
+
+  <rect class="bg" width="1160" height="760"/><rect class="panel" x="22" y="20" width="1116" height="715" rx="18"/>
+  <text class="title" x="52" y="62">IP FWP DISCHARGE CHECK VALVE</text>
+  <text class="sub" x="52" y="88">ThermoSysPro/OpenModelica → OPC UA → ECMS/SVG · BrowseName runtime binding</text>
+  <rect class="badge" x="835" y="43" width="255" height="28" rx="14"/><text class="badgeText" x="962" y="62" text-anchor="middle">PASSIVE · PHYSICAL · READ ONLY</text>
+
+  <rect class="equip" x="70" y="205" width="180" height="90" rx="14"/>
+  <text class="label" x="160" y="240" text-anchor="middle">IP FWP</text><text class="small" x="160" y="266" text-anchor="middle">PompeAlimMP</text>
+  <path class="water" d="M250 250H350" marker-end="url(#waterArrow)"/>
+  <circle class="pump" cx="395" cy="250" r="44"/><path d="M373 275Q430 250 373 225Z" fill="#d9f4ff"/>
+  <text class="small" x="395" y="320" text-anchor="middle">CENTRIFUGAL PUMP</text>
+  <path class="water" d="M439 250H560" marker-end="url(#waterArrow)"/>
+  <g data-component="vppIPFWPCheckValve">
+    <polygon class="nrv" points="575,215 635,250 575,285"/><line x1="645" y1="210" x2="645" y2="290" stroke="#87efbd" stroke-width="6"/>
+    <text class="small" x="610" y="320" text-anchor="middle">SPRING NRV</text>
+  </g>
+  <path class="water" d="M650 250H805" marker-end="url(#waterArrow)"/>
+  <rect class="equip" x="805" y="205" width="285" height="90" rx="14"/>
+  <text class="label" x="947" y="240" text-anchor="middle">IP ECONOMIZER</text><text class="small" x="947" y="266" text-anchor="middle">protected discharge header</text>
+
+  <rect class="passive" x="70" y="345" width="1020" height="38" rx="10"/>
+  <text class="small" x="580" y="369" text-anchor="middle">No WRITE command: flap position is solved from flow, pressure and spring-equivalent dynamics</text>
+  
+  <g data-opcua-access="READ_ONLY" data-opcua-browse-name="vppIPFWPCheckValveOpen">
+    <rect class="io" x="70" y="405" width="470" height="58" rx="8"/>
+    <text class="label" x="85" y="427">OPEN · BOOL</text>
+    <text class="mono" x="85" y="449">vppIPFWPCheckValveOpen</text>
+  </g>
+  <g data-opcua-access="READ_ONLY" data-opcua-browse-name="vppIPFWPCheckValveOpening">
+    <rect class="io" x="580" y="405" width="470" height="58" rx="8"/>
+    <text class="label" x="595" y="427">OPENING · pu</text>
+    <text class="mono" x="595" y="449">vppIPFWPCheckValveOpening</text>
+  </g>
+  <g data-opcua-access="READ_ONLY" data-opcua-browse-name="vppIPFWPCheckValveMassFlowTH">
+    <rect class="io" x="70" y="477" width="470" height="58" rx="8"/>
+    <text class="label" x="85" y="499">MASS FLOW · t/h</text>
+    <text class="mono" x="85" y="521">vppIPFWPCheckValveMassFlowTH</text>
+  </g>
+  <g data-opcua-access="READ_ONLY" data-opcua-browse-name="vppIPFWPCheckValveDeltaPPa">
+    <rect class="io" x="580" y="477" width="470" height="58" rx="8"/>
+    <text class="label" x="595" y="499">DIFFERENTIAL PRESSURE · Pa</text>
+    <text class="mono" x="595" y="521">vppIPFWPCheckValveDeltaPPa</text>
+  </g>
+  <g data-opcua-access="READ_ONLY" data-opcua-browse-name="vppIPFWPCheckValveInletPressurePa">
+    <rect class="io" x="70" y="549" width="470" height="58" rx="8"/>
+    <text class="label" x="85" y="571">INLET PRESSURE · Pa</text>
+    <text class="mono" x="85" y="593">vppIPFWPCheckValveInletPressurePa</text>
+  </g>
+  <g data-opcua-access="READ_ONLY" data-opcua-browse-name="vppIPFWPCheckValveOutletPressurePa">
+    <rect class="io" x="580" y="549" width="470" height="58" rx="8"/>
+    <text class="label" x="595" y="571">OUTLET PRESSURE · Pa</text>
+    <text class="mono" x="595" y="593">vppIPFWPCheckValveOutletPressurePa</text>
+  </g>
+  <g data-opcua-access="READ_ONLY" data-opcua-browse-name="vppIPFWPCheckValveResistancePaSPerKg">
+    <rect class="io" x="70" y="621" width="470" height="58" rx="8"/>
+    <text class="label" x="85" y="643">HYDRAULIC RESISTANCE · Pa.s/kg</text>
+    <text class="mono" x="85" y="665">vppIPFWPCheckValveResistancePaSPerKg</text>
+  </g>
+  <text class="muted" x="70" y="716">Endpoint opc.tcp://127.0.0.1:4841 · Value/StatusCode/SourceTimestamp/ServerTimestamp handled by the OPC UA client</text>
+</svg>
