@@ -87,6 +87,17 @@ class OPCUASVGAssetsTest(unittest.TestCase):
             content = (ROOT / row["svg"]).read_text(encoding="utf-8")
             self.assertIn("FLOW SOURCE + INJECTOR", content)
 
+    def test_individual_assets_use_explicit_process_symbol_types(self):
+        for row in self.assets:
+            content = (ROOT / row["svg"]).read_text(encoding="utf-8")
+            self.assertIn('data-symbol-convention="ISO-10628-style"', content)
+            expected = (
+                'data-symbol-type="FLOW_SOURCE_INJECTOR"'
+                if row["actuator_kind"] == "SPRAY_FLOW_SOURCE"
+                else 'data-symbol-type="ACTUATED_CONTROL_VALVE"'
+            )
+            self.assertIn(expected, content)
+
 
 if __name__ == "__main__":
     unittest.main()

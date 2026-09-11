@@ -34,9 +34,16 @@
   <text class="small" x="177" y="276" text-anchor="middle">process inlet</text>
   <path class="water" d="M285 260H515" marker-end="url(#waterArrow)"/>
   
-    <circle class="valve" cx="580" cy="260" r="45"/>
-    <path d="M558 238L602 282M602 238L558 282" stroke="#d9f4ff" stroke-width="5"/>
-    <path class="water" d="M580 175V215" marker-end="url(#waterArrow)"/>
+    <g data-symbol-type="FLOW_SOURCE_INJECTOR" data-symbol-convention="ISO-10628-style"
+      aria-label="Model flow source and spray injector">
+      <circle class="valve" cx="562" cy="260" r="34"/>
+      <path d="M544 260H577M565 248L579 260L565 272" fill="none"
+        stroke="#d9f4ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M604 238L636 260L604 282Z" fill="#153c52" stroke="#40c4ff" stroke-width="3"/>
+      <circle cx="641" cy="250" r="3.5" fill="#4da3ff"/>
+      <circle cx="649" cy="260" r="3.5" fill="#4da3ff"/>
+      <circle cx="641" cy="270" r="3.5" fill="#4da3ff"/>
+    </g>
 
   <path class="water" d="M645 260H865" marker-end="url(#waterArrow)"/>
   <rect class="equip" x="865" y="220" width="220" height="80" rx="14"/>
@@ -64,5 +71,5 @@
 
   <text class="warn" x="70" y="625">ThermoSysPro 구현은 제어밸브가 아니라 유량원+인젝터; Trip 시 활성</text>
   <text class="muted" x="70" y="653">Endpoint default: opc.tcp://127.0.0.1:4841 · Model-variable numeric NodeIds are discovered at runtime by BrowseName.</text>
-  <text class="muted" x="70" y="674">Visual contract only · not an operating, isolation, or LOTO drawing</text>
+  <text class="muted" x="70" y="674">ISO 10628-style process symbol · model-derived visual contract · not an operating, isolation, or LOTO drawing</text>
 </svg>
