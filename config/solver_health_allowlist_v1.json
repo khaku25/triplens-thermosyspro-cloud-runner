@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "description": "Narrow translation-warning exceptions for the pinned ThermoSysPro 3.1/OpenModelica native build. Runtime numerical findings are never allowlisted.",
+  "rules": [
+    {
+      "id": "TSP31_VENDOR_CONNECTOR_BALANCE",
+      "stage": "build",
+      "category": "warning",
+      "pattern": "^\\[/workspace/vendor/ThermoSysPro/ThermoSysPro/.+\\] Warning: Connector [A-Za-z0-9_]+ is not balanced: The number of potential variables \\(\\d+\\) is not equal to the number of flow variables \\(\\d+\\)\\.$",
+      "max_occurrences": 400,
+      "justification": "Pinned upstream ThermoSysPro 3.1 uses signal-style fluid connectors that OpenModelica reports during translation; the exception is restricted to the vendored library path."
+    },
+    {
+      "id": "TRIPLENS_TSP_CONNECTOR_BALANCE",
+      "stage": "build",
+      "category": "warning",
+      "pattern": "^\\\"?\\[/workspace/modelica/TripLens_PumpPhysics\\.mo:.+\\] Warning: Connector C[12] is not balanced: The number of potential variables \\(4\\) is not equal to the number of flow variables \\(0\\)\\.$",
+      "max_occurrences": 8,
+      "justification": "The pump wrapper deliberately exposes the same ThermoSysPro 3.1 signal-style WaterSteam connectors; scope is limited to C1/C2 in this one adapter file."
+    },
+    {
+      "id": "TSP31_IF97_ORDERING",
+      "stage": "build",
+      "category": "warning",
+      "pattern": "^\\[/workspace/vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/IF97_packages\\.mo:.+\\] Warning: (?:cv|h) was used before it was defined \\(given a value\\)\\. Additional such uses may exist for the variable, but some messages were suppressed\\.$",
+      "max_occurrences": 8,
+      "justification": "This is a bounded translation diagnostic from the pinned upstream IF97 package, restricted to the exact package, variables, and message text observed in the reference build."
+    },
+    {
+      "id": "OPENMODELICA_ALIAS_START_CONFLICT",
+      "stage": "build",
+      "category": "warning",
+      "pattern": "^Warning: The model contains alias variables with redundant start and/or conflicting nominal values\\. It is recommended to resolve the conflicts, because otherwise the system could be hard to solve\\. To print the conflicting alias sets and the chosen candidates please use -d=aliasConflicts\\.$",
+      "max_occurrences": 4,
+      "justification": "The pinned reference model emits this exact aggregate alias diagnostic during translation; its small count is reported and capped while runtime numerical failures remain fatal."
+    },
+    {
+      "id": "OPENMODELICA_INITIAL_CONDITION_COUNT",
+      "stage": "build",
+      "category": "warning",
+      "pattern": "^Warning: The initial conditions are (?:not fully|over) specified\\. For more information set -d=initialization\\. In OMEdit Tools->Options->Simulation->Show additional information from the initialization process, in OMNotebook call setCommandLineOptions\\(\\\\\"-d=initialization\\\\\"\\)\\.$",
+      "max_occurrences": 4,
+      "justification": "The exact aggregate under/over-specification diagnostics are retained as visible bounded debt from the pinned reference model, contingent on successful runtime initialization."
+    }
+  ]
+}

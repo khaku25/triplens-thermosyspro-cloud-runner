@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import sys
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,7 @@ from native_ecms_opcua_client import (  # noqa: E402
     load_lp_rules,
     validate_lp_bfp,
 )
+from opcua_common import DataSample, Quality  # noqa: E402
 
 
 class NativeOPCUAContractTests(unittest.TestCase):
@@ -85,7 +87,27 @@ class NativeOPCUAContractTests(unittest.TestCase):
         self.assertTrue(lp_bfp_closed_loop_complete(row(5.0, True)))
         self.assertEqual(report["termination_reason"], "GT_TRIP_PLUS_30_SECONDS")
         self.assertEqual(report["post_gt_trip_observation_s"], 30.0)
-        events = build_native_events(passing_rows, 0.2)
+        base = datetime(2026, 9, 11, tzinfo=timezone.utc)
+        sample_rows = []
+        for index, values in enumerate(passing_rows):
+            stamp = base + timedelta(seconds=float(values["time_s"]))
+            sample_rows.append({
+                field: DataSample(
+                    canonical_tag=field,
+                    value=values.get(field),
+                    status_code=0,
+                    status_name="Good",
+                    source_timestamp=stamp,
+                    server_timestamp=stamp,
+                    received_timestamp=stamp + timedelta(milliseconds=1),
+                    quality=Quality.GOOD,
+                )
+                for field in {
+                    *(spec.field for spec in EVENT_SPECS),
+                    "lp_drum_level_m",
+                }
+            })
+        events = build_native_events(passing_rows, 0.2, sample_rows)
         self.assertEqual(
             {event["canonical_tag"] for event in events},
             {spec.tag for spec in EVENT_SPECS},

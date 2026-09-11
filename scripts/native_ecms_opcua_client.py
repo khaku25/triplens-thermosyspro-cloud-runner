@@ -9,14 +9,27 @@ import json
 import math
 import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 from generate_ecms import motor_feeder_state
+from opcua_common import (
+    BoundNode,
+    DataSample,
+    NodeBindingError,
+    NodeContract,
+    Quality,
+    assert_write_allowed,
+    bind_nodes,
+    sample_from_datavalue,
+)
 
 PROTOCOL = "TRIPLENS-NATIVE-OPCUA/1"
 ROOT = Path(__file__).resolve().parents[1]
 ALARM_RULES = ROOT / "config" / "dcs_alarm_rules.csv"
 TRIP_MATRIX = ROOT / "config" / "common_trip_matrix.csv"
+ECMS_WRITE_ROLE = "ECMS_COMMAND"
+MODEL_STALE_AFTER_S = 5.0
 
 
 @dataclass(frozen=True)
@@ -141,11 +154,19 @@ EVENT_FIELDS = (
     "provenance", "rule_status", "description",
 )
 
+DATAVALUE_FIELDS = (
+    "sequence", "simulation_time_s", "canonical_tag", "browse_name",
+    "direction", "evidence_kind", "value", "status_code", "status_name",
+    "source_timestamp_utc", "source_time_ms", "server_timestamp_utc",
+    "server_time_ms", "received_timestamp_utc", "received_time_ms", "quality",
+    "namespace_uri", "namespace_index", "node_id",
+)
+
 EVENT_SPECS = (
-    EventSpec("lp_fwp_trip_command_readback", "CMD.FWP-LP.TRIP", "ECMS", "COMMAND", "INFO", "RISE", 0.5, "BOOL", "LP feedwater pump Trip command"),
-    EventSpec("lp_fwp_trip_latch_readback", "CTRL.FWP-LP.TRIP_LATCH", "ECMS", "TRIP", "CRITICAL", "RISE", 0.5, "BOOL", "LP feedwater pump Trip latch"),
-    EventSpec("vcb_a02_trip_command_readback", "ECMS.VCB-A02.TRIP_CMD", "ECMS", "COMMAND", "CRITICAL", "RISE", 0.5, "BOOL", "VCB-A02 Trip command"),
-    EventSpec("vcb_a02_closed_readback", "ECMS.VCB-A02.CLOSED", "ECMS", "STATUS", "CRITICAL", "FALL", 0.5, "BOOL", "VCB-A02 auxiliary contact opened"),
+    EventSpec("lp_fwp_trip_command_readback", "CMD.FWP-LP.TRIP", "ECMS", "COMMAND", "INFO", "RISE", 0.5, "BOOL", "LP feedwater pump Trip command OPC UA write echo"),
+    EventSpec("lp_fwp_trip_latch_readback", "CTRL.FWP-LP.TRIP_LATCH", "ECMS", "TRIP", "CRITICAL", "RISE", 0.5, "BOOL", "ECMS-owned LP feedwater pump Trip latch OPC UA write echo"),
+    EventSpec("vcb_a02_trip_command_readback", "ECMS.VCB-A02.TRIP_CMD", "ECMS", "COMMAND", "CRITICAL", "RISE", 0.5, "BOOL", "VCB-A02 Trip command OPC UA write echo"),
+    EventSpec("vcb_a02_closed_readback", "ECMS.VCB-A02.CLOSED", "ECMS", "STATUS", "CRITICAL", "FALL", 0.5, "BOOL", "ECMS-owned VCB-A02 auxiliary contact OPC UA write echo"),
     EventSpec("lp_fwp_motor_energized", "FWP-LP.MOTOR_ENERGIZED", "DCS1", "STATUS", "CRITICAL", "FALL", 0.5, "BOOL", "LP feedwater pump motor de-energized"),
     EventSpec("lp_fwp_speed_proven", "DCS.FWP-LP.SPEED_PROVEN", "DCS1", "STATUS", "WARNING", "FALL", 0.5, "BOOL", "LP feedwater pump speed no longer proven"),
     EventSpec("lp_fwp_running", "DCS.FWP-LP.RUN_FB", "DCS1", "STATUS", "WARNING", "FALL", 0.5, "BOOL", "LP feedwater pump run feedback cleared"),
@@ -153,8 +174,8 @@ EVENT_SPECS = (
     EventSpec("lp_drum_level_l_alarm", "HRSG.LP.DRUM.LEVEL.L", "DCS2", "ALARM", "WARNING", "RISE", 0.5, "BOOL", "LP drum level low alarm after configured delay"),
     EventSpec("lp_drum_level_ll_alarm", "HRSG.LP.DRUM.LEVEL.LL", "DCS2", "ALARM", "CRITICAL", "RISE", 0.5, "BOOL", "LP drum level low-low alarm after configured delay"),
     EventSpec("common_gt_trip_request", "COMMON.GT_TRIP.REQUEST", "ECMS", "PROTECTION", "CRITICAL", "RISE", 0.5, "BOOL", "LP drum LL requested GT Trip"),
-    EventSpec("common_st_trip_request", "COMMON.ST_TRIP.REQUEST", "ECMS", "PROTECTION", "CRITICAL", "RISE", 0.5, "BOOL", "LP drum LL requested ST Trip"),
-    EventSpec("gt_trip_command_readback", "GT.TRIP.CMD", "DCS1", "COMMAND", "CRITICAL", "RISE", 0.5, "BOOL", "GT Trip command returned from OpenModelica"),
+    EventSpec("common_st_trip_request", "COMMON.ST_TRIP.REQUEST", "ECMS", "PROTECTION", "CRITICAL", "RISE", 0.5, "BOOL", "Independent LP drum LL ST Trip request OPC UA write echo"),
+    EventSpec("gt_trip_command_readback", "GT.TRIP.CMD", "DCS1", "COMMAND", "CRITICAL", "RISE", 0.5, "BOOL", "GT Trip request OPC UA write echo"),
     EventSpec("gt_trip_latch", "GT.TRIP.LATCH", "DCS1", "TRIP", "CRITICAL", "RISE", 0.5, "BOOL", "GT Trip latch asserted"),
     EventSpec("st_trip_latch", "ST.TRIP.LATCH", "DCS1", "TRIP", "CRITICAL", "RISE", 0.5, "BOOL", "ST Trip latch asserted"),
     EventSpec("gt_breaker_trip_command", "ECMS.52GT.TRIP_CMD", "ECMS", "COMMAND", "CRITICAL", "RISE", 0.5, "BOOL", "52GT Trip command asserted"),
@@ -174,10 +195,20 @@ EVENT_SPECS = (
 
 COMMAND_NODES = {
     "gt_trip_command_readback": "vppExternalTripCommandNative",
+    "common_st_trip_request": "vppExternalSTTripCommandNative",
     "lp_fwp_trip_command_readback": "vppLPFWPTripCommandNative",
     "lp_fwp_trip_latch_readback": "vppLPFWPTripLatchNative",
     "vcb_a02_trip_command_readback": "vppVCBA02TripCommandNative",
     "vcb_a02_closed_readback": "vppVCBA02ClosedNative",
+}
+
+# These ECMS results are calculated from a trusted physical LP-drum level
+# sample.  Their EVENT.csv evidence must retain that DataValue's quality and
+# SourceTimestamp instead of inventing GOOD/simulation-time metadata.
+DERIVED_EVENT_EVIDENCE = {
+    "lp_drum_level_l_alarm": "lp_drum_level_m",
+    "lp_drum_level_ll_alarm": "lp_drum_level_m",
+    "common_gt_trip_request": "lp_drum_level_m",
 }
 
 
@@ -202,6 +233,14 @@ def load_lp_rules() -> tuple[DelayedLowAlarm, DelayedLowAlarm, bool, bool]:
     )
 
 
+def resolve_ll_trip_requests(
+    ll_active: bool, ll_trips_gt: bool, ll_trips_st: bool
+) -> tuple[bool, bool]:
+    """Resolve GT and ST outputs independently from the common-trip matrix."""
+
+    return ll_active and ll_trips_gt, ll_active and ll_trips_st
+
+
 def connect(endpoint: str, timeout_s: float):
     from opcua import Client
 
@@ -222,31 +261,111 @@ def connect(endpoint: str, timeout_s: float):
     raise TimeoutError(f"native OPC UA server was not ready: {last_error}")
 
 
-def browse_nodes(client) -> dict[str, object]:
-    nodes: dict[str, object] = {}
-    for node in client.get_objects_node().get_children():
+def _walk_address_space(root) -> list[object]:
+    pending = list(root.get_children())
+    result: list[object] = []
+    visited: set[str] = set()
+    while pending:
+        node = pending.pop(0)
+        identity = str(getattr(node, "nodeid", node))
+        if identity in visited:
+            continue
+        visited.add(identity)
+        result.append(node)
         try:
-            name = node.get_browse_name().Name
+            pending.extend(node.get_children())
+        except Exception:
+            pass
+    return result
+
+
+def discover_model_namespace_uri(client, required: set[str]) -> str:
+    """Find the one namespace URI containing the complete model interface.
+
+    OpenModelica may assign a different namespace index and numeric NodeId on
+    another build or reconnect.  We discover the URI from NamespaceArray and
+    then perform the authoritative bind with ``(URI, BrowseName)``.  A mere
+    BrowseName-only match is never returned to the caller as a binding.
+    """
+
+    namespaces = tuple(str(uri) for uri in client.get_namespace_array())
+    names_by_uri: dict[str, set[str]] = {}
+    for node in _walk_address_space(client.get_objects_node()):
+        try:
+            qualified = node.get_browse_name()
+            index = int(qualified.NamespaceIndex)
+            name = str(qualified.Name)
         except Exception:
             continue
-        if name in nodes:
-            raise ValueError(f"duplicate OPC UA browse name: {name}")
-        nodes[name] = node
-    return nodes
+        if not 0 <= index < len(namespaces):
+            raise NodeBindingError(
+                f"OPC UA node {name} has unknown namespace index {index}"
+            )
+        # Namespace zero contains the solver-control exception, never the
+        # TripLens model-variable contract.
+        if index != 0:
+            names_by_uri.setdefault(namespaces[index], set()).add(name)
+    matches = [uri for uri, names in names_by_uri.items() if required <= names]
+    if len(matches) != 1:
+        detail = "none" if not matches else ", ".join(sorted(matches))
+        raise NodeBindingError(
+            "expected exactly one OPC UA model namespace containing every "
+            f"required BrowseName; candidates={detail}"
+        )
+    return matches[0]
 
 
-def wait_for_model_nodes(client, required: set[str], timeout_s: float) -> dict[str, object]:
+def model_node_contracts(namespace_uri: str) -> tuple[NodeContract, ...]:
+    command_contracts = tuple(
+        NodeContract(
+            canonical_tag=field,
+            namespace_uri=namespace_uri,
+            browse_name=browse_name,
+            direction="WRITE",
+            data_type="Double",
+            stale_after_s=MODEL_STALE_AFTER_S,
+            write_roles=(ECMS_WRITE_ROLE,),
+        )
+        for field, browse_name in COMMAND_NODES.items()
+    )
+    signal_contracts = tuple(
+        NodeContract(
+            canonical_tag=signal.field,
+            namespace_uri=namespace_uri,
+            browse_name=signal.node_name,
+            direction="READ",
+            data_type="Boolean" if signal.unit == "BOOL" else "Double",
+            stale_after_s=MODEL_STALE_AFTER_S,
+        )
+        for signal in SIGNALS
+    )
+    return command_contracts + signal_contracts
+
+
+def wait_for_model_bindings(
+    client, required: set[str], timeout_s: float
+) -> tuple[str, dict[str, BoundNode]]:
     deadline = time.monotonic() + timeout_s
-    nodes = {}
+    last_error: Exception | None = None
     while time.monotonic() < deadline:
-        nodes = browse_nodes(client)
-        if required <= nodes.keys():
-            return nodes
-        time.sleep(0.1)
-    raise ValueError("native OPC UA nodes missing: " + ", ".join(sorted(required - nodes.keys())))
+        try:
+            namespace_uri = discover_model_namespace_uri(client, required)
+            return namespace_uri, bind_nodes(
+                client, model_node_contracts(namespace_uri)
+            )
+        except NodeBindingError as exc:
+            last_error = exc
+            time.sleep(0.1)
+    raise NodeBindingError(f"native OPC UA model binding failed: {last_error}")
 
 
 def request_step(step_node, time_node, previous: float, ua, timeout_s: float) -> float:
+    """Advance the solver using OpenModelica's documented ns=0 exception.
+
+    ``ns=0;i=10000`` (step) and ``ns=0;i=10004`` (time) are server-control
+    nodes, not model variables.  Model READ/WRITE nodes must never use numeric
+    NodeIds; they are bound by Namespace URI plus BrowseName above.
+    """
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
         step_node.set_value(ua.Variant(True, ua.VariantType.Boolean))
@@ -259,6 +378,98 @@ def request_step(step_node, time_node, previous: float, ua, timeout_s: float) ->
     raise TimeoutError(f"native solver did not advance beyond {previous:.9f} s")
 
 
+def batch_read_model_samples(
+    client,
+    bindings: dict[str, BoundNode],
+    ua,
+    *,
+    received_timestamp: datetime | None = None,
+) -> dict[str, DataSample]:
+    """Read every model node in one service call without stripping DataValue."""
+
+    ordered = list(bindings.items())
+    values = client.uaclient.get_attributes(
+        [bound.node.nodeid for _, bound in ordered], ua.AttributeIds.Value
+    )
+    if len(values) != len(ordered):
+        raise ValueError(
+            "OPC UA batch read returned "
+            f"{len(values)} DataValues for {len(ordered)} requested nodes"
+        )
+    received = received_timestamp or datetime.now(timezone.utc)
+    return {
+        field: sample_from_datavalue(
+            bound.contract, data_value, received_timestamp=received
+        )
+        for (field, bound), data_value in zip(ordered, values)
+    }
+
+
+def require_trusted_model_samples(samples: dict[str, DataSample]) -> None:
+    """Fail closed before any untrusted value can drive protection logic."""
+
+    errors = []
+    for field, sample in samples.items():
+        if sample.quality != Quality.GOOD:
+            errors.append(f"{field}={sample.quality.value}")
+        elif sample.source_timestamp is None:
+            errors.append(f"{field}=MISSING_SOURCE_TIMESTAMP")
+    if errors:
+        raise ValueError("untrusted OPC UA DataValue: " + ", ".join(errors))
+
+
+def _timestamp_ms(value: datetime | None) -> int | str:
+    if value is None:
+        return ""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return round(value.timestamp() * 1000)
+
+
+def _timestamp_text(value: datetime | None) -> str:
+    if value is None:
+        return ""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc).isoformat()
+
+
+def datavalue_rows(
+    sequence: int,
+    simulation_time_s: float,
+    bindings: dict[str, BoundNode],
+    samples: dict[str, DataSample],
+) -> list[dict[str, object]]:
+    rows = []
+    for field, bound in bindings.items():
+        sample = samples[field]
+        rows.append({
+            "sequence": sequence,
+            "simulation_time_s": f"{simulation_time_s:.9f}",
+            "canonical_tag": field,
+            "browse_name": bound.contract.browse_name,
+            "direction": bound.contract.direction,
+            "evidence_kind": (
+                "WRITE_ECHO" if bound.contract.direction == "WRITE"
+                else "MODEL_FEEDBACK"
+            ),
+            "value": sample.value,
+            "status_code": "" if sample.status_code is None else sample.status_code,
+            "status_name": sample.status_name or "",
+            "source_timestamp_utc": _timestamp_text(sample.source_timestamp),
+            "source_time_ms": _timestamp_ms(sample.source_timestamp),
+            "server_timestamp_utc": _timestamp_text(sample.server_timestamp),
+            "server_time_ms": _timestamp_ms(sample.server_timestamp),
+            "received_timestamp_utc": _timestamp_text(sample.received_timestamp),
+            "received_time_ms": _timestamp_ms(sample.received_timestamp),
+            "quality": sample.quality.value,
+            "namespace_uri": bound.contract.namespace_uri,
+            "namespace_index": bound.namespace_index,
+            "node_id": bound.node_id,
+        })
+    return rows
+
+
 def number(value: object) -> float | int:
     if isinstance(value, bool):
         return int(value)
@@ -268,9 +479,16 @@ def number(value: object) -> float | int:
     return result
 
 
-def set_real_once(node, value: float, written: dict[str, float], field: str, ua) -> None:
+def set_real_once(
+    bound: BoundNode,
+    value: float,
+    written: dict[str, float],
+    field: str,
+    ua,
+) -> None:
     if written.get(field) != value:
-        node.set_value(ua.Variant(value, ua.VariantType.Double))
+        assert_write_allowed(bound, ECMS_WRITE_ROLE)
+        bound.node.set_value(ua.Variant(value, ua.VariantType.Double))
         written[field] = value
 
 
@@ -300,11 +518,15 @@ def event_crossed(spec: EventSpec, previous: float, current: float) -> bool:
 
 
 def build_native_events(
-    rows: list[dict[str, float | int]], reference_time: float
+    rows: list[dict[str, float | int]],
+    reference_time: float,
+    sample_rows: list[dict[str, DataSample]],
 ) -> list[dict[str, object]]:
+    if len(sample_rows) != len(rows):
+        raise ValueError("EVENT evidence rows do not align with physical frames")
     events: list[dict[str, object]] = []
     emitted: set[str] = set()
-    for previous_row, row in zip(rows, rows[1:]):
+    for index, (previous_row, row) in enumerate(zip(rows, rows[1:]), start=1):
         for spec in EVENT_SPECS:
             if spec.tag in emitted:
                 continue
@@ -313,17 +535,37 @@ def build_native_events(
             if not event_crossed(spec, previous, current):
                 continue
             event_time = float(row["time_s"])
+            evidence_field = DERIVED_EVENT_EVIDENCE.get(spec.field, spec.field)
+            try:
+                sample = sample_rows[index][evidence_field]
+            except KeyError as exc:
+                raise ValueError(
+                    f"EVENT {spec.tag} lacks OPC UA DataValue evidence: "
+                    f"{evidence_field}"
+                ) from exc
+            if sample.quality != Quality.GOOD or sample.source_timestamp is None:
+                raise ValueError(
+                    f"EVENT {spec.tag} has untrusted DataValue evidence: "
+                    f"quality={sample.quality.value}, "
+                    f"source_timestamp={sample.source_timestamp!r}"
+                )
+            is_write_echo = evidence_field in COMMAND_NODES
+            provenance = (
+                "LIVE_OPC_UA_WRITE_ECHO_DATAVALUE" if is_write_echo else
+                "DERIVED_FROM_OPC_UA_DATAVALUE" if spec.field in DERIVED_EVENT_EVIDENCE else
+                "LIVE_OPC_UA_OPENMODELICA_DATAVALUE"
+            )
             events.append({
                 "event_sequence": len(events) + 1,
-                "event_time_ms": round(event_time * 1000),
-                "source_time_ms": round(event_time * 1000),
+                "event_time_ms": _timestamp_ms(sample.received_timestamp),
+                "source_time_ms": _timestamp_ms(sample.source_timestamp),
                 "time_s": f"{event_time:.9f}",
                 "relative_to_event_s": f"{event_time - reference_time:.9f}",
                 "phase": "PRE_EVENT" if event_time < reference_time else
                     ("AT_EVENT" if math.isclose(event_time, reference_time, abs_tol=1e-9)
                      else "POST_EVENT"),
                 "source_system": spec.system,
-                "source_file": "ECMS-native-physical.csv",
+                "source_file": "OPCUA-DATAVALUE.csv",
                 "tag": spec.tag,
                 "canonical_tag": spec.tag,
                 # RISE/HIGH and an analog LOW threshold all mean that the
@@ -338,8 +580,8 @@ def build_native_events(
                 "value": current,
                 "threshold": spec.threshold,
                 "unit": spec.unit,
-                "quality": "GOOD",
-                "provenance": "LIVE_OPC_UA_OPENMODELICA",
+                "quality": sample.quality.value,
+                "provenance": provenance,
                 "rule_status": "ACTIVE",
                 "description": spec.description,
             })
@@ -474,23 +716,24 @@ def main() -> int:
     l_alarm, ll_alarm, ll_trips_gt, ll_trips_st = load_lp_rules()
     client = connect(args.endpoint, 180.0)
     rows: list[dict[str, float | int]] = []
+    sample_rows: list[dict[str, DataSample]] = []
+    data_value_evidence: list[dict[str, object]] = []
     runtime_error: str | None = None
+    model_namespace_uri: str | None = None
     try:
         required = {*COMMAND_NODES.values(), *(signal.node_name for signal in SIGNALS)}
-        nodes = wait_for_model_nodes(client, required, 60.0)
+        model_namespace_uri, bindings = wait_for_model_bindings(
+            client, required, 60.0
+        )
         time_node = client.get_node(ua.NodeId(10004, 0))
         step_node = client.get_node(ua.NodeId(10000, 0))
-        command_nodes = {field: nodes[name] for field, name in COMMAND_NODES.items()}
-        signal_nodes = [nodes[signal.node_name] for signal in SIGNALS]
-        current = float(time_node.get_value())
-        written = {
-            "gt_trip_command_readback": 0.0,
-            "lp_fwp_trip_command_readback": 0.0,
-            "lp_fwp_trip_latch_readback": 0.0,
-            "vcb_a02_trip_command_readback": 0.0,
-            "vcb_a02_closed_readback": 1.0,
+        command_nodes = {
+            field: bindings[field] for field in COMMAND_NODES
         }
+        current = float(time_node.get_value())
+        written: dict[str, float] = {}
         gt_trip_requested = False
+        st_trip_requested = False
         gt_trip_time: float | None = None
         command_rows = [{
             "time_s": str(args.command_time), "equipment_id": "FWP-LP",
@@ -508,13 +751,15 @@ def main() -> int:
                 breaker_open_delay_ms=80,
             )
             updates = {
+                # These are ECMS-owned writes.  Their later reads are transport
+                # echoes, not independent actuator feedback.
+                "gt_trip_command_readback": float(gt_trip_requested),
+                "common_st_trip_request": float(st_trip_requested),
                 "lp_fwp_trip_command_readback": float(command),
                 "lp_fwp_trip_latch_readback": float(electrical.trip_latched),
                 "vcb_a02_trip_command_readback": float(electrical.trip_commanded),
                 "vcb_a02_closed_readback": float(electrical.breaker_closed),
             }
-            if gt_trip_requested:
-                updates["gt_trip_command_readback"] = 1.0
             for field, value in updates.items():
                 set_real_once(command_nodes[field], value, written, field, ua)
             sent_ns = time.time_ns()
@@ -524,18 +769,25 @@ def main() -> int:
                 "ecms_command_sent": int(command),
                 "round_trip_ms": (time.time_ns() - sent_ns) / 1e6,
             }
-            for field, value in zip(command_nodes, client.get_values(list(command_nodes.values()))):
-                row[field] = int(float(value) >= 0.5)
-            for signal, value in zip(SIGNALS, client.get_values(signal_nodes)):
-                row[signal.field] = number(value)
+            samples = batch_read_model_samples(client, bindings, ua)
+            data_value_evidence.extend(
+                datavalue_rows(len(rows), next_time, bindings, samples)
+            )
+            require_trusted_model_samples(samples)
+            for field in command_nodes:
+                row[field] = int(float(samples[field].value) >= 0.5)
+            for signal in SIGNALS:
+                row[signal.field] = number(samples[signal.field].value)
             level = float(row["lp_drum_level_m"])
             row["lp_drum_level_l_alarm"] = int(l_alarm.update(next_time, level))
             row["lp_drum_level_ll_alarm"] = int(ll_alarm.update(next_time, level))
             ll_active = bool(row["lp_drum_level_ll_alarm"])
-            gt_trip_requested = ll_active and ll_trips_gt
+            gt_trip_requested, st_trip_requested = resolve_ll_trip_requests(
+                ll_active, ll_trips_gt, ll_trips_st
+            )
             row["common_gt_trip_request"] = int(gt_trip_requested)
-            row["common_st_trip_request"] = int(ll_active and ll_trips_st)
             rows.append(row)
+            sample_rows.append(samples)
             current = next_time
             if gt_trip_time is None and int(row["gt_trip_latch"]) == 1:
                 gt_trip_time = next_time
@@ -550,15 +802,24 @@ def main() -> int:
             client.disconnect()
         except (BrokenPipeError, ConnectionError, TimeoutError):
             pass
+    with (args.output_dir / "OPCUA-DATAVALUE.csv").open(
+        "w", encoding="utf-8", newline=""
+    ) as stream:
+        writer = csv.DictWriter(stream, fieldnames=DATAVALUE_FIELDS)
+        writer.writeheader()
+        writer.writerows(data_value_evidence)
     if not rows:
-        raise SystemExit("NATIVE_OPCUA_FAIL: no frames received")
+        raise SystemExit(
+            "NATIVE_OPCUA_FAIL: no trusted frames received"
+            + (f"; {runtime_error}" if runtime_error else "")
+        )
     with (args.output_dir / "ECMS-native-physical.csv").open(
         "w", encoding="utf-8", newline=""
     ) as stream:
         writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
-    events = build_native_events(rows, args.command_time)
+    events = build_native_events(rows, args.command_time, sample_rows)
     with (args.output_dir / "EVENT.csv").open(
         "w", encoding="utf-8", newline=""
     ) as stream:
@@ -567,6 +828,18 @@ def main() -> int:
         writer.writerows(events)
     report = validate_lp_bfp(rows, args.command_time, args.post_gt_trip_seconds)
     report["event_count"] = len(events)
+    report["model_namespace_uri"] = model_namespace_uri
+    report["model_binding"] = "NAMESPACE_URI_AND_BROWSE_NAME"
+    report["model_datavalue_rows"] = len(data_value_evidence)
+    report["model_datavalue_fields"] = [
+        "Value", "StatusCode", "SourceTimestamp", "ServerTimestamp"
+    ]
+    report["solver_control_exception"] = {
+        "namespace": 0,
+        "step_node_id": 10000,
+        "time_node_id": 10004,
+        "scope": "OPENMODELICA_SERVER_CONTROL_ONLY",
+    }
     report["runtime_error"] = runtime_error
     if runtime_error:
         report["status"] = "FAIL"
