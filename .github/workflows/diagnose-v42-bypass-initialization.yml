@@ -34,7 +34,7 @@ jobs:
             build_script: build_v42_bypass_static_feedwater_mass.mos
             executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass_OMCStart_StaticFeedwaterMass
             tearing: omcTearing
-            nls: hybrid
+            nls: homotopy
             use_warm: false
             iim: symbolic
     steps:
