@@ -27,6 +27,19 @@ class Signal:
     owner: str
 
 
+@dataclass(frozen=True)
+class EventSpec:
+    field: str
+    tag: str
+    system: str
+    event_class: str
+    severity: str
+    edge: str
+    threshold: float
+    unit: str
+    description: str
+
+
 @dataclass
 class DelayedLowAlarm:
     threshold: float
@@ -92,6 +105,8 @@ SIGNALS = (
     Signal("lp_fwp_check_valve_outlet_p_pa", "vppLPFWPCheckValveOutletPressurePa", "Pa", "DCS2"),
     Signal("lp_fwp_check_valve_resistance", "vppLPFWPCheckValveResistancePaSPerKg", "Pa.s/kg", "DCS2"),
     Signal("stg_power_w", "Alternateur.Welec", "W", "DCS1"),
+    Signal("gtg_power_mw", "vppGTGPowerMW", "MW", "DCS1"),
+    Signal("gtg_speed_rpm", "vppGTGSpeedRPM", "rpm", "DCS1"),
     Signal("gt_exhaust_flow_th", "vppGTExhaustMassFlowTH", "t/h", "DCS1"),
     Signal("gt_exhaust_temperature_k", "vppGTExhaustTemperatureK", "K", "DCS1"),
     Signal("hp_turbine_flow_th", "vppHPTurbineSteamFlowTH", "t/h", "DCS1"),
@@ -116,6 +131,45 @@ SIGNALS = (
     Signal("lp_drum_pressure_pa", "BallonBP.P", "Pa", "DCS2"),
     Signal("condenser_pressure_pa", "vppCondenserPressure", "Pa", "DCS2"),
     Signal("condenser_level_m", "vppCondenserLevel", "m", "DCS2"),
+)
+
+EVENT_FIELDS = (
+    "event_sequence", "event_time_ms", "source_time_ms", "time_s",
+    "relative_to_event_s", "phase", "source_system", "source_file", "tag",
+    "canonical_tag", "event_state", "event_class", "severity", "source_signal",
+    "old_value", "new_value", "value", "threshold", "unit", "quality",
+    "provenance", "rule_status", "description",
+)
+
+EVENT_SPECS = (
+    EventSpec("lp_fwp_trip_command_readback", "CMD.FWP-LP.TRIP", "ECMS", "COMMAND", "INFO", "RISE", 0.5, "BOOL", "LP feedwater pump Trip command"),
+    EventSpec("lp_fwp_trip_latch_readback", "CTRL.FWP-LP.TRIP_LATCH", "ECMS", "TRIP", "CRITICAL", "RISE", 0.5, "BOOL", "LP feedwater pump Trip latch"),
+    EventSpec("vcb_a02_trip_command_readback", "ECMS.VCB-A02.TRIP_CMD", "ECMS", "COMMAND", "CRITICAL", "RISE", 0.5, "BOOL", "VCB-A02 Trip command"),
+    EventSpec("vcb_a02_closed_readback", "ECMS.VCB-A02.CLOSED", "ECMS", "STATUS", "CRITICAL", "FALL", 0.5, "BOOL", "VCB-A02 auxiliary contact opened"),
+    EventSpec("lp_fwp_motor_energized", "FWP-LP.MOTOR_ENERGIZED", "DCS1", "STATUS", "CRITICAL", "FALL", 0.5, "BOOL", "LP feedwater pump motor de-energized"),
+    EventSpec("lp_fwp_speed_proven", "DCS.FWP-LP.SPEED_PROVEN", "DCS1", "STATUS", "WARNING", "FALL", 0.5, "BOOL", "LP feedwater pump speed no longer proven"),
+    EventSpec("lp_fwp_running", "DCS.FWP-LP.RUN_FB", "DCS1", "STATUS", "WARNING", "FALL", 0.5, "BOOL", "LP feedwater pump run feedback cleared"),
+    EventSpec("lp_fwp_check_valve_open", "TSP.FWP-LP.DISCHARGE_CHECK_VALVE.OPEN", "DCS2", "STATUS", "INFO", "FALL", 0.5, "BOOL", "LP feedwater pump discharge check valve closed"),
+    EventSpec("lp_drum_level_l_alarm", "HRSG.LP.DRUM.LEVEL.L", "DCS2", "ALARM", "WARNING", "RISE", 0.5, "BOOL", "LP drum level low alarm after configured delay"),
+    EventSpec("lp_drum_level_ll_alarm", "HRSG.LP.DRUM.LEVEL.LL", "DCS2", "ALARM", "CRITICAL", "RISE", 0.5, "BOOL", "LP drum level low-low alarm after configured delay"),
+    EventSpec("common_gt_trip_request", "COMMON.GT_TRIP.REQUEST", "ECMS", "PROTECTION", "CRITICAL", "RISE", 0.5, "BOOL", "LP drum LL requested GT Trip"),
+    EventSpec("common_st_trip_request", "COMMON.ST_TRIP.REQUEST", "ECMS", "PROTECTION", "CRITICAL", "RISE", 0.5, "BOOL", "LP drum LL requested ST Trip"),
+    EventSpec("gt_trip_command_readback", "GT.TRIP.CMD", "DCS1", "COMMAND", "CRITICAL", "RISE", 0.5, "BOOL", "GT Trip command returned from OpenModelica"),
+    EventSpec("gt_trip_latch", "GT.TRIP.LATCH", "DCS1", "TRIP", "CRITICAL", "RISE", 0.5, "BOOL", "GT Trip latch asserted"),
+    EventSpec("st_trip_latch", "ST.TRIP.LATCH", "DCS1", "TRIP", "CRITICAL", "RISE", 0.5, "BOOL", "ST Trip latch asserted"),
+    EventSpec("gt_breaker_trip_command", "ECMS.52GT.TRIP_CMD", "ECMS", "COMMAND", "CRITICAL", "RISE", 0.5, "BOOL", "52GT Trip command asserted"),
+    EventSpec("gt_breaker_closed", "ECMS.52GT.CLOSED", "ECMS", "STATUS", "CRITICAL", "FALL", 0.5, "BOOL", "52GT opened"),
+    EventSpec("st_breaker_trip_command", "ECMS.52ST.TRIP_CMD", "ECMS", "COMMAND", "CRITICAL", "RISE", 0.5, "BOOL", "52ST Trip command asserted"),
+    EventSpec("st_breaker_closed", "ECMS.52ST.CLOSED", "ECMS", "STATUS", "CRITICAL", "FALL", 0.5, "BOOL", "52ST opened"),
+    EventSpec("hp_admission_position_pu", "TSP.TURBINE.HP.ADMISSION.CLOSE_LS", "DCS1", "STATUS", "INFO", "LOW", 0.05, "pu", "HP turbine admission valve reached closed limit"),
+    EventSpec("ip_admission_position_pu", "TSP.TURBINE.IP.ADMISSION.CLOSE_LS", "DCS1", "STATUS", "INFO", "LOW", 0.05, "pu", "IP turbine admission valve reached closed limit"),
+    EventSpec("lp_admission_position_pu", "TSP.TURBINE.LP.ADMISSION.CLOSE_LS", "DCS1", "STATUS", "INFO", "LOW", 0.05, "pu", "LP turbine admission valve reached closed limit"),
+    EventSpec("hp_bypass_position_pu", "TSP.BYPASS.HP.OPEN_LS", "DCS2", "STATUS", "INFO", "HIGH", 0.95, "pu", "HP bypass valve reached open limit"),
+    EventSpec("lp_bypass_position_pu", "TSP.BYPASS.LP.OPEN_LS", "DCS2", "STATUS", "INFO", "HIGH", 0.95, "pu", "LP bypass valve reached open limit"),
+    EventSpec("hp_spray_position_pu", "TSP.BYPASS.HP.SPRAY.OPEN_LS", "DCS2", "STATUS", "INFO", "HIGH", 0.95, "pu", "HP bypass spray reached open limit"),
+    EventSpec("lp_spray_position_pu", "TSP.BYPASS.LP.SPRAY.OPEN_LS", "DCS2", "STATUS", "INFO", "HIGH", 0.95, "pu", "LP bypass spray reached open limit"),
+    EventSpec("gtg_power_mw", "GTG.ACTIVE_POWER.ZERO", "DCS1", "STATUS", "CRITICAL", "LOW", 1.0, "MW", "GT generator active power fell below 1 MW"),
+    EventSpec("gtg_speed_rpm", "GTG.SPEED.COASTDOWN", "DCS1", "STATUS", "WARNING", "LOW", 3564.0, "rpm", "GT generator speed fell below 99 percent"),
 )
 
 COMMAND_NODES = {
@@ -233,11 +287,77 @@ def lp_bfp_closed_loop_complete(row: dict[str, float | int]) -> bool:
     )
 
 
-def validate_lp_bfp(rows: list[dict[str, float | int]], command_time: float) -> dict[str, object]:
+def event_crossed(spec: EventSpec, previous: float, current: float) -> bool:
+    if spec.edge == "RISE":
+        return previous < spec.threshold <= current
+    if spec.edge == "FALL":
+        return previous >= spec.threshold > current
+    if spec.edge == "LOW":
+        return previous > spec.threshold >= current
+    if spec.edge == "HIGH":
+        return previous < spec.threshold <= current
+    raise ValueError(f"unknown event edge: {spec.edge}")
+
+
+def build_native_events(
+    rows: list[dict[str, float | int]], reference_time: float
+) -> list[dict[str, object]]:
+    events: list[dict[str, object]] = []
+    emitted: set[str] = set()
+    for previous_row, row in zip(rows, rows[1:]):
+        for spec in EVENT_SPECS:
+            if spec.tag in emitted:
+                continue
+            previous = float(previous_row[spec.field])
+            current = float(row[spec.field])
+            if not event_crossed(spec, previous, current):
+                continue
+            event_time = float(row["time_s"])
+            events.append({
+                "event_sequence": len(events) + 1,
+                "event_time_ms": round(event_time * 1000),
+                "source_time_ms": round(event_time * 1000),
+                "time_s": f"{event_time:.9f}",
+                "relative_to_event_s": f"{event_time - reference_time:.9f}",
+                "phase": "PRE_EVENT" if event_time < reference_time else
+                    ("AT_EVENT" if math.isclose(event_time, reference_time, abs_tol=1e-9)
+                     else "POST_EVENT"),
+                "source_system": spec.system,
+                "source_file": "ECMS-native-physical.csv",
+                "tag": spec.tag,
+                "canonical_tag": spec.tag,
+                # RISE/HIGH and an analog LOW threshold all mean that the
+                # named event condition became active.  FALL is reserved for
+                # source-state tags such as *.CLOSED or *.RUN_FB clearing.
+                "event_state": "1" if spec.edge in ("RISE", "HIGH", "LOW") else "0",
+                "event_class": spec.event_class,
+                "severity": spec.severity,
+                "source_signal": spec.field,
+                "old_value": previous,
+                "new_value": current,
+                "value": current,
+                "threshold": spec.threshold,
+                "unit": spec.unit,
+                "quality": "GOOD",
+                "provenance": "LIVE_OPC_UA_OPENMODELICA",
+                "rule_status": "ACTIVE",
+                "description": spec.description,
+            })
+            emitted.add(spec.tag)
+    return events
+
+
+def validate_lp_bfp(
+    rows: list[dict[str, float | int]],
+    command_time: float,
+    post_gt_trip_seconds: float = 30.0,
+) -> dict[str, object]:
     before = [row for row in rows if row["time_s"] < command_time]
     after = [row for row in rows if row["time_s"] >= command_time + 0.2]
     errors: list[str] = []
     changed = 0
+    gt_trip_time: float | None = None
+    observed_post_trip = 0.0
     if not before or not after:
         errors.append("capture lacks pre-Trip or post-breaker-open frames")
     else:
@@ -275,6 +395,34 @@ def validate_lp_bfp(rows: list[dict[str, float | int]], command_time: float) -> 
         for field in ("gt_breaker_closed", "st_breaker_closed"):
             if not any(int(row[field]) == 0 for row in after):
                 errors.append(f"breaker did not open: {field}")
+        post_trip_requirements = {
+            "hp_admission_position_pu": ("LOW", 0.05),
+            "ip_admission_position_pu": ("LOW", 0.05),
+            "lp_admission_position_pu": ("LOW", 0.05),
+            "hp_bypass_position_pu": ("HIGH", 0.95),
+            "lp_bypass_position_pu": ("HIGH", 0.95),
+            "hp_spray_position_pu": ("HIGH", 0.95),
+            "lp_spray_position_pu": ("HIGH", 0.95),
+            "gtg_power_mw": ("LOW", 1.0),
+            "gtg_speed_rpm": ("LOW", 3564.0),
+        }
+        for field, (direction, threshold) in post_trip_requirements.items():
+            values = [float(row[field]) for row in after]
+            reached = min(values) <= threshold if direction == "LOW" else max(values) >= threshold
+            if not reached:
+                errors.append(f"post-Trip terminal state missing: {field}")
+        trip_rows = [row for row in rows if int(row["gt_trip_latch"]) == 1]
+        if trip_rows:
+            gt_trip_time = float(trip_rows[0]["time_s"])
+            observed_post_trip = float(rows[-1]["time_s"]) - gt_trip_time
+            if observed_post_trip < post_gt_trip_seconds - 1e-6:
+                errors.append(
+                    "post-GT-Trip observation shorter than "
+                    f"{post_gt_trip_seconds:.3f} s: {observed_post_trip:.6f} s"
+                )
+        else:
+            gt_trip_time = None
+            observed_post_trip = 0.0
         changed = sum(
             not math.isclose(float(pre[s.field]), float(post[s.field]), abs_tol=1e-10)
             for s in SIGNALS if s.unit != "BOOL"
@@ -289,8 +437,12 @@ def validate_lp_bfp(rows: list[dict[str, float | int]], command_time: float) -> 
         "changed_physical_fields": changed,
         "command_time_s": command_time,
         "terminal_time_s": rows[-1]["time_s"] if rows else None,
-        "termination_reason": "CLOSED_LOOP_TERMINAL_STATE" if rows and
-            lp_bfp_closed_loop_complete(rows[-1]) else "STOP_TIME",
+        "gt_trip_time_s": gt_trip_time,
+        "post_gt_trip_observation_s": observed_post_trip,
+        "required_post_gt_trip_s": post_gt_trip_seconds,
+        "termination_reason": "GT_TRIP_PLUS_30_SECONDS" if
+            observed_post_trip >= post_gt_trip_seconds - 1e-6
+            else "STOP_TIME",
         "closed_loop": "FWP-LP Trip -> VCB-A02 open -> PompeAlimBP -> LP Drum LL -> GT/ST Trip",
         "errors": errors,
     }
@@ -306,19 +458,23 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--endpoint", default="opc.tcp://127.0.0.1:4841")
     parser.add_argument("--scenario", choices=("lp-bfp-trip",), default="lp-bfp-trip")
-    parser.add_argument("--stop-time", type=float, default=100.0)
+    parser.add_argument("--stop-time", type=float, default=120.0)
     parser.add_argument("--step-size", type=float, default=0.05)
     parser.add_argument("--command-time", type=float, default=20.0)
+    parser.add_argument("--post-gt-trip-seconds", type=float, default=30.0)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
     if args.step_size <= 0 or not math.isclose(
         args.stop_time / args.step_size, round(args.stop_time / args.step_size), abs_tol=1e-9
     ):
         parser.error("stop time must be an integer multiple of step size")
+    if args.post_gt_trip_seconds < 30.0:
+        parser.error("post-GT-Trip observation must be at least 30 seconds")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     l_alarm, ll_alarm, ll_trips_gt, ll_trips_st = load_lp_rules()
     client = connect(args.endpoint, 180.0)
     rows: list[dict[str, float | int]] = []
+    runtime_error: str | None = None
     try:
         required = {*COMMAND_NODES.values(), *(signal.node_name for signal in SIGNALS)}
         nodes = wait_for_model_nodes(client, required, 60.0)
@@ -335,6 +491,7 @@ def main() -> int:
             "vcb_a02_closed_readback": 1.0,
         }
         gt_trip_requested = False
+        gt_trip_time: float | None = None
         command_rows = [{
             "time_s": str(args.command_time), "equipment_id": "FWP-LP",
             "command": "TRIP", "sequence": "1",
@@ -380,8 +537,14 @@ def main() -> int:
             row["common_st_trip_request"] = int(ll_active and ll_trips_st)
             rows.append(row)
             current = next_time
-            if lp_bfp_closed_loop_complete(row):
+            if gt_trip_time is None and int(row["gt_trip_latch"]) == 1:
+                gt_trip_time = next_time
+            if gt_trip_time is not None and (
+                next_time >= gt_trip_time + args.post_gt_trip_seconds - 1e-9
+            ):
                 break
+    except Exception as exc:
+        runtime_error = f"{type(exc).__name__}: {exc}"
     finally:
         try:
             client.disconnect()
@@ -395,7 +558,27 @@ def main() -> int:
         writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
-    report = validate_lp_bfp(rows, args.command_time)
+    events = build_native_events(rows, args.command_time)
+    with (args.output_dir / "EVENT.csv").open(
+        "w", encoding="utf-8", newline=""
+    ) as stream:
+        writer = csv.DictWriter(stream, fieldnames=EVENT_FIELDS)
+        writer.writeheader()
+        writer.writerows(events)
+    report = validate_lp_bfp(rows, args.command_time, args.post_gt_trip_seconds)
+    report["event_count"] = len(events)
+    report["runtime_error"] = runtime_error
+    if runtime_error:
+        report["status"] = "FAIL"
+        report["errors"].insert(0, runtime_error)
+    missing_event_tags = sorted({spec.tag for spec in EVENT_SPECS} - {
+        str(event["canonical_tag"]) for event in events
+    })
+    if missing_event_tags:
+        report["status"] = "FAIL"
+        report["errors"].append(
+            "EVENT.csv missing required events: " + ", ".join(missing_event_tags)
+        )
     (args.output_dir / "native-opcua-proof.json").write_text(
         json.dumps(report, indent=2) + "\n", encoding="utf-8"
     )
