@@ -850,6 +850,14 @@ model CombinedCycle_TripTAC_Bypass_OMCStart
       steady_state=false,
       P0=322430,
       h0=561432.6820300613),
+    VolumePreTHP(steady_state=false, P0=12700000,
+      h0=3432930.9918569606),
+    MelangeurPreTMP(steady_state=false, P0=2400000,
+      h0=3517381.1285518324),
+    MelangeurPostTMP1(steady_state=false,
+      h0=3018320.043117248),
+    vppHPColdReheatVolume(steady_state=false, h0=3046260),
+    vppCondenserSteamVolume(steady_state=false, h0=2401030),
     EvaporateurHP(
       TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
         h0={1842386.3805685563,2019815.5675635953,2101914.802366878}),
@@ -918,16 +926,10 @@ model CombinedCycle_TripTAC_Bypass_OMCStart
     experiment(StartTime=0, StopTime=10000, Tolerance=0.001,
       Interval=20),
     Documentation(info="<html><p>OpenModelica staged-start variant. The
-    exchanger fluid enthalpy and wall-temperature states are initialized from
-    the documented operating-point starts instead of solving the whole HRSG
-    thermal network as one steady-state nonlinear block at t=0.</p></html>"));
-initial equation
-  // The last hydraulic node is a connector boundary, not an internal pipe
-  // state.  Pin the three live-steam outlet enthalpies during initialization
-  // so OpenModelica cannot select the non-physical h=0 algebraic root.
-  SurchauffeurHP3.TwoPhaseFlowPipe.h[5] = 3432930.991856911;
-  SurchauffeurMP3.TwoPhaseFlowPipe.h[5] = 3517381.1285517;
-  SurchauffeurBP.TwoPhaseFlowPipe.h[5] = 2919992.1127030067;
+    exchanger fluid enthalpy and wall-temperature states, plus the steam-side
+    mixing volumes, are initialized from the documented operating point
+    instead of solving the whole HRSG thermal network as one steady-state
+    nonlinear block at t=0.</p></html>"));
 end CombinedCycle_TripTAC_Bypass_OMCStart;
 
 model CombinedCycle_TripTAC_Bypass_OMCStart_NoFeedwaterInertia
