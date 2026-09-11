@@ -70,6 +70,20 @@ POINTS = (
           0.8, None, "vppIPAdmissionPos"),
 )
 
+# These are the only valve Cv variables that remained in the failed #52
+# initialization torn system after the condenser extraction back-edge was
+# isolated. Keep this set evidence-scoped: FWCV and turbine admission dynamics
+# are deliberately continuous.
+SAMPLED_PHYSICAL_POINT_IDS = frozenset({
+    "HP_STEAM_VLV",
+    "IP_STEAM_VLV",
+    "LP_FW_VLV",
+    "LP_TO_HPIP_FW_VLV",
+    "COND_EXTRACTION_VLV",
+    "HP_FW_ISO_VLV",
+    "IP_FW_ISO_VLV",
+})
+
 
 def clamp(expression: str) -> str:
     return f"noEvent(min(1, max(0, {expression})))"
@@ -103,7 +117,7 @@ def declarations() -> str:
             '    "Sampled pressure drop kept outside the continuous plant DAE";',
             f"  Real {stem}Target(min=0, max=1);",
         ))
-        if point.control_point_id == "COND_EXTRACTION_VLV":
+        if point.control_point_id in SAMPLED_PHYSICAL_POINT_IDS:
             lines.extend((
                 f"  discrete Real {stem}Applied(start={point.initial:g}, fixed=true, min=0, max=1)",
                 '    "Causal physical position held between 20 ms control scans";',
@@ -121,7 +135,7 @@ def equations() -> str:
             f"  {stem}Target = if {stem}FaultEnableNative >= 0.5 then {clamp(stem + 'FaultValueNative')} else {stem}Cmd;",
             f"  {stem}FaultActive = {stem}FaultEnableNative >= 0.5;",
         ))
-        if point.control_point_id == "COND_EXTRACTION_VLV":
+        if point.control_point_id in SAMPLED_PHYSICAL_POINT_IDS:
             lines.append(f"  {stem}Fb = {stem}Applied;")
         elif point.dynamic_state:
             lines.append(f"  {stem}Fb = {point.dynamic_state};")
@@ -134,15 +148,18 @@ def equations() -> str:
             f"  {stem}MassFlowTH = 3.6*{point.object_name}.Q;",
             "",
         ))
-    # The generated initialization trace places only the condenser extraction
-    # valve's AutoCmd -> Cmd -> Fb -> Cv chain inside the giant torn hydraulic
-    # system. Keep its command tags live, but apply Target through one 20 ms
-    # zero-order hold initialized at the original 0.8 position. Other valve
-    # commands remain continuous. Pressure telemetry shares the same event.
+    # The failed #52 initialization trace contains exactly seven physical valve
+    # Cv residuals. Keep their command tags live, but apply Target through one
+    # 20 ms zero-order hold initialized at each original valve position. FWCV
+    # and turbine admission commands remain continuous. DPPa shares the event.
     lines.extend((
         "  when sample(vppValvePressureSamplePeriodS,",
         "      vppValvePressureSamplePeriodS) then",
-        "    vppVlvCondExtractionApplied = vppVlvCondExtractionTarget;",
+        *(
+            f"    vppVlv{point.suffix}Applied = vppVlv{point.suffix}Target;"
+            for point in POINTS
+            if point.control_point_id in SAMPLED_PHYSICAL_POINT_IDS
+        ),
         *(
             f"    vppVlv{point.suffix}DPPa = "
             f"{point.object_name}.C1.P - {point.object_name}.C2.P;"
@@ -253,10 +270,21 @@ def patch_model(source: str) -> str:
             raise AssertionError(
                 f"{point.control_point_id}: physical valve input is not singly driven"
             )
-    if "discrete Real vppVlvCondExtractionApplied" not in source:
-        raise AssertionError("condenser extraction causal boundary is missing")
-    if "vppVlvCondExtractionFb = vppVlvCondExtractionApplied" not in source:
-        raise AssertionError("condenser extraction feedback bypasses causal boundary")
+    for point in POINTS:
+        stem = f"vppVlv{point.suffix}"
+        if point.control_point_id in SAMPLED_PHYSICAL_POINT_IDS:
+            if f"discrete Real {stem}Applied" not in source:
+                raise AssertionError(
+                    f"{point.control_point_id}: causal boundary is missing"
+                )
+            if f"{stem}Fb = {stem}Applied" not in source:
+                raise AssertionError(
+                    f"{point.control_point_id}: feedback bypasses causal boundary"
+                )
+        elif f"{stem}Applied" in source:
+            raise AssertionError(
+                f"{point.control_point_id}: untraced valve was sampled"
+            )
     return source
 
 

@@ -14,6 +14,7 @@ from patch_native_opcua_valve_controls import (  # noqa: E402
     FORBIDDEN_LEGACY_MARKER,
     MARKER,
     POINTS,
+    SAMPLED_PHYSICAL_POINT_IDS,
     patch_model as patch_native,
 )
 from patch_turbine_bypass_model import patch_model as patch_bypass  # noqa: E402
@@ -89,28 +90,42 @@ class NativeOpenModelicaValveAdapterTests(unittest.TestCase):
         self.assertEqual(self.patched.count("discrete output Real vppVlv"), 12)
         self.assertNotIn("output discrete Real", self.patched)
 
-    def test_only_condenser_extraction_physical_position_is_sampled(self) -> None:
+    def test_only_traced_physical_valve_positions_are_sampled(self) -> None:
+        expected_sampled = {
+            "HP_STEAM_VLV",
+            "IP_STEAM_VLV",
+            "LP_FW_VLV",
+            "LP_TO_HPIP_FW_VLV",
+            "COND_EXTRACTION_VLV",
+            "HP_FW_ISO_VLV",
+            "IP_FW_ISO_VLV",
+        }
+        self.assertEqual(SAMPLED_PHYSICAL_POINT_IDS, expected_sampled)
         self.assertEqual(self.patched.count("when sample("), 1)
         for point in POINTS:
             stem = f"vppVlv{point.suffix}"
             self.assertIn(f"Real {stem}Target(min=0, max=1);", self.patched)
             self.assertIn(f"\n  {stem}Target = if", self.patched)
-        self.assertEqual(self.patched.count("discrete Real vppVlv"), 1)
-        self.assertIn(
-            "discrete Real vppVlvCondExtractionApplied(start=0.8, "
-            "fixed=true, min=0, max=1)",
-            self.patched,
-        )
-        self.assertIn(
-            "    vppVlvCondExtractionApplied = "
-            "vppVlvCondExtractionTarget;",
-            self.patched,
-        )
-        self.assertIn(
-            "vppVlvCondExtractionFb = vppVlvCondExtractionApplied;",
-            self.patched,
-        )
+            if point.control_point_id in expected_sampled:
+                self.assertIn(
+                    f"discrete Real {stem}Applied(start={point.initial:g}, "
+                    "fixed=true, min=0, max=1)",
+                    self.patched,
+                )
+                self.assertIn(
+                    f"    {stem}Applied = {stem}Target;",
+                    self.patched,
+                )
+                self.assertIn(f"{stem}Fb = {stem}Applied;", self.patched)
+            else:
+                self.assertNotIn(f"{stem}Applied", self.patched)
+        self.assertEqual(self.patched.count("discrete Real vppVlv"), 7)
         self.assertNotIn("when {initial(), sample(", self.patched)
+
+    def test_trip_admission_targets_remain_continuous(self) -> None:
+        for suffix in ("HPTurbAdm", "IPTurbAdm", "LPSteam"):
+            self.assertNotIn(f"vppVlv{suffix}Applied", self.patched)
+            self.assertIn(f"Real vppVlv{suffix}Target", self.patched)
 
     def test_48_native_commands_are_top_level_opcua_inputs_not_dae_states(self) -> None:
         inputs = 0
