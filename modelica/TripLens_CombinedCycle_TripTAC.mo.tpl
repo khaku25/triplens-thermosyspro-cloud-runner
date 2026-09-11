@@ -26,6 +26,9 @@ model TripLens_CombinedCycle_TripTAC
   parameter Real vppGTGPowerDecayTau(unit="s") = 0.35;
   parameter Real vppGTGSpeedNormalRPM = 3600.0;
   parameter Real vppGTGCoastdownTau(unit="s") = 1.2;
+  parameter Modelica.SIunits.Pressure
+    vppHPTurbinePressureCrossoverScale = 1e5
+    "One-bar HP admission low-flow regularization during Trip closure";
 
   output Boolean vppGTTripCmd "GT Trip command observed by the physical model";
   output Boolean vppGTTripLatch "Modelica-produced GT Trip latch";
@@ -92,6 +95,8 @@ model TripLens_CombinedCycle_TripTAC
          h(start=3450835), h_vol(start=3450835))),
     TurbineHP(
       regularizePressureCrossover=true,
+      pressureDifferenceRegularization=
+        vppHPTurbinePressureCrossoverScale,
       Q(start=151.7690991976083, nominal=200),
       Ce(Q(start=151.7690991976083, nominal=200),
          h(start=3450835), h_vol(start=3450835)),

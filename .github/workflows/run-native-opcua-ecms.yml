@@ -203,7 +203,6 @@ jobs:
             -w /workspace/build \
             "$OPENMODELICA_IMAGE" \
             ./TripLens_Native_OPCUA \
-              -nlssMaxDensity=0 \
               -embeddedServer=opc-ua \
               -embeddedServerPort=4841 \
               -r=TripLens_Native_OPCUA_res.csv \
