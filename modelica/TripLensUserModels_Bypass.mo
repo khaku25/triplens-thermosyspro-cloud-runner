@@ -845,7 +845,11 @@ model CombinedCycle_TripTAC_Bypass_OMCStart
       P0=536006.6647383622, hl0=561432.6820300646,
       hv0=2682927.2097681486, Vf0=0.4206302498863762,
       zl(fixed=false)),
-    VolumeAlimMPHP(steady_state=false, h0=561432.6820300613),
+    VolumeAlimMPHP(
+      dynamic_mass_balance=true,
+      steady_state=false,
+      P0=322430,
+      h0=561432.6820300613),
     EvaporateurHP(
       TwoPhaseFlowPipe(steady_state=false, option_temperature=2,
         h0={1842386.3805685563,2019815.5675635953,2101914.802366878}),
