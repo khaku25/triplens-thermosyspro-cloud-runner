@@ -34,12 +34,10 @@ jobs:
       max-parallel: 2
       matrix:
         include:
-          - profile: valve-only
-            apply_native_valves: "true"
-            apply_hp_ip: "false"
-          - profile: hpip-only
-            apply_native_valves: "false"
-            apply_hp_ip: "true"
+          - profile: lp-only
+            apply_all_check_valves: "false"
+          - profile: lp-with-all-nrvs
+            apply_all_check_valves: "true"
     env:
       OPENMODELICA_IMAGE: openmodelica/openmodelica:v1.27.0-minimal
       THERMOSYSPRO_COMMIT: db81ae1b5a6a85f6c6c7693244cafa6087e18ff5
@@ -50,8 +48,7 @@ jobs:
 
       - name: Assemble ${{ matrix.profile }} physical boundary
         env:
-          APPLY_NATIVE_VALVES: ${{ matrix.apply_native_valves }}
-          APPLY_HP_IP: ${{ matrix.apply_hp_ip }}
+          APPLY_ALL_CHECK_VALVES: ${{ matrix.apply_all_check_valves }}
         run: |
           mkdir -p build/omhome vendor outputs/init-probe
           python3 scripts/render_modelica.py \
@@ -65,13 +62,9 @@ jobs:
           test "$(git -C vendor/ThermoSysPro rev-parse HEAD)" = "$THERMOSYSPRO_COMMIT"
           plant=vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
           python3 scripts/patch_turbine_bypass_model.py --source "$plant"
-          if [ "$APPLY_NATIVE_VALVES" = "true" ]; then
-            python3 scripts/patch_native_opcua_valve_controls.py --source "$plant"
-          fi
           python3 scripts/patch_lp_fwp_opcua.py --source "$plant"
-          python3 scripts/patch_all_fwp_check_valves.py --source "$plant"
-          if [ "$APPLY_HP_IP" = "true" ]; then
-            python3 scripts/patch_hp_ip_fwp_opcua.py --source "$plant"
+          if [ "$APPLY_ALL_CHECK_VALVES" = "true" ]; then
+            python3 scripts/patch_all_fwp_check_valves.py --source "$plant"
           fi
           python3 scripts/patch_stodola_turbine.py \
             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
