@@ -64,7 +64,7 @@ class NativeOpenModelicaValveAdapterTests(unittest.TestCase):
             self.assertIn(f"{stem}Cv = {point.object_name}.Cv", self.patched)
             self.assertIn(f"{stem}MassFlowTH = 3.6*{point.object_name}.Q", self.patched)
             self.assertIn(
-                f"output discrete Real {stem}DPPa",
+                f"discrete output Real {stem}DPPa",
                 self.patched,
             )
             sampled = (
@@ -86,7 +86,8 @@ class NativeOpenModelicaValveAdapterTests(unittest.TestCase):
             self.patched,
         )
         self.assertNotIn("when {initial(), sample(", self.patched)
-        self.assertEqual(self.patched.count("output discrete Real vppVlv"), 12)
+        self.assertEqual(self.patched.count("discrete output Real vppVlv"), 12)
+        self.assertNotIn("output discrete Real", self.patched)
 
     def test_48_native_command_memories_are_live_writable_states(self) -> None:
         derivatives = 0

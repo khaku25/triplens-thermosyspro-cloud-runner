@@ -99,7 +99,7 @@ def declarations() -> str:
             f"  output Boolean {stem}FaultActive;",
             f"  output Real {stem}Cv;",
             f"  output Real {stem}MassFlowTH(unit=\"t/h\");",
-            f"  output discrete Real {stem}DPPa(start=0, fixed=true, unit=\"Pa\")",
+            f"  discrete output Real {stem}DPPa(start=0, fixed=true, unit=\"Pa\")",
             '    "Sampled pressure drop kept outside the continuous plant DAE";',
             f"  Real {stem}Target(min=0, max=1);",
         ))
@@ -239,7 +239,7 @@ def patch_model(source: str) -> str:
             f"{point.object_name}.Ouv.signal = {stem}Fb",
             f"{stem}Cv = {point.object_name}.Cv",
             f"{stem}MassFlowTH = 3.6*{point.object_name}.Q",
-            f"output discrete Real {stem}DPPa",
+            f"discrete output Real {stem}DPPa",
             f"{stem}DPPa = {point.object_name}.C1.P - {point.object_name}.C2.P",
         )
         for token in required:
