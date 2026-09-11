@@ -41,14 +41,10 @@ DECLARATIONS = f'''
   parameter Real vppIPFWPHydraulicSpeedFloorRPM(unit="rev/min") = 700
     "Numerical floor for the IP static-pump curve; shaft speed remains physical";
 
-  output Real vppFWPHPRunEnableNative(start=1, fixed=true,
-    stateSelect=StateSelect.always);
-  output Real vppVCBA01ClosedNative(start=1, fixed=true,
-    stateSelect=StateSelect.always);
-  output Real vppFWPIPRunEnableNative(start=1, fixed=true,
-    stateSelect=StateSelect.always);
-  output Real vppVCBB01ClosedNative(start=1, fixed=true,
-    stateSelect=StateSelect.always);
+  input Real vppFWPHPRunEnableNative(start=1) = 1;
+  input Real vppVCBA01ClosedNative(start=1) = 1;
+  input Real vppFWPIPRunEnableNative(start=1) = 1;
+  input Real vppVCBB01ClosedNative(start=1) = 1;
 
   output Boolean vppHPFWPMotorEnergized;
   output Boolean vppHPFWPSpeedProven;
@@ -76,11 +72,7 @@ DECLARATIONS = f'''
 '''
 
 EQUATIONS = '''
-  // Continuous states are the writable native OpenModelica OPC UA boundary.
-  der(vppFWPHPRunEnableNative) = Modelica.Constants.eps*sin(time);
-  der(vppVCBA01ClosedNative) = Modelica.Constants.eps*sin(time);
-  der(vppFWPIPRunEnableNative) = Modelica.Constants.eps*sin(time);
-  der(vppVCBB01ClosedNative) = Modelica.Constants.eps*sin(time);
+  // Top-level inputs are writable native OpenModelica OPC UA boundaries.
 
   // Fail closed: both the DCS run permission and the breaker auxiliary
   // contact must be true before motor torque can be applied.
@@ -158,16 +150,16 @@ def patch_model(source: str) -> str:
     )
     source = replace_once(
         source,
-        "  // The native OPC UA server permits writes to continuous states.",
-        EQUATIONS + "  // The native OPC UA server permits writes to continuous states.",
+        "  // TRIPLENS_NATIVE_OPCUA_BOUNDARY_INSERTION_POINT",
+        EQUATIONS + "  // TRIPLENS_NATIVE_OPCUA_BOUNDARY_INSERTION_POINT",
         "HP/IP FWP equation insertion",
     )
 
     required = (
-        "vppFWPHPRunEnableNative(start=1",
-        "vppVCBA01ClosedNative(start=1",
-        "vppFWPIPRunEnableNative(start=1",
-        "vppVCBB01ClosedNative(start=1",
+        "input Real vppFWPHPRunEnableNative(start=1) = 1",
+        "input Real vppVCBA01ClosedNative(start=1) = 1",
+        "input Real vppFWPIPRunEnableNative(start=1) = 1",
+        "input Real vppVCBB01ClosedNative(start=1) = 1",
         "vppHPFWPMotorEnergized = vppFWPHPRunEnableNative >= 0.5 and",
         "vppIPFWPMotorEnergized = vppFWPIPRunEnableNative >= 0.5 and",
         "connect(vppHPFWPHydraulicSpeedCommand, PompeAlimHP.rpm_or_mpower)",

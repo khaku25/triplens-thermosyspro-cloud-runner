@@ -194,9 +194,9 @@ def patch_model(source: str) -> str:
     )
     source = replace_once(
         source,
-        "  // The native OPC UA server permits writes to continuous states.",
+        "  // TRIPLENS_NATIVE_OPCUA_BOUNDARY_INSERTION_POINT",
         equations()
-        + "\n  // The native OPC UA server permits writes to continuous states.",
+        + "\n  // TRIPLENS_NATIVE_OPCUA_BOUNDARY_INSERTION_POINT",
         "FMU equation insertion",
     )
 

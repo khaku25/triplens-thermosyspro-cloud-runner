@@ -84,13 +84,13 @@ def declarations() -> str:
     for point in POINTS:
         stem = f"vppVlv{point.suffix}"
         lines.extend((
-            f"  output Real {stem}ModeAutoNative(start=1, fixed=true, stateSelect=StateSelect.always)",
+            f"  input Real {stem}ModeAutoNative(start=1) = 1",
             '    "Writable native OPC UA AUTO/MAN selector; 1=AUTO, 0=MAN";',
-            f"  output Real {stem}ManualCmdNative(min=0, max=1, start={point.initial:g}, fixed=true, stateSelect=StateSelect.always)",
+            f"  input Real {stem}ManualCmdNative(min=0, max=1, start={point.initial:g}) = {point.initial:g}",
             '    "Writable native OPC UA manual position command in pu";',
-            f"  output Real {stem}FaultEnableNative(start=0, fixed=true, stateSelect=StateSelect.always)",
+            f"  input Real {stem}FaultEnableNative(start=0) = 0",
             '    "Writable native OPC UA fault selector; 1=forced position";',
-            f"  output Real {stem}FaultValueNative(min=0, max=1, start=0, fixed=true, stateSelect=StateSelect.always)",
+            f"  input Real {stem}FaultValueNative(min=0, max=1, start=0) = 0",
             '    "Writable native OPC UA forced applied position in pu";',
             f"  output Real {stem}AutoCmd(min=0, max=1);",
             f"  output Real {stem}Cmd(min=0, max=1);",
@@ -111,10 +111,6 @@ def equations() -> str:
     for point in POINTS:
         stem = f"vppVlv{point.suffix}"
         lines.extend((
-            f"  der({stem}ModeAutoNative) = Modelica.Constants.eps*sin(time);",
-            f"  der({stem}ManualCmdNative) = Modelica.Constants.eps*sin(time);",
-            f"  der({stem}FaultEnableNative) = Modelica.Constants.eps*sin(time);",
-            f"  der({stem}FaultValueNative) = Modelica.Constants.eps*sin(time);",
             f"  {stem}AutoCmd = {clamp(point.auto_expression)};",
             f"  {stem}Cmd = if {stem}ModeAutoNative >= 0.5 then {stem}AutoCmd else {clamp(stem + 'ManualCmdNative')};",
             f"  {stem}Target = if {stem}FaultEnableNative >= 0.5 then {clamp(stem + 'FaultValueNative')} else {stem}Cmd;",
@@ -224,18 +220,18 @@ def patch_model(source: str) -> str:
     )
     source = replace_once(
         source,
-        "  // The native OPC UA server permits writes to continuous states.",
-        equations() + "\n  // The native OPC UA server permits writes to continuous states.",
+        "  // TRIPLENS_NATIVE_OPCUA_BOUNDARY_INSERTION_POINT",
+        equations() + "\n  // TRIPLENS_NATIVE_OPCUA_BOUNDARY_INSERTION_POINT",
         "native OPC UA equation insertion",
     )
 
     for point in POINTS:
         stem = f"vppVlv{point.suffix}"
         required = (
-            f"output Real {stem}ModeAutoNative",
-            f"output Real {stem}ManualCmdNative",
-            f"output Real {stem}FaultEnableNative",
-            f"output Real {stem}FaultValueNative",
+            f"input Real {stem}ModeAutoNative",
+            f"input Real {stem}ManualCmdNative",
+            f"input Real {stem}FaultEnableNative",
+            f"input Real {stem}FaultValueNative",
             f"{point.object_name}.Ouv.signal = {stem}Fb",
             f"{stem}Cv = {point.object_name}.Cv",
             f"{stem}MassFlowTH = 3.6*{point.object_name}.Q",

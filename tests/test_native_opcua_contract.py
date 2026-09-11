@@ -142,6 +142,14 @@ class NativeOPCUAContractTests(unittest.TestCase):
         self.assertIn("connect(vppLPFWPCheckValve.C2, vanne_extraction.C1)", source)
         self.assertNotIn("fmuVlvCondExtractionTarget*vppLPFWPDischargeMultiplier", source)
         self.assertIn("vppLPFWPMassFlowTH = 3.6*PompeAlimBP.Q", source)
+        for name in (
+            "vppLPFWPTripCommandNative",
+            "vppLPFWPTripLatchNative",
+            "vppVCBA02TripCommandNative",
+            "vppVCBA02ClosedNative",
+        ):
+            self.assertIn(f"input Real {name}", source)
+            self.assertNotIn(f"der({name})", source)
 
         package = (ROOT / "modelica/TripLens_PumpPhysics.mo").read_text(
             encoding="utf-8"

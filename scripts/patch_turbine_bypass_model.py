@@ -224,11 +224,9 @@ PARAMETERS = f'''  // {MARKER}
 COMPONENTS = '''
   input Boolean vppExternalTripCommand(start=false) = false
     "Live ECMS GT Trip input exposed by the Co-Simulation FMU";
-  output Real vppExternalTripCommandNative(
-    start=0, fixed=true, stateSelect=StateSelect.always)
+  input Real vppExternalTripCommandNative(start=0) = 0
     "Writable native OPC UA GT Trip command memory";
-  output Real vppExternalSTTripCommandNative(
-    start=0, fixed=true, stateSelect=StateSelect.always)
+  input Real vppExternalSTTripCommandNative(start=0) = 0
     "Writable native OPC UA direct ST Trip command memory";
   discrete Boolean vppGTTripLatchInternal(start=false, fixed=true)
     "One-way resolved GT Trip latch, independent from the ST latch";
@@ -359,10 +357,7 @@ COMPONENTS = '''
 
 
 EQUATIONS = '''
-  // The native OPC UA server permits writes to continuous states. A negligible
-  // derivative keeps this command memory as a state without affecting physics.
-  der(vppExternalTripCommandNative) = Modelica.Constants.eps*sin(time);
-  der(vppExternalSTTripCommandNative) = Modelica.Constants.eps*sin(time);
+  // TRIPLENS_NATIVE_OPCUA_BOUNDARY_INSERTION_POINT
   when (vppUseExternalTripInput and
         (vppExternalTripCommand or vppExternalTripCommandNative >= 0.5)) or
        ((not vppUseExternalTripInput) and time >= vppTripTime) then

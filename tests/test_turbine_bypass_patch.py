@@ -137,6 +137,10 @@ class TurbineBypassPatchTests(unittest.TestCase):
         patched = patch_model(UPSTREAM_STUB)
 
         self.assertIn("vppExternalSTTripCommandNative", patched)
+        self.assertIn("input Real vppExternalTripCommandNative", patched)
+        self.assertIn("input Real vppExternalSTTripCommandNative", patched)
+        self.assertNotIn("der(vppExternalTripCommandNative)", patched)
+        self.assertNotIn("der(vppExternalSTTripCommandNative)", patched)
         self.assertIn("vppGTTripLatchInternal = true", patched)
         self.assertIn("vppSTTripLatch = true", patched)
         self.assertIn(

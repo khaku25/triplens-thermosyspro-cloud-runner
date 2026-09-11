@@ -35,7 +35,7 @@ equation
   connect(vppHPFWPCheckValve.C2, Vanne_alimentationMPHP1.C1);
   connect(PompeAlimMP.C2, vppIPFWPCheckValve.C1);
   connect(vppIPFWPCheckValve.C2, Vanne_alimentationMPHP2.C1);
-  // The native OPC UA server permits writes to continuous states.
+  // TRIPLENS_NATIVE_OPCUA_BOUNDARY_INSERTION_POINT
 end CombinedCycle_TripTAC;
 '''
 
@@ -66,6 +66,14 @@ class HPIPFWPOPCUATests(unittest.TestCase):
 
     def test_run_and_breaker_are_independent_fail_closed_boundaries(self) -> None:
         patched = self.patcher.patch_model(patched_input())
+        for name in (
+            "vppFWPHPRunEnableNative",
+            "vppVCBA01ClosedNative",
+            "vppFWPIPRunEnableNative",
+            "vppVCBB01ClosedNative",
+        ):
+            self.assertIn(f"input Real {name}", patched)
+            self.assertNotIn(f"der({name})", patched)
         self.assertIn(
             "vppHPFWPMotorEnergized = vppFWPHPRunEnableNative >= 0.5 and\n"
             "    vppVCBA01ClosedNative >= 0.5;",

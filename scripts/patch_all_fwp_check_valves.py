@@ -130,8 +130,8 @@ def patch_model(source: str) -> str:
     )
     source = replace_once(
         source,
-        "  // The native OPC UA server permits writes to continuous states.",
-        EQUATIONS + "  // The native OPC UA server permits writes to continuous states.",
+        "  // TRIPLENS_NATIVE_OPCUA_BOUNDARY_INSERTION_POINT",
+        EQUATIONS + "  // TRIPLENS_NATIVE_OPCUA_BOUNDARY_INSERTION_POINT",
         "all-FWP check-valve equation insertion",
     )
 

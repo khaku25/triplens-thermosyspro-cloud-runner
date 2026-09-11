@@ -89,8 +89,8 @@ class NativeOpenModelicaValveAdapterTests(unittest.TestCase):
         self.assertEqual(self.patched.count("discrete output Real vppVlv"), 12)
         self.assertNotIn("output discrete Real", self.patched)
 
-    def test_48_native_command_memories_are_live_writable_states(self) -> None:
-        derivatives = 0
+    def test_48_native_commands_are_top_level_opcua_inputs_not_dae_states(self) -> None:
+        inputs = 0
         for point in POINTS:
             stem = f"vppVlv{point.suffix}"
             for suffix in (
@@ -100,12 +100,11 @@ class NativeOpenModelicaValveAdapterTests(unittest.TestCase):
                 "FaultValueNative",
             ):
                 name = f"{stem}{suffix}"
-                self.assertIn(f"output Real {name}", self.patched)
-                self.assertIn(
-                    f"der({name}) = Modelica.Constants.eps*sin(time)", self.patched
-                )
-                derivatives += 1
-        self.assertEqual(derivatives, 48)
+                self.assertIn(f"input Real {name}", self.patched)
+                self.assertNotIn(f"der({name})", self.patched)
+                inputs += 1
+        self.assertEqual(inputs, 48)
+        self.assertNotIn("StateSelect.always", self.patched)
 
     def test_fault_override_does_not_rewrite_selected_command(self) -> None:
         for point in POINTS:

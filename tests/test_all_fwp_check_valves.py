@@ -50,7 +50,7 @@ equation
   connect(PompeAlimMP.C2, Vanne_alimentationMPHP2.C1);
   connect(PompeAlimBP.C2, vppLPFWPCheckValve.C1);
   connect(vppLPFWPCheckValve.C2, vanne_extraction.C1);
-  // The native OPC UA server permits writes to continuous states.
+  // TRIPLENS_NATIVE_OPCUA_BOUNDARY_INSERTION_POINT
 end CombinedCycle_TripTAC;
 '''
         patched = patcher.patch_model(source)
