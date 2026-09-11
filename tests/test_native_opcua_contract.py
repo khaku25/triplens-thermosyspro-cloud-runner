@@ -73,7 +73,10 @@ class NativeOPCUAContractTests(unittest.TestCase):
         ):
             self.assertIn(name, source)
         self.assertIn("connect(vppLPFWPSpeedCommand, PompeAlimBP.rpm_or_mpower)", source)
-        self.assertIn("parameter Real vppLPFWPResidualSpeedRPM = 0", source)
+        self.assertIn("parameter Real vppLPFWPNumericalSpeedFloorRPM = 700", source)
+        self.assertIn(
+            "fmuVlvCondExtractionTarget*vppLPFWPDischargeMultiplier", source
+        )
         self.assertIn("vppLPFWPMassFlowTH = 3.6*PompeAlimBP.Q", source)
 
     def test_tag_contract_has_all_27_scenario_tags(self) -> None:
@@ -92,8 +95,8 @@ class NativeOPCUAContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("-embeddedServer=opc-ua", workflow)
-        self.assertIn('LIVE_STOP_TIME_S: "80"', workflow)
-        self.assertIn('LIVE_STEP_SIZE_S: "0.04"', workflow)
+        self.assertIn('LIVE_STOP_TIME_S: "100"', workflow)
+        self.assertIn('LIVE_STEP_SIZE_S: "0.02"', workflow)
         self.assertIn("--intervals 2000", workflow)
         self.assertIn("scripts/patch_fmu_valve_controls.py", workflow)
         self.assertIn("scripts/patch_lp_fwp_opcua.py", workflow)

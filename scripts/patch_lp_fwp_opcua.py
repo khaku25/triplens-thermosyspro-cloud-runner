@@ -17,9 +17,15 @@ REQUIRED_MARKERS = (
 DECLARATIONS = f'''
   // {MARKER}
   parameter Real vppLPFWPNormalSpeedRPM = 1400;
-  parameter Real vppLPFWPResidualSpeedRPM = 0;
+  // Numerical hydraulic floor: the upstream pump/IF97 equations leave their
+  // valid domain during a direct zero-rpm transient. Electrical de-energization
+  // remains authoritative through vppLPFWPMotorEnergized=false.
+  parameter Real vppLPFWPNumericalSpeedFloorRPM = 700;
   parameter Real vppLPFWPCoastdown95(unit="s") = 2.0;
   parameter Real vppLPFWPCoastdownTau(unit="s") = vppLPFWPCoastdown95/(-log(0.05));
+  parameter Real vppLPFWPDischargeClose95(unit="s") = 0.2;
+  parameter Real vppLPFWPDischargeCloseTau(unit="s") =
+    vppLPFWPDischargeClose95/(-log(0.05));
   output Real vppLPFWPTripCommandNative(start=0, fixed=true, stateSelect=StateSelect.always);
   output Real vppLPFWPTripLatchNative(start=0, fixed=true, stateSelect=StateSelect.always);
   output Real vppVCBA02TripCommandNative(start=0, fixed=true, stateSelect=StateSelect.always);
@@ -28,6 +34,7 @@ DECLARATIONS = f'''
   output Boolean vppLPFWPSpeedProven;
   output Boolean vppLPFWPRunning;
   output Real vppLPFWPSpeedRPM(start=1400, fixed=true);
+  output Real vppLPFWPDischargeMultiplier(start=1, fixed=true, min=0, max=1);
   output Real vppLPFWPMassFlowTH(unit="t/h");
   output Real vppLPFWPVolumeFlowM3S(unit="m3/s");
   output Real vppLPFWPDeltaPPa(unit="Pa");
@@ -42,9 +49,12 @@ EQUATIONS = '''
   der(vppVCBA02TripCommandNative) = Modelica.Constants.eps*sin(time);
   der(vppVCBA02ClosedNative) = Modelica.Constants.eps*sin(time);
   vppLPFWPMotorEnergized = vppVCBA02ClosedNative >= 0.5;
+  der(vppLPFWPDischargeMultiplier) =
+    ((if vppLPFWPMotorEnergized then 1 else 0)
+      - vppLPFWPDischargeMultiplier)/vppLPFWPDischargeCloseTau;
   der(vppLPFWPSpeedRPM) =
     ((if vppLPFWPMotorEnergized then vppLPFWPNormalSpeedRPM
-      else vppLPFWPResidualSpeedRPM) - vppLPFWPSpeedRPM)/vppLPFWPCoastdownTau;
+      else vppLPFWPNumericalSpeedFloorRPM) - vppLPFWPSpeedRPM)/vppLPFWPCoastdownTau;
   vppLPFWPSpeedCommand.signal = vppLPFWPSpeedRPM;
   connect(vppLPFWPSpeedCommand, PompeAlimBP.rpm_or_mpower);
   vppLPFWPSpeedProven = vppLPFWPSpeedRPM >= 0.9*vppLPFWPNormalSpeedRPM;
@@ -90,6 +100,13 @@ def patch_model(source: str) -> str:
     source = remove_connect(source, "PompeAlimBP.rpm_or_mpower, arretPomesBP.y")
     source = replace_once(
         source,
+        "  fmuVlvCondExtractionFb = fmuVlvCondExtractionTarget;",
+        "  fmuVlvCondExtractionFb = fmuVlvCondExtractionTarget"
+        "*vppLPFWPDischargeMultiplier;",
+        "LP FWP discharge isolation",
+    )
+    source = replace_once(
+        source,
         "  // The native OPC UA server permits writes to continuous states.",
         EQUATIONS + "  // The native OPC UA server permits writes to continuous states.",
         "LP FWP equation insertion",
@@ -98,6 +115,7 @@ def patch_model(source: str) -> str:
         "output Real vppLPFWPTripCommandNative(",
         "output Real vppVCBA02ClosedNative(",
         "connect(vppLPFWPSpeedCommand, PompeAlimBP.rpm_or_mpower)",
+        "fmuVlvCondExtractionTarget*vppLPFWPDischargeMultiplier",
         "vppLPFWPMassFlowTH = 3.6*PompeAlimBP.Q",
     )
     for token in required:
