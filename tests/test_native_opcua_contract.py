@@ -92,6 +92,7 @@ class NativeOPCUAContractTests(unittest.TestCase):
         )
         self.assertIn("model BreakerInertialPumpDrive", package)
         self.assertIn("model SpringLoadedCheckValve", package)
+        self.assertIn("opening = noEvent(max(0, min(1, openingState)))", package)
 
     def test_tag_contract_has_all_30_scenario_tags(self) -> None:
         path = ROOT / "data/opcua_lp_bfp_nodes_v1.csv"
@@ -119,7 +120,7 @@ class NativeOPCUAContractTests(unittest.TestCase):
         self.assertIn('LIVE_STOP_TIME_S: "100"', workflow)
         self.assertIn('LIVE_STEP_SIZE_S: "0.04"', workflow)
         self.assertIn('LIVE_COMMAND_TIME_S: "20"', workflow)
-        self.assertIn("--intervals 2000", workflow)
+        self.assertIn("--intervals 2500", workflow)
         self.assertIn("scripts/patch_fmu_valve_controls.py", workflow)
         self.assertIn("scripts/patch_lp_fwp_opcua.py", workflow)
         self.assertIn("modelica/TripLens_PumpPhysics.mo", workflow)

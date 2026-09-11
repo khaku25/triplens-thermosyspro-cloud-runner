@@ -82,7 +82,9 @@ package TripLens_PumpPhysics
       "Position below which the valve reports closed";
 
     Boolean ouvert "Valve state";
-    Real opening(start=1, fixed=true, min=0, max=1) "Continuous flap position";
+    Real opening(min=0, max=1) "Bounded continuous flap position";
+    Real openingState(start=1, fixed=true)
+      "Integrated flap state before numerical output limiting";
     Real valveTarget(min=0, max=1);
     Real effectiveResistance(unit="Pa.s/kg");
     Modelica.SIunits.MassFlowRate Q "Mass flow rate";
@@ -111,8 +113,9 @@ package TripLens_PumpPhysics
     // avoids an ill-conditioned hydraulic jump in the full plant equations.
     valveTarget = noEvent(0.5 + 0.5*Modelica.Math.tanh((Q - closeFlow)/
       flowTransition));
-    der(opening) = (valveTarget - opening)/noEvent(if valveTarget < opening
+    der(openingState) = (valveTarget - openingState)/noEvent(if valveTarget < openingState
       then closeTime else reopenTime);
+    opening = noEvent(max(0, min(1, openingState)));
     effectiveResistance = openResistance + (closedResistance -
       openResistance)*(1 - opening)^2;
     deltaP = effectiveResistance*Q;
@@ -155,4 +158,3 @@ package TripLens_PumpPhysics
   end BoundaryMotorPump;
 
 end TripLens_PumpPhysics;
-
