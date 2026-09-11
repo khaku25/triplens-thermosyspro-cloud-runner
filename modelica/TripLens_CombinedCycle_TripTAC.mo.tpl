@@ -147,7 +147,8 @@ equation
   // The thermal plant and the reduced-order electrical boundary are solved in
   // one Modelica result file. Downstream ECMS code must observe these outputs;
   // it is not allowed to recreate them from Python timing constants.
-  vppGTTripCmd = if vppUseExternalTripInput then vppExternalTripCommand
+  vppGTTripCmd = if vppUseExternalTripInput then
+    (vppExternalTripCommand or vppExternalTripCommandNative >= 0.5)
     else enableGTTrip and time >= eventTime;
   vppGTTripLatch = vppSTTripLatch;
   vppSTTripLatchPublished = vppSTTripLatch;
