@@ -159,7 +159,6 @@ def run_engine(
         str(package_root / "scripts" / "vpp_alarm_engine.py"),
         "--raw", str(capture),
         "--input-kind", "raw",
-        "--observed-gt-trip-source", "ecms_command_sent",
         "--event-time", f"{event_time:.12g}",
         "--output-dir", str(staging),
         "--a-settings", str(a_settings),
@@ -196,9 +195,17 @@ def import_artifact(
         raise RuntimeError("native OPC UA proof status is not PASS")
     if proof.get("transport_scope") != "REAL_OPC_UA_TCP_INSIDE_GITHUB_HOSTED_RUNNER":
         raise RuntimeError("artifact does not prove real OPC UA TCP inside the GitHub runner")
-    event_time = float(proof.get("command_time_s"))
+    if proof.get("scenario_id") != "RUNNING_52GT_OPEN_TO_GT_TRIP":
+        raise RuntimeError("artifact is not the running-52GT-open causal scenario")
+    if proof.get("root_cause") != "52GT_OPEN_WHILE_GT_IN_SERVICE":
+        raise RuntimeError("artifact does not identify 52GT open as the root input")
+    if proof.get("causal_order_verified") is not True:
+        raise RuntimeError("artifact does not prove 52GT-open-before-GT-Trip ordering")
+    if proof.get("actual_plant_logic_used") is not False:
+        raise RuntimeError("artifact unexpectedly claims actual plant logic")
+    event_time = float(proof.get("root_cause_time_s"))
     if not math.isfinite(event_time) or event_time <= 0:
-        raise RuntimeError("OPC UA proof has an invalid command_time_s")
+        raise RuntimeError("OPC UA proof has an invalid root_cause_time_s")
     capture_hash = sha256(capture)
 
     output_root.mkdir(parents=True, exist_ok=True)
@@ -249,6 +256,14 @@ def import_artifact(
                 "opcua_client_implementation": proof.get("client_implementation", ""),
                 "matlab_release": proof.get("matlab_release", ""),
             },
+            "scenario": {
+                "id": proof["scenario_id"],
+                "root_cause": proof["root_cause"],
+                "root_cause_time_s": event_time,
+                "causal_order_verified": True,
+                "actual_plant_logic_used": False,
+                "policy_status": proof.get("breaker_open_trip_policy", ""),
+            },
             "github": {
                 "repository": repository,
                 "ref": ref,
@@ -261,7 +276,10 @@ def import_artifact(
                 "file": received.name,
                 "sha256": capture_hash,
                 "mutated": False,
-                "command_time_s": event_time,
+                "root_cause_time_s": event_time,
+                "physical_trip_readback_time_s": proof.get(
+                    "opcua_trip_readback_time_s"
+                ),
             },
             "root_cause_label_injected": False,
         })

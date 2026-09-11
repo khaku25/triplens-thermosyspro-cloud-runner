@@ -30,6 +30,61 @@
         "QUALITY"
       ]
     },
+    "cb_52gt_open_command": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "cb_52gt_open_command_sent",
+        "CB_52GT_OPEN_CMD"
+      ]
+    },
+    "ecms_cb_52gt_closed": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "ecms_cb_52gt_closed",
+        "ECMS.52GT.CLOSED",
+        "52GT.CLOSED"
+      ]
+    },
+    "gt_in_service": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "gt_in_service",
+        "GT.IN_SERVICE"
+      ]
+    },
+    "gt_trip_from_52gt_open": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "gt_trip_from_52gt_open",
+        "GT.TRIP.FROM_52GT_OPEN"
+      ]
+    },
+    "gt_trip_command_readback": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "gt_trip_command_readback",
+        "GT.TRIP.OPCUA.READBACK"
+      ]
+    },
+    "gt_trip_latch": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "gt_trip_latch",
+        "GT.TRIP.PHYSICS.LATCH"
+      ]
+    },
     "stg_power_w": {
       "required": false,
       "unit": "W",

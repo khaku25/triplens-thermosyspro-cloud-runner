@@ -154,6 +154,7 @@ class TripContractTests(unittest.TestCase):
         rules = load_common_trip_matrix(ROOT / "config/common_trip_matrix.csv")
         expected = {
             "DIRECT_GT_TRIP": (1000, 1000),
+            "GT_BREAKER_OPEN_WHILE_RUNNING": (1000, 1000),
             "DIRECT_ST_TRIP": (None, 1000),
             "HP_DRUM_HH": (None, 1000),
             "IP_DRUM_HH": (None, 1000),

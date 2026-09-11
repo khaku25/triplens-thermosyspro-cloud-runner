@@ -38,10 +38,11 @@ ECMSVPP
 ### GitHub OPC UA와 Cloud ECMS 연결
 
 `ECMS_GITHUB`은 `khaku25/triplens-matlab-cosim-runner`의 검증된
-`matlab-native-opcua-ecms.yml`을 호출합니다. GitHub에서는 Simulink가 GT Trip
-명령을 만든 뒤 OPC UA로 native OpenModelica/ThermoSysPro 3.1에 쓰고, 같은
-연결로 물리 피드백을 읽습니다. 내려받은 수신 CSV는 변경하지 않으며, ProcessBus,
-DCS1/DCS2, ECMS 계산은 이 Cloud 패키지에서만 수행합니다.
+`matlab-native-opcua-ecms.yml`을 호출합니다. GitHub에서는 Simulink가 운전 중
+52GT OPEN 명령과 실제 `52GT.CLOSED=1→0` 피드백을 순서대로 만든 뒤, 그 피드백에서
+도출된 GT Trip 요청만 OPC UA로 native OpenModelica/ThermoSysPro 3.1에 씁니다.
+같은 연결로 바이패스를 포함한 물리 피드백을 읽습니다. 내려받은 수신 CSV는 변경하지
+않으며, ProcessBus, DCS1/DCS2, ECMS 계산은 이 Cloud 패키지에서만 수행합니다.
 
 먼저 GitHub fine-grained token에 해당 저장소의 **Actions read/write** 권한을 주고,
 토큰을 파일이나 MATLAB 코드에 적지 말고 환경변수로만 설정합니다.
@@ -53,10 +54,11 @@ ECMS_GITHUB
 
 실행 후 `runs/MATLAB_GITHUB_OPCUA_*`에 원본 OPC UA 수신 CSV, 증명 JSON,
 ProcessBus, DCS1/DCS2 및 ECMS 결과가 함께 저장되고 `ECMS_RESULT`가 같은 결과를
-다시 엽니다. Editor의 `GitHub OPC UA 검증 GT Trip 실행` 버튼은 현재 A 설정과
-설비표를 후단 Cloud 계산에 적용합니다. 원격 물리 명령은 현재 검증 계약대로
-0.25초 GT Trip 한 종류이며, Editor의 임의 Command 큐를 원격 물리에 보내지는
-않습니다.
+다시 엽니다. Editor의 `GitHub OPC UA 52GT 개방→GT Trip 실행` 버튼은 현재 A
+설정과 설비표를 후단 Cloud 계산에 적용합니다. 원격 원인 입력은 현재 검증 계약대로
+0.25초의 운전 중 52GT 개방 한 종류이며, 현장 ECMS 로직은 사용하지 않습니다.
+`GT_IN_SERVICE AND NOT 52GT.CLOSED`는 VPP 잠정 정책으로 명시됩니다. Editor의
+임의 Command 큐를 원격 물리에 보내지는 않습니다.
 
 처음 `ECMS_RESULT`에서 열리는 번들 예제는 화면과 파일 구조 확인용
 `BUNDLED_SYNTHETIC_DEMO`이며 실제 ThermoSysPro 계산으로 표시되지 않습니다.

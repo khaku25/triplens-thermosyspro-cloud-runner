@@ -16,8 +16,10 @@ class GitHubCloudBridgeTests(unittest.TestCase):
     def make_artifact(self, target: Path) -> None:
         target.mkdir(parents=True)
         fields = [
-            "sequence", "time_s", "ecms_command_sent",
-            "gt_trip_command_readback", "ecms_cb_52gt_closed", "round_trip_ms",
+            "sequence", "time_s", "cb_52gt_open_command_sent",
+            "ecms_cb_52gt_closed", "gt_in_service",
+            "gt_trip_from_52gt_open", "ecms_command_sent",
+            "gt_trip_command_readback", "round_trip_ms",
             "gt_trip_latch", "stg_power_w", "gt_exhaust_flow_th",
             "gt_exhaust_temperature_k", "hp_turbine_flow_th",
             "ip_turbine_flow_th", "lp_turbine_flow_th", "hp_drum_level_m",
@@ -25,14 +27,22 @@ class GitHubCloudBridgeTests(unittest.TestCase):
             "ip_drum_pressure_pa", "lp_drum_pressure_pa",
         ]
         rows = []
-        for sequence, time_s in enumerate((0.10, 0.20, 0.25, 0.50, 1.00)):
-            tripped = time_s >= 0.25
+        # Root command, breaker feedback, derived Trip and physical response
+        # are deliberately separated so the test can detect a reversed chain.
+        for sequence, time_s in enumerate((0.10, 0.20, 0.25, 0.26, 0.50, 1.00)):
+            open_command = time_s >= 0.25
+            breaker_open = time_s >= 0.26
+            derived_trip = time_s >= 0.26
+            tripped = time_s >= 0.50
             rows.append({
                 "sequence": sequence,
                 "time_s": time_s,
+                "cb_52gt_open_command_sent": int(open_command),
+                "ecms_cb_52gt_closed": int(not breaker_open),
+                "gt_in_service": 1,
+                "gt_trip_from_52gt_open": int(derived_trip),
                 "ecms_command_sent": int(tripped),
                 "gt_trip_command_readback": int(tripped),
-                "ecms_cb_52gt_closed": int(not tripped),
                 "round_trip_ms": 1.0,
                 "gt_trip_latch": int(tripped),
                 "stg_power_w": 250_000_000 - (100_000_000 if tripped else 0),
@@ -57,6 +67,12 @@ class GitHubCloudBridgeTests(unittest.TestCase):
         (target / "native-opcua-proof.json").write_text(json.dumps({
             "status": "PASS",
             "command_time_s": 0.25,
+            "root_cause_time_s": 0.25,
+            "scenario_id": "RUNNING_52GT_OPEN_TO_GT_TRIP",
+            "root_cause": "52GT_OPEN_WHILE_GT_IN_SERVICE",
+            "causal_order_verified": True,
+            "actual_plant_logic_used": False,
+            "breaker_open_trip_policy": "VPP_PROVISIONAL_NOT_PLANT_LOGIC",
             "transport_scope": "REAL_OPC_UA_TCP_INSIDE_GITHUB_HOSTED_RUNNER",
             "client_implementation": "PYTHON_OPCUA_ADAPTER_CONTROLLED_BY_MATLAB_R2026A",
             "matlab_release": "R2026a",
@@ -93,10 +109,27 @@ class GitHubCloudBridgeTests(unittest.TestCase):
                 self.assertTrue((run / name).is_file(), name)
             with (run / "processbus.csv").open(encoding="utf-8", newline="") as stream:
                 rows = list(csv.DictReader(stream))
-            self.assertEqual(rows[1]["gt_trip_cmd"], "0")
-            self.assertEqual(rows[2]["gt_trip_cmd"], "1")
+            self.assertNotIn("gt_trip_cmd", rows[0])
+            self.assertEqual(rows[2]["cb_52gt_open_command"], "1")
+            self.assertEqual(rows[2]["ecms_cb_52gt_closed"], "1")
+            self.assertEqual(rows[3]["ecms_cb_52gt_closed"], "0")
+            self.assertEqual(rows[3]["gt_trip_from_52gt_open"], "1")
             self.assertEqual(rows[0]["gt_exhaust_mass_flow_t_h"], "2185.2")
             self.assertEqual(rows[0]["stg_power_w"], "250000000")
+            with (run / "ecms-events.csv").open(encoding="utf-8", newline="") as stream:
+                ecms_events = list(csv.DictReader(stream))
+            event_time = {
+                row["canonical_tag"]: int(row["source_time_ms"])
+                for row in ecms_events
+            }
+            self.assertEqual(event_time["CMD.CB-52GT.OPEN"], 250)
+            self.assertEqual(event_time["ECMS.52GT.CLOSED"], 260)
+            self.assertEqual(event_time["CTRL.GTG.TRIP_FROM_52GT_OPEN"], 260)
+            self.assertLessEqual(
+                event_time["ECMS.52GT.CLOSED"],
+                event_time["CTRL.GTG.TRIP_FROM_52GT_OPEN"],
+            )
+            self.assertNotIn("CMD.GTG.TRIP", event_time)
             manifest = json.loads((run / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(
                 manifest["runtime"]["engine"],
@@ -105,6 +138,9 @@ class GitHubCloudBridgeTests(unittest.TestCase):
             self.assertTrue(manifest["runtime"]["thermosyspro_used"])
             self.assertFalse(manifest["opcua_capture"]["mutated"])
             self.assertFalse(manifest["root_cause_label_injected"])
+            self.assertEqual(manifest["scenario"]["root_cause"], "52GT_OPEN_WHILE_GT_IN_SERVICE")
+            self.assertTrue(manifest["scenario"]["causal_order_verified"])
+            self.assertFalse(manifest["scenario"]["actual_plant_logic_used"])
 
     def test_matlab_entrypoint_never_puts_token_on_command_line(self) -> None:
         source = (ROOT / "ECMS_GITHUB.m").read_text(encoding="utf-8")

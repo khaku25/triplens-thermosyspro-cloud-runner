@@ -166,7 +166,7 @@ try, actionGrid.Scrollable = "on"; catch, end
 uibutton(actionGrid,"Text","A 설정 검증","ButtonPushedFcn",@validateA);
 uibutton(actionGrid,"Text","A 설정 CSV 저장","FontWeight","bold","ButtonPushedFcn",@saveA);
 uibutton(actionGrid,"Text","현재 A/Command로 실행","FontWeight","bold","ButtonPushedFcn",@runCurrentCase);
-uibutton(actionGrid,"Text","GitHub OPC UA 검증 GT Trip 실행","FontWeight","bold","ButtonPushedFcn",@runGitHubCase);
+uibutton(actionGrid,"Text","GitHub OPC UA 52GT 개방→GT Trip 실행","FontWeight","bold","ButtonPushedFcn",@runGitHubCase);
 uibutton(actionGrid,"Text","레이아웃 JSON 저장","ButtonPushedFcn",@saveLayout);
 uibutton(actionGrid,"Text","레이아웃 JSON 불러오기","ButtonPushedFcn",@loadLayout);
 uilabel(actionGrid,"Text","M CSV는 저장 버튼이 없습니다.","FontWeight","bold","FontColor",[0.12 0.48 0.34]);

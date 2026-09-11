@@ -2,7 +2,8 @@ function result = ECMS_GITHUB(varargin)
 %ECMS_GITHUB Run the proven GitHub OPC UA physics loop and import it to ECMS.
 %   RESULT = ECMS_GITHUB() dispatches matlab-native-opcua-ecms.yml in the
 %   TripLens MATLAB co-simulation repository. The GitHub job owns only the
-%   Simulink/OPC UA/ThermoSysPro physical exchange. This Cloud package then
+%   running 52GT-open -> derived Trip -> OPC UA/ThermoSysPro physical exchange.
+%   Actual plant logic is deliberately excluded. This Cloud package then
 %   converts the downloaded receive capture into ProcessBus, DCS and ECMS.
 %
 %   Before calling, set TRIPLENS_GITHUB_TOKEN to a fine-grained GitHub token

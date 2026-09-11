@@ -154,7 +154,7 @@ def validate(rows: list[dict[str, float | int]], command_time_s: float) -> dict[
         "status": "PASS" if not errors else "FAIL",
         "proof_type": "NATIVE_OPENMODELICA_OPCUA_CLOSED_LOOP",
         "protocol": PROTOCOL,
-        "command_path": "ECMS_OPCUA_WRITE_TO_NATIVE_OPENMODELICA_INPUT",
+        "command_path": "DERIVED_GT_TRIP_OPCUA_WRITE_TO_NATIVE_OPENMODELICA_INPUT",
         "feedback_path": "NATIVE_OPENMODELICA_SOLVED_VALUES_TO_ECMS_OPCUA_READ",
         "csv_role": "POST_RECEIVE_AUDIT_ONLY",
         "frames_received": len(rows),
@@ -220,7 +220,10 @@ def main() -> int:
 
         command_written = initial_readback
         while current < args.stop_time - args.step_size / 2:
-            command = current >= args.command_time - args.step_size / 2
+            # Do not pull the write half a communication step ahead of the
+            # Simulink-derived edge. The breaker-open feedback must exist
+            # before this physical GT Trip input can be written.
+            command = current >= args.command_time - 1e-12
             # A write to a native OpenModelica state intentionally restarts
             # the solver.  Write only on the command edge; repeating the same
             # value every scan would force an event restart every scan.
