@@ -1,0 +1,38 @@
+name: Test Full Python Regression
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-python-regression-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  full-python-regression:
+    name: Full Python contract gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run every Python regression module
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+
+      - name: Audit canonical Trip semantics
+        run: python3 config/audit_trip_semantics.py
+
+      - name: Reject stale generated native OPC UA contracts
+        run: |
+          python3 scripts/build_native_opcua_valve_contract.py --check
+          python3 scripts/generate_opcua_svg_assets.py --check
+          python3 scripts/generate_fwp_check_valve_svg_assets.py --check
