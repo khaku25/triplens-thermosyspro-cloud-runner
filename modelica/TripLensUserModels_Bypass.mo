@@ -257,9 +257,9 @@ model CombinedCycle_TripTAC_Bypass
     Placement(transformation(origin = {235, -100}, extent = {{-10, -10}, {10, 10}}, rotation = 270)));
   ThermoSysPro.WaterSteam.PressureLosses.PipePressureLoss PerteChargeZero2(z2 = 0, mode = 0, z1 = 0, K = K_PerteChargeZero2, h(start = 3000000), C1(h_vol(start = 3000000), h(start = 3000000), P(fixed = true, start = 501850)), Pm(start = 490000)) annotation(
     Placement(transformation(origin = {311, -278}, extent = {{10, -10}, {-10, 10}}, rotation = 180)));
-  ThermoSysPro.WaterSteam.PressureLosses.PipePressureLoss perteChargeK3(K = 1e-4, mode = 1, h(start = 561432.6820300613), C1(h_vol(start = 561432.6820300613)), C2(h_vol(start = 561432.6820300613)), Pm(start = 372632.41194491077)) annotation(
+  ThermoSysPro.WaterSteam.PressureLosses.PipePressureLoss perteChargeK3(K = 1e-4, mode = 1, p_rho = 929.0940034498418, h(start = 561432.6820300613), C1(h_vol(start = 561432.6820300613)), C2(h_vol(start = 561432.6820300613)), Pm(start = 372632.41194491077)) annotation(
     Placement(transformation(origin = {747, -50}, extent = {{10, -10}, {-10, 10}}, rotation = 180)));
-  ThermoSysPro.WaterSteam.PressureLosses.PipePressureLoss perteChargeK8(K = 1e-4, mode = 1, h(start = 561432.6820300613), C1(h_vol(start = 561432.6820300613)), C2(h_vol(start = 561432.6820300613)), Pm(start = 372632.41224549303)) annotation(
+  ThermoSysPro.WaterSteam.PressureLosses.PipePressureLoss perteChargeK8(K = 1e-4, mode = 1, p_rho = 931.2517020786314, h(start = 561432.6820300613), C1(h_vol(start = 561432.6820300613)), C2(h_vol(start = 561432.6820300613)), Pm(start = 372632.41224549303)) annotation(
     Placement(transformation(origin = {747, -10}, extent = {{10, -10}, {-10, 10}}, rotation = 180)));
   ThermoSysPro.WaterSteam.Machines.Generator Alternateur annotation(
     Placement(transformation(extent = {{369, -448}, {489, -348}}, rotation = 0)));
