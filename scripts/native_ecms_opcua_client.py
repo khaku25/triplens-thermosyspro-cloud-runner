@@ -326,7 +326,10 @@ def build_native_events(
                 "source_file": "ECMS-native-physical.csv",
                 "tag": spec.tag,
                 "canonical_tag": spec.tag,
-                "event_state": "1" if spec.edge in ("RISE", "HIGH") else "0",
+                # RISE/HIGH and an analog LOW threshold all mean that the
+                # named event condition became active.  FALL is reserved for
+                # source-state tags such as *.CLOSED or *.RUN_FB clearing.
+                "event_state": "1" if spec.edge in ("RISE", "HIGH", "LOW") else "0",
                 "event_class": spec.event_class,
                 "severity": spec.severity,
                 "source_signal": spec.field,
