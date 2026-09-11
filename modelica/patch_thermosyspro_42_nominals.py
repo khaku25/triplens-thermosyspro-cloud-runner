@@ -18,7 +18,7 @@ from pathlib import Path
 
 REPLACEMENTS = {
     'type AbsolutePressure = Pressure(min = 0.0, nominal = 1e5);':
-        'type AbsolutePressure = Pressure(min = 612, nominal = 1e5);',
+        'type AbsolutePressure = Pressure(min = 0.0, nominal = 1e5);',
     'type Density = Real(final quantity = "Density", final unit = "kg/m3", displayUnit = "g/cm3", min = 0.0);':
         'type Density = Real(final quantity = "Density", final unit = "kg/m3", displayUnit = "g/cm3", min = 0.0, nominal = 1000);',
     'type Power = Real(final quantity = "Power", final unit = "W");':
