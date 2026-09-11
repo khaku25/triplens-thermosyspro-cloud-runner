@@ -34,10 +34,10 @@ jobs:
       OPENMODELICA_IMAGE: openmodelica/openmodelica:v1.27.0-minimal
       THERMOSYSPRO_COMMIT: db81ae1b5a6a85f6c6c7693244cafa6087e18ff5
       # The previously validated LP discharge check valve closes before reverse
-      # flow; the unchanged L/LL thresholds occur near 32/56 s after Trip.
+      # flow; the unchanged L/LL thresholds occur during the modeled drain-down.
       # Keep 40 ms OPC UA capture (two samples across the 80 ms breaker delay)
       # and enough margin for the GT/ST return path.
-      LIVE_STOP_TIME_S: "80"
+      LIVE_STOP_TIME_S: "100"
       LIVE_STEP_SIZE_S: "0.04"
       LIVE_COMMAND_TIME_S: "20"
     steps:

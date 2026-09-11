@@ -116,7 +116,7 @@ class NativeOPCUAContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("-embeddedServer=opc-ua", workflow)
-        self.assertIn('LIVE_STOP_TIME_S: "80"', workflow)
+        self.assertIn('LIVE_STOP_TIME_S: "100"', workflow)
         self.assertIn('LIVE_STEP_SIZE_S: "0.04"', workflow)
         self.assertIn('LIVE_COMMAND_TIME_S: "20"', workflow)
         self.assertIn("--intervals 2000", workflow)

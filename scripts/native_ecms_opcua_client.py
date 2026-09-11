@@ -271,7 +271,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--endpoint", default="opc.tcp://127.0.0.1:4841")
     parser.add_argument("--scenario", choices=("lp-bfp-trip",), default="lp-bfp-trip")
-    parser.add_argument("--stop-time", type=float, default=80.0)
+    parser.add_argument("--stop-time", type=float, default=100.0)
     parser.add_argument("--step-size", type=float, default=0.05)
     parser.add_argument("--command-time", type=float, default=20.0)
     parser.add_argument("--output-dir", type=Path, required=True)
