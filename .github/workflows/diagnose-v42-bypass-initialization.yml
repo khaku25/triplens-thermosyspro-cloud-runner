@@ -123,7 +123,7 @@ jobs:
                 -newton=damped_ls \
                 -newtonFTol=1e-8 \
                 -newtonXTol=1e-8 \
-                -lv=LOG_STDOUT,LOG_ASSERT,LOG_STATS,LOG_INIT,LOG_NLS,LOG_NLS_V \
+                -lv=LOG_STDOUT,LOG_ASSERT,LOG_STATS,LOG_INIT \
             > build/v42/initialization.log 2>&1
           sim_status=$?
           cat build/v42/initialization.log
@@ -145,5 +145,6 @@ jobs:
             build/v42/*_10asr.c
             build/v42/*_12jac.c
             build/v42/*_nls_*.csv
+            build/v42/*_res.csv
           if-no-files-found: warn
           retention-days: 30
