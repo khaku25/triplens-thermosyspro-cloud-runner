@@ -106,7 +106,7 @@ jobs:
       - name: Run ${{ matrix.case_name }} initialization
         run: |
           set +e
-          timeout --signal=TERM --kill-after=30s 20m \
+          timeout --signal=TERM --kill-after=30s 30m \
             docker run --rm \
               -v "$PWD/build/omhome:/root" \
               -v "$PWD:/workspace" \
@@ -114,8 +114,8 @@ jobs:
               "$OPENMODELICA_IMAGE" \
               "./${{ matrix.executable }}" \
                 -startTime=0 \
-                -stopTime=0.5 \
-                -stepSize=0.05 \
+                -stopTime=1 \
+                -stepSize=0.1 \
                 -tolerance=0.001 \
                 -f=selected_init.xml \
                 -iim=${{ matrix.iim }} \
