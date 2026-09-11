@@ -39,6 +39,7 @@ def main() -> None:
     parser.add_argument("--integrator", type=Path)
     parser.add_argument("--dynamic-drum", type=Path)
     parser.add_argument("--stodola-turbine", type=Path)
+    parser.add_argument("--fluid-ph", type=Path)
     args = parser.parse_args()
 
     text = args.units_mo.read_text(encoding="utf-8")
@@ -133,6 +134,23 @@ def main() -> None:
         turbine_text = turbine_text.replace(pros_old, pros_new)
         args.stodola_turbine.write_text(turbine_text, encoding="utf-8")
         print(f"guarded StodolaTurbine property iterations in {args.stodola_turbine}")
+
+    if args.fluid_ph is not None:
+        fluid_ph_text = args.fluid_ph.read_text(encoding="utf-8")
+        old = "    pro := ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph(P, h, mode);"
+        new = """    // Keep trial points from an unconstrained Newton/homotopy iteration
+    // inside IF97's domain. Physical converged solutions above these guards
+    // evaluate the exact original property function.
+    pro := ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph(
+      max(P, 612), max(h, 1.e5), mode);"""
+        if fluid_ph_text.count(old) != 1:
+            raise SystemExit(
+                f"expected one generic Fluid.Ph water call, got {fluid_ph_text.count(old)}"
+            )
+        args.fluid_ph.write_text(
+            fluid_ph_text.replace(old, new), encoding="utf-8"
+        )
+        print(f"guarded generic water property iterations in {args.fluid_ph}")
 
 
 if __name__ == "__main__":
