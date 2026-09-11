@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 MARKER = "TRIPLENS_FMU_NATIVE_VALVE_ADAPTER_V1"
-REQUIRED_PREVIOUS_MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V12"
+REQUIRED_PREVIOUS_MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V13"
 
 
 @dataclass(frozen=True)
@@ -139,7 +139,7 @@ def remove_connect(text: str, call: str) -> str:
 
 def patch_model(source: str) -> str:
     if REQUIRED_PREVIOUS_MARKER not in source:
-        raise ValueError("turbine bypass patch V12 must be applied first")
+        raise ValueError("turbine bypass patch V13 must be applied first")
     if MARKER in source:
         raise ValueError("FMU valve adapter is already applied")
 
@@ -194,8 +194,9 @@ def patch_model(source: str) -> str:
     )
     source = replace_once(
         source,
-        "  vppSTTripLatch = time >= vppTripTime;",
-        equations() + "\n  vppSTTripLatch = time >= vppTripTime;",
+        "  // The native OPC UA server permits writes to continuous states.",
+        equations()
+        + "\n  // The native OPC UA server permits writes to continuous states.",
         "FMU equation insertion",
     )
 
