@@ -154,6 +154,8 @@ jobs:
             "$OPENMODELICA_IMAGE" \
             ./TripLens_Native_OPCUA \
               -s=ida \
+              -idaLS=dense \
+              -jacobian=internalNumerical \
               -idaScaling \
               -idaMaxNonLinIters=8 \
               -idaMaxConvFails=100 \
