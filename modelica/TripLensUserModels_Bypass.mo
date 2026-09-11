@@ -925,9 +925,9 @@ initial equation
   // The last hydraulic node is a connector boundary, not an internal pipe
   // state.  Pin the three live-steam outlet enthalpies during initialization
   // so OpenModelica cannot select the non-physical h=0 algebraic root.
-  SurchauffeurHP3.C2.h_vol = 3432930.991856911;
-  SurchauffeurMP3.C2.h_vol = 3517381.1285517;
-  SurchauffeurBP.C2.h_vol = 2919992.1127030067;
+  SurchauffeurHP3.TwoPhaseFlowPipe.h[5] = 3432930.991856911;
+  SurchauffeurMP3.TwoPhaseFlowPipe.h[5] = 3517381.1285517;
+  SurchauffeurBP.TwoPhaseFlowPipe.h[5] = 2919992.1127030067;
 end CombinedCycle_TripTAC_Bypass_OMCStart;
 
 model CombinedCycle_TripTAC_Bypass_OMCStart_NoFeedwaterInertia
