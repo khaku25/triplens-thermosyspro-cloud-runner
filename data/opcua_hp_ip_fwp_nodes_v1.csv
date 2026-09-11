@@ -1,0 +1,23 @@
+canonical_tag,owner,layer,direction,opcua_browse_name,source,role
+DCS.FWP-HP.RUN_ENABLE,ECMS,CONTROL,WRITE,vppFWPHPRunEnableNative,FWP_HP_RUN,Normal Start/Stop torque permission
+ECMS.VCB-A01.CLOSED,ECMS,ELECTRICAL,WRITE,vppVCBA01ClosedNative,VCB-A01 auxiliary contact,HP motor power boundary
+FWP-HP.MOTOR_ENERGIZED,OpenModelica,PHYSICAL,READ,vppHPFWPMotorEnergized,DCS.FWP-HP.RUN_ENABLE and ECMS.VCB-A01.CLOSED,Applied HP motor torque permission
+DCS.FWP-HP.SPEED_PROVEN,OpenModelica,PHYSICAL,READ,vppHPFWPSpeedProven,vppHPFWPSpeedRPM,HP speed feedback at or above 90 percent
+DCS.FWP-HP.RUN_FB,OpenModelica,PHYSICAL,READ,vppHPFWPRunning,motor energized and speed proven,HP running feedback
+TSP.FWP-HP.SPEED_RPM,OpenModelica,PHYSICAL,READ,vppHPFWPSpeedRPM,vppHPFWPDrive.speedRpm,Solved HP shaft speed
+TSP.FWP-HP.HYDRAULIC_SPEED_RPM,OpenModelica,NUMERICAL_ADAPTER,READ,vppHPFWPHydraulicSpeedRPM,PompeAlimHP.rpm_or_mpower,Static-pump numerical speed separate from shaft speed
+TSP.FWP-HP.MASS_FLOW,OpenModelica,PHYSICAL,READ,vppHPFWPMassFlowTH,PompeAlimHP.Q,Solved HP pump mass flow
+TSP.FWP-HP.VOLUME_FLOW,OpenModelica,PHYSICAL,READ,vppHPFWPVolumeFlowM3S,PompeAlimHP.Qv,Solved HP pump volume flow
+TSP.FWP-HP.DELTA_P,OpenModelica,PHYSICAL,READ,vppHPFWPDeltaPPa,PompeAlimHP.deltaP,Solved HP pump differential pressure
+TSP.FWP-HP.MECH_POWER,OpenModelica,PHYSICAL,READ,vppHPFWPMechanicalPowerW,PompeAlimHP.Wm,Solved HP pump mechanical power
+DCS.FWP-IP.RUN_ENABLE,ECMS,CONTROL,WRITE,vppFWPIPRunEnableNative,FWP_IP_RUN,Normal Start/Stop torque permission
+ECMS.VCB-B01.CLOSED,ECMS,ELECTRICAL,WRITE,vppVCBB01ClosedNative,VCB-B01 auxiliary contact,IP motor power boundary
+FWP-IP.MOTOR_ENERGIZED,OpenModelica,PHYSICAL,READ,vppIPFWPMotorEnergized,DCS.FWP-IP.RUN_ENABLE and ECMS.VCB-B01.CLOSED,Applied IP motor torque permission
+DCS.FWP-IP.SPEED_PROVEN,OpenModelica,PHYSICAL,READ,vppIPFWPSpeedProven,vppIPFWPSpeedRPM,IP speed feedback at or above 90 percent
+DCS.FWP-IP.RUN_FB,OpenModelica,PHYSICAL,READ,vppIPFWPRunning,motor energized and speed proven,IP running feedback
+TSP.FWP-IP.SPEED_RPM,OpenModelica,PHYSICAL,READ,vppIPFWPSpeedRPM,vppIPFWPDrive.speedRpm,Solved IP shaft speed
+TSP.FWP-IP.HYDRAULIC_SPEED_RPM,OpenModelica,NUMERICAL_ADAPTER,READ,vppIPFWPHydraulicSpeedRPM,PompeAlimMP.rpm_or_mpower,Static-pump numerical speed separate from shaft speed
+TSP.FWP-IP.MASS_FLOW,OpenModelica,PHYSICAL,READ,vppIPFWPMassFlowTH,PompeAlimMP.Q,Solved IP pump mass flow
+TSP.FWP-IP.VOLUME_FLOW,OpenModelica,PHYSICAL,READ,vppIPFWPVolumeFlowM3S,PompeAlimMP.Qv,Solved IP pump volume flow
+TSP.FWP-IP.DELTA_P,OpenModelica,PHYSICAL,READ,vppIPFWPDeltaPPa,PompeAlimMP.deltaP,Solved IP pump differential pressure
+TSP.FWP-IP.MECH_POWER,OpenModelica,PHYSICAL,READ,vppIPFWPMechanicalPowerW,PompeAlimMP.Wm,Solved IP pump mechanical power

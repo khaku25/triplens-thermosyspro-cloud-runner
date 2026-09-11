@@ -16,16 +16,49 @@ TSP.FWP-LP.DISCHARGE_CHECK_VALVE.OPEN,OpenModelica,PHYSICAL,READ,vppLPFWPCheckVa
 TSP.FWP-LP.DISCHARGE_CHECK_VALVE.OPENING,OpenModelica,PHYSICAL,READ,vppLPFWPCheckValveOpening,vppLPFWPCheckValve.opening,Continuous discharge non-return valve position
 TSP.DRUM.LP.LEVEL,OpenModelica,PHYSICAL,READ,BallonBP.yLevel.signal,BallonBP.yLevel.signal,LP drum level
 TSP.DRUM.LP.PRESSURE,OpenModelica,PHYSICAL,READ,BallonBP.P,BallonBP.P,LP drum pressure
-TSP.DRUM.LP.FW_VALVE,OpenModelica,PHYSICAL,READ,fmuVlvLPFWFb,vanne_alimentationBP.Ouv.signal,LP feedwater valve feedback
+TSP.DRUM.LP.FW_VALVE,OpenModelica,PHYSICAL,READ,vppVlvLPFWFb,vanne_alimentationBP.Cv/vanne_alimentationBP.Cvmax,Native LP feedwater valve applied-position feedback
 TSP.TURBINE.LP.FLOW,OpenModelica,PHYSICAL,READ,vppLPTurbineSteamFlowTH,TurbineBP.Q,LP turbine steam flow
 HRSG.LP.DRUM.LEVEL.L,ECMS,ALARM,DERIVED,,TSP.DRUM.LP.LEVEL,1.65 m low alarm with 0.5 s delay and 0.02 m hysteresis
 HRSG.LP.DRUM.LEVEL.LL,ECMS,ALARM,DERIVED,,TSP.DRUM.LP.LEVEL,1.55 m low-low alarm with 0.5 s delay and 0.02 m hysteresis
 COMMON.GT_TRIP.REQUEST,ECMS,PROTECTION,WRITE,vppExternalTripCommandNative,HRSG.LP.DRUM.LEVEL.LL,LP Drum LL common GT Trip request
-COMMON.ST_TRIP.REQUEST,ECMS,PROTECTION,WRITE,vppExternalTripCommandNative,HRSG.LP.DRUM.LEVEL.LL,LP Drum LL common ST Trip request
+COMMON.ST_TRIP.REQUEST,ECMS,PROTECTION,WRITE,vppExternalSTTripCommandNative,HRSG.LP.DRUM.LEVEL.LL,LP Drum LL common ST Trip request
 GT.TRIP.CMD,OpenModelica,PROTECTION,READ,vppGTTripCmd,vppExternalTripCommandNative,Resolved GT Trip command
-GT.TRIP.LATCH,OpenModelica,PROTECTION,READ,vppGTTripLatch,vppSTTripLatch,GT Trip latch feedback
+GT.TRIP.LATCH,OpenModelica,PROTECTION,READ,vppGTTripLatch,vppGTTripLatchInternal,GT Trip latch feedback independent from ST latch
 ECMS.52GT.TRIP_CMD,OpenModelica,ELECTRICAL,READ,vpp52GTTripCmd,vppGTTripLatch,52GT Trip command feedback
 ECMS.52GT.CLOSED,OpenModelica,ELECTRICAL,READ,vpp52GTClosed,vppGTTripLatch,52GT auxiliary contact
 ST.TRIP.LATCH,OpenModelica,PROTECTION,READ,vppSTTripLatchPublished,vppSTTripLatch,ST Trip latch feedback
 ECMS.52ST.TRIP_CMD,OpenModelica,ELECTRICAL,READ,vpp52STTripCmd,vppSTTripLatch,52ST Trip command feedback
 ECMS.52ST.CLOSED,OpenModelica,ELECTRICAL,READ,vpp52STClosed,vppSTTripLatch,52ST auxiliary contact
+TSP.GTG.ACTIVE_POWER,OpenModelica,PHYSICAL,READ,vppGTGPowerMW,GT reduced-order electrical boundary,Solved GT generator active power
+TSP.GTG.SPEED_RPM,OpenModelica,PHYSICAL,READ,vppGTGSpeedRPM,GT reduced-order shaft boundary,Solved GT generator shaft speed
+TSP.STG.ACTIVE_POWER,OpenModelica,PHYSICAL,READ,Alternateur.Welec,Alternateur.Welec,Solved ST generator active power
+TSP.GT.EXHAUST.FLOW,OpenModelica,PHYSICAL,READ,vppGTExhaustMassFlowTH,vppGTExhaustMassFlowState,Solved GT exhaust mass flow
+TSP.GT.EXHAUST.TEMPERATURE,OpenModelica,PHYSICAL,READ,vppGTExhaustTemperatureK,vppGTExhaustTemperatureState,Solved GT exhaust temperature
+TSP.TURBINE.HP.FLOW,OpenModelica,PHYSICAL,READ,vppHPTurbineSteamFlowTH,TurbineHP.Q,Solved HP turbine steam flow
+TSP.TURBINE.IP.FLOW,OpenModelica,PHYSICAL,READ,vppIPTurbineSteamFlowTH,TurbineMP.Q,Solved IP turbine steam flow
+TSP.TURBINE.HP.ADMISSION.POSITION,OpenModelica,PHYSICAL,READ,vppHPAdmissionPos,vppHPAdmissionPos,Solved HP turbine admission position
+TSP.TURBINE.IP.ADMISSION.POSITION,OpenModelica,PHYSICAL,READ,vppIPAdmissionPos,vppIPAdmissionPos,Solved IP turbine admission position
+TSP.TURBINE.LP.ADMISSION.MULTIPLIER,OpenModelica,PHYSICAL,READ,vppLPDrumAdmissionMultiplier,vppLPDrumAdmissionMultiplier,Solved LP admission multiplier
+TSP.BYPASS.HP.POSITION,OpenModelica,PHYSICAL,READ,vppHPBypassPos,vppHPBypassPos,Solved HP bypass position
+TSP.BYPASS.LP.POSITION,OpenModelica,PHYSICAL,READ,vppLPBypassPos,vppLPBypassPos,Solved LP bypass position
+TSP.BYPASS.HP.FLOW,OpenModelica,PHYSICAL,READ,vppHPBypassMassFlowTH,vppHPBypassValve.Q,Solved HP bypass flow
+TSP.BYPASS.LP.FLOW,OpenModelica,PHYSICAL,READ,vppLPBypassMassFlowTH,vppLPBypassValve.Q,Solved LP bypass flow
+TSP.BYPASS.HP.SPRAY.POSITION,OpenModelica,PHYSICAL,READ,vppHPSprayPos,vppHPSprayPos,Solved HP bypass spray position
+TSP.BYPASS.LP.SPRAY.POSITION,OpenModelica,PHYSICAL,READ,vppLPSprayPos,vppLPSprayPos,Solved LP bypass spray position
+TSP.BYPASS.HP.SPRAY.FLOW,OpenModelica,PHYSICAL,READ,vppHPSprayMassFlowTH,vppHPSprayMassFlow,Solved HP bypass spray flow
+TSP.BYPASS.LP.SPRAY.FLOW,OpenModelica,PHYSICAL,READ,vppLPSprayMassFlowTH,vppLPSprayMassFlow,Solved LP bypass spray flow
+TSP.DRUM.HP.LEVEL,OpenModelica,PHYSICAL,READ,BallonHP.yLevel.signal,BallonHP.yLevel.signal,HP drum level
+TSP.DRUM.IP.LEVEL,OpenModelica,PHYSICAL,READ,BallonMP.yLevel.signal,BallonMP.yLevel.signal,IP drum level
+TSP.DRUM.HP.PRESSURE,OpenModelica,PHYSICAL,READ,BallonHP.P,BallonHP.P,HP drum pressure
+TSP.DRUM.IP.PRESSURE,OpenModelica,PHYSICAL,READ,BallonMP.P,BallonMP.P,IP drum pressure
+TSP.CONDENSER.PRESSURE,OpenModelica,PHYSICAL,READ,vppCondenserPressure,Condenseur.P,Solved condenser pressure
+TSP.CONDENSER.LEVEL,OpenModelica,PHYSICAL,READ,vppCondenserLevel,Condenseur.yNiveau.signal,Solved condenser level
+TSP.TURBINE.HP.ADMISSION.CLOSE_LS,ECMS,EVENT,DERIVED,,TSP.TURBINE.HP.ADMISSION.POSITION,HP admission position at or below 0.05 pu
+TSP.TURBINE.IP.ADMISSION.CLOSE_LS,ECMS,EVENT,DERIVED,,TSP.TURBINE.IP.ADMISSION.POSITION,IP admission position at or below 0.05 pu
+TSP.TURBINE.LP.ADMISSION.CLOSE_LS,ECMS,EVENT,DERIVED,,TSP.TURBINE.LP.ADMISSION.MULTIPLIER,LP admission multiplier at or below 0.05 pu
+TSP.BYPASS.HP.OPEN_LS,ECMS,EVENT,DERIVED,,TSP.BYPASS.HP.POSITION,HP bypass position at or above 0.95 pu
+TSP.BYPASS.LP.OPEN_LS,ECMS,EVENT,DERIVED,,TSP.BYPASS.LP.POSITION,LP bypass position at or above 0.95 pu
+TSP.BYPASS.HP.SPRAY.OPEN_LS,ECMS,EVENT,DERIVED,,TSP.BYPASS.HP.SPRAY.POSITION,HP bypass spray position at or above 0.95 pu
+TSP.BYPASS.LP.SPRAY.OPEN_LS,ECMS,EVENT,DERIVED,,TSP.BYPASS.LP.SPRAY.POSITION,LP bypass spray position at or above 0.95 pu
+GTG.ACTIVE_POWER.ZERO,ECMS,EVENT,DERIVED,,TSP.GTG.ACTIVE_POWER,GT active power below 1 MW
+GTG.SPEED.COASTDOWN,ECMS,EVENT,DERIVED,,TSP.GTG.SPEED_RPM,GT speed below 99 percent of rated speed

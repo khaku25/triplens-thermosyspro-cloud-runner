@@ -87,15 +87,26 @@ DEFS = """
 def valve_symbol(kind: str) -> str:
     if kind == "SPRAY_FLOW_SOURCE":
         return """
-    <circle class="valve" cx="580" cy="260" r="45"/>
-    <path d="M558 238L602 282M602 238L558 282" stroke="#d9f4ff" stroke-width="5"/>
-    <path class="water" d="M580 175V215" marker-end="url(#waterArrow)"/>
+    <g data-symbol-type="FLOW_SOURCE_INJECTOR" data-symbol-convention="ISO-10628-style"
+      aria-label="Model flow source and spray injector">
+      <circle class="valve" cx="562" cy="260" r="34"/>
+      <path d="M544 260H577M565 248L579 260L565 272" fill="none"
+        stroke="#d9f4ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M604 238L636 260L604 282Z" fill="#153c52" stroke="#40c4ff" stroke-width="3"/>
+      <circle cx="641" cy="250" r="3.5" fill="#4da3ff"/>
+      <circle cx="649" cy="260" r="3.5" fill="#4da3ff"/>
+      <circle cx="641" cy="270" r="3.5" fill="#4da3ff"/>
+    </g>
 """
     return """
-    <polygon class="valve" points="530,225 580,260 530,295"/>
-    <polygon class="valve" points="630,225 580,260 630,295"/>
-    <line x1="580" y1="205" x2="580" y2="250" stroke="#40c4ff" stroke-width="4"/>
-    <circle cx="580" cy="195" r="10" fill="#40c4ff"/>
+    <g data-symbol-type="ACTUATED_CONTROL_VALVE" data-symbol-convention="ISO-10628-style"
+      data-actuator="DIAPHRAGM" aria-label="Actuated control valve">
+      <polygon class="valve" points="530,225 580,260 530,295"/>
+      <polygon class="valve" points="630,225 580,260 630,295"/>
+      <line x1="580" y1="190" x2="580" y2="225" stroke="#40c4ff" stroke-width="4"/>
+      <path d="M548 188Q580 150 612 188Z" fill="#153c52" stroke="#40c4ff" stroke-width="3"/>
+      <line x1="548" y1="188" x2="612" y2="188" stroke="#40c4ff" stroke-width="3"/>
+    </g>
 """
 
 
@@ -152,7 +163,7 @@ def render_asset(asset: Asset) -> str:
 
   <text class="warn" x="70" y="625">{esc(asset.notes)}</text>
   <text class="muted" x="70" y="653">Endpoint default: {ENDPOINT} · Model-variable numeric NodeIds are discovered at runtime by BrowseName.</text>
-  <text class="muted" x="70" y="674">Visual contract only · not an operating, isolation, or LOTO drawing</text>
+  <text class="muted" x="70" y="674">ISO 10628-style process symbol · model-derived visual contract · not an operating, isolation, or LOTO drawing</text>
 </svg>
 '''
 

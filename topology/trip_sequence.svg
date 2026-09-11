@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760" role="img" aria-labelledby="title desc">
+  <title id="title">TripLens native OPC UA trip sequence</title>
+  <desc id="desc">Fail-closed GT trip causal chain and independent ST intertrip branch. Every node starts BAD and UNBOUND.</desc>
+  <defs>
+    <style>
+      .bg{fill:#f4f7fa}.panel{fill:#fff;stroke:#d8e1e8;stroke-width:2}.title{font:700 28px Arial,sans-serif;fill:#16324a}.sub{font:14px Arial,sans-serif;fill:#607384}.node{fill:#fef3f2;stroke:#b42318;stroke-width:2.5}.branch{fill:#fff7ed;stroke:#c2410c;stroke-width:2.5}.name{font:700 16px Arial,sans-serif;fill:#243746;text-anchor:middle}.tag{font:12px Arial,sans-serif;fill:#667784;text-anchor:middle}.bad{font:700 12px Arial,sans-serif;fill:#b42318;text-anchor:middle}.arrow{fill:none;stroke:#8a9aa8;stroke-width:4}.note{font:13px Arial,sans-serif;fill:#5d7080}
+    </style>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#8a9aa8"/></marker>
+  </defs>
+  <rect class="bg" width="1400" height="760"/><rect class="panel" x="24" y="22" width="1352" height="710" rx="18"/>
+  <text class="title" x="55" y="66">Trip Sequence — Native OPC UA</text>
+  <text class="sub" x="55" y="94">SourceTimestamp 순서 검증 · 대체값 없음 · live DataValue 확인 전 BAD / UNBOUND</text>
+  <path class="arrow" d="M276 260 H320 M536 260 H580 M796 260 H840 M1056 260 H1100" marker-end="url(#arrow)"/>
+  <g id="trip-gt-cmd" data-bind="TSP.TRIP.GT.CMD_READBACK" data-quality="BAD" data-state="UNBOUND">
+    <title>GT Trip CMD — BAD / UNBOUND</title><rect class="node" x="60" y="200" width="216" height="120" rx="14"/><text class="name" x="168" y="236">GT Trip CMD</text><text class="tag" x="168" y="264">TSP.TRIP.GT.CMD_READBACK</text><text class="bad" x="168" y="298">BAD · UNBOUND</text>
+  </g>
+  <g id="trip-gt-latch" data-bind="TSP.TRIP.GT.LATCH" data-quality="BAD" data-state="UNBOUND">
+    <title>GT Trip Latch — BAD / UNBOUND</title><rect class="node" x="320" y="200" width="216" height="120" rx="14"/><text class="name" x="428" y="236">GT Trip Latch</text><text class="tag" x="428" y="264">TSP.TRIP.GT.LATCH</text><text class="bad" x="428" y="298">BAD · UNBOUND</text>
+  </g>
+  <g id="cb-52gt-trip-cmd" data-bind="TSP.CB.52GT.TRIP_CMD" data-quality="BAD" data-state="UNBOUND">
+    <title>52GT Trip CMD — BAD / UNBOUND</title><rect class="node" x="580" y="200" width="216" height="120" rx="14"/><text class="name" x="688" y="236">52GT Trip CMD</text><text class="tag" x="688" y="264">TSP.CB.52GT.TRIP_CMD</text><text class="bad" x="688" y="298">BAD · UNBOUND</text>
+  </g>
+  <g id="cb-52gt-open" data-bind="TSP.CB.52GT.CLOSED" data-quality="BAD" data-state="UNBOUND">
+    <title>52GT OPEN — BAD / UNBOUND</title><rect class="node" x="840" y="200" width="216" height="120" rx="14"/><text class="name" x="948" y="236">52GT OPEN</text><text class="tag" x="948" y="264">TSP.CB.52GT.CLOSED</text><text class="bad" x="948" y="298">BAD · UNBOUND</text>
+  </g>
+  <g id="trip-physical-response" data-bind="GT exhaust + ST/HRSG/condenser trends" data-quality="BAD" data-state="UNBOUND">
+    <title>Physical response — BAD / UNBOUND</title><rect class="node" x="1100" y="200" width="240" height="120" rx="14"/><text class="name" x="1220" y="236">Physical Response</text><text class="tag" x="1220" y="264">GT · ST · HRSG · Condenser</text><text class="bad" x="1220" y="298">BAD · UNBOUND</text>
+  </g>
+  <path class="arrow" d="M428 320 V432 H590" marker-end="url(#arrow)"/>
+  <g id="trip-st-branch" data-bind="ST latch; 52ST Trip CMD; 52ST CLOSED" data-quality="BAD" data-state="UNBOUND">
+    <title>Independent ST intertrip branch — BAD / UNBOUND</title><rect class="branch" x="590" y="390" width="470" height="150" rx="14"/><text class="name" x="825" y="430">Independent ST Intertrip Branch</text><text class="tag" x="825" y="460">ST latch → 52ST Trip CMD → 52ST CLOSED</text><text class="bad" x="825" y="500">BAD · UNBOUND · NO GT FALLBACK</text>
+  </g>
+  <rect x="60" y="610" width="1280" height="72" rx="12" fill="#eef3f7" stroke="#cbd7df"/><text class="note" x="85" y="638">Acceptance: CMD &lt; LATCH &lt; 52GT TRIP CMD &lt; 52GT OPEN &lt; physical response, with independent ST timestamps.</text><text class="note" x="85" y="662">This file declares static DOM bindings only. It does not claim live runtime proof.</text>
+</svg>

@@ -23,13 +23,18 @@ DECLARATIONS = f'''
     torqueLimit=6e4);
   parameter Real vppLPFWPHydraulicSpeedFloorRPM(unit="rev/min") = 700
     "Numerical floor for the upstream static pump curve; shaft speed remains physical";
+  parameter Real vppLPBreakerInputTimeConstantS(unit="s") = 0.02
+    "Causal breaker-input tracking time constant without periodic time events";
   TripLens_PumpPhysics.SpringLoadedCheckValve vppLPFWPCheckValve(
     closeFlow=70,
     closedResistance=1e5);
-  output Real vppLPFWPTripCommandNative(start=0, fixed=true, stateSelect=StateSelect.always);
-  output Real vppLPFWPTripLatchNative(start=0, fixed=true, stateSelect=StateSelect.always);
-  output Real vppVCBA02TripCommandNative(start=0, fixed=true, stateSelect=StateSelect.always);
-  output Real vppVCBA02ClosedNative(start=1, fixed=true, stateSelect=StateSelect.always);
+  input Real vppLPFWPTripCommandNative(start=0) = 0;
+  input Real vppLPFWPTripLatchNative(start=0) = 0;
+  input Real vppVCBA02TripCommandNative(start=0) = 0;
+  input Real vppVCBA02ClosedNative(start=1) = 1;
+  Real vppVCBA02ClosedApplied(start=1, fixed=true,
+    stateSelect=StateSelect.always)
+    "Causal physical image of the writable breaker auxiliary contact";
   output Boolean vppLPFWPMotorEnergized;
   output Boolean vppLPFWPSpeedProven;
   output Boolean vppLPFWPRunning;
@@ -46,11 +51,10 @@ DECLARATIONS = f'''
 '''
 
 EQUATIONS = '''
-  der(vppLPFWPTripCommandNative) = Modelica.Constants.eps*sin(time);
-  der(vppLPFWPTripLatchNative) = Modelica.Constants.eps*sin(time);
-  der(vppVCBA02TripCommandNative) = Modelica.Constants.eps*sin(time);
-  der(vppVCBA02ClosedNative) = Modelica.Constants.eps*sin(time);
-  vppLPFWPMotorEnergized = vppVCBA02ClosedNative >= 0.5;
+  der(vppVCBA02ClosedApplied) =
+    (vppVCBA02ClosedNative - vppVCBA02ClosedApplied)/
+    vppLPBreakerInputTimeConstantS;
+  vppLPFWPMotorEnergized = vppVCBA02ClosedApplied >= 0.5;
   vppLPFWPDrive.breakerClosed.signal = vppLPFWPMotorEnergized;
   vppLPFWPDrive.pumpPower.signal = PompeAlimBP.Wm;
   vppLPFWPHydraulicSpeedCommand.signal = noEvent(max(
@@ -106,13 +110,17 @@ def patch_model(source: str) -> str:
     source = remove_connect(source, "PompeAlimBP.C2, vanne_extraction.C1")
     source = replace_once(
         source,
-        "  // The native OPC UA server permits writes to continuous states.",
-        EQUATIONS + "  // The native OPC UA server permits writes to continuous states.",
+        "  // TRIPLENS_NATIVE_OPCUA_BOUNDARY_INSERTION_POINT",
+        EQUATIONS + "  // TRIPLENS_NATIVE_OPCUA_BOUNDARY_INSERTION_POINT",
         "LP FWP equation insertion",
     )
     required = (
-        "output Real vppLPFWPTripCommandNative(",
-        "output Real vppVCBA02ClosedNative(",
+        "input Real vppLPFWPTripCommandNative(start=0) = 0",
+        "input Real vppVCBA02ClosedNative(start=1) = 1",
+        "Real vppVCBA02ClosedApplied(start=1, fixed=true,",
+        "der(vppVCBA02ClosedApplied) =",
+        "vppLPBreakerInputTimeConstantS",
+        "vppLPFWPMotorEnergized = vppVCBA02ClosedApplied >= 0.5",
         "connect(vppLPFWPHydraulicSpeedCommand, PompeAlimBP.rpm_or_mpower)",
         "vppLPFWPHydraulicSpeedFloorRPM, vppLPFWPDrive.speedRpm",
         "connect(PompeAlimBP.C2, vppLPFWPCheckValve.C1)",

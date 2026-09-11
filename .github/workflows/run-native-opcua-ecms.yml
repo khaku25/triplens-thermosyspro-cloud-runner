@@ -2,6 +2,12 @@ name: Verify native OpenModelica ECMS physical link
 
 on:
   workflow_dispatch:
+    inputs:
+      nls_diagnostics:
+        description: "Enable OpenModelica nonlinear-system diagnostics (logging only)"
+        required: false
+        default: false
+        type: boolean
   pull_request:
     branches: [main]
     paths:
@@ -9,12 +15,27 @@ on:
       - "modelica/TripLens_PumpPhysics.mo"
       - "modelica/TripLens_CombinedCycle_TripTAC.mo.tpl"
       - "scripts/native_ecms_opcua_client.py"
+      - "scripts/opcua_common.py"
+      - "scripts/check_solver_health.py"
+      - "config/solver_health_allowlist_v1.json"
       - "scripts/build_native_opcua_dashboard.py"
+      - "scripts/build_native_opcua_valve_contract.py"
+      - "scripts/patch_native_opcua_valve_controls.py"
       - "scripts/patch_lp_fwp_opcua.py"
       - "scripts/patch_all_fwp_check_valves.py"
+      - "scripts/patch_hp_ip_fwp_opcua.py"
       - "scripts/generate_fwp_check_valve_svg_assets.py"
+      - "config/native_opcua_valve_control_points_v1.csv"
       - "config/opcua_fwp_check_valves_v1.csv"
+      - "data/opcua_native_valve_nodes_v1.csv"
+      - "data/opcua_native_valve_logic_v1.csv"
+      - "data/opcua_hp_ip_fwp_nodes_v1.csv"
       - "data/opcua_fwp_check_valve_nodes_v1.csv"
+      - "tests/test_native_opcua_valve_nodes.py"
+      - "tests/test_native_openmodelica_valve_adapter.py"
+      - "tests/test_hp_ip_fwp_opcua.py"
+      - "tests/test_native_workflow_contract.py"
+      - "tests/test_solver_health_gate.py"
       - "tests/test_all_fwp_check_valves.py"
       - "tests/test_opcua_svg_assets.py"
       - "topology/opcua/check_valves/**"
@@ -42,10 +63,14 @@ jobs:
       # The LP discharge check valve closes before reverse flow; the unchanged
       # L/LL thresholds occur near 36/67 s after the 20 s Trip command.
       # Keep 40 ms OPC UA capture (two samples across the 80 ms breaker delay)
-      # and enough margin for the GT/ST return path.
-      LIVE_STOP_TIME_S: "100"
+      # and a full 30-second observation window after the GT Trip latch.
+      LIVE_STOP_TIME_S: "120"
       LIVE_STEP_SIZE_S: "0.04"
       LIVE_COMMAND_TIME_S: "20"
+      LIVE_POST_GT_TRIP_S: "30"
+      # This changes logging only; the production integrator/NLS configuration
+      # remains identical to the normal blind-test path.
+      OPENMODELICA_LOG_FLAGS: ${{ inputs.nls_diagnostics && '-lv=LOG_NLS' || '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -53,6 +78,10 @@ jobs:
         run: >-
           python3 -m unittest
           tests.test_native_opcua_contract
+          tests.test_native_opcua_valve_nodes
+          tests.test_native_openmodelica_valve_adapter
+          tests.test_hp_ip_fwp_opcua
+          tests.test_native_workflow_contract
           tests.test_all_fwp_check_valves
           tests.test_opcua_svg_assets -v
 
@@ -62,7 +91,7 @@ jobs:
           python3 scripts/render_modelica.py \
             --external-trip-input \
             --stop-time "$LIVE_STOP_TIME_S" \
-            --intervals 2500
+            --intervals 3000
           test -s build/build_native_opcua.mos
           git clone --no-checkout \
             https://github.com/Dwarf-Planet-Project/ThermoSysPro.git \
@@ -71,9 +100,13 @@ jobs:
           test "$(git -C vendor/ThermoSysPro rev-parse HEAD)" = "$THERMOSYSPRO_COMMIT"
           python3 scripts/patch_turbine_bypass_model.py \
             --source vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
+          python3 scripts/patch_native_opcua_valve_controls.py \
+            --source vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
           python3 scripts/patch_lp_fwp_opcua.py \
             --source vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
           python3 scripts/patch_all_fwp_check_valves.py \
+            --source vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
+          python3 scripts/patch_hp_ip_fwp_opcua.py \
             --source vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
           python3 scripts/patch_stodola_turbine.py \
             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
@@ -103,42 +136,105 @@ jobs:
           fi
           test -x build/TripLens_Native_OPCUA
           python3 - <<'PY'
+          import csv
           import xml.etree.ElementTree as ET
           from pathlib import Path
+
           root = ET.parse("build/TripLens_Native_OPCUA_init.xml").getroot()
-          built = {
-              item.attrib["name"] for item in root.iter()
+          variables = {
+              item.attrib["name"]: item for item in root.iter()
               if item.tag.endswith("ScalarVariable") and "name" in item.attrib
           }
-          required = [
-              "vppExternalTripCommandNative", "vppLPFWPTripCommandNative",
-              "vppLPFWPTripLatchNative", "vppVCBA02TripCommandNative",
-              "vppVCBA02ClosedNative", "vppLPFWPMotorEnergized",
-              "vppLPFWPSpeedRPM", "vppLPFWPHydraulicSpeedRPM",
-              "vppLPFWPMassFlowTH",
-              "vppLPFWPDeltaPPa", "vppLPFWPCheckValveOpen",
-              "vppLPFWPCheckValveOpening",
-              "vppHPFWPCheckValveOpen", "vppHPFWPCheckValveOpening",
-              "vppHPFWPCheckValveMassFlowTH", "vppHPFWPCheckValveDeltaPPa",
-              "vppHPFWPCheckValveInletPressurePa", "vppHPFWPCheckValveOutletPressurePa",
-              "vppHPFWPCheckValveResistancePaSPerKg",
-              "vppIPFWPCheckValveOpen", "vppIPFWPCheckValveOpening",
-              "vppIPFWPCheckValveMassFlowTH", "vppIPFWPCheckValveDeltaPPa",
-              "vppIPFWPCheckValveInletPressurePa", "vppIPFWPCheckValveOutletPressurePa",
-              "vppIPFWPCheckValveResistancePaSPerKg",
-              "vppLPFWPCheckValveMassFlowTH", "vppLPFWPCheckValveDeltaPPa",
-              "vppLPFWPCheckValveInletPressurePa", "vppLPFWPCheckValveOutletPressurePa",
-              "vppLPFWPCheckValveResistancePaSPerKg",
-              "vppGTTripCmd", "vpp52GTClosed",
-              "vpp52STClosed",
+          built = set(variables)
+
+          contracts = (
+              (Path("data/opcua_native_valve_nodes_v1.csv"), 144),
+              (Path("data/opcua_hp_ip_fwp_nodes_v1.csv"), 22),
+              (Path("data/opcua_lp_bfp_nodes_v1.csv"), None),
+          )
+          required_by_source = {}
+          write_names = []
+          for path, expected_rows in contracts:
+              with path.open(newline="", encoding="utf-8-sig") as stream:
+                  rows = list(csv.DictReader(stream))
+              if expected_rows is not None and len(rows) != expected_rows:
+                  raise SystemExit(
+                      f"{path} row count mismatch: expected {expected_rows}, got {len(rows)}"
+                  )
+              names = [
+                  row["opcua_browse_name"].strip()
+                  for row in rows
+                  if row.get("opcua_browse_name", "").strip()
+              ]
+              if not names:
+                  raise SystemExit(f"{path} contains no OPC UA BrowseNames")
+              required_by_source[str(path)] = names
+              write_names.extend(
+                  row["opcua_browse_name"].strip()
+                  for row in rows
+                  if row.get("direction", "").strip().upper() == "WRITE"
+                  and row.get("opcua_browse_name", "").strip()
+              )
+
+          if "vppVCBA02ClosedNative" not in required_by_source[
+              "data/opcua_lp_bfp_nodes_v1.csv"
+          ]:
+              raise SystemExit("LP BFP contract is missing the VCB-A02 physics boundary")
+
+          # This independent ST command boundary is declared by the turbine
+          # bypass patch and must never alias the GT command node.
+          required_by_source["independent-st-trip-boundary"] = [
+              "vppExternalSTTripCommandNative"
           ]
+          required = sorted({
+              name
+              for names in required_by_source.values()
+              for name in names
+          })
           missing = [name for name in required if name not in built]
           if missing:
-              raise SystemExit("native init.xml missing LP BFP variables: " + ", ".join(missing))
+              raise SystemExit(
+                  "native init.xml missing contracted OPC UA variables: "
+                  + ", ".join(missing)
+              )
+          write_names = sorted(set(write_names))
+          if len(write_names) != 58:
+              raise SystemExit(
+                  f"native WRITE contract mismatch: expected 58, got {len(write_names)}"
+              )
+          invalid_inputs = []
+          input_indexes = []
+          for name in write_names:
+              attrs = variables[name].attrib
+              try:
+                  input_index = int(attrs.get("inputIndex", "-1"))
+              except ValueError:
+                  input_index = -1
+              if (
+                  attrs.get("causality") != "input"
+                  or attrs.get("isValueChangeable") != "true"
+                  or input_index < 0
+              ):
+                  invalid_inputs.append(name)
+              input_indexes.append(input_index)
+          if invalid_inputs:
+              raise SystemExit(
+                  "native WRITE nodes are not changeable top-level inputs: "
+                  + ", ".join(invalid_inputs)
+              )
+          if len(set(input_indexes)) != len(input_indexes):
+              raise SystemExit("native WRITE nodes have duplicate inputIndex values")
           Path("build/native-opcua-input-contract.txt").write_text(
               "\n".join(required) + "\n", encoding="utf-8"
           )
-          print(f"NATIVE_INIT_XML_LP_BFP_CONTRACT_PASS nodes={len(required)}")
+          print(
+              "NATIVE_INIT_XML_CONTRACT_PASS "
+              f"unique_nodes={len(required)} "
+              f"write_inputs={len(write_names)} "
+              f"valve_rows={len(required_by_source[str(contracts[0][0])])} "
+              f"hp_ip_rows={len(required_by_source[str(contracts[1][0])])} "
+              f"lp_bfp_nodes={len(required_by_source[str(contracts[2][0])])}"
+          )
           PY
 
       - name: Install pinned OPC UA client
@@ -154,6 +250,7 @@ jobs:
             ./TripLens_Native_OPCUA \
               -embeddedServer=opc-ua \
               -embeddedServerPort=4841 \
+              $OPENMODELICA_LOG_FLAGS \
               -r=TripLens_Native_OPCUA_res.csv \
             > outputs/native-opcua/openmodelica-native.log 2>&1 &
           native_pid=$!
@@ -163,13 +260,12 @@ jobs:
               --stop-time "$LIVE_STOP_TIME_S" \
               --step-size "$LIVE_STEP_SIZE_S" \
               --command-time "$LIVE_COMMAND_TIME_S" \
+              --post-gt-trip-seconds "$LIVE_POST_GT_TRIP_S" \
               --output-dir outputs/native-opcua; then
             tail -n 500 outputs/native-opcua/openmodelica-native.log || true
             exit 1
           fi
-          # The proof ends when LL, both trip latches, and both open breaker
-          # contacts have returned through OPC UA. Stop the paused native
-          # executable at that terminal scenario state.
+          # The proof ends only after 30 seconds of post-GT-Trip observation.
           docker rm -f "$native_container" >/dev/null 2>&1 || true
           wait "$native_pid" || true
           trap - EXIT
@@ -177,6 +273,14 @@ jobs:
             --capture outputs/native-opcua/ECMS-native-physical.csv \
             --proof outputs/native-opcua/native-opcua-proof.json \
             --output outputs/native-opcua/ECMS-native-dashboard.html
+
+      - name: Enforce fail-closed OpenModelica solver health
+        if: always()
+        run: |
+          python3 scripts/check_solver_health.py \
+            --build-log build/native-opcua-build.log \
+            --runtime-log outputs/native-opcua/openmodelica-native.log \
+            --output outputs/native-opcua/solver-health.json
 
       - name: Upload native physical link proof
         if: always()
@@ -187,5 +291,7 @@ jobs:
             outputs/native-opcua/**
             build/native-opcua-build.log
             build/native-opcua-input-contract.txt
+            build/TripLens_Native_OPCUA_info.json
+            build/TripLens_Native_OPCUA_init.xml
           if-no-files-found: warn
           retention-days: 30

@@ -26,6 +26,9 @@ model TripLens_CombinedCycle_TripTAC
   parameter Real vppGTGPowerDecayTau(unit="s") = 0.35;
   parameter Real vppGTGSpeedNormalRPM = 3600.0;
   parameter Real vppGTGCoastdownTau(unit="s") = 1.2;
+  parameter Modelica.SIunits.Pressure
+    vppHPTurbinePressureCrossoverScale = 1e5
+    "One-bar HP admission low-flow regularization during Trip closure";
 
   output Boolean vppGTTripCmd "GT Trip command observed by the physical model";
   output Boolean vppGTTripLatch "Modelica-produced GT Trip latch";
@@ -39,6 +42,8 @@ model TripLens_CombinedCycle_TripTAC
   output Real vppGTGSpeedRPM "Reduced-order GT shaft speed in rpm";
   discrete Real vppGTTripAssertTime(unit="s", start=eventTime, fixed=true)
     "Simulation time at the first physical GT Trip assertion";
+  discrete Real vppSTTripAssertTime(unit="s", start=eventTime, fixed=true)
+    "Simulation time at the first physical ST Trip assertion";
 
   output Real vppGTExhaustMassFlowTH "Published GT exhaust mass flow in t/h";
   output Real vppGTExhaustTemperatureK(unit="K")
@@ -90,6 +95,8 @@ model TripLens_CombinedCycle_TripTAC
          h(start=3450835), h_vol(start=3450835))),
     TurbineHP(
       regularizePressureCrossover=true,
+      pressureDifferenceRegularization=
+        vppHPTurbinePressureCrossoverScale,
       Q(start=151.7690991976083, nominal=200),
       Ce(Q(start=151.7690991976083, nominal=200),
          h(start=3450835), h_vol(start=3450835)),
@@ -150,10 +157,13 @@ equation
   vppGTTripCmd = if vppUseExternalTripInput then
     (vppExternalTripCommand or vppExternalTripCommandNative >= 0.5)
     else enableGTTrip and time >= eventTime;
-  vppGTTripLatch = vppSTTripLatch;
+  vppGTTripLatch = vppGTTripLatchInternal;
   vppSTTripLatchPublished = vppSTTripLatch;
   when edge(vppGTTripLatch) then
     vppGTTripAssertTime = time;
+  end when;
+  when edge(vppSTTripLatchPublished) then
+    vppSTTripAssertTime = time;
   end when;
   vpp52GTTripCmd = vppGTTripLatch and
     time >= vppGTTripAssertTime + vppGTTripCommandDelay;
@@ -161,7 +171,7 @@ equation
     time >= vppGTTripAssertTime + vppGTBreakerOpenDelay);
   vpp52STTripCmd = vppSTTripLatch;
   vpp52STClosed = not (vppSTTripLatch and
-    time >= vppGTTripAssertTime + vppSTBreakerOpenDelay);
+    time >= vppSTTripAssertTime + vppSTBreakerOpenDelay);
   vppGTGPowerMW = if not vppGTTripLatch then vppGTGPowerNormalMW
     else if vpp52GTClosed then
       vppGTGPowerNormalMW*exp(

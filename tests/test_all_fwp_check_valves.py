@@ -50,7 +50,7 @@ equation
   connect(PompeAlimMP.C2, Vanne_alimentationMPHP2.C1);
   connect(PompeAlimBP.C2, vppLPFWPCheckValve.C1);
   connect(vppLPFWPCheckValve.C2, vanne_extraction.C1);
-  // The native OPC UA server permits writes to continuous states.
+  // TRIPLENS_NATIVE_OPCUA_BOUNDARY_INSERTION_POINT
 end CombinedCycle_TripTAC;
 '''
         patched = patcher.patch_model(source)
@@ -66,6 +66,23 @@ end CombinedCycle_TripTAC;
                 "OutletPressurePa", "ResistancePaSPerKg",
             ):
                 self.assertIn(f"vpp{level}FWPCheckValve{suffix}", patched)
+            for suffix in (
+                "DeltaPPa", "InletPressurePa", "OutletPressurePa",
+                "ResistancePaSPerKg",
+            ):
+                self.assertIn(
+                    f"output Real vpp{level}FWPCheckValve{suffix}"
+                    "(start=0, fixed=true, stateSelect=StateSelect.always",
+                    patched,
+                )
+                self.assertNotIn(
+                    f"\n  vpp{level}FWPCheckValve{suffix} = ", patched
+                )
+        self.assertIn(
+            "der(vppHPFWPCheckValveDeltaPPa) =", patched
+        )
+        self.assertEqual(patched.count("der(vpp"), 12)
+        self.assertNotIn("when sample(", patched)
 
     def test_contract_has_three_valves_and_all_21_physical_read_nodes(self):
         self.assertEqual(len(self.nodes), 21)
@@ -106,6 +123,8 @@ end CombinedCycle_TripTAC;
             content = path.read_text(encoding="utf-8")
             self.assertIn("OPC UA", content)
             self.assertNotIn("FMU", content)
+            self.assertIn('data-symbol-type="SPRING_CHECK_VALVE"', content)
+            self.assertIn('data-symbol-convention="ISO-10628-style"', content)
             for key in (
                 "open_node", "opening_node", "flow_node", "delta_p_node",
                 "inlet_p_node", "outlet_p_node", "resistance_node",

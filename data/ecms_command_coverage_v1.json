@@ -1,0 +1,1755 @@
+{
+  "schema_version": "TRIPLENS-COMMAND-COVERAGE/1",
+  "source": "config/ecms_command_catalog.csv",
+  "classification_policy": "FAIL_CLOSED_EXPLICIT_PHYSICAL_REGISTRY",
+  "summary": {
+    "THERMO_ADAPTER_REQUIRED": 49,
+    "PHYSICAL_CONNECTED": 2,
+    "ELECTRICAL_ENGINE_ONLY": 36
+  },
+  "commands": [
+    {
+      "catalog_index": 1,
+      "equipment_id": "GTG",
+      "label_ko": "GT 발전기",
+      "system": "GT",
+      "equipment_type": "GENERATOR",
+      "command": "START",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "GT_BOUNDARY",
+      "feedback_tag": "TSP.FG_IN.MASS_FLOW_IN",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:GT_BOUNDARY"
+      ]
+    },
+    {
+      "catalog_index": 2,
+      "equipment_id": "GTG",
+      "label_ko": "GT 발전기",
+      "system": "GT",
+      "equipment_type": "GENERATOR",
+      "command": "STOP",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "GT_BOUNDARY",
+      "feedback_tag": "TSP.FG_IN.MASS_FLOW_IN",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:GT_BOUNDARY"
+      ]
+    },
+    {
+      "catalog_index": 3,
+      "equipment_id": "GTG",
+      "label_ko": "GT 발전기",
+      "system": "GT",
+      "equipment_type": "GENERATOR",
+      "command": "TRIP",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "GT_TRIP",
+      "feedback_tag": "ECMS.52GT.CLOSED",
+      "strict_class": "PHYSICAL_CONNECTED",
+      "transaction_status": "PHYSICAL_PATH_PROVEN_ACK_RESULT_PENDING",
+      "native_dispatch_status": "SCENARIO_NATIVE_PATH_PROVEN",
+      "independent_feedback_status": "STATIC_FIX_PENDING_LIVE_PROOF",
+      "evidence": [
+        "scripts/patch_turbine_bypass_model.py",
+        "modelica/TripLens_CombinedCycle_TripTAC.mo.tpl",
+        "tests/test_gt_st_trip_independence.py",
+        "data/opcua_lp_bfp_nodes_v1.csv"
+      ]
+    },
+    {
+      "catalog_index": 4,
+      "equipment_id": "GTG",
+      "label_ko": "GT 발전기",
+      "system": "GT",
+      "equipment_type": "GENERATOR",
+      "command": "DERATE",
+      "source_execution_layer": "THERMO_BOUNDARY",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "GT_DERATE_CMD",
+      "feedback_tag": "TSP.FG_IN.MASS_FLOW_IN",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:GT_DERATE_CMD"
+      ]
+    },
+    {
+      "catalog_index": 5,
+      "equipment_id": "GTG",
+      "label_ko": "GT 발전기",
+      "system": "GT",
+      "equipment_type": "GENERATOR",
+      "command": "RESET",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "GT_BOUNDARY",
+      "feedback_tag": "TSP.FG_IN.MASS_FLOW_IN",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:GT_BOUNDARY"
+      ]
+    },
+    {
+      "catalog_index": 6,
+      "equipment_id": "STG",
+      "label_ko": "ST 발전기",
+      "system": "ST",
+      "equipment_type": "GENERATOR",
+      "command": "START",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "ST_START",
+      "feedback_tag": "TSP.GEN.ACTIVE_POWER",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:ST_START"
+      ]
+    },
+    {
+      "catalog_index": 7,
+      "equipment_id": "STG",
+      "label_ko": "ST 발전기",
+      "system": "ST",
+      "equipment_type": "GENERATOR",
+      "command": "STOP",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "ST_STOP",
+      "feedback_tag": "TSP.GEN.ACTIVE_POWER",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:ST_STOP"
+      ]
+    },
+    {
+      "catalog_index": 8,
+      "equipment_id": "STG",
+      "label_ko": "ST 발전기",
+      "system": "ST",
+      "equipment_type": "GENERATOR",
+      "command": "TRIP",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "ST_TRIP",
+      "feedback_tag": "ECMS.52ST.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.52ST.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 9,
+      "equipment_id": "STG",
+      "label_ko": "ST 발전기",
+      "system": "ST",
+      "equipment_type": "GENERATOR",
+      "command": "RESET",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "ST_RESET",
+      "feedback_tag": "ECMS.52ST.CLOSED",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:ST_RESET"
+      ]
+    },
+    {
+      "catalog_index": 10,
+      "equipment_id": "CB-52GT",
+      "label_ko": "52GT",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "OPEN",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_52GT_CMD",
+      "feedback_tag": "ECMS.52GT.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.52GT.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 11,
+      "equipment_id": "CB-52GT",
+      "label_ko": "52GT",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "CLOSE",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_52GT_CMD",
+      "feedback_tag": "ECMS.52GT.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.52GT.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 12,
+      "equipment_id": "CB-52GT",
+      "label_ko": "52GT",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "TRIP",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_52GT_TRIP",
+      "feedback_tag": "ECMS.52GT.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.52GT.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 13,
+      "equipment_id": "CB-52GT",
+      "label_ko": "52GT",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "RESET",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_52GT_RESET",
+      "feedback_tag": "ECMS.52GT.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.52GT.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 14,
+      "equipment_id": "CB-52ST",
+      "label_ko": "52ST",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "OPEN",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_52ST_CMD",
+      "feedback_tag": "ECMS.52ST.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.52ST.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 15,
+      "equipment_id": "CB-52ST",
+      "label_ko": "52ST",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "CLOSE",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_52ST_CMD",
+      "feedback_tag": "ECMS.52ST.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.52ST.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 16,
+      "equipment_id": "CB-52ST",
+      "label_ko": "52ST",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "TRIP",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_52ST_TRIP",
+      "feedback_tag": "ECMS.52ST.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.52ST.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 17,
+      "equipment_id": "CB-52ST",
+      "label_ko": "52ST",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "RESET",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_52ST_RESET",
+      "feedback_tag": "ECMS.52ST.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.52ST.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 18,
+      "equipment_id": "GRID-154KV",
+      "label_ko": "154 kV 외부계통",
+      "system": "ECMS",
+      "equipment_type": "GRID",
+      "command": "LOSS",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "GRID_AVAILABLE",
+      "feedback_tag": "GRID-154KV.AVAILABLE",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:GRID-154KV.AVAILABLE"
+      ]
+    },
+    {
+      "catalog_index": 19,
+      "equipment_id": "GRID-154KV",
+      "label_ko": "154 kV 외부계통",
+      "system": "ECMS",
+      "equipment_type": "GRID",
+      "command": "RESTORE",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "GRID_AVAILABLE",
+      "feedback_tag": "GRID-154KV.AVAILABLE",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:GRID-154KV.AVAILABLE"
+      ]
+    },
+    {
+      "catalog_index": 20,
+      "equipment_id": "TR-GT",
+      "label_ko": "GT 주 변압기",
+      "system": "ECMS",
+      "equipment_type": "TRANSFORMER",
+      "command": "OUT_OF_SERVICE",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "TR_GT_AVAILABLE",
+      "feedback_tag": "TR-GT.AVAILABLE",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:TR-GT.AVAILABLE"
+      ]
+    },
+    {
+      "catalog_index": 21,
+      "equipment_id": "TR-GT",
+      "label_ko": "GT 주 변압기",
+      "system": "ECMS",
+      "equipment_type": "TRANSFORMER",
+      "command": "IN_SERVICE",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "TR_GT_AVAILABLE",
+      "feedback_tag": "TR-GT.AVAILABLE",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:TR-GT.AVAILABLE"
+      ]
+    },
+    {
+      "catalog_index": 22,
+      "equipment_id": "TR-ST",
+      "label_ko": "ST 주 변압기",
+      "system": "ECMS",
+      "equipment_type": "TRANSFORMER",
+      "command": "OUT_OF_SERVICE",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "TR_ST_AVAILABLE",
+      "feedback_tag": "TR-ST.AVAILABLE",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:TR-ST.AVAILABLE"
+      ]
+    },
+    {
+      "catalog_index": 23,
+      "equipment_id": "TR-ST",
+      "label_ko": "ST 주 변압기",
+      "system": "ECMS",
+      "equipment_type": "TRANSFORMER",
+      "command": "IN_SERVICE",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "TR_ST_AVAILABLE",
+      "feedback_tag": "TR-ST.AVAILABLE",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:TR-ST.AVAILABLE"
+      ]
+    },
+    {
+      "catalog_index": 24,
+      "equipment_id": "UAT-A",
+      "label_ko": "UAT-A",
+      "system": "ECMS",
+      "equipment_type": "TRANSFORMER",
+      "command": "OUT_OF_SERVICE",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "UAT_A_AVAILABLE",
+      "feedback_tag": "UAT-A.AVAILABLE",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:UAT-A.AVAILABLE"
+      ]
+    },
+    {
+      "catalog_index": 25,
+      "equipment_id": "UAT-A",
+      "label_ko": "UAT-A",
+      "system": "ECMS",
+      "equipment_type": "TRANSFORMER",
+      "command": "IN_SERVICE",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "UAT_A_AVAILABLE",
+      "feedback_tag": "UAT-A.AVAILABLE",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:UAT-A.AVAILABLE"
+      ]
+    },
+    {
+      "catalog_index": 26,
+      "equipment_id": "UAT-B",
+      "label_ko": "UAT-B",
+      "system": "ECMS",
+      "equipment_type": "TRANSFORMER",
+      "command": "OUT_OF_SERVICE",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "UAT_B_AVAILABLE",
+      "feedback_tag": "UAT-B.AVAILABLE",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:UAT-B.AVAILABLE"
+      ]
+    },
+    {
+      "catalog_index": 27,
+      "equipment_id": "UAT-B",
+      "label_ko": "UAT-B",
+      "system": "ECMS",
+      "equipment_type": "TRANSFORMER",
+      "command": "IN_SERVICE",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "UAT_B_AVAILABLE",
+      "feedback_tag": "UAT-B.AVAILABLE",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:UAT-B.AVAILABLE"
+      ]
+    },
+    {
+      "catalog_index": 28,
+      "equipment_id": "CB-IN-A",
+      "label_ko": "A 인커밍",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "OPEN",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_IN_A_CMD",
+      "feedback_tag": "ECMS.CB-IN-A.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.CB-IN-A.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 29,
+      "equipment_id": "CB-IN-A",
+      "label_ko": "A 인커밍",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "CLOSE",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_IN_A_CMD",
+      "feedback_tag": "ECMS.CB-IN-A.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.CB-IN-A.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 30,
+      "equipment_id": "CB-IN-A",
+      "label_ko": "A 인커밍",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "TRIP",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_IN_A_TRIP",
+      "feedback_tag": "ECMS.CB-IN-A.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.CB-IN-A.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 31,
+      "equipment_id": "CB-IN-A",
+      "label_ko": "A 인커밍",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "RESET",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_IN_A_RESET",
+      "feedback_tag": "ECMS.CB-IN-A.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.CB-IN-A.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 32,
+      "equipment_id": "CB-IN-B",
+      "label_ko": "B 인커밍",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "OPEN",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_IN_B_CMD",
+      "feedback_tag": "ECMS.CB-IN-B.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.CB-IN-B.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 33,
+      "equipment_id": "CB-IN-B",
+      "label_ko": "B 인커밍",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "CLOSE",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_IN_B_CMD",
+      "feedback_tag": "ECMS.CB-IN-B.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.CB-IN-B.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 34,
+      "equipment_id": "CB-IN-B",
+      "label_ko": "B 인커밍",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "TRIP",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_IN_B_TRIP",
+      "feedback_tag": "ECMS.CB-IN-B.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.CB-IN-B.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 35,
+      "equipment_id": "CB-IN-B",
+      "label_ko": "B 인커밍",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "RESET",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_IN_B_RESET",
+      "feedback_tag": "ECMS.CB-IN-B.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.CB-IN-B.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 36,
+      "equipment_id": "CB-TIE-AB",
+      "label_ko": "6.9 kV BUS TIE",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "OPEN",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_TIE_AB_CMD",
+      "feedback_tag": "ECMS.CB-TIE-AB.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.CB-TIE-AB.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 37,
+      "equipment_id": "CB-TIE-AB",
+      "label_ko": "6.9 kV BUS TIE",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "CLOSE",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_TIE_AB_CMD",
+      "feedback_tag": "ECMS.CB-TIE-AB.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.CB-TIE-AB.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 38,
+      "equipment_id": "CB-TIE-AB",
+      "label_ko": "6.9 kV BUS TIE",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "TRIP",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_TIE_AB_TRIP",
+      "feedback_tag": "ECMS.CB-TIE-AB.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.CB-TIE-AB.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 39,
+      "equipment_id": "CB-TIE-AB",
+      "label_ko": "6.9 kV BUS TIE",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "RESET",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "CB_TIE_AB_RESET",
+      "feedback_tag": "ECMS.CB-TIE-AB.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.CB-TIE-AB.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 40,
+      "equipment_id": "FWP-HP",
+      "label_ko": "HP 급수펌프",
+      "system": "HRSG",
+      "equipment_type": "MOTOR",
+      "command": "START",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "FWP_HP_RUN",
+      "feedback_tag": "TSP.DRUM.HP.FW_FLOW",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:FWP_HP_RUN"
+      ]
+    },
+    {
+      "catalog_index": 41,
+      "equipment_id": "FWP-HP",
+      "label_ko": "HP 급수펌프",
+      "system": "HRSG",
+      "equipment_type": "MOTOR",
+      "command": "STOP",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "FWP_HP_RUN",
+      "feedback_tag": "TSP.DRUM.HP.FW_FLOW",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:FWP_HP_RUN"
+      ]
+    },
+    {
+      "catalog_index": 42,
+      "equipment_id": "FWP-HP",
+      "label_ko": "HP 급수펌프",
+      "system": "HRSG",
+      "equipment_type": "MOTOR",
+      "command": "TRIP",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "FWP_HP_TRIP",
+      "feedback_tag": "ECMS.VCB-A01.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.VCB-A01.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 43,
+      "equipment_id": "FWP-HP",
+      "label_ko": "HP 급수펌프",
+      "system": "HRSG",
+      "equipment_type": "MOTOR",
+      "command": "RESET",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "FWP_HP_RESET",
+      "feedback_tag": "ECMS.VCB-A01.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.VCB-A01.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 44,
+      "equipment_id": "FWP-IP",
+      "label_ko": "IP 급수펌프",
+      "system": "HRSG",
+      "equipment_type": "MOTOR",
+      "command": "START",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "FWP_IP_RUN",
+      "feedback_tag": "TSP.DRUM.IP.FW_FLOW",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:FWP_IP_RUN"
+      ]
+    },
+    {
+      "catalog_index": 45,
+      "equipment_id": "FWP-IP",
+      "label_ko": "IP 급수펌프",
+      "system": "HRSG",
+      "equipment_type": "MOTOR",
+      "command": "STOP",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "FWP_IP_RUN",
+      "feedback_tag": "TSP.DRUM.IP.FW_FLOW",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:FWP_IP_RUN"
+      ]
+    },
+    {
+      "catalog_index": 46,
+      "equipment_id": "FWP-IP",
+      "label_ko": "IP 급수펌프",
+      "system": "HRSG",
+      "equipment_type": "MOTOR",
+      "command": "TRIP",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "FWP_IP_TRIP",
+      "feedback_tag": "ECMS.VCB-B01.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.VCB-B01.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 47,
+      "equipment_id": "FWP-IP",
+      "label_ko": "IP 급수펌프",
+      "system": "HRSG",
+      "equipment_type": "MOTOR",
+      "command": "RESET",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "FWP_IP_RESET",
+      "feedback_tag": "ECMS.VCB-B01.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.VCB-B01.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 48,
+      "equipment_id": "FWP-LP",
+      "label_ko": "LP 급수펌프",
+      "system": "HRSG",
+      "equipment_type": "MOTOR",
+      "command": "START",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "FWP_LP_RUN",
+      "feedback_tag": "TSP.DRUM.LP.FW_FLOW",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:FWP_LP_RUN"
+      ]
+    },
+    {
+      "catalog_index": 49,
+      "equipment_id": "FWP-LP",
+      "label_ko": "LP 급수펌프",
+      "system": "HRSG",
+      "equipment_type": "MOTOR",
+      "command": "STOP",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "FWP_LP_RUN",
+      "feedback_tag": "TSP.DRUM.LP.FW_FLOW",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:FWP_LP_RUN"
+      ]
+    },
+    {
+      "catalog_index": 50,
+      "equipment_id": "FWP-LP",
+      "label_ko": "LP 급수펌프",
+      "system": "HRSG",
+      "equipment_type": "MOTOR",
+      "command": "TRIP",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "FWP_LP_TRIP",
+      "feedback_tag": "ECMS.VCB-A02.CLOSED",
+      "strict_class": "PHYSICAL_CONNECTED",
+      "transaction_status": "PHYSICAL_PATH_PROVEN_ACK_RESULT_PENDING",
+      "native_dispatch_status": "SCENARIO_NATIVE_PATH_PROVEN",
+      "independent_feedback_status": "BREAKER_PHYSICS_PROVEN_ECMS_STATE_WRITE_ECHO",
+      "evidence": [
+        "scripts/patch_lp_fwp_opcua.py",
+        "scripts/native_ecms_opcua_client.py",
+        "data/opcua_lp_bfp_nodes_v1.csv"
+      ]
+    },
+    {
+      "catalog_index": 51,
+      "equipment_id": "FWP-LP",
+      "label_ko": "LP 급수펌프",
+      "system": "HRSG",
+      "equipment_type": "MOTOR",
+      "command": "RESET",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "FWP_LP_RESET",
+      "feedback_tag": "ECMS.VCB-A02.CLOSED",
+      "strict_class": "ELECTRICAL_ENGINE_ONLY",
+      "transaction_status": "ECMS_STATE_MACHINE_ONLY",
+      "native_dispatch_status": "NOT_APPLICABLE",
+      "independent_feedback_status": "ELECTRICAL_ONLY",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "electrical_feedback:ECMS.VCB-A02.CLOSED"
+      ]
+    },
+    {
+      "catalog_index": 52,
+      "equipment_id": "VCB-A01",
+      "label_ko": "HP 급수펌프 VCB",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "OPEN",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "VCB_A01_CMD",
+      "feedback_tag": "ECMS.VCB-A01.CLOSED",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:VCB_A01_CMD"
+      ]
+    },
+    {
+      "catalog_index": 53,
+      "equipment_id": "VCB-A01",
+      "label_ko": "HP 급수펌프 VCB",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "CLOSE",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "VCB_A01_CMD",
+      "feedback_tag": "ECMS.VCB-A01.CLOSED",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:VCB_A01_CMD"
+      ]
+    },
+    {
+      "catalog_index": 54,
+      "equipment_id": "VCB-A01",
+      "label_ko": "HP 급수펌프 VCB",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "TRIP",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "VCB_A01_TRIP",
+      "feedback_tag": "ECMS.VCB-A01.CLOSED",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:VCB_A01_TRIP"
+      ]
+    },
+    {
+      "catalog_index": 55,
+      "equipment_id": "VCB-A01",
+      "label_ko": "HP 급수펌프 VCB",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "RESET",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "VCB_A01_RESET",
+      "feedback_tag": "ECMS.VCB-A01.CLOSED",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:VCB_A01_RESET"
+      ]
+    },
+    {
+      "catalog_index": 56,
+      "equipment_id": "VCB-B01",
+      "label_ko": "IP 급수펌프 VCB",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "OPEN",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "VCB_B01_CMD",
+      "feedback_tag": "ECMS.VCB-B01.CLOSED",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:VCB_B01_CMD"
+      ]
+    },
+    {
+      "catalog_index": 57,
+      "equipment_id": "VCB-B01",
+      "label_ko": "IP 급수펌프 VCB",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "CLOSE",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "VCB_B01_CMD",
+      "feedback_tag": "ECMS.VCB-B01.CLOSED",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:VCB_B01_CMD"
+      ]
+    },
+    {
+      "catalog_index": 58,
+      "equipment_id": "VCB-B01",
+      "label_ko": "IP 급수펌프 VCB",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "TRIP",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "VCB_B01_TRIP",
+      "feedback_tag": "ECMS.VCB-B01.CLOSED",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:VCB_B01_TRIP"
+      ]
+    },
+    {
+      "catalog_index": 59,
+      "equipment_id": "VCB-B01",
+      "label_ko": "IP 급수펌프 VCB",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "RESET",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "VCB_B01_RESET",
+      "feedback_tag": "ECMS.VCB-B01.CLOSED",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:VCB_B01_RESET"
+      ]
+    },
+    {
+      "catalog_index": 60,
+      "equipment_id": "VCB-A02",
+      "label_ko": "LP 급수펌프 VCB",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "OPEN",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "VCB_A02_CMD",
+      "feedback_tag": "ECMS.VCB-A02.CLOSED",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:VCB_A02_CMD"
+      ]
+    },
+    {
+      "catalog_index": 61,
+      "equipment_id": "VCB-A02",
+      "label_ko": "LP 급수펌프 VCB",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "CLOSE",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "VCB_A02_CMD",
+      "feedback_tag": "ECMS.VCB-A02.CLOSED",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:VCB_A02_CMD"
+      ]
+    },
+    {
+      "catalog_index": 62,
+      "equipment_id": "VCB-A02",
+      "label_ko": "LP 급수펌프 VCB",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "TRIP",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "VCB_A02_TRIP",
+      "feedback_tag": "ECMS.VCB-A02.CLOSED",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:VCB_A02_TRIP"
+      ]
+    },
+    {
+      "catalog_index": 63,
+      "equipment_id": "VCB-A02",
+      "label_ko": "LP 급수펌프 VCB",
+      "system": "ECMS",
+      "equipment_type": "BREAKER",
+      "command": "RESET",
+      "source_execution_layer": "ELECTRICAL_ENGINE",
+      "source_status": "CONNECTED_VPP",
+      "model_input": "VCB_A02_RESET",
+      "feedback_tag": "ECMS.VCB-A02.CLOSED",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:VCB_A02_RESET"
+      ]
+    },
+    {
+      "catalog_index": 64,
+      "equipment_id": "HP-FWV",
+      "label_ko": "HP 급수조절밸브",
+      "system": "HRSG",
+      "equipment_type": "VALVE",
+      "command": "OPEN",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "HP_FWV_OPENING",
+      "feedback_tag": "TSP.DRUM.HP.LIC_OUT",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:HP_FWV_OPENING"
+      ]
+    },
+    {
+      "catalog_index": 65,
+      "equipment_id": "HP-FWV",
+      "label_ko": "HP 급수조절밸브",
+      "system": "HRSG",
+      "equipment_type": "VALVE",
+      "command": "CLOSE",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "HP_FWV_OPENING",
+      "feedback_tag": "TSP.DRUM.HP.LIC_OUT",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:HP_FWV_OPENING"
+      ]
+    },
+    {
+      "catalog_index": 66,
+      "equipment_id": "HP-FWV",
+      "label_ko": "HP 급수조절밸브",
+      "system": "HRSG",
+      "equipment_type": "VALVE",
+      "command": "SET_OPENING",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "HP_FWV_OPENING",
+      "feedback_tag": "TSP.DRUM.HP.LIC_OUT",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:HP_FWV_OPENING"
+      ]
+    },
+    {
+      "catalog_index": 67,
+      "equipment_id": "HP-FWV",
+      "label_ko": "HP 급수조절밸브",
+      "system": "HRSG",
+      "equipment_type": "VALVE",
+      "command": "AUTO",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "HP_FWV_MODE",
+      "feedback_tag": "TSP.DRUM.HP.LIC_OUT",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:HP_FWV_MODE"
+      ]
+    },
+    {
+      "catalog_index": 68,
+      "equipment_id": "HP-FWV",
+      "label_ko": "HP 급수조절밸브",
+      "system": "HRSG",
+      "equipment_type": "VALVE",
+      "command": "MANUAL",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "HP_FWV_MODE",
+      "feedback_tag": "TSP.DRUM.HP.LIC_OUT",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:HP_FWV_MODE"
+      ]
+    },
+    {
+      "catalog_index": 69,
+      "equipment_id": "IP-FWV",
+      "label_ko": "IP 급수조절밸브",
+      "system": "HRSG",
+      "equipment_type": "VALVE",
+      "command": "OPEN",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "IP_FWV_OPENING",
+      "feedback_tag": "TSP.DRUM.IP.LIC_OUT",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:IP_FWV_OPENING"
+      ]
+    },
+    {
+      "catalog_index": 70,
+      "equipment_id": "IP-FWV",
+      "label_ko": "IP 급수조절밸브",
+      "system": "HRSG",
+      "equipment_type": "VALVE",
+      "command": "CLOSE",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "IP_FWV_OPENING",
+      "feedback_tag": "TSP.DRUM.IP.LIC_OUT",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:IP_FWV_OPENING"
+      ]
+    },
+    {
+      "catalog_index": 71,
+      "equipment_id": "IP-FWV",
+      "label_ko": "IP 급수조절밸브",
+      "system": "HRSG",
+      "equipment_type": "VALVE",
+      "command": "SET_OPENING",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "IP_FWV_OPENING",
+      "feedback_tag": "TSP.DRUM.IP.LIC_OUT",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:IP_FWV_OPENING"
+      ]
+    },
+    {
+      "catalog_index": 72,
+      "equipment_id": "IP-FWV",
+      "label_ko": "IP 급수조절밸브",
+      "system": "HRSG",
+      "equipment_type": "VALVE",
+      "command": "AUTO",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "IP_FWV_MODE",
+      "feedback_tag": "TSP.DRUM.IP.LIC_OUT",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:IP_FWV_MODE"
+      ]
+    },
+    {
+      "catalog_index": 73,
+      "equipment_id": "IP-FWV",
+      "label_ko": "IP 급수조절밸브",
+      "system": "HRSG",
+      "equipment_type": "VALVE",
+      "command": "MANUAL",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "IP_FWV_MODE",
+      "feedback_tag": "TSP.DRUM.IP.LIC_OUT",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:IP_FWV_MODE"
+      ]
+    },
+    {
+      "catalog_index": 74,
+      "equipment_id": "LP-FWV",
+      "label_ko": "LP 급수조절밸브",
+      "system": "HRSG",
+      "equipment_type": "VALVE",
+      "command": "OPEN",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "LP_FWV_OPENING",
+      "feedback_tag": "TSP.DRUM.LP.LIC_OUT",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:LP_FWV_OPENING"
+      ]
+    },
+    {
+      "catalog_index": 75,
+      "equipment_id": "LP-FWV",
+      "label_ko": "LP 급수조절밸브",
+      "system": "HRSG",
+      "equipment_type": "VALVE",
+      "command": "CLOSE",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "LP_FWV_OPENING",
+      "feedback_tag": "TSP.DRUM.LP.LIC_OUT",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:LP_FWV_OPENING"
+      ]
+    },
+    {
+      "catalog_index": 76,
+      "equipment_id": "LP-FWV",
+      "label_ko": "LP 급수조절밸브",
+      "system": "HRSG",
+      "equipment_type": "VALVE",
+      "command": "SET_OPENING",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "LP_FWV_OPENING",
+      "feedback_tag": "TSP.DRUM.LP.LIC_OUT",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:LP_FWV_OPENING"
+      ]
+    },
+    {
+      "catalog_index": 77,
+      "equipment_id": "LP-FWV",
+      "label_ko": "LP 급수조절밸브",
+      "system": "HRSG",
+      "equipment_type": "VALVE",
+      "command": "AUTO",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "LP_FWV_MODE",
+      "feedback_tag": "TSP.DRUM.LP.LIC_OUT",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:LP_FWV_MODE"
+      ]
+    },
+    {
+      "catalog_index": 78,
+      "equipment_id": "LP-FWV",
+      "label_ko": "LP 급수조절밸브",
+      "system": "HRSG",
+      "equipment_type": "VALVE",
+      "command": "MANUAL",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "LP_FWV_MODE",
+      "feedback_tag": "TSP.DRUM.LP.LIC_OUT",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:LP_FWV_MODE"
+      ]
+    },
+    {
+      "catalog_index": 79,
+      "equipment_id": "HPCV",
+      "label_ko": "HP 터빈 제어밸브",
+      "system": "ST",
+      "equipment_type": "VALVE",
+      "command": "OPEN",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "HPCV_OPENING",
+      "feedback_tag": "TSP.ST.HP.MASS_FLOW",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:HPCV_OPENING"
+      ]
+    },
+    {
+      "catalog_index": 80,
+      "equipment_id": "HPCV",
+      "label_ko": "HP 터빈 제어밸브",
+      "system": "ST",
+      "equipment_type": "VALVE",
+      "command": "CLOSE",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "HPCV_OPENING",
+      "feedback_tag": "TSP.ST.HP.MASS_FLOW",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:HPCV_OPENING"
+      ]
+    },
+    {
+      "catalog_index": 81,
+      "equipment_id": "HPCV",
+      "label_ko": "HP 터빈 제어밸브",
+      "system": "ST",
+      "equipment_type": "VALVE",
+      "command": "SET_OPENING",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "HPCV_OPENING",
+      "feedback_tag": "TSP.ST.HP.MASS_FLOW",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:HPCV_OPENING"
+      ]
+    },
+    {
+      "catalog_index": 82,
+      "equipment_id": "IPCV",
+      "label_ko": "IP 터빈 제어밸브",
+      "system": "ST",
+      "equipment_type": "VALVE",
+      "command": "OPEN",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "IPCV_OPENING",
+      "feedback_tag": "TSP.ST.IP.MASS_FLOW",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:IPCV_OPENING"
+      ]
+    },
+    {
+      "catalog_index": 83,
+      "equipment_id": "IPCV",
+      "label_ko": "IP 터빈 제어밸브",
+      "system": "ST",
+      "equipment_type": "VALVE",
+      "command": "CLOSE",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "IPCV_OPENING",
+      "feedback_tag": "TSP.ST.IP.MASS_FLOW",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:IPCV_OPENING"
+      ]
+    },
+    {
+      "catalog_index": 84,
+      "equipment_id": "IPCV",
+      "label_ko": "IP 터빈 제어밸브",
+      "system": "ST",
+      "equipment_type": "VALVE",
+      "command": "SET_OPENING",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "IPCV_OPENING",
+      "feedback_tag": "TSP.ST.IP.MASS_FLOW",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:IPCV_OPENING"
+      ]
+    },
+    {
+      "catalog_index": 85,
+      "equipment_id": "LPCV",
+      "label_ko": "LP 터빈 제어밸브",
+      "system": "ST",
+      "equipment_type": "VALVE",
+      "command": "OPEN",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "LPCV_OPENING",
+      "feedback_tag": "TSP.ST.LP.MASS_FLOW",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:LPCV_OPENING"
+      ]
+    },
+    {
+      "catalog_index": 86,
+      "equipment_id": "LPCV",
+      "label_ko": "LP 터빈 제어밸브",
+      "system": "ST",
+      "equipment_type": "VALVE",
+      "command": "CLOSE",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "LPCV_OPENING",
+      "feedback_tag": "TSP.ST.LP.MASS_FLOW",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:LPCV_OPENING"
+      ]
+    },
+    {
+      "catalog_index": 87,
+      "equipment_id": "LPCV",
+      "label_ko": "LP 터빈 제어밸브",
+      "system": "ST",
+      "equipment_type": "VALVE",
+      "command": "SET_OPENING",
+      "source_execution_layer": "THERMO_ADAPTER_REQUIRED",
+      "source_status": "PROVISIONAL",
+      "model_input": "LPCV_OPENING",
+      "feedback_tag": "TSP.ST.LP.MASS_FLOW",
+      "strict_class": "THERMO_ADAPTER_REQUIRED",
+      "transaction_status": "NOT_PHYSICALLY_CONNECTED",
+      "native_dispatch_status": "REQUIRED",
+      "independent_feedback_status": "NOT_VERIFIED",
+      "evidence": [
+        "config/ecms_command_catalog.csv",
+        "required_model_input:LPCV_OPENING"
+      ]
+    }
+  ]
+}

@@ -122,9 +122,13 @@ def render_asset(asset: CheckValveAsset) -> str:
   <circle class="pump" cx="395" cy="250" r="44"/><path d="M373 275Q430 250 373 225Z" fill="#d9f4ff"/>
   <text class="small" x="395" y="320" text-anchor="middle">CENTRIFUGAL PUMP</text>
   <path class="water" d="M439 250H560" marker-end="url(#waterArrow)"/>
-  <g data-component="{esc(asset.check_valve_component)}">
-    <polygon class="nrv" points="575,215 635,250 575,285"/><line x1="645" y1="210" x2="645" y2="290" stroke="#87efbd" stroke-width="6"/>
-    <text class="small" x="610" y="320" text-anchor="middle">SPRING NRV</text>
+  <g data-component="{esc(asset.check_valve_component)}" data-symbol-type="SPRING_CHECK_VALVE"
+    data-symbol-convention="ISO-10628-style" aria-label="Spring-loaded non-return valve">
+    <polygon class="nrv" points="575,215 635,250 575,285"/>
+    <line x1="635" y1="210" x2="635" y2="290" stroke="#87efbd" stroke-width="6"/>
+    <polyline points="635,210 625,200 645,188 625,176 635,164" fill="none"
+      stroke="#87efbd" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="small" x="610" y="320" text-anchor="middle">SPRING CHECK VALVE · NRV</text>
   </g>
   <path class="water" d="M650 250H805" marker-end="url(#waterArrow)"/>
   <rect class="equip" x="805" y="205" width="285" height="90" rx="14"/>
@@ -133,7 +137,8 @@ def render_asset(asset: CheckValveAsset) -> str:
   <rect class="passive" x="70" y="345" width="1020" height="38" rx="10"/>
   <text class="small" x="580" y="369" text-anchor="middle">No WRITE command: flap position is solved from flow, pressure and spring-equivalent dynamics</text>
   {feedback_rows(asset)}
-  <text class="muted" x="70" y="716">Endpoint {ENDPOINT} · Value/StatusCode/SourceTimestamp/ServerTimestamp handled by the OPC UA client</text>
+  <text class="muted" x="70" y="703">ISO 10628-style process symbol · OpenModelica physical component · not an operating or isolation drawing</text>
+  <text class="muted" x="70" y="720">Endpoint {ENDPOINT} · Value/StatusCode/SourceTimestamp/ServerTimestamp handled by the OPC UA client</text>
 </svg>
 '''
 
