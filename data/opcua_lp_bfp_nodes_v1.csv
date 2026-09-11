@@ -1,0 +1,28 @@
+canonical_tag,owner,layer,direction,opcua_browse_name,source,role
+CMD.FWP-LP.TRIP,ECMS,ELECTRICAL,WRITE,vppLPFWPTripCommandNative,operator command,LP FWP Trip command mirror
+CTRL.FWP-LP.TRIP_LATCH,ECMS,ELECTRICAL,WRITE,vppLPFWPTripLatchNative,CMD.FWP-LP.TRIP,Latched LP FWP Trip state
+ECMS.VCB-A02.TRIP_CMD,ECMS,ELECTRICAL,WRITE,vppVCBA02TripCommandNative,CTRL.FWP-LP.TRIP_LATCH,LP feeder breaker Trip output
+ECMS.VCB-A02.CLOSED,ECMS,ELECTRICAL,WRITE,vppVCBA02ClosedNative,VCB-A02 auxiliary contact,Physical motor-power boundary
+FWP-LP.MOTOR_ENERGIZED,OpenModelica,PHYSICAL,READ,vppLPFWPMotorEnergized,ECMS.VCB-A02.CLOSED,Applied motor-power state
+DCS.FWP-LP.SPEED_PROVEN,OpenModelica,PHYSICAL,READ,vppLPFWPSpeedProven,vppLPFWPSpeedRPM,Derived speed feedback
+DCS.FWP-LP.RUN_FB,OpenModelica,PHYSICAL,READ,vppLPFWPRunning,motor energized and speed proven,Derived run feedback
+TSP.FWP-LP.SPEED_RPM,OpenModelica,PHYSICAL,READ,vppLPFWPSpeedRPM,PompeAlimBP.Vr,Solved pump speed
+TSP.FWP-LP.MASS_FLOW,OpenModelica,PHYSICAL,READ,vppLPFWPMassFlowTH,PompeAlimBP.Q,Solved pump mass flow
+TSP.FWP-LP.VOLUME_FLOW,OpenModelica,PHYSICAL,READ,vppLPFWPVolumeFlowM3S,PompeAlimBP.Qv,Solved pump volume flow
+TSP.FWP-LP.DELTA_P,OpenModelica,PHYSICAL,READ,vppLPFWPDeltaPPa,PompeAlimBP.deltaP,Solved pump differential pressure
+TSP.FWP-LP.MECH_POWER,OpenModelica,PHYSICAL,READ,vppLPFWPMechanicalPowerW,PompeAlimBP.Wm,Solved pump mechanical power
+TSP.DRUM.LP.LEVEL,OpenModelica,PHYSICAL,READ,BallonBP.yLevel.signal,BallonBP.yLevel.signal,LP drum level
+TSP.DRUM.LP.PRESSURE,OpenModelica,PHYSICAL,READ,BallonBP.P,BallonBP.P,LP drum pressure
+TSP.DRUM.LP.FW_VALVE,OpenModelica,PHYSICAL,READ,fmuVlvLPFWFb,vanne_alimentationBP.Ouv.signal,LP feedwater valve feedback
+TSP.TURBINE.LP.FLOW,OpenModelica,PHYSICAL,READ,vppLPTurbineSteamFlowTH,TurbineBP.Q,LP turbine steam flow
+HRSG.LP.DRUM.LEVEL.L,ECMS,ALARM,DERIVED,,TSP.DRUM.LP.LEVEL,1.65 m low alarm with 0.5 s delay and 0.02 m hysteresis
+HRSG.LP.DRUM.LEVEL.LL,ECMS,ALARM,DERIVED,,TSP.DRUM.LP.LEVEL,1.55 m low-low alarm with 0.5 s delay and 0.02 m hysteresis
+COMMON.GT_TRIP.REQUEST,ECMS,PROTECTION,WRITE,vppExternalTripCommandNative,HRSG.LP.DRUM.LEVEL.LL,LP Drum LL common GT Trip request
+COMMON.ST_TRIP.REQUEST,ECMS,PROTECTION,WRITE,vppExternalTripCommandNative,HRSG.LP.DRUM.LEVEL.LL,LP Drum LL common ST Trip request
+GT.TRIP.CMD,OpenModelica,PROTECTION,READ,vppGTTripCmd,vppExternalTripCommandNative,Resolved GT Trip command
+GT.TRIP.LATCH,OpenModelica,PROTECTION,READ,vppGTTripLatch,vppSTTripLatch,GT Trip latch feedback
+ECMS.52GT.TRIP_CMD,OpenModelica,ELECTRICAL,READ,vpp52GTTripCmd,vppGTTripLatch,52GT Trip command feedback
+ECMS.52GT.CLOSED,OpenModelica,ELECTRICAL,READ,vpp52GTClosed,vppGTTripLatch,52GT auxiliary contact
+ST.TRIP.LATCH,OpenModelica,PROTECTION,READ,vppSTTripLatchPublished,vppSTTripLatch,ST Trip latch feedback
+ECMS.52ST.TRIP_CMD,OpenModelica,ELECTRICAL,READ,vpp52STTripCmd,vppSTTripLatch,52ST Trip command feedback
+ECMS.52ST.CLOSED,OpenModelica,ELECTRICAL,READ,vpp52STClosed,vppSTTripLatch,52ST auxiliary contact

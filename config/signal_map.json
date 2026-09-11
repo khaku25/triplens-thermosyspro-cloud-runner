@@ -30,6 +30,61 @@
         "QUALITY"
       ]
     },
+    "cb_52gt_open_command": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "cb_52gt_open_command_sent",
+        "CB_52GT_OPEN_CMD"
+      ]
+    },
+    "ecms_cb_52gt_closed": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "ecms_cb_52gt_closed",
+        "ECMS.52GT.CLOSED",
+        "52GT.CLOSED"
+      ]
+    },
+    "gt_in_service": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "gt_in_service",
+        "GT.IN_SERVICE"
+      ]
+    },
+    "gt_trip_from_52gt_open": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "gt_trip_from_52gt_open",
+        "GT.TRIP.FROM_52GT_OPEN"
+      ]
+    },
+    "gt_trip_command_readback": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "gt_trip_command_readback",
+        "GT.TRIP.OPCUA.READBACK"
+      ]
+    },
+    "gt_trip_latch": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": [
+        "gt_trip_latch",
+        "GT.TRIP.PHYSICS.LATCH"
+      ]
+    },
     "stg_power_w": {
       "required": false,
       "unit": "W",
@@ -44,6 +99,7 @@
       "aliases": [
         "vppGTExhaustMassFlowTH",
         "Debit.y.signal",
+        "gt_exhaust_flow_th",
         "gt_exhaust_mass_flow_t_h"
       ],
       "source_multipliers": {
@@ -115,6 +171,7 @@
       "aliases": [
         "vppHPTurbineSteamFlowTH",
         "TurbineHP.Q",
+        "hp_turbine_flow_th",
         "hp_steam_flow_t_h"
       ],
       "source_multipliers": {
@@ -127,6 +184,7 @@
       "aliases": [
         "vppIPTurbineSteamFlowTH",
         "TurbineMP.Q",
+        "ip_turbine_flow_th",
         "ip_steam_flow_t_h"
       ],
       "source_multipliers": {
@@ -139,6 +197,7 @@
       "aliases": [
         "vppLPTurbineSteamFlowTH",
         "TurbineBP.Q",
+        "lp_turbine_flow_th",
         "lp_steam_flow_t_h"
       ],
       "source_multipliers": {
@@ -151,6 +210,7 @@
       "aliases": [
         "vppHPBypassMassFlowTH",
         "vppHPBypassMassFlow",
+        "hp_bypass_flow_th",
         "hp_bypass_steam_flow_t_h"
       ],
       "source_multipliers": {
@@ -163,6 +223,7 @@
       "aliases": [
         "vppLPBypassMassFlowTH",
         "vppLPBypassMassFlow",
+        "lp_bypass_flow_th",
         "lp_bypass_steam_flow_t_h"
       ],
       "source_multipliers": {
@@ -175,6 +236,7 @@
       "aliases": [
         "vppHPSprayMassFlowTH",
         "vppHPSprayMassFlow",
+        "hp_spray_flow_th",
         "hp_bypass_spray_flow_t_h"
       ],
       "source_multipliers": {
@@ -187,6 +249,7 @@
       "aliases": [
         "vppLPSprayMassFlowTH",
         "vppLPSprayMassFlow",
+        "lp_spray_flow_th",
         "lp_bypass_spray_flow_t_h"
       ],
       "source_multipliers": {
@@ -216,6 +279,86 @@
         "vanne_alimentationBP.Ouv.signal",
         "lp_feedwater_valve_pu"
       ]
+    },
+    "fwp_lp_trip_input": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": ["CMD.FWP-LP.TRIP", "vppLPFWPTripCommandNative", "fwp_lp_trip_input"]
+    },
+    "fwp_lp_trip_latch": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": ["CTRL.FWP-LP.TRIP_LATCH", "vppLPFWPTripLatchNative", "fwp_lp_trip_latch"]
+    },
+    "fwp_lp_vcb_trip_cmd": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": ["ECMS.VCB-A02.TRIP_CMD", "vppVCBA02TripCommandNative", "fwp_lp_vcb_trip_cmd"]
+    },
+    "fwp_lp_vcb_closed": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": ["ECMS.VCB-A02.CLOSED", "vppVCBA02ClosedNative", "fwp_lp_vcb_closed"]
+    },
+    "fwp_lp_motor_energized": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": ["FWP-LP.MOTOR_ENERGIZED", "vppLPFWPMotorEnergized", "fwp_lp_motor_energized"]
+    },
+    "fwp_lp_running": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": ["DCS.FWP-LP.RUN_FB", "vppLPFWPRunning", "fwp_lp_running"]
+    },
+    "fwp_lp_speed_proven": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": ["DCS.FWP-LP.SPEED_PROVEN", "vppLPFWPSpeedProven", "fwp_lp_speed_proven"]
+    },
+    "fwp_lp_speed_rpm": {
+      "required": false,
+      "unit": "rpm",
+      "aliases": ["PompeAlimBP.Vr", "vppLPFWPSpeedRPM", "fwp_lp_speed_rpm"]
+    },
+    "fwp_lp_mass_flow_t_h": {
+      "required": false,
+      "unit": "t/h",
+      "aliases": ["PompeAlimBP.Q", "vppLPFWPMassFlowTH", "fwp_lp_mass_flow_t_h"],
+      "source_multipliers": {"PompeAlimBP.Q": 3.6}
+    },
+    "fwp_lp_qv_m3_s": {
+      "required": false,
+      "unit": "m3/s",
+      "aliases": ["PompeAlimBP.Qv", "vppLPFWPVolumeFlowM3S", "fwp_lp_qv_m3_s"]
+    },
+    "fwp_lp_delta_p_pa": {
+      "required": false,
+      "unit": "Pa",
+      "aliases": ["PompeAlimBP.deltaP", "vppLPFWPDeltaPPa", "fwp_lp_delta_p_pa"]
+    },
+    "fwp_lp_mechanical_power_w": {
+      "required": false,
+      "unit": "W",
+      "aliases": ["PompeAlimBP.Wm", "vppLPFWPMechanicalPowerW", "fwp_lp_mechanical_power_w"]
+    },
+    "lp_drum_level_l": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": ["HRSG.LP.DRUM.LEVEL.L", "lp_drum_level_l_alarm", "lp_drum_level_l"]
+    },
+    "lp_drum_level_ll": {
+      "required": false,
+      "unit": "BOOL",
+      "data_type": "BOOL",
+      "aliases": ["HRSG.LP.DRUM.LEVEL.LL", "lp_drum_level_ll_alarm", "lp_drum_level_ll"]
     },
     "fwp_hp_trip_input": {
       "required": false,

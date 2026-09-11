@@ -179,6 +179,7 @@
     "matrix_adoption": "ALL_ROWS_ARE_VPP_BASELINE_V1",
     "rules": {
       "DIRECT_GT_TRIP": {"gt_trip": true, "st_trip": true},
+      "GT_BREAKER_OPEN_WHILE_RUNNING": {"gt_trip": true, "st_trip": true},
       "DIRECT_ST_TRIP": {"gt_trip": false, "st_trip": true},
       "HP_DRUM_HH": {"gt_trip": false, "st_trip": true},
       "IP_DRUM_HH": {"gt_trip": false, "st_trip": true},
@@ -189,6 +190,7 @@
     },
     "causal_constraints": [
       "POWER_DECAY_IS_A_TRIP_RESULT_NOT_A_TRIP_CAUSE",
+      "52GT_OPEN_FEEDBACK_PRECEDES_DERIVED_GT_TRIP",
       "GT_TRIP_INTERTRIPS_ST",
       "DIRECT_ST_TRIP_DOES_NOT_TRIP_GT",
       "FWP_TRIP_DOES_NOT_TRIP_GT_OR_ST"
