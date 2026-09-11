@@ -119,7 +119,7 @@ jobs:
                 -tolerance=0.001 \
                 -f=selected_init.xml \
                 -iim=${{ matrix.iim }} \
-                -s=dassl \
+                -s=ida \
                 -nls=${{ matrix.nls }} \
                 -nlsLS=totalpivot \
                 -nlssMaxDensity=0.01 \
