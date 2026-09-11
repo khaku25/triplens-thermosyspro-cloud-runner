@@ -921,6 +921,13 @@ model CombinedCycle_TripTAC_Bypass_OMCStart
     exchanger fluid enthalpy and wall-temperature states are initialized from
     the documented operating-point starts instead of solving the whole HRSG
     thermal network as one steady-state nonlinear block at t=0.</p></html>"));
+initial equation
+  // The last hydraulic node is a connector boundary, not an internal pipe
+  // state.  Pin the three live-steam outlet enthalpies during initialization
+  // so OpenModelica cannot select the non-physical h=0 algebraic root.
+  SurchauffeurHP3.C2.h_vol = 3432930.991856911;
+  SurchauffeurMP3.C2.h_vol = 3517381.1285517;
+  SurchauffeurBP.C2.h_vol = 2919992.1127030067;
 end CombinedCycle_TripTAC_Bypass_OMCStart;
 
 model CombinedCycle_TripTAC_Bypass_OMCStart_NoFeedwaterInertia
