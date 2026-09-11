@@ -30,20 +30,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - case_name: staged-reference
-            build_script: build_v42_bypass_staged.mos
-            executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass_OMCStart
-            tearing: omcTearing
-            nls: homotopy
-            use_warm: false
-            iim: symbolic
-          - case_name: staged-no-feedwater-inertia
-            build_script: build_v42_bypass_no_feedwater_inertia.mos
-            executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass_OMCStart_NoFeedwaterInertia
-            tearing: omcTearing
-            nls: homotopy
-            use_warm: false
-            iim: symbolic
           - case_name: staged-static-feedwater-mass
             build_script: build_v42_bypass_static_feedwater_mass.mos
             executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass_OMCStart_StaticFeedwaterMass
