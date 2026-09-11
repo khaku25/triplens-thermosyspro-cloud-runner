@@ -17,7 +17,7 @@ REQUIRED_MARKERS = (
 DECLARATIONS = f'''
   // {MARKER}
   parameter Real vppLPFWPNormalSpeedRPM = 1400;
-  parameter Real vppLPFWPResidualSpeedRPM = 700;
+  parameter Real vppLPFWPResidualSpeedRPM = 0;
   parameter Real vppLPFWPCoastdown95(unit="s") = 2.0;
   parameter Real vppLPFWPCoastdownTau(unit="s") = vppLPFWPCoastdown95/(-log(0.05));
   output Real vppLPFWPTripCommandNative(start=0, fixed=true, stateSelect=StateSelect.always);
