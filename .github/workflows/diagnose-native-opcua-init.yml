@@ -1,6 +1,7 @@
 name: TEMP diagnose native OpenModelica initialization
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
     paths:
@@ -138,3 +139,4 @@ jobs:
             build/TripLens_Native_OPCUA_init.xml
           if-no-files-found: warn
           retention-days: 14
+
