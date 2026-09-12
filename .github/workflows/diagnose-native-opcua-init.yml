@@ -109,6 +109,7 @@ jobs:
               "$OPENMODELICA_IMAGE" \
               ./TripLens_Native_OPCUA \
                 -lv=LOG_SUCCESS,LOG_NLS \
+                -d=initialization \
                 -r="${{ matrix.profile }}-init.csv" \
             > "outputs/init-probe/${{ matrix.profile }}-runtime.log" 2>&1
           probe_status=$?
