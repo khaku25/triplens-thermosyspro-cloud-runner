@@ -338,6 +338,25 @@ def full_native_valve_read_contracts(namespace_uri: str) -> tuple[NodeContract, 
     )
 
 
+def full_native_valve_read_browse_names() -> set[str]:
+    """Return valve READ BrowseNames without constructing bound contracts.
+
+    Namespace URI discovery happens before the model namespace is known.  A
+    ``NodeContract`` intentionally rejects an empty URI, so required-name
+    discovery must read the CSV directly instead of calling
+    ``model_node_contracts(\"\", ...)``.
+    """
+
+    path = ROOT / "data" / "opcua_native_valve_nodes_v1.csv"
+    with path.open(encoding="utf-8-sig", newline="") as stream:
+        return {
+            row["opcua_browse_name"].strip()
+            for row in csv.DictReader(stream)
+            if row["direction"].strip().upper() == "READ"
+            and row["opcua_browse_name"].strip()
+        }
+
+
 def model_node_contracts(
     namespace_uri: str, *, include_full_valve_outputs: bool = False
 ) -> tuple[NodeContract, ...]:
@@ -821,10 +840,14 @@ def main() -> int:
     access_evidence: dict[str, AccessEvidence] = {}
     write_service_status: dict[str, str] = {}
     try:
-        contracts = model_node_contracts(
-            "", include_full_valve_outputs=True
-        )
-        required = {item.browse_name for item in contracts}
+        # Build the required BrowseName set without creating NodeContracts
+        # before namespace discovery.  NodeContract deliberately rejects an
+        # empty namespace URI; the URI is only known after walking the server.
+        required = {
+            *COMMAND_NODES.values(),
+            *(signal.node_name for signal in SIGNALS),
+            *full_native_valve_read_browse_names(),
+        }
         model_namespace_uri, bindings = wait_for_model_bindings(
             client, required, 60.0, include_full_valve_outputs=True
         )
