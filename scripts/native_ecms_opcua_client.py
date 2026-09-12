@@ -320,7 +320,27 @@ def discover_model_namespace_uri(client, required: set[str]) -> str:
     return matches[0]
 
 
-def model_node_contracts(namespace_uri: str) -> tuple[NodeContract, ...]:
+def full_native_valve_read_contracts(namespace_uri: str) -> tuple[NodeContract, ...]:
+    path = ROOT / "data" / "opcua_native_valve_nodes_v1.csv"
+    with path.open(encoding="utf-8-sig", newline="") as stream:
+        rows = list(csv.DictReader(stream))
+    return tuple(
+        NodeContract(
+            canonical_tag=row["canonical_tag"],
+            namespace_uri=namespace_uri,
+            browse_name=row["opcua_browse_name"],
+            direction="READ",
+            data_type="Boolean" if row["data_type"].upper() in {"BOOL", "BOOLEAN"} else "Double",
+            stale_after_s=MODEL_STALE_AFTER_S,
+        )
+        for row in rows
+        if row["direction"].strip().upper() == "READ"
+    )
+
+
+def model_node_contracts(
+    namespace_uri: str, *, include_full_valve_outputs: bool = False
+) -> tuple[NodeContract, ...]:
     command_contracts = tuple(
         NodeContract(
             canonical_tag=field,
@@ -344,11 +364,18 @@ def model_node_contracts(namespace_uri: str) -> tuple[NodeContract, ...]:
         )
         for signal in SIGNALS
     )
-    return command_contracts + signal_contracts
+    contracts = command_contracts + signal_contracts
+    if include_full_valve_outputs:
+        known = {item.browse_name for item in contracts}
+        contracts += tuple(
+            item for item in full_native_valve_read_contracts(namespace_uri)
+            if item.browse_name not in known
+        )
+    return contracts
 
 
 def wait_for_model_bindings(
-    client, required: set[str], timeout_s: float
+    client, required: set[str], timeout_s: float, *, include_full_valve_outputs: bool = False
 ) -> tuple[str, dict[str, BoundNode]]:
     deadline = time.monotonic() + timeout_s
     last_error: Exception | None = None
@@ -356,7 +383,10 @@ def wait_for_model_bindings(
         try:
             namespace_uri = discover_model_namespace_uri(client, required)
             return namespace_uri, bind_nodes(
-                client, model_node_contracts(namespace_uri)
+                client, model_node_contracts(
+                    namespace_uri,
+                    include_full_valve_outputs=include_full_valve_outputs,
+                )
             )
         except NodeBindingError as exc:
             last_error = exc
@@ -659,6 +689,7 @@ def validate_lp_bfp(
     rows: list[dict[str, float | int]],
     command_time: float,
     post_gt_trip_seconds: float = 30.0,
+    observed_node_count: int | None = None,
 ) -> dict[str, object]:
     before = [row for row in rows if row["time_s"] < command_time]
     after = [row for row in rows if row["time_s"] >= command_time + 0.2]
@@ -741,7 +772,8 @@ def validate_lp_bfp(
         "proof_type": "NATIVE_OPENMODELICA_OPCUA_CLOSED_LOOP",
         "protocol": PROTOCOL,
         "frames_received": len(rows),
-        "values_received": len(rows) * (len(SIGNALS) + len(COMMAND_NODES)),
+        "values_received": len(rows) * (observed_node_count or (len(SIGNALS) + len(COMMAND_NODES))),
+        "observed_nodes_per_frame": observed_node_count or (len(SIGNALS) + len(COMMAND_NODES)),
         "changed_physical_fields": changed,
         "command_time_s": command_time,
         "terminal_time_s": rows[-1]["time_s"] if rows else None,
@@ -789,9 +821,12 @@ def main() -> int:
     access_evidence: dict[str, AccessEvidence] = {}
     write_service_status: dict[str, str] = {}
     try:
-        required = {*COMMAND_NODES.values(), *(signal.node_name for signal in SIGNALS)}
+        contracts = model_node_contracts(
+            "", include_full_valve_outputs=True
+        )
+        required = {item.browse_name for item in contracts}
         model_namespace_uri, bindings = wait_for_model_bindings(
-            client, required, 60.0
+            client, required, 60.0, include_full_valve_outputs=True
         )
         access_evidence = {
             field: read_access_evidence(bound)
@@ -906,7 +941,10 @@ def main() -> int:
         writer = csv.DictWriter(stream, fieldnames=EVENT_FIELDS)
         writer.writeheader()
         writer.writerows(events)
-    report = validate_lp_bfp(rows, args.command_time, args.post_gt_trip_seconds)
+    report = validate_lp_bfp(
+        rows, args.command_time, args.post_gt_trip_seconds,
+        observed_node_count=len(bindings),
+    )
     report["event_count"] = len(events)
     report["model_namespace_uri"] = model_namespace_uri
     report["model_binding"] = "NAMESPACE_URI_AND_BROWSE_NAME"
