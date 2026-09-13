@@ -1,0 +1,153 @@
+name: Diagnose ThermoSysPro 4.2 bypass initialization
+
+on:
+  pull_request:
+    paths:
+      - "modelica/TripLensUserModels_Bypass.mo"
+      - "modelica/install_modelica_4_0.mos"
+      - "modelica/build_v42_bypass_diagnostic.mos"
+      - "modelica/build_v42_bypass_staged.mos"
+      - "modelica/build_v42_bypass_no_feedwater_inertia.mos"
+      - "modelica/build_v42_bypass_static_feedwater_mass.mos"
+      - "modelica/build_v42_baseline_diagnostic.mos"
+      - "modelica/apply_combined_cycle_warm_start.py"
+      - "modelica/patch_thermosyspro_42_nominals.py"
+      - "modelica/CombinedCycle_init_D2012.mos"
+      - ".github/workflows/diagnose-v42-bypass-initialization.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      THERMOSYSPRO_COMMIT: a896ab75ce22162369e7fa4ce79927eeca44ad4a
+      OPENMODELICA_IMAGE: openmodelica/openmodelica:v1.27.0-minimal
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - case_name: staged-static-feedwater-mass
+            build_script: build_v42_bypass_static_feedwater_mass.mos
+            executable: TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass_OMCStart_StaticFeedwaterMass
+            tearing: omcTearing
+            nls: homotopy
+            use_warm: false
+            iim: symbolic
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact ThermoSysPro 4.2 source
+        run: |
+          mkdir -p vendor/download vendor/ThermoSysPro build/omhome build/v42
+          curl -fL --retry 3 --retry-delay 5 \
+            "https://gitlab.pam-retd.fr/thermosysproandco/ThermoSysPro/-/archive/${THERMOSYSPRO_COMMIT}/ThermoSysPro-${THERMOSYSPRO_COMMIT}.zip" \
+            -o vendor/thermosyspro-4.2.zip
+          unzip -q vendor/thermosyspro-4.2.zip -d vendor/download
+          source_root="$(find vendor/download -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          test -n "$source_root"
+          cp -a "$source_root"/. vendor/ThermoSysPro/
+          grep -Eq 'ThermoSysPro Version 4\.2|version *= *"4\.2"' \
+            vendor/ThermoSysPro/ThermoSysPro/package.mo
+          python3 modelica/patch_thermosyspro_42_nominals.py \
+            vendor/ThermoSysPro/ThermoSysPro/Units.mo \
+            --if97-packages \
+            vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/IF97_packages.mo \
+            --integrator \
+            vendor/ThermoSysPro/ThermoSysPro/InstrumentationAndControl/Blocks/Continu/Integrateur.mo \
+            --dynamic-drum \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Volumes/DynamicDrum.mo \
+            --stodola-turbine \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo \
+            --fluid-ph \
+            vendor/ThermoSysPro/ThermoSysPro/Properties/Fluid/Ph.mo \
+            --two-phase-pipe \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/HeatExchangers/DynamicTwoPhaseFlowPipe.mo
+
+      - name: Install Modelica 4.0.0
+        run: |
+          timeout --signal=TERM --kill-after=30s 10m \
+            docker run --rm \
+              -v "$PWD/build/omhome:/root" \
+              -v "$PWD:/workspace" \
+              -w /workspace \
+              "$OPENMODELICA_IMAGE" \
+              omc /workspace/modelica/install_modelica_4_0.mos \
+            | tee build/v42/install.log
+
+      - name: Translate ${{ matrix.case_name }}
+        run: |
+          timeout --signal=TERM --kill-after=30s 35m \
+            docker run --rm \
+              -v "$PWD/build/omhome:/root" \
+              -v "$PWD:/workspace" \
+              -w /workspace \
+              "$OPENMODELICA_IMAGE" \
+              omc --tearingMethod=${{ matrix.tearing }} \
+                /workspace/modelica/${{ matrix.build_script }} \
+            | tee build/v42/translation.log
+          test -x "build/v42/${{ matrix.executable }}"
+
+      - name: Transfer the ThermoSysPro warm start into the OMC setup XML
+        run: |
+          if [[ "${{ matrix.use_warm }}" == "true" ]]; then
+            python3 modelica/apply_combined_cycle_warm_start.py \
+              --init-xml "build/v42/${{ matrix.executable }}_init.xml" \
+              --dymola-script modelica/CombinedCycle_init_D2012.mos \
+              --output build/v42/selected_init.xml
+          else
+            cp "build/v42/${{ matrix.executable }}_init.xml" \
+              build/v42/selected_init.xml
+          fi
+
+      - name: Run ${{ matrix.case_name }} initialization
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=30s 30m \
+            docker run --rm \
+              -v "$PWD/build/omhome:/root" \
+              -v "$PWD:/workspace" \
+              -w /workspace/build/v42 \
+              "$OPENMODELICA_IMAGE" \
+              "./${{ matrix.executable }}" \
+                -startTime=0 \
+                -stopTime=1 \
+                -stepSize=0.1 \
+                -tolerance=0.001 \
+                -f=selected_init.xml \
+                -iim=${{ matrix.iim }} \
+                -s=ida \
+                -nls=${{ matrix.nls }} \
+                -nlsLS=totalpivot \
+                -nlssMaxDensity=0.01 \
+                -newton=damped_ls \
+                -newtonFTol=1e-8 \
+                -newtonXTol=1e-8 \
+                -lv=LOG_STDOUT,LOG_ASSERT,LOG_STATS,LOG_INIT \
+            > build/v42/initialization.log 2>&1
+          sim_status=$?
+          cat build/v42/initialization.log
+          exit "$sim_status"
+
+      - name: Upload complete initialization evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: thermosyspro-4.2-${{ matrix.case_name }}-${{ github.run_number }}
+          path: |
+            build/v42/install.log
+            build/v42/translation.log
+            build/v42/initialization.log
+            build/v42/selected_init.xml
+            build/v42/*_init.xml
+            build/v42/*_info.json
+            build/v42/*_01exo.c
+            build/v42/*_10asr.c
+            build/v42/*_12jac.c
+            build/v42/*_nls_*.csv
+            build/v42/*_res.csv
+          if-no-files-found: warn
+          retention-days: 30
