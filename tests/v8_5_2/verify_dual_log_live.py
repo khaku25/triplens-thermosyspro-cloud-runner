@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import os
 import subprocess
 import sys
@@ -28,6 +29,10 @@ CHAIN = (
 REQUIRED_PHYSICAL_EVENT_TAGS = {
     "LP_BFP_TRIP_PB", "BREAKER_OPEN", "MOTOR_DEENERGIZED", "RUNNING_LOST",
     "SPEED_PROVEN_LOST", "FLOW_LOW", "CHECK_VALVE_CLOSED",
+}
+POSTROLL_FINITE_VALUES = {
+    "SPEED_RPM", "MASS_FLOW_TH", "NRV_POSITION", "DELTA_P_PA",
+    "DRUM_LEVEL_M", "DRUM_PRESSURE_PA",
 }
 
 
@@ -72,6 +77,7 @@ def main() -> int:
     parser.add_argument("--endpoint", required=True)
     parser.add_argument("--proof-root", type=Path, required=True)
     parser.add_argument("--timeout", type=float, default=180.0)
+    parser.add_argument("--postroll-model-seconds", type=float, default=1.0)
     args = parser.parse_args()
 
     repo = args.repo_root.resolve()
@@ -127,6 +133,33 @@ def main() -> int:
                 time.sleep(0.25)
             if passed is None:
                 raise RuntimeError("LP BFP Dual Log proof did not reach PASS")
+
+            pass_model_time = float(passed.get("model_time_s", 0.0))
+            postroll_target = pass_model_time + max(0.0, args.postroll_model_seconds)
+            postroll = passed
+            while float(postroll.get("model_time_s", 0.0)) < postroll_target:
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("LP BFP post-roll timed out")
+                if process.poll() is not None:
+                    raise RuntimeError(
+                        f"Dual Log engine exited during post-roll with code {process.returncode}"
+                    )
+                current = load_json(snapshot)
+                if current and current.get("status") == "PASS":
+                    postroll = current
+                time.sleep(0.25)
+            if not postroll.get("model_time_advancing"):
+                raise RuntimeError("model time stopped during LP BFP post-roll")
+            final_values = postroll.get("values") or {}
+            if not isinstance(final_values, dict):
+                raise RuntimeError("post-roll physical values are unavailable")
+            for name in POSTROLL_FINITE_VALUES:
+                try:
+                    value = float(final_values[name])
+                except (KeyError, TypeError, ValueError) as exc:
+                    raise RuntimeError(f"post-roll physical value is invalid: {name}") from exc
+                if not math.isfinite(value):
+                    raise RuntimeError(f"post-roll physical value is non-finite: {name}")
 
             event_path = Path(str(passed["event_csv"]))
             raw_path = Path(str(passed["raw_csv"]))
@@ -184,6 +217,9 @@ def main() -> int:
                 "operator_pb_in_event": True, "general_commands_in_event": 0,
                 "physical_event_chain_verified": True,
                 "raw_chain_verified": True, "dual_input_analysis": True,
+                "postroll_model_time_before": pass_model_time,
+                "postroll_model_time_after": float(postroll["model_time_s"]),
+                "postroll_finite_physics": True,
             }, ensure_ascii=False, sort_keys=True))
         finally:
             if process.poll() is None:

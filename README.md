@@ -6,8 +6,10 @@ GitHub Actions에서 ThermoSysPro/OpenModelica 물리 원천을 생성하는 저
 보호 로직을 실제 OPC UA 입력으로 실행하고, LP BFP 시나리오의 `EVENT.csv`,
 `RAW.csv`, 결합 분석 및 검증 JSON을 독립 artifact로 게시합니다.
 
-V8은 현재 V8.5.3 RC1 검증 단계입니다. LP BFP 단기 시나리오가 통과하기 전에는
-기존 V7 안정 기준을 대체하지 않으며, 장시간 안정성이 입증됐다는 뜻도 아닙니다.
+V8은 현재 V8.5.3 RC1 검증 단계입니다. LP BFP 단기 시나리오는 GitHub Actions에서
+실제 OPC UA 입력과 EVENT/RAW 출력까지 통과했지만, 이는 장시간 안정성이
+입증됐다는 뜻은 아닙니다. V7 안정 기준은 `archive/pre-v8-main-20260915`
+브랜치에 보존되어 있습니다.
 검증 범위와 승격 조건은
 [`docs/V8_5_3_RC1_VALIDATION.md`](docs/V8_5_3_RC1_VALIDATION.md)를 기준으로 합니다.
 

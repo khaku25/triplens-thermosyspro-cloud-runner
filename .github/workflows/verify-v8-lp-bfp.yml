@@ -164,6 +164,7 @@ jobs:
             --endpoint "$ENDPOINT" \
             --proof-root outputs/v8-lpbfp/dual-log \
             --timeout 240 \
+            --postroll-model-seconds 1.0 \
             | tee outputs/v8-lpbfp/dual-log-verifier.jsonl
           incident_dir=$(find outputs/v8-lpbfp/dual-log/runtime/incidents -mindepth 1 -maxdepth 1 -type d | head -n 1)
           test -n "$incident_dir"
