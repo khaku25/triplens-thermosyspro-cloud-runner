@@ -1,0 +1,8 @@
+TRIPLENS_PROTECTION_DASHBOARD_V8_5_2_DUAL_LOG_EVENT_HOTFIX
+Base: verified V7 Dual Log/Plant Alarm runtime
+Protection: V8 matrix + V8.2 discrete-loop repair
+Physics: HP/IP ThermoSysPro hydraulic speed connections preserved from V7
+GUI: V8.2 DPI/header layout hotfix integrated
+Live proof: isolated hp/ip/st/gt_breaker/gt solver trajectories
+Alarm binding: live OPC UA address space is authoritative; obsolete unpublished-node guard removed
+Dual Log event policy: physical Alarm/Protection retained in EVENT; command tags remain RAW-only

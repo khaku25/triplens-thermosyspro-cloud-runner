@@ -1,8 +1,15 @@
-# TripLens ThermoSysPro RAW Runner / ECMS VPP Reference
+# TripLens ThermoSysPro V8 / ECMS VPP Reference
 
 GitHub Actions에서 ThermoSysPro/OpenModelica 물리 원천을 생성하는 저장소입니다.
-Action의 공식 산출물은 `thermosyspro-raw.csv`와 `raw-manifest.json`뿐입니다.
-ProcessBus 변환, DCS 알람 판정, ECMS 사건 생성과 원인 추론은 수행하지 않습니다.
+기존 GT·HP BFP Action은 계속 RAW-only 경계를 유지합니다. 별도의
+`Verify V8.5.2 LP BFP Dual Log physics` 검증 Action은 로컬에서 통과한 V8.5.2
+보호 로직을 실제 OPC UA 입력으로 실행하고, LP BFP 시나리오의 `EVENT.csv`,
+`RAW.csv`, 결합 분석 및 검증 JSON을 독립 artifact로 게시합니다.
+
+V8은 현재 V8.5.3 RC1 검증 단계입니다. LP BFP 단기 시나리오가 통과하기 전에는
+기존 V7 안정 기준을 대체하지 않으며, 장시간 안정성이 입증됐다는 뜻도 아닙니다.
+검증 범위와 승격 조건은
+[`docs/V8_5_3_RC1_VALIDATION.md`](docs/V8_5_3_RC1_VALIDATION.md)를 기준으로 합니다.
 
 저장소에 함께 있는 MATLAB ECMS VPP와 Python 변환기는 웹 변환부 이관 및
 예제 검증을 위한 실행 가능한 기준 구현입니다. Action 실행 경로와는 분리되어
