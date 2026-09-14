@@ -92,7 +92,8 @@ jobs:
               "$OPENMODELICA_IMAGE" \
               omc /workspace/modelica/install_dependencies.mos \
               | tee build/v8-lpbfp/install-modelica.log
-          test -f build/omhome/.openmodelica/libraries/Modelica\ 3.2.3+maint.om/package.mo
+          grep -q 'Modelica 3.2.3+maint.om/package.mo' build/v8-lpbfp/install-modelica.log
+          grep -q 'Package installed successfully' build/v8-lpbfp/install-modelica.log
 
       - name: Build the exact V8.5.2 plant
         run: |
