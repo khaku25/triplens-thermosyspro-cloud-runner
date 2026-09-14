@@ -1,0 +1,20 @@
+setCommandLineOptions("--std=3.4");
+loadModel(Modelica, {"3.2.3"});
+getErrorString();
+loadFile("/workspace/vendor/ThermoSysPro/ThermoSysPro/package.mo");
+getErrorString();
+loadFile("/workspace/modelica/TripLens_PumpPhysics.mo");
+getErrorString();
+loadFile("/workspace/modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo");
+getErrorString();
+cd("/workspace/build/v8-lpbfp");
+buildModel(
+  TripLens_CombinedCycle_TripTAC_ProcessView_v36,
+  startTime=0,
+  stopTime=0.1,
+  numberOfIntervals=3,
+  tolerance=0.001,
+  method="dassl",
+  outputFormat="mat",
+  fileNamePrefix="TripLens_V8_5_2_LP_BFP_CI");
+getErrorString();

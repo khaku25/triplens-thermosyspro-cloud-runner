@@ -1,0 +1,30 @@
+V8.5 verification contract
+==========================
+
+Offline package checks (performed before delivery)
+- Python syntax compilation
+- V7→V8.5 source patch and idempotency
+- exactly 66 unique writable Real input declarations
+- nine protection causes and independent GT/ST latches
+- 52GT discrete-loop condition removed
+- exact V7 HP/IP rpm_or_mpower connections retained
+- no HP/IP hydraulic speed gate, artificial floor, or V8.4 inertial drive
+- alarm semantics, engine, Dual Log, MATLAB UI and installer safety tests
+- GUI DPI/header geometry and MATLAB uitable cell sanitization
+- V8.5.1 alarm verifier has no obsolete static unpublished-node rejection
+- V8.5.2 keeps physical Alarm/Protection events visible while rejecting command-tag leakage
+
+Windows installer checks (performed on the target machine)
+- OpenModelica build and init.xml input contract
+- DASSL smoke initialization before the running V7 server is stopped
+- 56 legacy delayed write/restore checks
+- isolated hp/ip/st/gt_breaker/gt live OPC UA logic checks
+- 67-rule live alarm binding
+- EVENT.csv + RAW.csv end-to-end Dual Log proof
+- fresh untripped final server start
+
+Expected final line
+  PASS: TRIPLENS_PROTECTION_DASHBOARD_V8_5_2_DUAL_LOG_EVENT_HOTFIX
+
+If any Windows live check fails, installer rollback restores the previous
+source/client/payload and attempts to restart the previously verified server.
