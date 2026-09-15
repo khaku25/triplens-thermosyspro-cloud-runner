@@ -176,7 +176,12 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   // TRIPLENS_CHECK_VALVE_HVOL_INIT_V2: match the native LP pump discharge
   // control-volume enthalpy at the common adapter boundary.
   TripLens_PumpPhysics.SpringLoadedCheckValve vppLPFWPCheckValve(
-    closeFlow = 70, closedResistance = 1e5,
+    // HP has a much larger downstream pressure differential than LP.  A
+    // closed valve therefore needs leakage in the sub-kg/s range rather than
+    // the LP adapter's permissive 1e5 Pa.s/kg numerical value; otherwise the
+    // reverse branch can pull the upstream HP pipe through a zero-density IF97
+    // property trial.  Open-flow resistance remains unchanged.
+    closeFlow = 70, closedResistance = 1e7,
     C1(h_vol(start = 194669.0)), C2(h_vol(start = 194669.0))) annotation(
     Placement(visible = false, transformation(extent = {{739, -446}, {759, -426}})));
   // TRIPLENS_LP_BFP_OPERATOR_CHAIN_V1

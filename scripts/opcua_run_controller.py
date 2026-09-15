@@ -88,7 +88,17 @@ def main() -> int:
             if time.monotonic() >= deadline:
                 raise RuntimeError(f"Run=true did not advance beyond {before}")
             time.sleep(0.02)
-            current = float(time_node.get_value())
+            # The listener can publish the fixed Run/Scale/Time node ids just
+            # before the embedded OPC UA namespace has completed its final
+            # initialization pass.  In that narrow window a previously valid
+            # Node object may return BadNodeIdUnknown once; retry the real
+            # model-time read instead of classifying a healthy fresh server as
+            # an infrastructure failure.  No synthetic time value is used.
+            current = retry_runtime_read(
+                lambda: float(time_node.get_value()),
+                args.connect_timeout,
+                "OpenModelica advancing model-time control node",
+            )
 
         print(
             f"RUN_READY endpoint={args.endpoint} "
