@@ -289,13 +289,15 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   // TRIPLENS_NATIVE_OPCUA_VALVE_ADAPTER_SAFE_V2
   // Only the four writable commands are independent states.
   // Cv, flow and dP are algebraic aliases: no telemetry dynamics enter initialization.
-  // TRIPLENS_DRUM_FAULT_VALVE_MIN_OPENING_V8_7: ThermoSysPro's static
-  // ControlValve algebra divides by Cv^2.  A faulted closed drum valve is
-  // represented as a finite 1% seat-leak opening, never an algebraic Cv=0.
-  // Normal automatic and manual valve commands retain their exact values.
-  // The fault input remains excluded from RAW.csv by the dual-log contract.
-  parameter Real vppDrumFaultValveMinimumOpening(min = 0, max = 0.1) = 0.01
+  // TRIPLENS_DRUM_FAULT_STROKE_V8_8: a drum fault must remain a physical
+  // valve movement, not a discontinuous Cv jump.  ThermoSysPro's static
+  // ControlValve algebra divides by Cv^2, so a finite 5% seat-leak opening
+  // and a two-second stroke avoid the singularity without changing normal
+  // automatic/manual commands.  Fault inputs remain excluded from RAW.csv.
+  parameter Real vppDrumFaultValveMinimumOpening(min = 0, max = 0.1) = 0.05
     "Finite valve opening retained only during a drum fault override";
+  parameter Modelica.SIunits.Time vppDrumFaultValveStrokeTime(min = 0.1) = 2
+    "Physical travel time used only while a drum-fault override is active";
   input Real vppVlvHPFWCVModeAutoNative(start=1);
   input Real vppVlvHPFWCVManualCmdNative(start=0.8, min=0, max=1);
   input Real vppVlvHPFWCVFaultEnableNative(start=0);
@@ -309,6 +311,7 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Real vppVlvHPFWCVMassFlowTH(unit="t/h");
   output Real vppVlvHPFWCVDPPa(unit="Pa");
   Real vppVlvHPFWCVTarget(min=0, max=1);
+  Real vppVlvHPFWCVFaultStroke(min=0, max=1, start=0.8, fixed=true);
   input Real vppVlvHPSteamModeAutoNative(start=1);
   input Real vppVlvHPSteamManualCmdNative(start=0.5, min=0, max=1);
   input Real vppVlvHPSteamFaultEnableNative(start=0);
@@ -322,6 +325,7 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Real vppVlvHPSteamMassFlowTH(unit="t/h");
   output Real vppVlvHPSteamDPPa(unit="Pa");
   Real vppVlvHPSteamTarget(min=0, max=1);
+  Real vppVlvHPSteamFaultStroke(min=0, max=1, start=0.5, fixed=true);
   input Real vppVlvIPFWCVModeAutoNative(start=1);
   input Real vppVlvIPFWCVManualCmdNative(start=0.8, min=0, max=1);
   input Real vppVlvIPFWCVFaultEnableNative(start=0);
@@ -335,6 +339,7 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Real vppVlvIPFWCVMassFlowTH(unit="t/h");
   output Real vppVlvIPFWCVDPPa(unit="Pa");
   Real vppVlvIPFWCVTarget(min=0, max=1);
+  Real vppVlvIPFWCVFaultStroke(min=0, max=1, start=0.8, fixed=true);
   input Real vppVlvIPSteamModeAutoNative(start=1);
   input Real vppVlvIPSteamManualCmdNative(start=0.5, min=0, max=1);
   input Real vppVlvIPSteamFaultEnableNative(start=0);
@@ -348,6 +353,7 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Real vppVlvIPSteamMassFlowTH(unit="t/h");
   output Real vppVlvIPSteamDPPa(unit="Pa");
   Real vppVlvIPSteamTarget(min=0, max=1);
+  Real vppVlvIPSteamFaultStroke(min=0, max=1, start=0.5, fixed=true);
   input Real vppVlvLPSteamModeAutoNative(start=1);
   input Real vppVlvLPSteamManualCmdNative(start=0.8, min=0, max=1);
   input Real vppVlvLPSteamFaultEnableNative(start=0);
@@ -361,6 +367,7 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Real vppVlvLPSteamMassFlowTH(unit="t/h");
   output Real vppVlvLPSteamDPPa(unit="Pa");
   Real vppVlvLPSteamTarget(min=0, max=1);
+  Real vppVlvLPSteamFaultStroke(min=0, max=1, start=0.8, fixed=true);
   input Real vppVlvLPFWModeAutoNative(start=1);
   input Real vppVlvLPFWManualCmdNative(start=0.5, min=0, max=1);
   input Real vppVlvLPFWFaultEnableNative(start=0);
@@ -374,6 +381,7 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Real vppVlvLPFWMassFlowTH(unit="t/h");
   output Real vppVlvLPFWDPPa(unit="Pa");
   Real vppVlvLPFWTarget(min=0, max=1);
+  Real vppVlvLPFWFaultStroke(min=0, max=1, start=0.5, fixed=true);
   input Real vppVlvLPToHPIPFWModeAutoNative(start=1);
   input Real vppVlvLPToHPIPFWManualCmdNative(start=1, min=0, max=1);
   input Real vppVlvLPToHPIPFWFaultEnableNative(start=0);
@@ -879,12 +887,13 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   dynamic_mass_balance = false, steady_state = true, mode = 0, P(start = 6136, nominal = 1e4), h(start = 2401030, nominal = 2.5e6), Ce1(Q(start = vppCondenserSteamFlow0, nominal = 200), h(start = 2401030), h_vol(start = 2401030)), Ce2(Q(start = 0, nominal = 200), h(start = 2962470), h_vol(start = 2401030)), Ce3(Q(start = vppSpraySeatLeak, nominal = 200), h(start = 550000), h_vol(start = 2401030)), Cs(Q(start = vppCondenserSteamFlow0, nominal = 200), h(start = 2401030), h_vol(start = 2401030))) annotation(
     Placement(visible = false, transformation(extent = {{620, -306}, {660, -286}})));
 equation
-// TRIPLENS_ECMS_5605_SINGLE_SERVER_NODES_V1: electrically isolated command memory and feedback
+  // TRIPLENS_ECMS_5605_SINGLE_SERVER_NODES_V1: electrically isolated command memory and feedback
   // TRIPLENS_NATIVE_OPCUA_VALVE_ADAPTER_SAFE_V2: command states
   // TRIPLENS_NATIVE_OPCUA_VALVE_ADAPTER_SAFE_V2: selection, physical drive and direct telemetry
   vppVlvHPFWCVAutoCmd = noEvent(min(1, max(0, regulation_Niveau_HP.SortieReelle1.signal)));
   vppVlvHPFWCVCmd = if noEvent(vppVlvHPFWCVModeAutoNative >= 0.5) then noEvent(min(1, max(0, regulation_Niveau_HP.SortieReelle1.signal))) else noEvent(min(1, max(0, vppVlvHPFWCVManualCmdNative)));
-  vppVlvHPFWCVTarget = if noEvent(vppVlvHPFWCVFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvHPFWCVFaultValueNative))))) else vppVlvHPFWCVCmd;
+  der(vppVlvHPFWCVFaultStroke) = ((if noEvent(vppVlvHPFWCVFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvHPFWCVFaultValueNative))))) else vppVlvHPFWCVCmd) - vppVlvHPFWCVFaultStroke)/vppDrumFaultValveStrokeTime;
+  vppVlvHPFWCVTarget = if noEvent(vppVlvHPFWCVFaultEnableNative >= 0.5) then vppVlvHPFWCVFaultStroke else vppVlvHPFWCVCmd;
   vanne_alimentationHP.Ouv.signal = vppVlvHPFWCVTarget;
   vppVlvHPFWCVFb = noEvent(if abs(vanne_alimentationHP.Cvmax) > Modelica.Constants.eps then vanne_alimentationHP.Cv/vanne_alimentationHP.Cvmax else 0);
   vppVlvHPFWCVDeviation = vppVlvHPFWCVCmd - vppVlvHPFWCVFb;
@@ -894,7 +903,8 @@ equation
   vppVlvHPFWCVDPPa = vanne_alimentationHP.C1.P - vanne_alimentationHP.C2.P;
   vppVlvHPSteamAutoCmd = noEvent(min(1, max(0, constante_vanne_vapeurHP.y.signal))) - 1*Modelica.Constants.eps*(1 - cos(time));
   vppVlvHPSteamCmd = if noEvent(vppVlvHPSteamModeAutoNative >= 0.5) then noEvent(min(1, max(0, constante_vanne_vapeurHP.y.signal))) else noEvent(min(1, max(0, vppVlvHPSteamManualCmdNative)));
-  vppVlvHPSteamTarget = if noEvent(vppVlvHPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvHPSteamFaultValueNative))))) else vppVlvHPSteamCmd;
+  der(vppVlvHPSteamFaultStroke) = ((if noEvent(vppVlvHPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvHPSteamFaultValueNative))))) else vppVlvHPSteamCmd) - vppVlvHPSteamFaultStroke)/vppDrumFaultValveStrokeTime;
+  vppVlvHPSteamTarget = if noEvent(vppVlvHPSteamFaultEnableNative >= 0.5) then vppVlvHPSteamFaultStroke else vppVlvHPSteamCmd;
   vanne_vapeurHP.Ouv.signal = vppVlvHPSteamTarget;
   vppVlvHPSteamFb = noEvent(if abs(vanne_vapeurHP.Cvmax) > Modelica.Constants.eps then vanne_vapeurHP.Cv/vanne_vapeurHP.Cvmax else 0);
   vppVlvHPSteamDeviation = vppVlvHPSteamCmd - vppVlvHPSteamFb;
@@ -904,7 +914,8 @@ equation
   vppVlvHPSteamDPPa = vanne_vapeurHP.C1.P - vanne_vapeurHP.C2.P;
   vppVlvIPFWCVAutoCmd = noEvent(min(1, max(0, regulation_Niveau_MP.SortieReelle1.signal)));
   vppVlvIPFWCVCmd = if noEvent(vppVlvIPFWCVModeAutoNative >= 0.5) then noEvent(min(1, max(0, regulation_Niveau_MP.SortieReelle1.signal))) else noEvent(min(1, max(0, vppVlvIPFWCVManualCmdNative)));
-  vppVlvIPFWCVTarget = if noEvent(vppVlvIPFWCVFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvIPFWCVFaultValueNative))))) else vppVlvIPFWCVCmd;
+  der(vppVlvIPFWCVFaultStroke) = ((if noEvent(vppVlvIPFWCVFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvIPFWCVFaultValueNative))))) else vppVlvIPFWCVCmd) - vppVlvIPFWCVFaultStroke)/vppDrumFaultValveStrokeTime;
+  vppVlvIPFWCVTarget = if noEvent(vppVlvIPFWCVFaultEnableNative >= 0.5) then vppVlvIPFWCVFaultStroke else vppVlvIPFWCVCmd;
   vanne_alimentationMP.Ouv.signal = vppVlvIPFWCVTarget;
   vppVlvIPFWCVFb = noEvent(if abs(vanne_alimentationMP.Cvmax) > Modelica.Constants.eps then vanne_alimentationMP.Cv/vanne_alimentationMP.Cvmax else 0);
   vppVlvIPFWCVDeviation = vppVlvIPFWCVCmd - vppVlvIPFWCVFb;
@@ -914,7 +925,8 @@ equation
   vppVlvIPFWCVDPPa = vanne_alimentationMP.C1.P - vanne_alimentationMP.C2.P;
   vppVlvIPSteamAutoCmd = noEvent(min(1, max(0, constante_vanne_vapeurMP.y.signal))) - 2*Modelica.Constants.eps*(1 - cos(time));
   vppVlvIPSteamCmd = if noEvent(vppVlvIPSteamModeAutoNative >= 0.5) then noEvent(min(1, max(0, constante_vanne_vapeurMP.y.signal))) else noEvent(min(1, max(0, vppVlvIPSteamManualCmdNative)));
-  vppVlvIPSteamTarget = if noEvent(vppVlvIPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvIPSteamFaultValueNative))))) else vppVlvIPSteamCmd;
+  der(vppVlvIPSteamFaultStroke) = ((if noEvent(vppVlvIPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvIPSteamFaultValueNative))))) else vppVlvIPSteamCmd) - vppVlvIPSteamFaultStroke)/vppDrumFaultValveStrokeTime;
+  vppVlvIPSteamTarget = if noEvent(vppVlvIPSteamFaultEnableNative >= 0.5) then vppVlvIPSteamFaultStroke else vppVlvIPSteamCmd;
   vanne_vapeurMP.Ouv.signal = vppVlvIPSteamTarget;
   vppVlvIPSteamFb = noEvent(if abs(vanne_vapeurMP.Cvmax) > Modelica.Constants.eps then vanne_vapeurMP.Cv/vanne_vapeurMP.Cvmax else 0);
   vppVlvIPSteamDeviation = vppVlvIPSteamCmd - vppVlvIPSteamFb;
@@ -924,7 +936,8 @@ equation
   vppVlvIPSteamDPPa = vanne_vapeurMP.C1.P - vanne_vapeurMP.C2.P;
   vppVlvLPSteamAutoCmd = noEvent(min(1, max(0, regulation_Niveau_BP.SortieReelle1.signal*vppLPDrumAdmissionMultiplier)));
   vppVlvLPSteamCmd = if noEvent(vppVlvLPSteamModeAutoNative >= 0.5) then noEvent(min(1, max(0, regulation_Niveau_BP.SortieReelle1.signal*vppLPDrumAdmissionMultiplier))) else noEvent(min(1, max(0, vppVlvLPSteamManualCmdNative)));
-  vppVlvLPSteamTarget = if noEvent(vppVlvLPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvLPSteamFaultValueNative))))) else vppVlvLPSteamCmd;
+  der(vppVlvLPSteamFaultStroke) = ((if noEvent(vppVlvLPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvLPSteamFaultValueNative))))) else vppVlvLPSteamCmd) - vppVlvLPSteamFaultStroke)/vppDrumFaultValveStrokeTime;
+  vppVlvLPSteamTarget = if noEvent(vppVlvLPSteamFaultEnableNative >= 0.5) then vppVlvLPSteamFaultStroke else vppVlvLPSteamCmd;
   vanne_vapeurBP.Ouv.signal = vppVlvLPSteamTarget;
   vppVlvLPSteamFb = noEvent(if abs(vanne_vapeurBP.Cvmax) > Modelica.Constants.eps then vanne_vapeurBP.Cv/vanne_vapeurBP.Cvmax else 0);
   vppVlvLPSteamDeviation = vppVlvLPSteamCmd - vppVlvLPSteamFb;
@@ -934,7 +947,8 @@ equation
   vppVlvLPSteamDPPa = vanne_vapeurBP.C1.P - vanne_vapeurBP.C2.P;
   vppVlvLPFWAutoCmd = noEvent(min(1, max(0, constante_vanne_vapeurBP.y.signal))) - 3*Modelica.Constants.eps*(1 - cos(time));
   vppVlvLPFWCmd = if noEvent(vppVlvLPFWModeAutoNative >= 0.5) then noEvent(min(1, max(0, constante_vanne_vapeurBP.y.signal))) else noEvent(min(1, max(0, vppVlvLPFWManualCmdNative)));
-  vppVlvLPFWTarget = if noEvent(vppVlvLPFWFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvLPFWFaultValueNative))))) else vppVlvLPFWCmd;
+  der(vppVlvLPFWFaultStroke) = ((if noEvent(vppVlvLPFWFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvLPFWFaultValueNative))))) else vppVlvLPFWCmd) - vppVlvLPFWFaultStroke)/vppDrumFaultValveStrokeTime;
+  vppVlvLPFWTarget = if noEvent(vppVlvLPFWFaultEnableNative >= 0.5) then vppVlvLPFWFaultStroke else vppVlvLPFWCmd;
   vanne_alimentationBP.Ouv.signal = vppVlvLPFWTarget;
   vppVlvLPFWFb = noEvent(if abs(vanne_alimentationBP.Cvmax) > Modelica.Constants.eps then vanne_alimentationBP.Cv/vanne_alimentationBP.Cvmax else 0);
   vppVlvLPFWDeviation = vppVlvLPFWCmd - vppVlvLPFWFb;
@@ -1108,10 +1122,17 @@ equation
   vppIPFWPDrive.breakerClosed.signal = vppIPFWPMotorEnergized;
   vppHPFWPDrive.pumpPower.signal = PompeAlimHP.Wm;
   vppIPFWPDrive.pumpPower.signal = PompeAlimMP.Wm;
-  vppHPFWPHydraulicSpeedCommand.signal = noEvent(max(
-    vppHPFWPHydraulicSpeedFloorRPM, vppHPFWPDrive.speedRpm));
-  vppIPFWPHydraulicSpeedCommand.signal = noEvent(max(
-    vppIPFWPHydraulicSpeedFloorRPM, vppIPFWPDrive.speedRpm));
+  // TRIPLENS_HP_IP_V7_NORMAL_SPEED_BOUNDARY_V8_8: retain the exact V7 Ramp
+  // command during normal operation.  Only after its own VCB opens does the
+  // same pump input follow the independently integrated shaft speed.  This
+  // preserves the proven pre-trip plant operating point and confines the
+  // V8 adapter to the physical coastdown interval.
+  vppHPFWPHydraulicSpeedCommand.signal = if vppHPFWPMotorEnergized then
+    arretPomesHP.y.signal else noEvent(max(vppHPFWPHydraulicSpeedFloorRPM,
+    vppHPFWPDrive.speedRpm));
+  vppIPFWPHydraulicSpeedCommand.signal = if vppIPFWPMotorEnergized then
+    arretPomesMp.y.signal else noEvent(max(vppIPFWPHydraulicSpeedFloorRPM,
+    vppIPFWPDrive.speedRpm));
   vppHPFWPSpeedRPM = vppHPFWPDrive.speedRpm;
   vppIPFWPSpeedRPM = vppIPFWPDrive.speedRpm;
   vppHPFWPHydraulicSpeedRPM = vppHPFWPHydraulicSpeedCommand.signal;

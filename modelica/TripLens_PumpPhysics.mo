@@ -50,7 +50,12 @@ package TripLens_PumpPhysics
     speedCommand.signal = speedRpm;
     speedError = nominalSpeedRpm - speedRpm;
     der(integralState) = if breakerClosed.signal then speedError else 0;
-    der(pumpPowerFiltered) = (max(pumpPower.signal, 0) -
+    // TRIPLENS_PUMP_DRAG_SIGN_V8_8: StaticCentrifugalPump.Wm may change
+    // sign when a tripped train reverses its hydraulic flow.  That sign does
+    // not make the shaft load assist the freely coasting rotor: the drive
+    // still sees the magnitude of the opposing pump load.  Preserve that
+    // drag magnitude so HP/IP coast down after their breaker opens.
+    der(pumpPowerFiltered) = (abs(pumpPower.signal) -
       pumpPowerFiltered)/pumpPowerFilterTime;
 
     motorTorque = if breakerClosed.signal then noEvent(max(0, min(
@@ -60,7 +65,7 @@ package TripLens_PumpPhysics
     // StaticCentrifugalPump exposes its mechanical load as Wm. Recover the
     // opposing shaft torque smoothly so the expression remains finite at
     // standstill, where a direct Wm/angularSpeed division would be singular.
-    hydraulicTorque = noEvent(max(pumpPowerFiltered, 0)*max(angularSpeed, 0)/(
+    hydraulicTorque = noEvent(abs(pumpPowerFiltered)*max(angularSpeed, 0)/(
       angularSpeed^2 + (torqueRegularizationSpeedRpm*
       Modelica.Constants.pi/30)^2));
     frictionTorque = noEvent(if angularSpeed > 0 then

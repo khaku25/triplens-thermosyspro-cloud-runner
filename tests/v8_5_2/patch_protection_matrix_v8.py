@@ -28,6 +28,8 @@ LOOP_FIX_MARKER = "TRIPLENS_PROTECTION_MATRIX_V8_2_DISCRETE_LOOP_FIX"
 STABLE_MARKER = "TRIPLENS_PROTECTION_LOGIC_STABLE_V8_5"
 IP_COASTDOWN_MARKER = "TRIPLENS_IP_BFP_COASTDOWN_V8_7"
 DRUM_VALVE_REGULARIZATION_MARKER = "TRIPLENS_DRUM_FAULT_VALVE_MIN_OPENING_V8_7"
+V7_NORMAL_SPEED_MARKER = "TRIPLENS_HP_IP_V7_NORMAL_SPEED_BOUNDARY_V8_8"
+DRUM_FAULT_STROKE_MARKER = "TRIPLENS_DRUM_FAULT_STROKE_V8_8"
 REQUIRED_MARKERS = (
     "TRIPLENS_OPCUA_RUN_DRIVEN_LIVE_V2",
     "TRIPLENS_LP_BFP_OPERATOR_CHAIN_V1",
@@ -501,7 +503,10 @@ def install_ip_bfp_coastdown_tuning(source: str) -> str:
 
 def install_drum_fault_valve_regularization(source: str) -> str:
     """Keep drum-fault ControlValve Cv finite without changing normal control."""
-    if DRUM_VALVE_REGULARIZATION_MARKER in source:
+    if (
+        DRUM_VALVE_REGULARIZATION_MARKER in source
+        or DRUM_FAULT_STROKE_MARKER in source
+    ):
         return source
     declaration_anchor = (
         "  // TRIPLENS_NATIVE_OPCUA_VALVE_ADAPTER_SAFE_V2\n"
@@ -540,6 +545,87 @@ def install_drum_fault_valve_regularization(source: str) -> str:
     return source
 
 
+def install_hp_ip_v7_normal_speed_boundary(source: str) -> str:
+    """Keep the established V7 speed command exact until a HP/IP VCB opens."""
+    if V7_NORMAL_SPEED_MARKER in source:
+        return source
+    old = (
+        r"  vppHPFWPHydraulicSpeedCommand\.signal\s*=\s*noEvent\(max\(\s*"
+        r"vppHPFWPHydraulicSpeedFloorRPM\s*,\s*vppHPFWPDrive\.speedRpm\)\);\s*\r?\n"
+        r"\s*vppIPFWPHydraulicSpeedCommand\.signal\s*=\s*noEvent\(max\(\s*"
+        r"vppIPFWPHydraulicSpeedFloorRPM\s*,\s*vppIPFWPDrive\.speedRpm\)\);"
+    )
+    new = (
+        f"  // {V7_NORMAL_SPEED_MARKER}: preserve the V7 Ramp command while the\n"
+        "  // respective motor is energized; switch to physical coastdown only after\n"
+        "  // its own breaker has opened.\n"
+        "  vppHPFWPHydraulicSpeedCommand.signal = if vppHPFWPMotorEnergized then\n"
+        "    arretPomesHP.y.signal else noEvent(max(vppHPFWPHydraulicSpeedFloorRPM,\n"
+        "    vppHPFWPDrive.speedRpm));\n"
+        "  vppIPFWPHydraulicSpeedCommand.signal = if vppIPFWPMotorEnergized then\n"
+        "    arretPomesMp.y.signal else noEvent(max(vppIPFWPHydraulicSpeedFloorRPM,\n"
+        "    vppIPFWPDrive.speedRpm));"
+    )
+    return replace_once(source, old, new, "HP/IP V7 normal speed boundary")
+
+
+def install_drum_fault_stroke(source: str) -> str:
+    """Replace abrupt fault-valve jumps with finite, physical valve strokes."""
+    if DRUM_FAULT_STROKE_MARKER in source:
+        return source
+    if DRUM_VALVE_REGULARIZATION_MARKER not in source:
+        raise ValueError("drum-fault valve regularization must be installed first")
+
+    old_declaration = (
+        rf"  // {DRUM_VALVE_REGULARIZATION_MARKER}:[^\r\n]*"
+        r"(?:\r?\n\s*//[^\r\n]*)*\r?\n"
+        r"\s*parameter Real vppDrumFaultValveMinimumOpening\(min\s*=\s*0,\s*max\s*=\s*0\.1\)\s*=\s*0\.01\s*\r?\n"
+        r"\s*\"Finite valve opening retained only during a drum fault override\";"
+    )
+    new_declaration = (
+        f"  // {DRUM_FAULT_STROKE_MARKER}: a drum fault is a finite valve stroke,\n"
+        "  // never an algebraic Cv=0 jump.  Normal commands remain unmodified.\n"
+        "  parameter Real vppDrumFaultValveMinimumOpening(min=0, max=0.1) = 0.05\n"
+        "    \"Finite valve opening retained only during a drum fault override\";\n"
+        "  parameter Modelica.SIunits.Time vppDrumFaultValveStrokeTime(min=0.1) = 2\n"
+        "    \"Physical travel time used only while a drum-fault override is active\";"
+    )
+    source = replace_once(
+        source, old_declaration, new_declaration, "drum-fault stroke declarations"
+    )
+
+    targets = (
+        ("vppVlvHPFWCVTarget", "vppVlvHPFWCVFaultStroke", "vppVlvHPFWCVFaultEnableNative", "vppVlvHPFWCVFaultValueNative", "vppVlvHPFWCVCmd", "0.8"),
+        ("vppVlvHPSteamTarget", "vppVlvHPSteamFaultStroke", "vppVlvHPSteamFaultEnableNative", "vppVlvHPSteamFaultValueNative", "vppVlvHPSteamCmd", "0.5"),
+        ("vppVlvIPFWCVTarget", "vppVlvIPFWCVFaultStroke", "vppVlvIPFWCVFaultEnableNative", "vppVlvIPFWCVFaultValueNative", "vppVlvIPFWCVCmd", "0.8"),
+        ("vppVlvIPSteamTarget", "vppVlvIPSteamFaultStroke", "vppVlvIPSteamFaultEnableNative", "vppVlvIPSteamFaultValueNative", "vppVlvIPSteamCmd", "0.5"),
+        ("vppVlvLPSteamTarget", "vppVlvLPSteamFaultStroke", "vppVlvLPSteamFaultEnableNative", "vppVlvLPSteamFaultValueNative", "vppVlvLPSteamCmd", "0.8"),
+        ("vppVlvLPFWTarget", "vppVlvLPFWFaultStroke", "vppVlvLPFWFaultEnableNative", "vppVlvLPFWFaultValueNative", "vppVlvLPFWCmd", "0.5"),
+    )
+    for target, stroke, enabled, value, command, initial in targets:
+        source = replace_once(
+            source,
+            rf"  Real {target}\(min\s*=\s*0,\s*max\s*=\s*1\);",
+            f"  Real {target}(min=0, max=1);\n"
+            f"  Real {stroke}(min=0, max=1, start={initial}, fixed=true);",
+            f"{target} stroke state",
+        )
+        old_target = (
+            rf"  {target}\s*=\s*if\s+noEvent\(\s*{enabled}\s*>=\s*0\.5\s*\)\s+then\s*"
+            rf"noEvent\(\s*min\(\s*1\s*,\s*max\(\s*vppDrumFaultValveMinimumOpening\s*,\s*"
+            rf"min\(\s*1\s*,\s*max\(\s*0\s*,\s*{value}\s*\)\s*\)\s*\)\s*\)\s*\)\s*"
+            rf"else\s*{command}\s*;"
+        )
+        new_target = (
+            f"  der({stroke}) = ((if noEvent({enabled} >= 0.5) then "
+            f"noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, {value}))))) "
+            f"else {command}) - {stroke})/vppDrumFaultValveStrokeTime;\n"
+            f"  {target} = if noEvent({enabled} >= 0.5) then {stroke} else {command};"
+        )
+        source = replace_once(source, old_target, new_target, f"{target} fault stroke")
+    return source
+
+
 def bind_gt_physics_to_gt_latch(source: str) -> str:
     source = replace_once(
         source,
@@ -573,6 +659,8 @@ def patch_text(source: str) -> str:
         source = normalize_hp_ip_running_proof(source)
         source = install_ip_bfp_coastdown_tuning(source)
         source = install_drum_fault_valve_regularization(source)
+        source = install_hp_ip_v7_normal_speed_boundary(source)
+        source = install_drum_fault_stroke(source)
         return source
     for marker in REQUIRED_MARKERS:
         if marker not in source:
@@ -589,6 +677,8 @@ def patch_text(source: str) -> str:
     source = normalize_hp_ip_running_proof(source)
     source = install_ip_bfp_coastdown_tuning(source)
     source = install_drum_fault_valve_regularization(source)
+    source = install_hp_ip_v7_normal_speed_boundary(source)
+    source = install_drum_fault_stroke(source)
     source = repair_gt_breaker_discrete_loop(source)
 
     required = (
@@ -613,8 +703,10 @@ def patch_text(source: str) -> str:
         "if vppSTTripLatch then vppAdmissionSeatLeak",
         "TRIPLENS_HP_IP_FWP_INERTIAL_DRIVES_V8_6",
         IP_COASTDOWN_MARKER,
-        DRUM_VALVE_REGULARIZATION_MARKER,
+        V7_NORMAL_SPEED_MARKER,
+        DRUM_FAULT_STROKE_MARKER,
         "vppDrumFaultValveMinimumOpening",
+        "vppDrumFaultValveStrokeTime",
         "vppHPFWPMotorEnergized = vppECMSVCBA01Closed",
         "vppHPFWPDrive.breakerClosed.signal = vppHPFWPMotorEnergized",
         "vppIPFWPDrive.breakerClosed.signal = vppIPFWPMotorEnergized",

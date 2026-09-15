@@ -10,6 +10,7 @@ from pathlib import Path
 
 import patch_lp_bfp_operator_chain
 import patch_opcua_write_inputs
+import patch_pump_physics_v8
 import patch_protection_matrix_v8
 
 
@@ -42,6 +43,32 @@ def selftest(source_path: Path) -> None:
     assert patch_opcua_write_inputs.patch_text(v8) == v8
     assert patch_lp_bfp_operator_chain.patch_text(v8) == v8
     assert patch_protection_matrix_v8.patch_text(v8) == v8
+
+    pump_path = source_path.parent / "TripLens_PumpPhysics.mo"
+    if not pump_path.is_file():
+        raise FileNotFoundError(f"PumpPhysics companion is missing: {pump_path}")
+    pump = pump_path.read_text(encoding="utf-8-sig")
+    if patch_pump_physics_v8.MARKER not in pump:
+        raise AssertionError("V8.8 pump drag-sign repair is missing")
+    assert patch_pump_physics_v8.patch_text(pump) == pump
+    if "abs(pumpPower.signal)" not in pump or "abs(pumpPowerFiltered)" not in pump:
+        raise AssertionError("pump drag-sign equations are incomplete")
+    legacy_pump = pump.replace(
+        "    // TRIPLENS_PUMP_DRAG_SIGN_V8_8: StaticCentrifugalPump.Wm may change\n"
+        "    // sign when a tripped train reverses its hydraulic flow.  That sign does\n"
+        "    // not make the shaft load assist the freely coasting rotor: the drive\n"
+        "    // still sees the magnitude of the opposing pump load.  Preserve that\n"
+        "    // drag magnitude so HP/IP coast down after their breaker opens.\n",
+        "",
+        1,
+    ).replace(
+        "abs(pumpPower.signal)", "max(pumpPower.signal, 0)", 1
+    ).replace(
+        "abs(pumpPowerFiltered)", "max(pumpPowerFiltered, 0)", 1
+    )
+    if legacy_pump == pump:
+        raise AssertionError("could not construct the legacy pump fixture")
+    assert patch_pump_physics_v8.patch_text(legacy_pump) == pump
 
     # A source left by the first V8 package must be repairable in place too.
     fixed_event = (
@@ -151,8 +178,10 @@ def selftest(source_path: Path) -> None:
         "vppVCBA02TripCommandNative = vppLPFWPTripLatchState;",
         "TRIPLENS_IP_BFP_COASTDOWN_V8_7",
         "vppIPFWPDrive(\n    nominalSpeedRpm = 1400, J = 100,",
-        "TRIPLENS_DRUM_FAULT_VALVE_MIN_OPENING_V8_7",
+        "TRIPLENS_HP_IP_V7_NORMAL_SPEED_BOUNDARY_V8_8",
+        "TRIPLENS_DRUM_FAULT_STROKE_V8_8",
         "parameter Real vppDrumFaultValveMinimumOpening",
+        "parameter Modelica.SIunits.Time vppDrumFaultValveStrokeTime",
         "vppHPFWPMotorEnergized = vppECMSVCBA01Closed;",
         "vppIPFWPMotorEnergized = vppECMSVCBB01Closed;",
         "vppHPFWPTripCommandNative =",
@@ -170,6 +199,8 @@ def selftest(source_path: Path) -> None:
         "vppIPFWPDrive.breakerClosed.signal = vppIPFWPMotorEnergized;",
         "vppHPFWPDrive.pumpPower.signal = PompeAlimHP.Wm;",
         "vppIPFWPDrive.pumpPower.signal = PompeAlimMP.Wm;",
+        "arretPomesHP.y.signal else noEvent(max(vppHPFWPHydraulicSpeedFloorRPM,",
+        "arretPomesMp.y.signal else noEvent(max(vppIPFWPHydraulicSpeedFloorRPM,",
         "vppHPFWPSpeedProven = vppHPFWPSpeedRPM >= 0.9*vppHPFWPDrive.nominalSpeedRpm;",
         "vppIPFWPSpeedProven = vppIPFWPSpeedRPM >= 0.9*vppIPFWPDrive.nominalSpeedRpm;",
         "vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven;",
@@ -213,20 +244,23 @@ def selftest(source_path: Path) -> None:
             raise AssertionError(f"legacy HP/IP Ramp connection remains: {legacy_connection}")
 
     # Drum fault injection may request a physically closed valve, but the
-    # ThermoSysPro static ControlValve must never receive algebraic Cv=0.
-    for target, fault_value in (
-        ("vppVlvHPFWCVTarget", "vppVlvHPFWCVFaultValueNative"),
-        ("vppVlvHPSteamTarget", "vppVlvHPSteamFaultValueNative"),
-        ("vppVlvIPFWCVTarget", "vppVlvIPFWCVFaultValueNative"),
-        ("vppVlvIPSteamTarget", "vppVlvIPSteamFaultValueNative"),
-        ("vppVlvLPSteamTarget", "vppVlvLPSteamFaultValueNative"),
-        ("vppVlvLPFWTarget", "vppVlvLPFWFaultValueNative"),
+    # ThermoSysPro static ControlValve must receive a finite, time-continuous
+    # opening instead of an algebraic Cv=0 step.
+    for target, stroke, fault_value in (
+        ("vppVlvHPFWCVTarget", "vppVlvHPFWCVFaultStroke", "vppVlvHPFWCVFaultValueNative"),
+        ("vppVlvHPSteamTarget", "vppVlvHPSteamFaultStroke", "vppVlvHPSteamFaultValueNative"),
+        ("vppVlvIPFWCVTarget", "vppVlvIPFWCVFaultStroke", "vppVlvIPFWCVFaultValueNative"),
+        ("vppVlvIPSteamTarget", "vppVlvIPSteamFaultStroke", "vppVlvIPSteamFaultValueNative"),
+        ("vppVlvLPSteamTarget", "vppVlvLPSteamFaultStroke", "vppVlvLPSteamFaultValueNative"),
+        ("vppVlvLPFWTarget", "vppVlvLPFWFaultStroke", "vppVlvLPFWFaultValueNative"),
     ):
         if (
-            f"{target} = if noEvent" not in v8
-            or f"max(vppDrumFaultValveMinimumOpening, min(1, max(0, {fault_value}))" not in v8
+            f"Real {stroke}" not in v8
+            or f"der({stroke})" not in v8
+            or f"{target} = if noEvent" not in v8
+            or fault_value not in v8
         ):
-            raise AssertionError(f"drum fault valve regularization missing: {target}")
+            raise AssertionError(f"drum fault valve stroke is missing: {target}")
 
     # Exercise the filesystem CLI contract without mutating the real source.
     with tempfile.TemporaryDirectory() as directory:
