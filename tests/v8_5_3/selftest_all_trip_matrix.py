@@ -30,6 +30,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--runner", type=Path, required=True)
     parser.add_argument("--engine", type=Path, required=True)
+    parser.add_argument("--run-controller", type=Path, required=True)
     args = parser.parse_args()
     module = load(args.runner)
     scenarios = set(module.SCENARIOS)
@@ -59,6 +60,10 @@ def main() -> int:
             raise RuntimeError(f"engine scenario marker missing: {marker}")
     if "AI_EXCLUDED_HISTORIAN_SUFFIXES" not in engine:
         raise RuntimeError("internal fault-injection signals are not excluded from AI RAW")
+    controller = args.run_controller.read_text(encoding="utf-8")
+    for contract in ("def retry_runtime_read", "OpenModelica model-time control node"):
+        if contract not in controller:
+            raise RuntimeError(f"embedded OPC UA readiness retry missing: {contract}")
     for name in ("hp_bfp", "ip_bfp", "lp_bfp"):
         bfp = module.SCENARIOS[name]
         if name == "lp_bfp":
