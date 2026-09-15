@@ -1,0 +1,323 @@
+name: Verify V8.5.3 all-trip matrix (100 s full, 45 s HP/IP BFP)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo"
+      - "modelica/TripLens_PumpPhysics.mo"
+      - "modelica/build_v8_lpbfp.mos"
+      - "scripts/ecms_bfp_alarm_engine.py"
+      - "scripts/local_ecms_opcua.py"
+      - "scripts/opcua_run_controller.py"
+      - "scripts/verify_alarm_coverage_live.py"
+      - "scripts/aggregate_trip_matrix_results.py"
+      - "config/alarm_registry_v1.csv"
+      - "opcua_native_valve_nodes_v1.csv"
+      - "tests/v8_5_3/**"
+      - "scripts/patch_stodola_turbine.py"
+      - "scripts/patch_pressure_loss_property_floor.py"
+      - "tests/test_stodola_patch.py"
+      - "scripts/patch_fluid_ph_property_floor.py"
+      - "tests/test_fluid_ph_property_floor.py"
+      - "scripts/patch_if97_property_pressure_floor.py"
+      - "tests/test_if97_property_pressure_floor.py"
+      - "scripts/patch_baseif97_property_pressure_floor.py"
+      - "tests/test_baseif97_property_pressure_floor.py"
+      - ".github/workflows/verify-v8-all-trip-matrix.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v8-all-trip-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  all-trip-matrix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      OPENMODELICA_IMAGE: openmodelica/openmodelica:v1.27.0-minimal
+      THERMOSYSPRO_COMMIT: db81ae1b5a6a85f6c6c7693244cafa6087e18ff5
+      LIVE_STOP_TIME_S: "170"
+      LIVE_STEP_SIZE_S: "0.04"
+      PRE_FAULT_MODEL_SECONDS: "5"
+      POST_FAULT_MODEL_SECONDS: "100"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify complete scenario contract
+        run: |
+          mkdir -p build/v8-lpbfp build/omhome vendor outputs/all-trip-matrix
+          python3 -m py_compile \
+            scripts/ecms_bfp_alarm_engine.py \
+            scripts/local_ecms_opcua.py \
+            scripts/opcua_run_controller.py \
+            scripts/verify_alarm_coverage_live.py \
+            scripts/aggregate_trip_matrix_results.py \
+            tests/v8_5_3/*.py
+          python3 tests/v8_5_3/selftest_all_trip_matrix.py \
+            --runner tests/v8_5_3/run_trip_matrix_scenario.py \
+            --engine scripts/ecms_bfp_alarm_engine.py
+          python3 tests/v8_5_2/selftest_protection_matrix_v8.py \
+            modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo
+
+      - name: Pin ThermoSysPro and install Modelica 3.2.3
+        run: |
+          git clone --no-checkout \
+            https://github.com/Dwarf-Planet-Project/ThermoSysPro.git \
+            vendor/ThermoSysPro
+          git -C vendor/ThermoSysPro checkout --detach "$THERMOSYSPRO_COMMIT"
+          test "$(git -C vendor/ThermoSysPro rev-parse HEAD)" = "$THERMOSYSPRO_COMMIT"
+          grep -Eq 'ThermoSysPro Version 3\.1' vendor/ThermoSysPro/ThermoSysPro/package.mo
+          python3 scripts/patch_stodola_turbine.py \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
+          python3 tests/test_stodola_patch.py
+          grep -q 'TRIPLENS_STODOLA_PRESSURE_CROSSOVER_V1' \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
+          python3 scripts/patch_pressure_loss_property_floor.py \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/ControlValve.mo \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo
+          grep -q 'TRIPLENS_PRESSURE_LOSS_PROPERTY_FLOOR_V1' \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/ControlValve.mo
+          grep -q 'TRIPLENS_PRESSURE_LOSS_PROPERTY_FLOOR_V1' \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo
+          python3 scripts/patch_fluid_ph_property_floor.py \
+            vendor/ThermoSysPro/ThermoSysPro/Properties/Fluid/Ph.mo
+          python3 tests/test_fluid_ph_property_floor.py
+          grep -q 'TRIPLENS_FLUID_PH_PROPERTY_FLOOR_V1' \
+            vendor/ThermoSysPro/ThermoSysPro/Properties/Fluid/Ph.mo
+          python3 scripts/patch_if97_property_pressure_floor.py \
+            vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/IF97_packages.mo
+          python3 tests/test_if97_property_pressure_floor.py
+          grep -q 'TRIPLENS_IF97_PROPERTY_FLOOR_V1' \
+            vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/IF97_packages.mo
+          python3 scripts/patch_baseif97_property_pressure_floor.py \
+            vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/BaseIF97.mo
+          python3 tests/test_baseif97_property_pressure_floor.py
+          grep -q 'TRIPLENS_BASEIF97_PROPERTY_FLOOR_V1' \
+            vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/BaseIF97.mo
+          timeout --signal=TERM --kill-after=30s 8m \
+            docker run --rm \
+              -v "$PWD/build/omhome:/root" \
+              -v "$PWD:/workspace" \
+              -w /workspace \
+              "$OPENMODELICA_IMAGE" \
+              omc /workspace/modelica/install_dependencies.mos \
+              | tee build/v8-lpbfp/install-modelica.log
+          grep -q 'Modelica 3.2.3+maint.om/package.mo' build/v8-lpbfp/install-modelica.log
+          grep -q 'Package installed successfully' build/v8-lpbfp/install-modelica.log
+
+      - name: Build V8 once for every isolated scenario
+        run: |
+          timeout --signal=TERM --kill-after=30s 22m \
+            docker run --rm \
+              -v "$PWD/build/omhome:/root" \
+              -v "$PWD:/workspace" \
+              -w /workspace \
+              "$OPENMODELICA_IMAGE" \
+              omc /workspace/modelica/build_v8_lpbfp.mos \
+              | tee build/v8-lpbfp/openmodelica-build.log
+          if grep -Eq 'Failed to build model|Error:' build/v8-lpbfp/openmodelica-build.log; then
+            exit 1
+          fi
+          test -x build/v8-lpbfp/TripLens_V8_5_2_LP_BFP_CI
+          test -s build/v8-lpbfp/TripLens_V8_5_2_LP_BFP_CI_init.xml
+
+      - name: Install pinned OPC UA client
+        run: python3 -m pip install --disable-pip-version-check -r requirements-live.txt
+
+      - name: Execute every scenario with a fresh OPC UA server
+        id: scenarios
+        shell: bash
+        run: |
+          scenarios=(
+            direct_gt gt_breaker direct_st
+            hp_drum_hh ip_drum_hh lp_drum_hh
+            hp_drum_ll ip_drum_ll lp_drum_ll
+            hp_bfp ip_bfp lp_bfp
+          )
+          index=0
+          for scenario in "${scenarios[@]}"; do
+            port=$((4841 + index))
+            index=$((index + 1))
+            scenario_endpoint="opc.tcp://127.0.0.1:${port}"
+            output="outputs/all-trip-matrix/$scenario"
+            mkdir -p "$output"
+            server_name="triplens-${GITHUB_RUN_ID}-${scenario//_/-}"
+            case_status=1
+            failure_stage=""
+            controller_status=-1
+            binding_status=-1
+            runner_status=-1
+            docker rm -f "$server_name" >/dev/null 2>&1 || true
+            if (echo > "/dev/tcp/127.0.0.1/${port}") >/dev/null 2>&1; then
+              failure_stage="PORT_PRECONDITION"
+              OUTPUT="$output" SCENARIO="$scenario" CASE_STATUS="$case_status" \
+                FAILURE_STAGE="$failure_stage" CONTROLLER_STATUS="$controller_status" \
+                BINDING_STATUS="$binding_status" RUNNER_STATUS="$runner_status" \
+                python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          target = Path(os.environ["OUTPUT"]) / "EXECUTION_RESULT.json"
+          target.write_text(json.dumps({
+              "scenario": os.environ["SCENARIO"],
+              "status": "INFRA_FAIL",
+              "failure_stage": os.environ["FAILURE_STAGE"],
+              "case_exit_code": int(os.environ["CASE_STATUS"]),
+              "controller_exit_code": int(os.environ["CONTROLLER_STATUS"]),
+              "binding_exit_code": int(os.environ["BINDING_STATUS"]),
+              "runner_exit_code": int(os.environ["RUNNER_STATUS"]),
+              "message": "scenario port was already open before fresh-server start",
+          }, indent=2, sort_keys=True), encoding="utf-8")
+          PY
+              continue
+            fi
+            docker run --rm --name "$server_name" --network host \
+              -v "$PWD:/workspace" \
+              -w /workspace/build/v8-lpbfp \
+              "$OPENMODELICA_IMAGE" \
+              ./TripLens_V8_5_2_LP_BFP_CI \
+                -startTime=0 \
+                -stopTime="$LIVE_STOP_TIME_S" \
+                -stepSize="$LIVE_STEP_SIZE_S" \
+                -tolerance=0.001 \
+                -s=dassl \
+                -outputFormat=mat \
+                -r="/tmp/TripLens_${scenario}_res.mat" \
+                -w \
+                -lv=LOG_ASSERT,LOG_STATS \
+                -embeddedServer=opc-ua \
+                -embeddedServerPort="$port" \
+              > "$output/openmodelica-server.log" 2>&1 &
+            server_pid=$!
+            server_ready=0
+            for attempt in $(seq 1 240); do
+              if ! kill -0 "$server_pid" 2>/dev/null; then
+                break
+              fi
+              if (echo > "/dev/tcp/127.0.0.1/${port}") >/dev/null 2>&1; then
+                server_ready=1
+                break
+              fi
+              sleep 0.5
+            done
+            if [[ "$server_ready" -eq 1 ]]; then
+              set +e
+              python3 scripts/opcua_run_controller.py --endpoint "$scenario_endpoint" \
+                > "$output/run-controller.log" 2>&1
+              controller_status=$?
+              if [[ "$controller_status" -eq 0 ]]; then
+                python3 scripts/verify_alarm_coverage_live.py \
+                  --repo-root "$PWD" \
+                  --endpoint "$scenario_endpoint" \
+                  --registry config/alarm_registry_v1.csv \
+                  --output "$output/alarm-bindings-live.json" \
+                  > "$output/alarm-bindings.log" 2>&1
+                binding_status=$?
+                if [[ "$binding_status" -eq 0 ]]; then
+                  timeout --signal=TERM --kill-after=30s 9m \
+                    python3 tests/v8_5_3/run_trip_matrix_scenario.py \
+                      --repo-root "$PWD" \
+                      --endpoint "$scenario_endpoint" \
+                      --output "$output" \
+                      --scenario "$scenario" \
+                      --pre-fault-model-seconds "$PRE_FAULT_MODEL_SECONDS" \
+                      --timeout 480 \
+                    > "$output/scenario-runner.log" 2>&1
+                  runner_status=$?
+                  case_status=$runner_status
+                  if [[ "$runner_status" -eq 124 ]]; then
+                    failure_stage="SCENARIO_TIMEOUT"
+                  elif [[ "$runner_status" -ne 0 && ! -s "$output/SCENARIO_RESULT.json" ]]; then
+                    failure_stage="SCENARIO_RUNNER"
+                  fi
+                else
+                  failure_stage="ALARM_BINDING"
+                fi
+              else
+                failure_stage="RUN_CONTROLLER"
+              fi
+              set -e
+            else
+              failure_stage="SERVER_START"
+            fi
+            echo "$case_status" > "$output/exit-code.txt"
+            docker rm -f "$server_name" >/dev/null 2>&1 || true
+            wait "$server_pid" 2>/dev/null || true
+            port_closed=0
+            for attempt in $(seq 1 40); do
+              if ! (echo > "/dev/tcp/127.0.0.1/${port}") >/dev/null 2>&1; then
+                port_closed=1
+                break
+              fi
+              sleep 0.25
+            done
+            if [[ "$port_closed" -ne 1 ]]; then
+              failure_stage="CLEANUP"
+              case_status=1
+            fi
+            OUTPUT="$output" SCENARIO="$scenario" CASE_STATUS="$case_status" \
+              FAILURE_STAGE="$failure_stage" CONTROLLER_STATUS="$controller_status" \
+              BINDING_STATUS="$binding_status" RUNNER_STATUS="$runner_status" \
+              python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          stage = os.environ["FAILURE_STAGE"]
+          target = Path(os.environ["OUTPUT"]) / "EXECUTION_RESULT.json"
+          target.write_text(json.dumps({
+              "scenario": os.environ["SCENARIO"],
+              "status": "INFRA_FAIL" if stage else ("PASS" if int(os.environ["CASE_STATUS"]) == 0 else "SCENARIO_FAIL"),
+              "failure_stage": stage,
+              "case_exit_code": int(os.environ["CASE_STATUS"]),
+              "controller_exit_code": int(os.environ["CONTROLLER_STATUS"]),
+              "binding_exit_code": int(os.environ["BINDING_STATUS"]),
+              "runner_exit_code": int(os.environ["RUNNER_STATUS"]),
+              "message": f"execution stage={stage or 'COMPLETE'}",
+          }, indent=2, sort_keys=True), encoding="utf-8")
+          PY
+          done
+
+      - name: Build Luna-readable combined summary
+        if: always()
+        run: |
+          python3 scripts/aggregate_trip_matrix_results.py \
+            --root outputs/all-trip-matrix \
+            --pre-fault-model-seconds "$PRE_FAULT_MODEL_SECONDS" \
+            --post-fault-model-seconds "$POST_FAULT_MODEL_SECONDS" \
+            | tee outputs/all-trip-matrix/aggregate.log
+
+      - name: Upload complete EVENT and RAW package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v8-all-trip-matrix-mixed-horizon-${{ github.run_number }}
+          path: |
+            outputs/all-trip-matrix/LUNA_SUMMARY.*
+            outputs/all-trip-matrix/LUNA_README.md
+            outputs/all-trip-matrix/MANIFEST_SHA256.csv
+            outputs/all-trip-matrix/aggregate.log
+            outputs/all-trip-matrix/*/EVENT.csv
+            outputs/all-trip-matrix/*/RAW.csv
+            outputs/all-trip-matrix/*/SCENARIO_RESULT.json
+            outputs/all-trip-matrix/*/EXECUTION_RESULT.json
+            outputs/all-trip-matrix/*/TEST_AUDIT.json
+            outputs/all-trip-matrix/*/LP_BFP_DUAL_ANALYSIS.json
+            outputs/all-trip-matrix/*/*.log
+            outputs/all-trip-matrix/*/alarm-bindings-live.json
+            outputs/all-trip-matrix/*/exit-code.txt
+            build/v8-lpbfp/openmodelica-build.log
+            build/v8-lpbfp/install-modelica.log
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Require all scenarios to pass
+        if: always()
+        run: |
+          python3 scripts/aggregate_trip_matrix_results.py \
+            --root outputs/all-trip-matrix \
+            --pre-fault-model-seconds "$PRE_FAULT_MODEL_SECONDS" \
+            --post-fault-model-seconds "$POST_FAULT_MODEL_SECONDS" \
+            --require-all-pass

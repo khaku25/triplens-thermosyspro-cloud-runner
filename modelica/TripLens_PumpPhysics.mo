@@ -18,6 +18,8 @@ package TripLens_PumpPhysics
     parameter Modelica.SIunits.Torque torqueLimit = 1e5;
     parameter Real torqueRegularizationSpeedRpm(unit="rev/min") = 30
       "Low-speed regularization used to recover load torque from pump power";
+    parameter Modelica.SIunits.Time pumpPowerFilterTime = 0.5
+      "First-order load-power filter that breaks the pump/shaft algebraic loop";
 
     ThermoSysPro.InstrumentationAndControl.Connectors.InputLogical
       breakerClosed;
@@ -32,6 +34,9 @@ package TripLens_PumpPhysics
     Modelica.SIunits.Torque hydraulicTorque;
     Modelica.SIunits.Torque frictionTorque;
     Modelica.SIunits.Torque netTorque;
+    Modelica.SIunits.Power pumpPowerFiltered(
+      start=initialTorque*nominalSpeedRpm*Modelica.Constants.pi/30,
+      fixed=true);
     Real speedError(unit="rev/min");
     Real integralState(start=initialTorque/integralGain, fixed=false);
 
@@ -45,6 +50,8 @@ package TripLens_PumpPhysics
     speedCommand.signal = speedRpm;
     speedError = nominalSpeedRpm - speedRpm;
     der(integralState) = if breakerClosed.signal then speedError else 0;
+    der(pumpPowerFiltered) = (max(pumpPower.signal, 0) -
+      pumpPowerFiltered)/pumpPowerFilterTime;
 
     motorTorque = if breakerClosed.signal then noEvent(max(0, min(
       torqueLimit,
@@ -53,7 +60,7 @@ package TripLens_PumpPhysics
     // StaticCentrifugalPump exposes its mechanical load as Wm. Recover the
     // opposing shaft torque smoothly so the expression remains finite at
     // standstill, where a direct Wm/angularSpeed division would be singular.
-    hydraulicTorque = noEvent(max(pumpPower.signal, 0)*max(angularSpeed, 0)/(
+    hydraulicTorque = noEvent(max(pumpPowerFiltered, 0)*max(angularSpeed, 0)/(
       angularSpeed^2 + (torqueRegularizationSpeedRpm*
       Modelica.Constants.pi/30)^2));
     frictionTorque = noEvent(if angularSpeed > 0 then
@@ -66,6 +73,13 @@ package TripLens_PumpPhysics
 
   model SpringLoadedCheckValve
     "Continuously moving non-return valve with spring-equivalent closing flow"
+    // TRIPLENS_CHECK_VALVE_HVOL_TRANSPORT_V2
+    // Use the same continuous flow-reversal transport law as ThermoSysPro's
+    // ControlValve/PipePressureLoss components.  The previous strict Q > 0
+    // branch changed the selected h_vol equation exactly at zero flow, which
+    // left HP/IP discharge initialization sensitive to the solver's first
+    // Newton iterate.  This is a transport regularization only; it does not
+    // equate the upstream and downstream control-volume enthalpies.
     parameter Modelica.SIunits.MassFlowRate closeFlow = 1
       "Forward flow below which the spring closes the valve";
     parameter Modelica.SIunits.MassFlowRate flowTransition = max(0.1,
@@ -104,9 +118,13 @@ package TripLens_PumpPhysics
     Q = C1.Q;
     deltaP = C1.P - C2.P;
 
-    // Preserve ThermoSysPro's directional enthalpy transport without adding
-    // a second IF97 property state to the large plant initialization system.
-    0 = if Q > 0 then C1.h - C1.h_vol else C2.h - C2.h_vol;
+    // Preserve ThermoSysPro's directional enthalpy transport while smoothing
+    // the zero-flow/reversal boundary.  Do not add C1.h_vol = C2.h_vol: those
+    // are the independent control-volume states on either side of the NRV.
+    0 = noEvent(if Q > flowTransition then C1.h - C1.h_vol else if
+      Q < -flowTransition then C2.h - C2.h_vol else C1.h - 0.5*((C1.h_vol -
+      C2.h_vol)*Modelica.Math.sin(Modelica.Constants.pi*Q/(2*flowTransition))
+      + C1.h_vol + C2.h_vol));
 
     // The spring target falls continuously as forward flow approaches the
     // closing threshold. Keeping flap position and resistance continuous

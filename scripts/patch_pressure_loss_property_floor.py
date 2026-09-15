@@ -14,6 +14,9 @@ from pathlib import Path
 
 
 MARKER = "TRIPLENS_PRESSURE_LOSS_PROPERTY_FLOOR_V1"
+# IF97 rejects the triple-point boundary itself (p <= 611.657 Pa), therefore
+# the evaluation floor is deliberately above it.
+IF97_PROPERTY_PRESSURE_FLOOR = 1000.0
 PROPERTY_CALL = "  pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"
 PROPERTY_PATCH = f'''  // {MARKER}
   Pthermo = noEvent(max(propertyPressureFloor, Pm));
@@ -21,7 +24,7 @@ PROPERTY_PATCH = f'''  // {MARKER}
 PARAMETER_ANCHOR = '''  parameter Modelica.SIunits.MassFlowRate Qeps=1.e-3
     "Small mass flow for continuous flow reversal";'''
 PARAMETER_PATCH = PARAMETER_ANCHOR + '''
-  parameter Modelica.SIunits.AbsolutePressure propertyPressureFloor=611.657
+  parameter Modelica.SIunits.AbsolutePressure propertyPressureFloor=1000.0
     "IF97 triple-point floor used only during property evaluation";'''
 VARIABLE_ANCHOR = '  Modelica.SIunits.AbsolutePressure Pm(start=1.e5)'
 
@@ -86,3 +89,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

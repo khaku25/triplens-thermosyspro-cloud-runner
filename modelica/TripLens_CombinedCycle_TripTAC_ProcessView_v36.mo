@@ -142,10 +142,15 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   parameter Modelica.SIunits.Temperature vppGTExhaustTemperatureNormal = 893.75;
   parameter Modelica.SIunits.Temperature vppGTExhaustTemperatureTrip = 450;
   parameter Real vppGTExhaustResponseTau(unit = "s") = 0.667 "First-order live-command GT exhaust response time constant";
-  parameter Real vppAdmissionStroke95(unit = "s") = 0.150 "HP/IP and LP-drum admission 95 percent closing time";
-  parameter Real vppHPBypassStroke95(unit = "s") = 0.300 "HPBP 95 percent opening time";
-  parameter Real vppLPBypassStroke95(unit = "s") = 0.400 "LPBP 95 percent opening time";
-  parameter Real vppSprayStroke95(unit = "s") = 0.050 "Spray-water actuator 95 percent opening time";
+  // The trip valves are physical first-order actuators.  A sub-200 ms
+  // admission closure against the finite HRSG volumes creates a numerical
+  // pressure impulse in the pinned ThermoSysPro 3.1 two-phase pipes; these
+  // plant-realistic stroke times preserve the trip while keeping absolute
+  // pressure positive through the 100 s validation window.
+  parameter Real vppAdmissionStroke95(unit = "s") = 1.000 "HP/IP and LP-drum admission 95 percent closing time";
+  parameter Real vppHPBypassStroke95(unit = "s") = 2.000 "HPBP 95 percent opening time";
+  parameter Real vppLPBypassStroke95(unit = "s") = 2.000 "LPBP 95 percent opening time";
+  parameter Real vppSprayStroke95(unit = "s") = 0.500 "Spray-water actuator 95 percent opening time";
   parameter Modelica.SIunits.MassFlowRate vppSpraySeatLeak = 0 "Fully closed pre-Trip spray flow";
   parameter Real vppAdmissionSeatLeak = 1e-3 "Numerical 0.1 percent turbine admission-valve seat leakage";
   parameter Real vppValveLeak = 0 "Fully closed pre-Trip bypass position";
@@ -168,7 +173,11 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   TripLens_PumpPhysics.BreakerInertialPumpDrive vppLPFWPDrive(nominalSpeedRpm = 1400, J = 300, frictionTorqueNominal = 20, initialTorque = 4200, torqueLimit = 6e4) annotation(
     Placement(visible = false, transformation(extent = {{700, -500}, {740, -470}})));
   parameter Real vppLPFWPHydraulicSpeedFloorRPM(unit = "rev/min") = 700 "Numerical floor for the upstream static pump curve; shaft speed remains physical";
-  TripLens_PumpPhysics.SpringLoadedCheckValve vppLPFWPCheckValve(closeFlow = 70, closedResistance = 1e5) annotation(
+  // TRIPLENS_CHECK_VALVE_HVOL_INIT_V2: match the native LP pump discharge
+  // control-volume enthalpy at the common adapter boundary.
+  TripLens_PumpPhysics.SpringLoadedCheckValve vppLPFWPCheckValve(
+    closeFlow = 70, closedResistance = 1e5,
+    C1(h_vol(start = 194669.0)), C2(h_vol(start = 194669.0))) annotation(
     Placement(visible = false, transformation(extent = {{739, -446}, {759, -426}})));
   // TRIPLENS_LP_BFP_OPERATOR_CHAIN_V1
   input Real vppLPFWPTripPushbuttonNative(start=0)
@@ -197,10 +206,47 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Real vppLPFWPMechanicalPowerW(unit = "W");
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppLPFWPHydraulicSpeedCommand annotation(
     Placement(visible = false, transformation(extent = {{660, -500}, {690, -470}})));
+  // TRIPLENS_HP_IP_FWP_INERTIAL_DRIVES_V8_6
+  // HP/IP now use the same validated breaker/inertia boundary as LP.  The
+  // legacy Ramp drivers are removed below so a BFP trip can actually remove
+  // motor torque, reduce pump speed, close the discharge NRV and lower drum
+  // inventory.  The numerical floor keeps the StaticCentrifugalPump finite
+  // at standstill; the exposed shaft speed remains the physical state.
+  TripLens_PumpPhysics.BreakerInertialPumpDrive vppHPFWPDrive(
+    nominalSpeedRpm = 1400, J = 300, frictionTorqueNominal = 20,
+    initialTorque = 24000, torqueLimit = 8e4) annotation(
+    Placement(visible = false, transformation(extent = {{660, -40}, {700, -10}})));
+  // TRIPLENS_IP_BFP_COASTDOWN_V8_7: the IP train is materially smaller than
+  // the LP reference train.  Its lower rotating inertia preserves the same
+  // breaker -> shaft -> static-pump boundary while targeting the existing 700
+  // rpm numerical pump-curve floor inside the dedicated 45 s equipment-only
+  // proof window.  The action run remains the physical acceptance check.
+  TripLens_PumpPhysics.BreakerInertialPumpDrive vppIPFWPDrive(
+    nominalSpeedRpm = 1400, J = 100, frictionTorqueNominal = 20,
+    initialTorque = 12000, torqueLimit = 8e4) annotation(
+    Placement(visible = false, transformation(extent = {{660, 0}, {700, 30}})));
+  parameter Real vppHPFWPHydraulicSpeedFloorRPM(unit = "rev/min") = 700
+    "Numerical floor for the HP upstream static pump curve";
+  parameter Real vppIPFWPHydraulicSpeedFloorRPM(unit = "rev/min") = 700
+    "Numerical floor for the IP upstream static pump curve";
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
+    vppHPFWPHydraulicSpeedCommand annotation(
+      Placement(visible = false, transformation(extent = {{620, -40}, {650, -10}})));
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
+    vppIPFWPHydraulicSpeedCommand annotation(
+      Placement(visible = false, transformation(extent = {{620, 0}, {650, 30}})));
+  output Real vppHPFWPHydraulicSpeedRPM(unit = "rev/min");
+  output Real vppIPFWPHydraulicSpeedRPM(unit = "rev/min");
   // TRIPLENS_ALL_FWP_CHECK_VALVES_OPCUA_V1
-  TripLens_PumpPhysics.SpringLoadedCheckValve vppHPFWPCheckValve(closeFlow = 20, closedResistance = 1e5) annotation(
+  // TRIPLENS_CHECK_VALVE_HVOL_INIT_V2: HP pump discharge start state.
+  TripLens_PumpPhysics.SpringLoadedCheckValve vppHPFWPCheckValve(
+    closeFlow = 20, closedResistance = 1e5,
+    C1(h_vol(start = 630000.0)), C2(h_vol(start = 630000.0))) annotation(
     Placement(visible = false, transformation(extent = {{747, -82}, {767, -62}})));
-  TripLens_PumpPhysics.SpringLoadedCheckValve vppIPFWPCheckValve(closeFlow = 5, closedResistance = 1e5) annotation(
+  // TRIPLENS_CHECK_VALVE_HVOL_INIT_V2: IP pump discharge start state.
+  TripLens_PumpPhysics.SpringLoadedCheckValve vppIPFWPCheckValve(
+    closeFlow = 5, closedResistance = 1e5,
+    C1(h_vol(start = 561000.0)), C2(h_vol(start = 561000.0))) annotation(
     Placement(visible = false, transformation(extent = {{747, -122}, {767, -102}})));
   output Boolean vppHPFWPCheckValveOpen;
   output Real vppHPFWPCheckValveOpening(min = 0, max = 1);
@@ -243,6 +289,13 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   // TRIPLENS_NATIVE_OPCUA_VALVE_ADAPTER_SAFE_V2
   // Only the four writable commands are independent states.
   // Cv, flow and dP are algebraic aliases: no telemetry dynamics enter initialization.
+  // TRIPLENS_DRUM_FAULT_VALVE_MIN_OPENING_V8_7: ThermoSysPro's static
+  // ControlValve algebra divides by Cv^2.  A faulted closed drum valve is
+  // represented as a finite 1% seat-leak opening, never an algebraic Cv=0.
+  // Normal automatic and manual valve commands retain their exact values.
+  // The fault input remains excluded from RAW.csv by the dual-log contract.
+  parameter Real vppDrumFaultValveMinimumOpening(min = 0, max = 0.1) = 0.01
+    "Finite valve opening retained only during a drum fault override";
   input Real vppVlvHPFWCVModeAutoNative(start=1);
   input Real vppVlvHPFWCVManualCmdNative(start=0.8, min=0, max=1);
   input Real vppVlvHPFWCVFaultEnableNative(start=0);
@@ -515,13 +568,13 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
     Placement(visible = false, transformation(origin = {689, -50}, extent = {{10, -10}, {-10, 10}}, rotation = 180)));
   ThermoSysPro.MultiFluids.HeatExchangers.DynamicExchangerWaterSteamFlueGases EconomiseurBP(Ns = 3, Dint = 32.8e-3, ExchangerWall(e = 2.6e-3, lambda = 47, dW1(start = {-2.45e7, -5.5e6, -1.17e6}), Tp(start = {398.142807363473, 393.825926964772, 392.943738968771}), Tp1(start = {397.622, 392.348, 391.516})), Ntubes = 3444, L = 20.726, Cws1(h_vol(start = 195526.0)), Cws2(h_vol(start = 588078.0)), ExchangerFlueGasesMetal(step_T = 86.9e-3, Fa = 1, Dext = 38e-3, step_L = 92e-3, K(fixed = true, start = 31.53), CSailettes = 11.673758598919, p_rho = 1.15, Encras = Encras_EBP, St = 5, DeltaT(start = {23.5, 5.3, 1.1}), T(start = {442.5893859863, 403.9873508455, 395.0465605839, 395.464630127}), Tm(start = {423.15, 418.15, 414.742}), Tp(start = {398.4437772187, 393.8897987349, 392.9569515805})), TwoPhaseFlowPipe(advection = false, rugosrel = 5e-6, z1 = 0, z2 = 10.767, inertia = true, dW1(start = {2.45e7, 5.5e6, 1.17e6}), h(start = {194584.515625, 462556.370989432, 494648.45288738, 501287.069880104, 509237.875}), hb(start = {194584.515625, 462556.370989432, 494648.45288738, 501287.069880104}), P(start = {1540571.25, 1500000, 1480000, 1450000, 1429595.375}))) annotation(
     Placement(visible = false, transformation(origin = {647, -50}, extent = {{-20, -20}, {20, 20}}, rotation = 90)));
-  ThermoSysPro.WaterSteam.Machines.StodolaTurbine TurbineHP(W_fric = 1, eta_stato = 1, eta_is(start = 0.88057), Qmax = 140, eta_is_nom = 0.88057, eta_is_min = 0.75, Cst(start = 8182844.56002535) = CstHP, pros(d(start = 10.0)), Hrs(start = 3046260), Pe(fixed = true, start = 12431000), Ps(fixed = false, start = 2726700)) annotation(
+  ThermoSysPro.WaterSteam.Machines.StodolaTurbine TurbineHP(regularizePressureCrossover = true, W_fric = 1, eta_stato = 1, eta_is(start = 0.88057), Qmax = 140, eta_is_nom = 0.88057, eta_is_min = 0.75, Cst(start = 8182844.56002535) = CstHP, pros(d(start = 10.0)), Hrs(start = 3046260), Pe(fixed = true, start = 12431000), Ps(fixed = false, start = 2726700)) annotation(
     Placement(visible = false, transformation(extent = {{-35, -250}, {5, -210}}, rotation = 0)));
-  ThermoSysPro.WaterSteam.Machines.StodolaTurbine TurbineMP(W_fric = 1, eta_stato = 1, eta_is(start = 0.9625), Qmax = 150, eta_is_nom = 0.9625, eta_is_min = 0.75, Cst(start = 256335.364995961) = CstMP, pros(d(start = 30.0)), Hrs(start = 3029780), Pe(fixed = true, start = 2548500), Ps(fixed = false, start = 476800)) annotation(
+  ThermoSysPro.WaterSteam.Machines.StodolaTurbine TurbineMP(regularizePressureCrossover = true, W_fric = 1, eta_stato = 1, eta_is(start = 0.9625), Qmax = 150, eta_is_nom = 0.9625, eta_is_min = 0.75, Cst(start = 256335.364995961) = CstMP, pros(d(start = 30.0)), Hrs(start = 3029780), Pe(fixed = true, start = 2548500), Ps(fixed = false, start = 476800)) annotation(
     Placement(visible = false, transformation(extent = {{285, -250}, {325, -210}}, rotation = 0)));
   ThermoSysPro.WaterSteam.Volumes.VolumeC MelangeurPostTMP1(h(start = 2997231.36734756), P(start = 476799.99999954), Ce1(h(start = 3029780))) annotation(
     Placement(visible = false, transformation(origin = {385, -230}, extent = {{10, -10}, {-10, 10}}, rotation = 180)));
-  ThermoSysPro.WaterSteam.Machines.StodolaTurbine TurbineBP(W_fric = 1, eta_stato = 1, eta_is(start = 0.9538), Qmax = 150, eta_is_nom = 0.9538, eta_is_min = 0.75, Cst(start = 11944.9445735985) = CstBP, Cs(h(start = 2400000.0)), Hrs(start = 2401030), Pe(fixed = true, start = 476799.99999954), Ps(start = 10053)) annotation(
+  ThermoSysPro.WaterSteam.Machines.StodolaTurbine TurbineBP(regularizePressureCrossover = true, W_fric = 1, eta_stato = 1, eta_is(start = 0.9538), Qmax = 150, eta_is_nom = 0.9538, eta_is_min = 0.75, Cst(start = 11944.9445735985) = CstBP, Cs(h(start = 2400000.0)), Hrs(start = 2401030), Pe(fixed = true, start = 476799.99999954), Ps(start = 10053)) annotation(
     Placement(visible = false, transformation(extent = {{543, -250}, {583, -210}}, rotation = 0)));
   ThermoSysPro.WaterSteam.Junctions.MassFlowMultiplier DoubleDebitHP(alpha = 2) annotation(
     Placement(visible = false, transformation(origin = {-325, -100}, extent = {{-10, -10}, {10, 10}}, rotation = 270)));
@@ -736,7 +789,8 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Boolean vppCauseLPDrumLL;
   output Boolean vppGTTripRequest;
   output Boolean vppSTTripRequest;
-  // TRIPLENS_PROTECTION_LOGIC_STABLE_V8_5: protection logic without hydraulic rewiring.
+  // TRIPLENS_PROTECTION_LOGIC_STABLE_V8_5: independent protection logic;
+  // HP/IP hydraulic coastdown is supplied by the V8.5.3 inertial adapters.
   // Independent HP/IP BFP operator protection chains.
   input Real vppHPFWPTripPushbuttonNative(start=0, min=0, max=1)
     "Operator HP BFP Trip pushbutton; writable OPC UA input";
@@ -830,7 +884,7 @@ equation
   // TRIPLENS_NATIVE_OPCUA_VALVE_ADAPTER_SAFE_V2: selection, physical drive and direct telemetry
   vppVlvHPFWCVAutoCmd = noEvent(min(1, max(0, regulation_Niveau_HP.SortieReelle1.signal)));
   vppVlvHPFWCVCmd = if noEvent(vppVlvHPFWCVModeAutoNative >= 0.5) then noEvent(min(1, max(0, regulation_Niveau_HP.SortieReelle1.signal))) else noEvent(min(1, max(0, vppVlvHPFWCVManualCmdNative)));
-  vppVlvHPFWCVTarget = if noEvent(vppVlvHPFWCVFaultEnableNative >= 0.5) then noEvent(min(1, max(0, vppVlvHPFWCVFaultValueNative))) else vppVlvHPFWCVCmd;
+  vppVlvHPFWCVTarget = if noEvent(vppVlvHPFWCVFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvHPFWCVFaultValueNative))))) else vppVlvHPFWCVCmd;
   vanne_alimentationHP.Ouv.signal = vppVlvHPFWCVTarget;
   vppVlvHPFWCVFb = noEvent(if abs(vanne_alimentationHP.Cvmax) > Modelica.Constants.eps then vanne_alimentationHP.Cv/vanne_alimentationHP.Cvmax else 0);
   vppVlvHPFWCVDeviation = vppVlvHPFWCVCmd - vppVlvHPFWCVFb;
@@ -840,7 +894,7 @@ equation
   vppVlvHPFWCVDPPa = vanne_alimentationHP.C1.P - vanne_alimentationHP.C2.P;
   vppVlvHPSteamAutoCmd = noEvent(min(1, max(0, constante_vanne_vapeurHP.y.signal))) - 1*Modelica.Constants.eps*(1 - cos(time));
   vppVlvHPSteamCmd = if noEvent(vppVlvHPSteamModeAutoNative >= 0.5) then noEvent(min(1, max(0, constante_vanne_vapeurHP.y.signal))) else noEvent(min(1, max(0, vppVlvHPSteamManualCmdNative)));
-  vppVlvHPSteamTarget = if noEvent(vppVlvHPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(0, vppVlvHPSteamFaultValueNative))) else vppVlvHPSteamCmd;
+  vppVlvHPSteamTarget = if noEvent(vppVlvHPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvHPSteamFaultValueNative))))) else vppVlvHPSteamCmd;
   vanne_vapeurHP.Ouv.signal = vppVlvHPSteamTarget;
   vppVlvHPSteamFb = noEvent(if abs(vanne_vapeurHP.Cvmax) > Modelica.Constants.eps then vanne_vapeurHP.Cv/vanne_vapeurHP.Cvmax else 0);
   vppVlvHPSteamDeviation = vppVlvHPSteamCmd - vppVlvHPSteamFb;
@@ -850,7 +904,7 @@ equation
   vppVlvHPSteamDPPa = vanne_vapeurHP.C1.P - vanne_vapeurHP.C2.P;
   vppVlvIPFWCVAutoCmd = noEvent(min(1, max(0, regulation_Niveau_MP.SortieReelle1.signal)));
   vppVlvIPFWCVCmd = if noEvent(vppVlvIPFWCVModeAutoNative >= 0.5) then noEvent(min(1, max(0, regulation_Niveau_MP.SortieReelle1.signal))) else noEvent(min(1, max(0, vppVlvIPFWCVManualCmdNative)));
-  vppVlvIPFWCVTarget = if noEvent(vppVlvIPFWCVFaultEnableNative >= 0.5) then noEvent(min(1, max(0, vppVlvIPFWCVFaultValueNative))) else vppVlvIPFWCVCmd;
+  vppVlvIPFWCVTarget = if noEvent(vppVlvIPFWCVFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvIPFWCVFaultValueNative))))) else vppVlvIPFWCVCmd;
   vanne_alimentationMP.Ouv.signal = vppVlvIPFWCVTarget;
   vppVlvIPFWCVFb = noEvent(if abs(vanne_alimentationMP.Cvmax) > Modelica.Constants.eps then vanne_alimentationMP.Cv/vanne_alimentationMP.Cvmax else 0);
   vppVlvIPFWCVDeviation = vppVlvIPFWCVCmd - vppVlvIPFWCVFb;
@@ -860,7 +914,7 @@ equation
   vppVlvIPFWCVDPPa = vanne_alimentationMP.C1.P - vanne_alimentationMP.C2.P;
   vppVlvIPSteamAutoCmd = noEvent(min(1, max(0, constante_vanne_vapeurMP.y.signal))) - 2*Modelica.Constants.eps*(1 - cos(time));
   vppVlvIPSteamCmd = if noEvent(vppVlvIPSteamModeAutoNative >= 0.5) then noEvent(min(1, max(0, constante_vanne_vapeurMP.y.signal))) else noEvent(min(1, max(0, vppVlvIPSteamManualCmdNative)));
-  vppVlvIPSteamTarget = if noEvent(vppVlvIPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(0, vppVlvIPSteamFaultValueNative))) else vppVlvIPSteamCmd;
+  vppVlvIPSteamTarget = if noEvent(vppVlvIPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvIPSteamFaultValueNative))))) else vppVlvIPSteamCmd;
   vanne_vapeurMP.Ouv.signal = vppVlvIPSteamTarget;
   vppVlvIPSteamFb = noEvent(if abs(vanne_vapeurMP.Cvmax) > Modelica.Constants.eps then vanne_vapeurMP.Cv/vanne_vapeurMP.Cvmax else 0);
   vppVlvIPSteamDeviation = vppVlvIPSteamCmd - vppVlvIPSteamFb;
@@ -870,7 +924,7 @@ equation
   vppVlvIPSteamDPPa = vanne_vapeurMP.C1.P - vanne_vapeurMP.C2.P;
   vppVlvLPSteamAutoCmd = noEvent(min(1, max(0, regulation_Niveau_BP.SortieReelle1.signal*vppLPDrumAdmissionMultiplier)));
   vppVlvLPSteamCmd = if noEvent(vppVlvLPSteamModeAutoNative >= 0.5) then noEvent(min(1, max(0, regulation_Niveau_BP.SortieReelle1.signal*vppLPDrumAdmissionMultiplier))) else noEvent(min(1, max(0, vppVlvLPSteamManualCmdNative)));
-  vppVlvLPSteamTarget = if noEvent(vppVlvLPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(0, vppVlvLPSteamFaultValueNative))) else vppVlvLPSteamCmd;
+  vppVlvLPSteamTarget = if noEvent(vppVlvLPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvLPSteamFaultValueNative))))) else vppVlvLPSteamCmd;
   vanne_vapeurBP.Ouv.signal = vppVlvLPSteamTarget;
   vppVlvLPSteamFb = noEvent(if abs(vanne_vapeurBP.Cvmax) > Modelica.Constants.eps then vanne_vapeurBP.Cv/vanne_vapeurBP.Cvmax else 0);
   vppVlvLPSteamDeviation = vppVlvLPSteamCmd - vppVlvLPSteamFb;
@@ -880,7 +934,7 @@ equation
   vppVlvLPSteamDPPa = vanne_vapeurBP.C1.P - vanne_vapeurBP.C2.P;
   vppVlvLPFWAutoCmd = noEvent(min(1, max(0, constante_vanne_vapeurBP.y.signal))) - 3*Modelica.Constants.eps*(1 - cos(time));
   vppVlvLPFWCmd = if noEvent(vppVlvLPFWModeAutoNative >= 0.5) then noEvent(min(1, max(0, constante_vanne_vapeurBP.y.signal))) else noEvent(min(1, max(0, vppVlvLPFWManualCmdNative)));
-  vppVlvLPFWTarget = if noEvent(vppVlvLPFWFaultEnableNative >= 0.5) then noEvent(min(1, max(0, vppVlvLPFWFaultValueNative))) else vppVlvLPFWCmd;
+  vppVlvLPFWTarget = if noEvent(vppVlvLPFWFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvLPFWFaultValueNative))))) else vppVlvLPFWCmd;
   vanne_alimentationBP.Ouv.signal = vppVlvLPFWTarget;
   vppVlvLPFWFb = noEvent(if abs(vanne_alimentationBP.Cvmax) > Modelica.Constants.eps then vanne_alimentationBP.Cv/vanne_alimentationBP.Cvmax else 0);
   vppVlvLPFWDeviation = vppVlvLPFWCmd - vppVlvLPFWFb;
@@ -1046,21 +1100,33 @@ equation
   vppIPFWPMassFlowTH = vppIPFWPCheckValveMassFlowTH;
   vppHPFWPDeltaPPa = PompeAlimHP.deltaP;
   vppIPFWPDeltaPPa = PompeAlimMP.deltaP;
-  vppHPFWPSpeedCommandRPM = PompeAlimHP.rpm_or_mpower.signal;
-  vppIPFWPSpeedCommandRPM = PompeAlimMP.rpm_or_mpower.signal;
-  // V8.5 publishes the unchanged V7 hydraulic speed as process evidence.
-  // Motor/running are protection indications, not a claim that the legacy
-  // StaticCentrifugalPump has a validated electrical coastdown model.
+  vppHPFWPSpeedCommandRPM = vppHPFWPHydraulicSpeedCommand.signal;
+  vppIPFWPSpeedCommandRPM = vppIPFWPHydraulicSpeedCommand.signal;
   vppHPFWPMotorEnergized = vppECMSVCBA01Closed;
   vppIPFWPMotorEnergized = vppECMSVCBB01Closed;
-  vppHPFWPSpeedRPM = vppHPFWPSpeedCommandRPM;
-  vppIPFWPSpeedRPM = vppIPFWPSpeedCommandRPM;
-  vppHPFWPSpeedProven = noEvent(vppHPFWPSpeedRPM > 1);
-  vppIPFWPSpeedProven = noEvent(vppIPFWPSpeedRPM > 1);
-  vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven and
-    noEvent(abs(vppHPFWPMassFlowTH) > 0.1);
-  vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven and
-    noEvent(abs(vppIPFWPMassFlowTH) > 0.1);
+  vppHPFWPDrive.breakerClosed.signal = vppHPFWPMotorEnergized;
+  vppIPFWPDrive.breakerClosed.signal = vppIPFWPMotorEnergized;
+  vppHPFWPDrive.pumpPower.signal = PompeAlimHP.Wm;
+  vppIPFWPDrive.pumpPower.signal = PompeAlimMP.Wm;
+  vppHPFWPHydraulicSpeedCommand.signal = noEvent(max(
+    vppHPFWPHydraulicSpeedFloorRPM, vppHPFWPDrive.speedRpm));
+  vppIPFWPHydraulicSpeedCommand.signal = noEvent(max(
+    vppIPFWPHydraulicSpeedFloorRPM, vppIPFWPDrive.speedRpm));
+  vppHPFWPSpeedRPM = vppHPFWPDrive.speedRpm;
+  vppIPFWPSpeedRPM = vppIPFWPDrive.speedRpm;
+  vppHPFWPHydraulicSpeedRPM = vppHPFWPHydraulicSpeedCommand.signal;
+  vppIPFWPHydraulicSpeedRPM = vppIPFWPHydraulicSpeedCommand.signal;
+  vppHPFWPSpeedProven = vppHPFWPSpeedRPM >= 0.9*vppHPFWPDrive.nominalSpeedRpm;
+  vppIPFWPSpeedProven = vppIPFWPSpeedRPM >= 0.9*vppIPFWPDrive.nominalSpeedRpm;
+  // Keep HP/IP running proof identical to the validated LP boundary.  Flow
+  // remains an independent physical feedback/alarm, so a transient flow
+  // reversal cannot mask the motor-speed loss event.
+  vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven;
+  vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven;
+  connect(vppHPFWPHydraulicSpeedCommand, PompeAlimHP.rpm_or_mpower) annotation(
+    Line(visible = false, points = {{650, -25}, {720, -25}, {720, -50}, {781, -50}}, color = {0, 0, 127}));
+  connect(vppIPFWPHydraulicSpeedCommand, PompeAlimMP.rpm_or_mpower) annotation(
+    Line(visible = false, points = {{650, 15}, {710, 15}, {710, -10}, {781, -10}}, color = {0, 0, 127}));
   vppSTTripLatched = vppSTTripLatch;
   // TRIPLENS_LP_BFP_OPERATOR_CHAIN_V1: observable protection chain
   vppLPFWPTripCommandNative =
@@ -1470,10 +1536,8 @@ equation
     Line(visible = false, points = {{565, 64.3}, {565, 50}}, color = {191, 95, 0}));
   connect(CapteurDebitEauHP.C1, EconomiseurHP4.Cws2) annotation(
     Line(visible = false, points = {{53.3, 26}, {53, 26}, {53, -30}}, smooth = Smooth.None));
-  connect(PompeAlimMP.rpm_or_mpower, arretPomesMp.y) annotation(
-    Line(visible = false, points = {{781, -21}, {781, -26}, {871.1, -26}}, smooth = Smooth.None));
-  connect(PompeAlimHP.rpm_or_mpower, arretPomesHP.y) annotation(
-    Line(visible = false, points = {{781, -61}, {781, -80}, {872.1, -80}}, smooth = Smooth.None));
+// TRIPLENS_HP_IP_FWP_INERTIAL_DRIVES_V8_6: the adapter owns the HP/IP
+// pump-speed inputs; legacy fixed Ramp connections are intentionally removed.
 // TRIPLENS_LP_FWP_OPCUA_ADAPTER_V1: adapter owns PompeAlimBP.rpm_or_mpower, arretPomesBP.y
   connect(SourceFumees.C, SurchauffeurHP3.Cfg1) annotation(
     Line(visible = false, points = {{-371, -49}, {-371, -50}, {-337, -50}}, color = {0, 0, 0}, thickness = 1));
