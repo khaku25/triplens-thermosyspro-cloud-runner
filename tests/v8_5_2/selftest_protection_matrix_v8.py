@@ -149,6 +149,10 @@ def selftest(source_path: Path) -> None:
         "if vppGTTripLatchInternal then vppGTExhaustTemperatureTrip",
         "if vppSTTripLatch then vppAdmissionSeatLeak",
         "vppVCBA02TripCommandNative = vppLPFWPTripLatchState;",
+        "TRIPLENS_IP_BFP_COASTDOWN_V8_7",
+        "vppIPFWPDrive(\n    nominalSpeedRpm = 1400, J = 100,",
+        "TRIPLENS_DRUM_FAULT_VALVE_MIN_OPENING_V8_7",
+        "parameter Real vppDrumFaultValveMinimumOpening",
         "vppHPFWPMotorEnergized = vppECMSVCBA01Closed;",
         "vppIPFWPMotorEnergized = vppECMSVCBB01Closed;",
         "vppHPFWPTripCommandNative =",
@@ -207,6 +211,22 @@ def selftest(source_path: Path) -> None:
     ):
         if legacy_connection in v8:
             raise AssertionError(f"legacy HP/IP Ramp connection remains: {legacy_connection}")
+
+    # Drum fault injection may request a physically closed valve, but the
+    # ThermoSysPro static ControlValve must never receive algebraic Cv=0.
+    for target, fault_value in (
+        ("vppVlvHPFWCVTarget", "vppVlvHPFWCVFaultValueNative"),
+        ("vppVlvHPSteamTarget", "vppVlvHPSteamFaultValueNative"),
+        ("vppVlvIPFWCVTarget", "vppVlvIPFWCVFaultValueNative"),
+        ("vppVlvIPSteamTarget", "vppVlvIPSteamFaultValueNative"),
+        ("vppVlvLPSteamTarget", "vppVlvLPSteamFaultValueNative"),
+        ("vppVlvLPFWTarget", "vppVlvLPFWFaultValueNative"),
+    ):
+        if (
+            f"{target} = if noEvent" not in v8
+            or f"max(vppDrumFaultValveMinimumOpening, min(1, max(0, {fault_value}))" not in v8
+        ):
+            raise AssertionError(f"drum fault valve regularization missing: {target}")
 
     # Exercise the filesystem CLI contract without mutating the real source.
     with tempfile.TemporaryDirectory() as directory:
