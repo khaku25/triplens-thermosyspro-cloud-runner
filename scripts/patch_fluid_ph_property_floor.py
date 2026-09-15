@@ -21,7 +21,6 @@ WATER_CALL = (
     "    pro := ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph(P, h, mode);"
 )
 C3_CALL = "    pro := C3H3F5.C3H3F5_Ph(P, h);"
-OUTPUT_ANCHOR = "  output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph pro"
 ALGORITHM_ANCHOR = "algorithm\n"
 PATCH_DECLARATION = """    protected
       Modelica.SIunits.AbsolutePressure Pthermo
@@ -40,13 +39,12 @@ def patch_text(source: str) -> str:
         raise ValueError("Fluid.Ph: Water_Ph call must occur exactly once")
     if source.count(C3_CALL) != 1:
         raise ValueError("Fluid.Ph: C3H3F5 call must occur exactly once")
-    if source.count(OUTPUT_ANCHOR) != 1:
-        raise ValueError("Fluid.Ph: output anchor must occur exactly once")
     if source.count(ALGORITHM_ANCHOR) != 1:
         raise ValueError("Fluid.Ph: algorithm anchor must occur exactly once")
 
-    source = source.replace(OUTPUT_ANCHOR, PATCH_DECLARATION + OUTPUT_ANCHOR, 1)
-    source = source.replace(ALGORITHM_ANCHOR, PATCH_ALGORITHM, 1)
+    # Keep the output record public; protected declarations belong immediately
+    # before the algorithm section (after the output annotation block).
+    source = source.replace(ALGORITHM_ANCHOR, PATCH_DECLARATION + PATCH_ALGORITHM, 1)
     source = source.replace(
         "Water_Ph(P, h, mode)", "Water_Ph(Pthermo, h, mode)", 1
     )
