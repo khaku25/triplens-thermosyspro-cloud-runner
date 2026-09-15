@@ -24,7 +24,7 @@ PROPERTY_PATCH = f'''  // {MARKER}
 PARAMETER_ANCHOR = '''  parameter Modelica.SIunits.MassFlowRate Qeps=1.e-3
     "Small mass flow for continuous flow reversal";'''
 PARAMETER_PATCH = PARAMETER_ANCHOR + '''
-  parameter Modelica.SIunits.AbsolutePressure propertyPressureFloor={IF97_PROPERTY_PRESSURE_FLOOR}
+  parameter Modelica.SIunits.AbsolutePressure propertyPressureFloor=1000.0
     "IF97 triple-point floor used only during property evaluation";'''
 VARIABLE_ANCHOR = '  Modelica.SIunits.AbsolutePressure Pm(start=1.e5)'
 
