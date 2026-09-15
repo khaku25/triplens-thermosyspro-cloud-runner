@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Run one isolated V8 trip scenario and prove 100 s of post-fault behavior."""
+"""Run one isolated V8 trip scenario with a scenario-specific horizon.
+
+The drum/matrix scenarios retain the 100 s proof window.  HP/IP BFP-only
+scenarios stop after a shorter 45 s physical coastdown window; their separate
+HP/IP drum-LL scenarios continue to prove the common-trip matrix.
+"""
 
 from __future__ import annotations
 
@@ -21,6 +26,8 @@ EVENT_COLUMNS = [
     "wall_time_utc", "priority", "event_class", "equipment", "tag", "state",
     "value", "unit", "message", "source", "acknowledged",
 ]
+DEFAULT_POST_FAULT_MODEL_SECONDS = 100.0
+SHORT_BFP_POST_FAULT_MODEL_SECONDS = 45.0
 FORBIDDEN_COLUMNS = {"scenario_id", "root_cause", "fault_injection", "fault_preset"}
 COMMAND_EVENT_TAGS = {
     "TRIP_CMD", "VCB_TRIP_CMD", "BREAKER_COMMAND", "OPEN_CMD", "CLOSE_CMD",
@@ -128,22 +135,31 @@ for _section, _vcb in (("hp", "VCB-A01"), ("ip", "VCB-B01"), ("lp", "VCB-A02")):
         ("GT", "TRIP_LATCH"), ("52GT", "BREAKER_OPEN"),
         ("ST", "TRIP_LATCH"), ("52ST", "BREAKER_OPEN"),
     }
+    _full_chain = _section == "lp"
     SCENARIOS[f"{_section}_bfp"] = {
-        # A BFP operator trip is only complete when the physical coastdown
-        # reaches Drum LL and the common matrix trips GT and ST.  Keeping the
-        # matrix route in this scenario catches the old 4-row false positive.
-        "expected_domain": "GT+ST",
+        # LP is the established end-to-end reference (BFP -> Drum LL ->
+        # GT/ST).  HP/IP BFP cases prove their equipment chain here; the
+        # independent HP/IP drum-LL cases prove the matrix route at 100 s.
+        "expected_domain": "GT+ST" if _full_chain else "BFP",
         "pump": _upper,
-        "cause": _drum_cause,
+        "cause": _drum_cause if _full_chain else None,
+        "requires_drum_trip": _full_chain,
+        "post_fault_model_seconds": (
+            DEFAULT_POST_FAULT_MODEL_SECONDS if _full_chain
+            else SHORT_BFP_POST_FAULT_MODEL_SECONDS
+        ),
         "expected": {
             f"vpp{_upper}FWPTripLatchNative": 1.0,
             f"vppECMS{_vcb.replace('-', '')}Closed": 0.0,
             f"vpp{_upper}FWPMotorEnergized": 0.0,
             f"vpp{_upper}FWPRunning": 0.0,
-            **GT_ST_TRIPPED,
+            **(GT_ST_TRIPPED if _full_chain else {}),
         },
-        "events": {(_vcb, "BREAKER_OPEN"), (f"{_upper} BFP", "MOTOR_DEENERGIZED"),
-                   (f"{_upper} BFP", "RUNNING_LOST")} | _physical_events | _matrix_events,
+        "events": (
+            {(_vcb, "BREAKER_OPEN"), (f"{_upper} BFP", "MOTOR_DEENERGIZED"),
+             (f"{_upper} BFP", "RUNNING_LOST")} | _physical_events |
+            (_matrix_events if _full_chain else set())
+        ),
     }
 
 
@@ -276,7 +292,9 @@ def validate(
             f"minimum={minimum_post_rows}"
         )
     if not times or times[-1] < trigger_time + required_post_s - 1.5:
-        problems.append("100 s post-fault horizon not reached")
+        problems.append(
+            f"{required_post_s:g} s post-fault horizon not reached"
+        )
     if any(times[index] > times[index + 1] for index in range(len(times) - 1)):
         problems.append("RAW model time is not monotonic")
     if {row.get("quality") for row in raw} != {"GOOD"}:
@@ -452,7 +470,9 @@ def validate(
                 f"{pump} BFP check-valve opening did not collapse: "
                 f"min_post={min(valve_position_post):.6f}"
             )
-        if not drum_post or not rose(post_rows, str(spec["cause"])):
+        if spec.get("requires_drum_trip") and (
+            not drum_post or not rose(post_rows, str(spec["cause"]))
+        ):
             problems.append(f"{pump} Drum LL physical cause trajectory missing: {drum_level_field}")
     return {
         "status": "PASS" if not problems else "FAIL",
@@ -462,6 +482,7 @@ def validate(
         "final_model_time_s": times[-1] if times else None,
         "pre_fault_coverage_s": pre_coverage,
         "post_fault_coverage_s": (times[-1] - trigger_time) if times else 0.0,
+        "required_post_fault_seconds": required_post_s,
         "event_rows": len(events),
         "raw_rows": len(raw),
         "raw_columns": len(raw_fields),
@@ -487,7 +508,10 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--scenario", choices=sorted(SCENARIOS), required=True)
     parser.add_argument("--pre-fault-model-seconds", type=float, default=5.0)
-    parser.add_argument("--post-fault-model-seconds", type=float, default=100.0)
+    parser.add_argument(
+        "--post-fault-model-seconds", type=float, default=None,
+        help="Override the scenario default; otherwise use its declared horizon",
+    )
     parser.add_argument("--timeout", type=float, default=1200.0)
     args = parser.parse_args()
 
@@ -510,6 +534,11 @@ def main() -> int:
         "--period", "0.25", "--raw-period", "1.0",
     ]
     spec = SCENARIOS[args.scenario]
+    post_fault_seconds = (
+        float(args.post_fault_model_seconds)
+        if args.post_fault_model_seconds is not None
+        else float(spec.get("post_fault_model_seconds", DEFAULT_POST_FAULT_MODEL_SECONDS))
+    )
     process: subprocess.Popen[Any] | None = None
     latest: dict[str, Any] = {}
     trigger_time = math.nan
@@ -566,7 +595,7 @@ def main() -> int:
                 "writes": writes if writes else {"action": "PUMP_TRIP", "train": spec["pump"]},
                 "excluded_from_ai_csv": True,
             })
-            target = trigger_time + args.post_fault_model_seconds
+            target = trigger_time + post_fault_seconds
             latest = wait_snapshot(
                 snapshot, process, deadline,
                 lambda item: item.get("status") == "PASS" and
@@ -608,7 +637,7 @@ def main() -> int:
         try:
             result = validate(
                 args.scenario, spec, event_path, raw_path, trigger_time,
-                args.pre_fault_model_seconds, args.post_fault_model_seconds,
+                args.pre_fault_model_seconds, post_fault_seconds,
             )
             result["problems"] = problems + list(result["problems"])
             if result["problems"]:
@@ -626,6 +655,7 @@ def main() -> int:
             "final_model_time_s": None,
             "pre_fault_coverage_s": 0.0,
             "post_fault_coverage_s": 0.0,
+            "required_post_fault_seconds": post_fault_seconds,
             "event_rows": 0, "raw_rows": 0, "raw_columns": 0,
             "cause": spec.get("cause"), "cause_status": "NOT_EVALUATED",
             "asserted_matrix_causes": [], "matrix_actual": {},
