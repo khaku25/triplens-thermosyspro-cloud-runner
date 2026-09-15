@@ -413,10 +413,11 @@ def install_hp_ip_pump_proof_aliases(source: str) -> str:
         "  vppIPFWPHydraulicSpeedRPM = vppIPFWPHydraulicSpeedCommand.signal;\n"
         "  vppHPFWPSpeedProven = vppHPFWPSpeedRPM >= 0.9*vppHPFWPDrive.nominalSpeedRpm;\n"
         "  vppIPFWPSpeedProven = vppIPFWPSpeedRPM >= 0.9*vppIPFWPDrive.nominalSpeedRpm;\n"
-        "  vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven and\n"
-        "    noEvent(abs(vppHPFWPMassFlowTH) > 0.1);\n"
-        "  vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven and\n"
-        "    noEvent(abs(vppIPFWPMassFlowTH) > 0.1);\n"
+        "  // Keep HP/IP running proof identical to the validated LP boundary.  Flow\n"
+        "  // remains an independent physical feedback/alarm, so a transient flow\n"
+        "  // reversal cannot mask the motor-speed loss event.\n"
+        "  vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven;\n"
+        "  vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven;\n"
         "  connect(vppHPFWPHydraulicSpeedCommand, PompeAlimHP.rpm_or_mpower);\n"
         "  connect(vppIPFWPHydraulicSpeedCommand, PompeAlimMP.rpm_or_mpower);"
     )
@@ -436,6 +437,42 @@ def install_hp_ip_pump_proof_aliases(source: str) -> str:
         "remove legacy HP Ramp connection",
     )
     return source
+
+
+def normalize_hp_ip_running_proof(source: str) -> str:
+    """Upgrade an installed V8 source to the LP-equivalent running proof.
+
+    V8.5.3 sources may already contain the inertial adapters, so the normal
+    declaration installer intentionally leaves them in place.  Keep the
+    behavioral part upgradeable as well: flow is published independently and
+    must not gate the motor/speed loss proof used by the protection chain.
+    """
+    old = (
+        r"  vppHPFWPRunning\s*=\s*vppHPFWPMotorEnergized\s+and\s+"
+        r"vppHPFWPSpeedProven\s+and\s*\r?\n\s*"
+        r"noEvent\(abs\(vppHPFWPMassFlowTH\)\s*>\s*0\.1\);\s*\r?\n"
+        r"\s*vppIPFWPRunning\s*=\s*vppIPFWPMotorEnergized\s+and\s+"
+        r"vppIPFWPSpeedProven\s+and\s*\r?\n\s*"
+        r"noEvent\(abs\(vppIPFWPMassFlowTH\)\s*>\s*0\.1\);"
+    )
+    replacement = (
+        "  // Keep HP/IP running proof identical to the validated LP boundary.  Flow\n"
+        "  // remains an independent physical feedback/alarm, so a transient flow\n"
+        "  // reversal cannot mask the motor-speed loss event.\n"
+        "  vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven;\n"
+        "  vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven;"
+    )
+    upgraded, count = re.subn(old, replacement, source, count=1)
+    if count == 1:
+        return upgraded
+    if (
+        "vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven;"
+        in source
+        and "vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven;"
+        in source
+    ):
+        return source
+    raise ValueError("HP/IP running proof: expected old or upgraded equations")
 
 
 def bind_gt_physics_to_gt_latch(source: str) -> str:
@@ -468,6 +505,7 @@ def patch_text(source: str) -> str:
         if "TRIPLENS_HP_IP_FWP_INERTIAL_DRIVES_V8_6" not in source:
             source = install_hp_ip_inertial_declarations(source)
             source = install_hp_ip_pump_proof_aliases(source)
+        source = normalize_hp_ip_running_proof(source)
         return source
     for marker in REQUIRED_MARKERS:
         if marker not in source:
@@ -481,6 +519,7 @@ def patch_text(source: str) -> str:
     source = bind_gt_physics_to_gt_latch(source)
     source = install_hp_ip_inertial_declarations(source)
     source = install_hp_ip_pump_proof_aliases(source)
+    source = normalize_hp_ip_running_proof(source)
     source = repair_gt_breaker_discrete_loop(source)
 
     required = (
