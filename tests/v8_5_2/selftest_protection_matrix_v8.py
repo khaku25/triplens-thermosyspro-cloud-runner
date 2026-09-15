@@ -58,6 +58,25 @@ def selftest(source_path: Path) -> None:
         raise AssertionError("could not construct the legacy V8 loop fixture")
     assert patch_protection_matrix_v8.patch_text(legacy_v8) == v8
 
+    # Existing V8 installations are upgraded in place too: HP/IP running
+    # proof must remain identical to LP even when the inertial adapters are
+    # already present.
+    upgraded_running = v8.replace(
+        "  // Keep HP/IP running proof identical to the validated LP boundary.  Flow\n"
+        "  // remains an independent physical feedback/alarm, so a transient flow\n"
+        "  // reversal cannot mask the motor-speed loss event.\n"
+        "  vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven;\n"
+        "  vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven;",
+        "  vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven and\n"
+        "    noEvent(abs(vppHPFWPMassFlowTH) > 0.1);\n"
+        "  vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven and\n"
+        "    noEvent(abs(vppIPFWPMassFlowTH) > 0.1);",
+        1,
+    )
+    if upgraded_running == v8:
+        raise AssertionError("could not construct the legacy HP/IP running fixture")
+    assert patch_protection_matrix_v8.patch_text(upgraded_running) == v8
+
     for name in (
         "vppExternalTripCommandNative",
         "vppExternalSTTripCommandNative",
@@ -149,6 +168,8 @@ def selftest(source_path: Path) -> None:
         "vppIPFWPDrive.pumpPower.signal = PompeAlimMP.Wm;",
         "vppHPFWPSpeedProven = vppHPFWPSpeedRPM >= 0.9*vppHPFWPDrive.nominalSpeedRpm;",
         "vppIPFWPSpeedProven = vppIPFWPSpeedRPM >= 0.9*vppIPFWPDrive.nominalSpeedRpm;",
+        "vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven;",
+        "vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven;",
         "connect(vppHPFWPHydraulicSpeedCommand, PompeAlimHP.rpm_or_mpower)",
         "connect(vppIPFWPHydraulicSpeedCommand, PompeAlimMP.rpm_or_mpower)",
         "TRIPLENS_PROTECTION_LOGIC_STABLE_V8_5",
