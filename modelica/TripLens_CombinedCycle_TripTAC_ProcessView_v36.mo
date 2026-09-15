@@ -173,7 +173,11 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   TripLens_PumpPhysics.BreakerInertialPumpDrive vppLPFWPDrive(nominalSpeedRpm = 1400, J = 300, frictionTorqueNominal = 20, initialTorque = 4200, torqueLimit = 6e4) annotation(
     Placement(visible = false, transformation(extent = {{700, -500}, {740, -470}})));
   parameter Real vppLPFWPHydraulicSpeedFloorRPM(unit = "rev/min") = 700 "Numerical floor for the upstream static pump curve; shaft speed remains physical";
-  TripLens_PumpPhysics.SpringLoadedCheckValve vppLPFWPCheckValve(closeFlow = 70, closedResistance = 1e5) annotation(
+  // TRIPLENS_CHECK_VALVE_HVOL_INIT_V2: match the native LP pump discharge
+  // control-volume enthalpy at the common adapter boundary.
+  TripLens_PumpPhysics.SpringLoadedCheckValve vppLPFWPCheckValve(
+    closeFlow = 70, closedResistance = 1e5,
+    C1(h_vol(start = 194669.0)), C2(h_vol(start = 194669.0))) annotation(
     Placement(visible = false, transformation(extent = {{739, -446}, {759, -426}})));
   // TRIPLENS_LP_BFP_OPERATOR_CHAIN_V1
   input Real vppLPFWPTripPushbuttonNative(start=0)
@@ -229,9 +233,15 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Real vppHPFWPHydraulicSpeedRPM(unit = "rev/min");
   output Real vppIPFWPHydraulicSpeedRPM(unit = "rev/min");
   // TRIPLENS_ALL_FWP_CHECK_VALVES_OPCUA_V1
-  TripLens_PumpPhysics.SpringLoadedCheckValve vppHPFWPCheckValve(closeFlow = 20, closedResistance = 1e5) annotation(
+  // TRIPLENS_CHECK_VALVE_HVOL_INIT_V2: HP pump discharge start state.
+  TripLens_PumpPhysics.SpringLoadedCheckValve vppHPFWPCheckValve(
+    closeFlow = 20, closedResistance = 1e5,
+    C1(h_vol(start = 630000.0)), C2(h_vol(start = 630000.0))) annotation(
     Placement(visible = false, transformation(extent = {{747, -82}, {767, -62}})));
-  TripLens_PumpPhysics.SpringLoadedCheckValve vppIPFWPCheckValve(closeFlow = 5, closedResistance = 1e5) annotation(
+  // TRIPLENS_CHECK_VALVE_HVOL_INIT_V2: IP pump discharge start state.
+  TripLens_PumpPhysics.SpringLoadedCheckValve vppIPFWPCheckValve(
+    closeFlow = 5, closedResistance = 1e5,
+    C1(h_vol(start = 561000.0)), C2(h_vol(start = 561000.0))) annotation(
     Placement(visible = false, transformation(extent = {{747, -122}, {767, -102}})));
   output Boolean vppHPFWPCheckValveOpen;
   output Real vppHPFWPCheckValveOpening(min = 0, max = 1);
@@ -1096,10 +1106,11 @@ equation
   vppIPFWPHydraulicSpeedRPM = vppIPFWPHydraulicSpeedCommand.signal;
   vppHPFWPSpeedProven = vppHPFWPSpeedRPM >= 0.9*vppHPFWPDrive.nominalSpeedRpm;
   vppIPFWPSpeedProven = vppIPFWPSpeedRPM >= 0.9*vppIPFWPDrive.nominalSpeedRpm;
-  vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven and
-    noEvent(abs(vppHPFWPMassFlowTH) > 0.1);
-  vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven and
-    noEvent(abs(vppIPFWPMassFlowTH) > 0.1);
+  // Keep HP/IP running proof identical to the validated LP boundary.  Flow
+  // remains an independent physical feedback/alarm, so a transient flow
+  // reversal cannot mask the motor-speed loss event.
+  vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven;
+  vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven;
   connect(vppHPFWPHydraulicSpeedCommand, PompeAlimHP.rpm_or_mpower) annotation(
     Line(visible = false, points = {{650, -25}, {720, -25}, {720, -50}, {781, -50}}, color = {0, 0, 127}));
   connect(vppIPFWPHydraulicSpeedCommand, PompeAlimMP.rpm_or_mpower) annotation(
