@@ -28,6 +28,7 @@ EVENT_COLUMNS = [
 ]
 DEFAULT_POST_FAULT_MODEL_SECONDS = 100.0
 SHORT_BFP_POST_FAULT_MODEL_SECONDS = 45.0
+OPENMODELICA_RUN_NODE_ID = 10001
 FORBIDDEN_COLUMNS = {"scenario_id", "root_cause", "fault_injection", "fault_preset"}
 COMMAND_EVENT_TAGS = {
     "TRIP_CMD", "VCB_TRIP_CMD", "BREAKER_COMMAND", "OPEN_CMD", "CLOSE_CMD",
@@ -78,6 +79,31 @@ def drum_writes(section: str, level: str) -> dict[str, float]:
         f"{feed}FaultEnableNative": 1.0,
         f"{steam}FaultEnableNative": 1.0,
     }
+
+
+def write_inputs_atomically(client, ua, live, nodes, writes: dict[str, float], *, pause_runtime: bool) -> None:
+    """Apply a multi-valve drum fault without exposing a partial solver state.
+
+    The embedded OpenModelica server advances between OPC UA writes.  A drum
+    fault needs a coordinated pair of feedwater/steam valve overrides, so pause
+    the solver while the four inputs are changed and resume only after the
+    complete fault state exists.  All ordinary one-input scenarios retain the
+    direct write path.
+    """
+    run_node = None
+    paused = False
+    if pause_runtime:
+        run_node = client.get_node(ua.NodeId(OPENMODELICA_RUN_NODE_ID, 0))
+        run_node.set_value(ua.Variant(False, ua.VariantType.Boolean))
+        paused = True
+    try:
+        for name, value in writes.items():
+            nodes[name].set_value(ua.Variant(float(value), ua.VariantType.Float))
+    finally:
+        if paused and run_node is not None:
+            run_node.set_value(ua.Variant(True, ua.VariantType.Boolean))
+    for name, value in writes.items():
+        live.wait_write_echo(nodes[name], value, 30.0)
 
 
 SCENARIOS: dict[str, dict[str, Any]] = {
@@ -531,7 +557,7 @@ def main() -> int:
         sys.executable, str(engine), "--repo-root", str(repo),
         "--endpoint", args.endpoint, "--snapshot-file", str(snapshot),
         "--control-file", str(control), "--output-root", str(engine_root / "runtime"),
-        "--period", "0.25", "--raw-period", "1.0",
+        "--period", "0.25", "--raw-period", "1.0", "--no-auto-resume",
     ]
     spec = SCENARIOS[args.scenario]
     post_fault_seconds = (
@@ -578,9 +604,10 @@ def main() -> int:
                 client = live.connect(args.endpoint, 5.0)
                 try:
                     nodes = live.find_nodes(client, writes)
-                    for name, value in writes.items():
-                        nodes[name].set_value(ua.Variant(float(value), ua.VariantType.Float))
-                        live.wait_write_echo(nodes[name], value, 30.0)
+                    write_inputs_atomically(
+                        client, ua, live, nodes, writes,
+                        pause_runtime=bool(spec.get("drum")),
+                    )
                 finally:
                     client.disconnect()
                 latest = wait_snapshot(
