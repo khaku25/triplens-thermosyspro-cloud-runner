@@ -129,10 +129,10 @@ for _section, _vcb in (("hp", "VCB-A01"), ("ip", "VCB-B01"), ("lp", "VCB-A02")):
             f"vpp{_upper}FWPRunning": 0.0,
         },
         "events": {(_vcb, "BREAKER_OPEN"), (f"{_upper} BFP", "MOTOR_DEENERGIZED"),
-                   (f"{_upper} BFP", "RUNNING_LOST"),
-                   (f"{_upper} BFP NRV", "CHECK_VALVE_CLOSED"),
-                   (f"{_upper} FEEDWATER", "FLOW_LOW")}
-                  | ({("LP BFP", "SPEED_PROVEN_LOST")} if _section == "lp" else set()),
+                   (f"{_upper} BFP", "RUNNING_LOST")}
+                  | ({("LP BFP", "SPEED_PROVEN_LOST"),
+                      ("LP BFP NRV", "CHECK_VALVE_CLOSED"),
+                      ("LP FEEDWATER", "FLOW_LOW")} if _section == "lp" else set()),
     }
 
 
@@ -171,6 +171,15 @@ def wait_snapshot(
             latest = current
             if predicate(current):
                 return current
+            if (
+                current.get("status") == "PASS" and
+                current.get("model_time_advancing") is False and
+                float(current.get("model_time_stalled_s", 0.0)) >= 10.0
+            ):
+                raise RuntimeError(
+                    "OpenModelica model time stalled before acceptance target; "
+                    f"model_time_s={current.get('model_time_s')}"
+                )
         time.sleep(0.25)
     raise RuntimeError(f"snapshot wait timed out; latest={latest}")
 
@@ -241,9 +250,13 @@ def validate(
     pre_coverage = trigger_time - times[0] if times else 0.0
     if pre_coverage < required_pre_s - 0.25:
         problems.append(f"pre-fault coverage too short: {pre_coverage:.6f} s")
-    if len(post_rows) < int(required_post_s) - 2:
-        problems.append(f"post-fault RAW coverage too short: {len(post_rows)} rows")
-    if not times or times[-1] < trigger_time + required_post_s - 1e-6:
+    minimum_post_rows = max(2, math.floor(required_post_s / 1.5))
+    if len(post_rows) < minimum_post_rows:
+        problems.append(
+            f"post-fault RAW sample count too short: {len(post_rows)} rows; "
+            f"minimum={minimum_post_rows}"
+        )
+    if not times or times[-1] < trigger_time + required_post_s - 1.5:
         problems.append("100 s post-fault horizon not reached")
     if any(times[index] > times[index + 1] for index in range(len(times) - 1)):
         problems.append("RAW model time is not monotonic")

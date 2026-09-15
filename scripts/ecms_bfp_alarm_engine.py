@@ -645,25 +645,31 @@ class AlarmEngine:
         self.disconnect()
         self.client = self.live.connect(self.args.endpoint, 5.0)
         rule_nodes = {str(rule["source_node"]) for rule in self.alarm_rules}
-        self.historian_nodes, self.duplicate_historian_names = discover_historian_nodes(
+        all_numeric_nodes, self.duplicate_historian_names = discover_historian_nodes(
             self.client, self.live, rule_nodes.union(PROTECTION_REQUIRED_NODES)
         )
+        # Alarm rules must still observe internal valve-fault states, but those
+        # test-orchestration signals are intentionally excluded from AI RAW.
+        self.historian_nodes = {
+            name: node for name, node in all_numeric_nodes.items()
+            if not name.endswith(AI_EXCLUDED_HISTORIAN_SUFFIXES)
+        }
         # Bind cards/control-chain readers from the same browsed and numeric-
         # validated node set as the historian. Some field variants of
         # local_ecms_opcua.find_nodes returned None placeholders, which later
         # surfaced only as an unhelpful NoneType.get_value reconnect loop.
         self.nodes = {
-            role: self.historian_nodes[name] for role, name in SIGNALS.items()
+            role: all_numeric_nodes[name] for role, name in SIGNALS.items()
         }
         self.alarm_nodes = {
-            name: self.historian_nodes[name] for name in sorted(rule_nodes)
+            name: all_numeric_nodes[name] for name in sorted(rule_nodes)
         }
         self.operator_controls = [
             {
                 "train": train,
                 "trip_action": "PUMP_TRIP",
                 "reset_action": "PUMP_RESET",
-                "available": all(name in self.historian_nodes for name in signals.values()),
+                "available": all(name in all_numeric_nodes for name in signals.values()),
             }
             for train, signals in PUMP_CONTROL_SIGNALS.items()
         ]
@@ -679,7 +685,7 @@ class AlarmEngine:
                 "tag": rule["tag"],
                 "source_node": rule["source_node"],
                 "delay_s": float(rule.get("delay_s", 0.0)),
-                "bound": rule["source_node"] in self.historian_nodes,
+                "bound": rule["source_node"] in all_numeric_nodes,
                 "state": "BASELINING",
                 "pending_s": 0.0,
             }
