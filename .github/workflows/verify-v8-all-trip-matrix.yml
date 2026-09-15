@@ -21,6 +21,8 @@ on:
       - "tests/test_stodola_patch.py"
       - "scripts/patch_fluid_ph_property_floor.py"
       - "tests/test_fluid_ph_property_floor.py"
+      - "scripts/patch_if97_property_pressure_floor.py"
+      - "tests/test_if97_property_pressure_floor.py"
       - ".github/workflows/verify-v8-all-trip-matrix.yml"
 
 permissions:
@@ -85,6 +87,11 @@ jobs:
           python3 tests/test_fluid_ph_property_floor.py
           grep -q 'TRIPLENS_FLUID_PH_PROPERTY_FLOOR_V1' \
             vendor/ThermoSysPro/ThermoSysPro/Properties/Fluid/Ph.mo
+          python3 scripts/patch_if97_property_pressure_floor.py \
+            vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/IF97_packages.mo
+          python3 tests/test_if97_property_pressure_floor.py
+          grep -q 'TRIPLENS_IF97_PROPERTY_FLOOR_V1' \
+            vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/IF97_packages.mo
           timeout --signal=TERM --kill-after=30s 8m \
             docker run --rm \
               -v "$PWD/build/omhome:/root" \
