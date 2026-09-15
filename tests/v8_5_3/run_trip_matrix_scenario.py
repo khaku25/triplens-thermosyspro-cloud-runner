@@ -104,6 +104,40 @@ def write_inputs_atomically(client, ua, live, nodes, writes: dict[str, float], *
         live.wait_write_echo(nodes[name], value, 30.0)
 
 
+def clear_drum_inventory_fault_after_cause(client, ua, live, nodes, spec: dict[str, Any]) -> None:
+    """End a transient physical inventory fault once its real trip cause asserts.
+
+    The source remains connected to ``DynamicDrum.Ce2`` throughout.  This
+    helper only removes the external make-up/drain command after the measured
+    level has crossed the actual HH/LL cause.  It is the test equivalent of
+    isolating a transient leak or closing a failed make-up path after the
+    protection has operated; it never writes a level, cause, latch or breaker.
+    Keeping a 100-second post-fault window with the source continuously at
+    +/-900 t/h drove the physical drum inventories outside their valid range
+    and obscured the protection response.
+    """
+    cause_name = str(spec["cause"])
+    deadline = time.monotonic() + 180.0
+    while time.monotonic() < deadline:
+        if live.scalar(nodes[cause_name].get_value()) >= 0.5:
+            # Allow the dual-log sampler to observe the actual cause/latch
+            # transition before closing the external transient source.
+            time.sleep(0.35)
+            clear_writes = {
+                name: 0.0
+                for name in spec["writes"]
+                if name.endswith(("FaultEnableNative", "FaultValueNative"))
+            }
+            if len(clear_writes) != 2:
+                raise RuntimeError("drum scenario does not expose both physical source inputs")
+            write_inputs_atomically(
+                client, ua, live, nodes, clear_writes, pause_runtime=True,
+            )
+            return
+        time.sleep(0.05)
+    raise RuntimeError(f"physical drum cause did not assert: {cause_name}")
+
+
 SCENARIOS: dict[str, dict[str, Any]] = {
     "direct_gt": {
         "expected_domain": "GT+ST",
@@ -622,26 +656,42 @@ def main() -> int:
                 from opcua import ua
                 client = live.connect(args.endpoint, 5.0)
                 try:
-                    nodes = live.find_nodes(client, writes)
+                    requested_nodes = list(writes)
+                    if spec.get("drum"):
+                        requested_nodes.append(str(spec["cause"]))
+                    nodes = live.find_nodes(client, requested_nodes)
                     write_inputs_atomically(
                         client, ua, live, nodes, writes,
                         pause_runtime=bool(spec.get("drum")),
                     )
+                    # Record the fault onset before the transient source is
+                    # cleared.  The 100-second contractual window is measured
+                    # from this physical injection, not from its isolation.
+                    latest = wait_snapshot(
+                        snapshot, process, deadline,
+                        lambda item: item.get("status") == "PASS" and
+                        float(item.get("model_time_s", -1)) > action_model_time,
+                    )
+                    trigger_time = float(latest["model_time_s"])
+                    if spec.get("drum"):
+                        clear_drum_inventory_fault_after_cause(
+                            client, ua, live, nodes, spec,
+                        )
                 finally:
                     client.disconnect()
-                latest = wait_snapshot(
-                    snapshot, process, deadline,
-                    lambda item: item.get("status") == "PASS" and
-                    float(item.get("model_time_s", -1)) > action_model_time,
-                )
-            trigger_time = float(latest["model_time_s"])
+            if not math.isfinite(trigger_time):
+                trigger_time = float(latest["model_time_s"])
             atomic_json(audit_path, {
                 "scenario": args.scenario,
                 "trigger_model_time_s": trigger_time,
                 "writes": writes if writes else {"action": "PUMP_TRIP", "train": spec["pump"]},
                 "excluded_from_ai_csv": True,
             })
-            target = trigger_time + post_fault_seconds
+            # Run two seconds beyond the contractual horizon.  RAW is sampled
+            # once per model second, so this avoids ending a valid 100-second
+            # proof just before its final sample while preserving the exact
+            # 100-second acceptance criterion in ``validate``.
+            target = trigger_time + post_fault_seconds + 2.0
             latest = wait_snapshot(
                 snapshot, process, deadline,
                 lambda item: item.get("status") == "PASS" and

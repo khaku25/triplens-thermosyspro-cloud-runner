@@ -240,7 +240,11 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   // TRIPLENS_ALL_FWP_CHECK_VALVES_OPCUA_V1
   // TRIPLENS_CHECK_VALVE_HVOL_INIT_V2: HP pump discharge start state.
   TripLens_PumpPhysics.SpringLoadedCheckValve vppHPFWPCheckValve(
-    closeFlow = 20, closedResistance = 1e5,
+    // The HP pump curve reaches its low-flow/unstable branch while a large
+    // forward-flow proxy is still reported.  Calibrate the spring threshold
+    // to close before that branch, matching the proven LP valve behaviour;
+    // the valve remains fully open at the 75 kg/s V7 normal operating flow.
+    closeFlow = 70, closedResistance = 1e5,
     C1(h_vol(start = 630000.0)), C2(h_vol(start = 630000.0))) annotation(
     Placement(visible = false, transformation(extent = {{747, -82}, {767, -62}})));
   // TRIPLENS_CHECK_VALVE_HVOL_INIT_V2: IP pump discharge start state.
