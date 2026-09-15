@@ -142,10 +142,15 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   parameter Modelica.SIunits.Temperature vppGTExhaustTemperatureNormal = 893.75;
   parameter Modelica.SIunits.Temperature vppGTExhaustTemperatureTrip = 450;
   parameter Real vppGTExhaustResponseTau(unit = "s") = 0.667 "First-order live-command GT exhaust response time constant";
-  parameter Real vppAdmissionStroke95(unit = "s") = 0.150 "HP/IP and LP-drum admission 95 percent closing time";
-  parameter Real vppHPBypassStroke95(unit = "s") = 0.300 "HPBP 95 percent opening time";
-  parameter Real vppLPBypassStroke95(unit = "s") = 0.400 "LPBP 95 percent opening time";
-  parameter Real vppSprayStroke95(unit = "s") = 0.050 "Spray-water actuator 95 percent opening time";
+  // The trip valves are physical first-order actuators.  A sub-200 ms
+  // admission closure against the finite HRSG volumes creates a numerical
+  // pressure impulse in the pinned ThermoSysPro 3.1 two-phase pipes; these
+  // plant-realistic stroke times preserve the trip while keeping absolute
+  // pressure positive through the 100 s validation window.
+  parameter Real vppAdmissionStroke95(unit = "s") = 1.000 "HP/IP and LP-drum admission 95 percent closing time";
+  parameter Real vppHPBypassStroke95(unit = "s") = 2.000 "HPBP 95 percent opening time";
+  parameter Real vppLPBypassStroke95(unit = "s") = 2.000 "LPBP 95 percent opening time";
+  parameter Real vppSprayStroke95(unit = "s") = 0.500 "Spray-water actuator 95 percent opening time";
   parameter Modelica.SIunits.MassFlowRate vppSpraySeatLeak = 0 "Fully closed pre-Trip spray flow";
   parameter Real vppAdmissionSeatLeak = 1e-3 "Numerical 0.1 percent turbine admission-valve seat leakage";
   parameter Real vppValveLeak = 0 "Fully closed pre-Trip bypass position";

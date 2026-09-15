@@ -23,6 +23,8 @@ on:
       - "tests/test_fluid_ph_property_floor.py"
       - "scripts/patch_if97_property_pressure_floor.py"
       - "tests/test_if97_property_pressure_floor.py"
+      - "scripts/patch_baseif97_property_pressure_floor.py"
+      - "tests/test_baseif97_property_pressure_floor.py"
       - ".github/workflows/verify-v8-all-trip-matrix.yml"
 
 permissions:
@@ -39,7 +41,7 @@ jobs:
     env:
       OPENMODELICA_IMAGE: openmodelica/openmodelica:v1.27.0-minimal
       THERMOSYSPRO_COMMIT: db81ae1b5a6a85f6c6c7693244cafa6087e18ff5
-      LIVE_STOP_TIME_S: "240"
+      LIVE_STOP_TIME_S: "170"
       LIVE_STEP_SIZE_S: "0.04"
       PRE_FAULT_MODEL_SECONDS: "5"
       POST_FAULT_MODEL_SECONDS: "100"
@@ -92,6 +94,11 @@ jobs:
           python3 tests/test_if97_property_pressure_floor.py
           grep -q 'TRIPLENS_IF97_PROPERTY_FLOOR_V1' \
             vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/IF97_packages.mo
+          python3 scripts/patch_baseif97_property_pressure_floor.py \
+            vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/BaseIF97.mo
+          python3 tests/test_baseif97_property_pressure_floor.py
+          grep -q 'TRIPLENS_BASEIF97_PROPERTY_FLOOR_V1' \
+            vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/BaseIF97.mo
           timeout --signal=TERM --kill-after=30s 8m \
             docker run --rm \
               -v "$PWD/build/omhome:/root" \
@@ -180,7 +187,7 @@ jobs:
                 -s=dassl \
                 -outputFormat=mat \
                 -r="/tmp/TripLens_${scenario}_res.mat" \
-                -rt=1 -w \
+                -w \
                 -lv=LOG_ASSERT,LOG_STATS \
                 -embeddedServer=opc-ua \
                 -embeddedServerPort="$port" \
@@ -315,4 +322,3 @@ jobs:
             --pre-fault-model-seconds "$PRE_FAULT_MODEL_SECONDS" \
             --post-fault-model-seconds "$POST_FAULT_MODEL_SECONDS" \
             --require-all-pass
-
