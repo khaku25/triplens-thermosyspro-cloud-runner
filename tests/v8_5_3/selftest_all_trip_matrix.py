@@ -48,8 +48,17 @@ def main() -> int:
             raise RuntimeError(f"engine scenario marker missing: {marker}")
     if "AI_EXCLUDED_HISTORIAN_SUFFIXES" not in engine:
         raise RuntimeError("internal fault-injection signals are not excluded from AI RAW")
-    if len(module.SCENARIOS["lp_bfp"]["events"]) != 6:
-        raise RuntimeError("LP BFP must require six automatic events plus operator PB")
+    for name in ("hp_bfp", "ip_bfp", "lp_bfp"):
+        bfp = module.SCENARIOS[name]
+        if bfp["expected_domain"] != "GT+ST":
+            raise RuntimeError(f"{name} must prove Drum LL -> GT+ST")
+        if not bfp.get("cause", "").endswith("DrumLL"):
+            raise RuntimeError(f"{name} must require its Drum LL matrix cause")
+        if len(bfp["events"]) != 10:
+            raise RuntimeError(
+                f"{name} must require ten automatic events plus operator PB "
+                f"(found {len(bfp['events'])})"
+            )
     print(json.dumps({
         "status": "PASS", "scenario_count": len(scenarios),
         "common_trip_causes": 9, "independent_bfp_trips": 3,

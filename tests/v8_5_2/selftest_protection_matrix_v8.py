@@ -142,8 +142,15 @@ def selftest(source_path: Path) -> None:
         "vppECMSVCBB01Closed = vppVCBB01TripCommandNative < 0.5",
         "vppVCBA01ClosedNative < 0.5 then",
         "vppVCBB01ClosedNative < 0.5 then",
-        "connect(PompeAlimHP.rpm_or_mpower, arretPomesHP.y)",
-        "connect(PompeAlimMP.rpm_or_mpower, arretPomesMp.y)",
+        "TRIPLENS_HP_IP_FWP_INERTIAL_DRIVES_V8_6",
+        "vppHPFWPDrive.breakerClosed.signal = vppHPFWPMotorEnergized;",
+        "vppIPFWPDrive.breakerClosed.signal = vppIPFWPMotorEnergized;",
+        "vppHPFWPDrive.pumpPower.signal = PompeAlimHP.Wm;",
+        "vppIPFWPDrive.pumpPower.signal = PompeAlimMP.Wm;",
+        "vppHPFWPSpeedProven = vppHPFWPSpeedRPM >= 0.9*vppHPFWPDrive.nominalSpeedRpm;",
+        "vppIPFWPSpeedProven = vppIPFWPSpeedRPM >= 0.9*vppIPFWPDrive.nominalSpeedRpm;",
+        "connect(vppHPFWPHydraulicSpeedCommand, PompeAlimHP.rpm_or_mpower)",
+        "connect(vppIPFWPHydraulicSpeedCommand, PompeAlimMP.rpm_or_mpower)",
         "TRIPLENS_PROTECTION_LOGIC_STABLE_V8_5",
         "vppGTBreakerOpenCauseState = true;",
         "vppGTBreakerOpenCauseState = false;",
@@ -160,21 +167,25 @@ def selftest(source_path: Path) -> None:
         "der(vppExternalSTTripCommandNative)",
         "elsewhen vppECMS52GTClosedCommandNative < 0.5 and\n"
         "      not vppGTTripLatchInternal then",
-        "vppHPFWPHydraulicSpeedCommand",
-        "vppIPFWPHydraulicSpeedCommand",
         "TRIPLENS_HP_IP_BFP_INERTIAL_DRIVE_V8_4",
     )
     for contract in forbidden:
         if contract in v8:
             raise AssertionError(f"legacy contract remains: {contract}")
-    # The exact V7 hydraulic input connections must survive the protection
-    # patch.  V8/V8.4 failed because these were rewired to zero/floored speed.
-    for stable_connection in (
+    # The current checked-in source is already a V8 predecessor, so verify
+    # that the patched result contains the physical adapter connections and
+    # no longer drives HP/IP speed directly from the legacy fixed Ramps.
+    for physical_connection in (
+        "connect(vppHPFWPHydraulicSpeedCommand, PompeAlimHP.rpm_or_mpower)",
+        "connect(vppIPFWPHydraulicSpeedCommand, PompeAlimMP.rpm_or_mpower)",
+    ):
+        require_once(v8, physical_connection)
+    for legacy_connection in (
         "connect(PompeAlimHP.rpm_or_mpower, arretPomesHP.y)",
         "connect(PompeAlimMP.rpm_or_mpower, arretPomesMp.y)",
     ):
-        require_once(v7_complete, stable_connection)
-        require_once(v8, stable_connection)
+        if legacy_connection in v8:
+            raise AssertionError(f"legacy HP/IP Ramp connection remains: {legacy_connection}")
 
     # Exercise the filesystem CLI contract without mutating the real source.
     with tempfile.TemporaryDirectory() as directory:
@@ -194,7 +205,7 @@ def selftest(source_path: Path) -> None:
     print("gt_st_latches=independent")
     print("lp_bfp_chain=preserved")
     print("hp_ip_bfp_chains=implemented")
-    print("hp_ip_hydraulic_connections=v7_preserved")
+    print("hp_ip_hydraulic_connections=breaker_inertia_adapters")
     print("gt_breaker_discrete_loop=removed")
 
 

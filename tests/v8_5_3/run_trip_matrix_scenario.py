@@ -118,21 +118,32 @@ for _section in ("hp", "ip", "lp"):
         }
 for _section, _vcb in (("hp", "VCB-A01"), ("ip", "VCB-B01"), ("lp", "VCB-A02")):
     _upper = _section.upper()
+    _drum_cause = f"vppCause{_upper}DrumLL"
+    _physical_events = {
+        (f"{_upper} BFP", "SPEED_PROVEN_LOST"),
+        (f"{_upper} BFP NRV", "CHECK_VALVE_CLOSED"),
+        (f"{_upper} FEEDWATER", "FLOW_LOW"),
+    }
+    _matrix_events = {
+        ("GT", "TRIP_LATCH"), ("52GT", "BREAKER_OPEN"),
+        ("ST", "TRIP_LATCH"), ("52ST", "BREAKER_OPEN"),
+    }
     SCENARIOS[f"{_section}_bfp"] = {
-        "expected_domain": "PUMP",
+        # A BFP operator trip is only complete when the physical coastdown
+        # reaches Drum LL and the common matrix trips GT and ST.  Keeping the
+        # matrix route in this scenario catches the old 4-row false positive.
+        "expected_domain": "GT+ST",
         "pump": _upper,
-        "cause": None,
+        "cause": _drum_cause,
         "expected": {
             f"vpp{_upper}FWPTripLatchNative": 1.0,
             f"vppECMS{_vcb.replace('-', '')}Closed": 0.0,
             f"vpp{_upper}FWPMotorEnergized": 0.0,
             f"vpp{_upper}FWPRunning": 0.0,
+            **GT_ST_TRIPPED,
         },
         "events": {(_vcb, "BREAKER_OPEN"), (f"{_upper} BFP", "MOTOR_DEENERGIZED"),
-                   (f"{_upper} BFP", "RUNNING_LOST")}
-                  | ({("LP BFP", "SPEED_PROVEN_LOST"),
-                      ("LP BFP NRV", "CHECK_VALVE_CLOSED"),
-                      ("LP FEEDWATER", "FLOW_LOW")} if _section == "lp" else set()),
+                   (f"{_upper} BFP", "RUNNING_LOST")} | _physical_events | _matrix_events,
     }
 
 
@@ -211,6 +222,14 @@ def rose(rows: list[dict[str, str]], name: str) -> bool:
         (value := finite_number(row, name)) is not None and value >= 0.5
         for row in rows
     )
+
+
+def series(rows: list[dict[str, str]], name: str) -> list[float]:
+    """Return finite samples for one historian tag in file order."""
+    return [
+        value for row in rows
+        if (value := finite_number(row, name)) is not None
+    ]
 
 
 def validate(
@@ -365,6 +384,12 @@ def validate(
         "vppHPDrumLevelM", "vppIPDrumLevelM", "vppLPDrumLevelM",
         "vppHPDrumPressurePa", "vppIPDrumPressurePa", "vppLPDrumPressurePa",
         "vppHPFWPMassFlowTH", "vppIPFWPMassFlowTH", "vppLPFWPMassFlowTH",
+        "vppHPFWPSpeedRPM", "vppIPFWPSpeedRPM", "vppLPFWPSpeedRPM",
+        "vppHPFWPHydraulicSpeedRPM", "vppIPFWPHydraulicSpeedRPM",
+        "vppLPFWPHydraulicSpeedRPM",
+        "vppHPFWPCheckValveOpen", "vppIPFWPCheckValveOpen",
+        "vppLPFWPCheckValveOpen", "vppHPFWPCheckValveOpening",
+        "vppIPFWPCheckValveOpening", "vppLPFWPCheckValveOpening",
     ]
     physical = {}
     if raw:
@@ -379,6 +404,56 @@ def validate(
                     "after": after,
                     "delta": after - before,
                 }
+    if spec.get("pump"):
+        pump = str(spec["pump"])
+        speed_field = f"vpp{pump}FWPSpeedRPM"
+        hydraulic_speed_field = f"vpp{pump}FWPHydraulicSpeedRPM"
+        flow_field = f"vpp{pump}FWPMassFlowTH"
+        valve_open_field = f"vpp{pump}FWPCheckValveOpen"
+        valve_position_field = f"vpp{pump}FWPCheckValveOpening"
+        drum_level_field = f"vpp{pump}DrumLevelM"
+        speed_before = finite_number(pre_rows[-1], speed_field) if pre_rows else None
+        speed_post = series(post_rows, speed_field)
+        hydraulic_speed_post = series(post_rows, hydraulic_speed_field)
+        flow_before = finite_number(pre_rows[-1], flow_field) if pre_rows else None
+        flow_post = series(post_rows, flow_field)
+        valve_post = series(post_rows, valve_open_field)
+        valve_position_post = series(post_rows, valve_position_field)
+        drum_post = series(post_rows, drum_level_field)
+        if speed_before is None or not speed_post:
+            problems.append(f"physical speed trajectory missing: {speed_field}")
+        elif min(speed_post) >= speed_before * 0.9:
+            problems.append(
+                f"{pump} BFP physical coastdown not proven: "
+                f"pre={speed_before:.6f} min_post={min(speed_post):.6f}"
+            )
+        if not hydraulic_speed_post:
+            problems.append(f"hydraulic speed trajectory missing: {hydraulic_speed_field}")
+        elif min(hydraulic_speed_post) > 705.0:
+            problems.append(
+                f"{pump} hydraulic speed did not reach the numerical floor: "
+                f"min_post={min(hydraulic_speed_post):.6f}"
+            )
+        if flow_before is None or not flow_post:
+            problems.append(f"physical flow trajectory missing: {flow_field}")
+        elif min(flow_post) >= abs(flow_before) * 0.5:
+            problems.append(
+                f"{pump} BFP feedwater coastdown not proven: "
+                f"pre={flow_before:.6f} min_post={min(flow_post):.6f}"
+            )
+        if not valve_post:
+            problems.append(f"check-valve state trajectory missing: {valve_open_field}")
+        elif min(valve_post) >= 0.5 or finite_number(post_rows[-1], valve_open_field) is None or finite_number(post_rows[-1], valve_open_field) >= 0.5:
+            problems.append(f"{pump} BFP discharge check valve did not close")
+        if not valve_position_post:
+            problems.append(f"check-valve opening trajectory missing: {valve_position_field}")
+        elif min(valve_position_post) > 0.2:
+            problems.append(
+                f"{pump} BFP check-valve opening did not collapse: "
+                f"min_post={min(valve_position_post):.6f}"
+            )
+        if not drum_post or not rose(post_rows, str(spec["cause"])):
+            problems.append(f"{pump} Drum LL physical cause trajectory missing: {drum_level_field}")
     return {
         "status": "PASS" if not problems else "FAIL",
         "scenario": scenario,

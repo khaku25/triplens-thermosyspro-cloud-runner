@@ -89,8 +89,12 @@ PROTECTION_DETAIL_NODES = {
     "vppVCBA01ClosedNative", "vppVCBB01ClosedNative",
     "vppHPFWPMotorEnergized", "vppHPFWPSpeedRPM",
     "vppHPFWPSpeedProven", "vppHPFWPRunning",
+    "vppHPFWPHydraulicSpeedRPM", "vppHPFWPMassFlowTH",
+    "vppHPFWPCheckValveOpen", "vppHPFWPCheckValveOpening",
     "vppIPFWPMotorEnergized", "vppIPFWPSpeedRPM",
     "vppIPFWPSpeedProven", "vppIPFWPRunning",
+    "vppIPFWPHydraulicSpeedRPM", "vppIPFWPMassFlowTH",
+    "vppIPFWPCheckValveOpen", "vppIPFWPCheckValveOpening",
 }
 PROTECTION_REQUIRED_NODES = set(PROTECTION_DETAIL_NODES)
 PROTECTION_REQUIRED_NODES.update(node for _, _, node in COMMON_TRIP_MATRIX)

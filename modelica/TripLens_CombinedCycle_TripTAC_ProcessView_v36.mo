@@ -197,6 +197,32 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Real vppLPFWPMechanicalPowerW(unit = "W");
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppLPFWPHydraulicSpeedCommand annotation(
     Placement(visible = false, transformation(extent = {{660, -500}, {690, -470}})));
+  // TRIPLENS_HP_IP_FWP_INERTIAL_DRIVES_V8_6
+  // HP/IP now use the same validated breaker/inertia boundary as LP.  The
+  // legacy Ramp drivers are removed below so a BFP trip can actually remove
+  // motor torque, reduce pump speed, close the discharge NRV and lower drum
+  // inventory.  The numerical floor keeps the StaticCentrifugalPump finite
+  // at standstill; the exposed shaft speed remains the physical state.
+  TripLens_PumpPhysics.BreakerInertialPumpDrive vppHPFWPDrive(
+    nominalSpeedRpm = 1400, J = 300, frictionTorqueNominal = 20,
+    initialTorque = 24000, torqueLimit = 8e4) annotation(
+    Placement(visible = false, transformation(extent = {{660, -40}, {700, -10}})));
+  TripLens_PumpPhysics.BreakerInertialPumpDrive vppIPFWPDrive(
+    nominalSpeedRpm = 1400, J = 300, frictionTorqueNominal = 20,
+    initialTorque = 12000, torqueLimit = 8e4) annotation(
+    Placement(visible = false, transformation(extent = {{660, 0}, {700, 30}})));
+  parameter Real vppHPFWPHydraulicSpeedFloorRPM(unit = "rev/min") = 700
+    "Numerical floor for the HP upstream static pump curve";
+  parameter Real vppIPFWPHydraulicSpeedFloorRPM(unit = "rev/min") = 700
+    "Numerical floor for the IP upstream static pump curve";
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
+    vppHPFWPHydraulicSpeedCommand annotation(
+      Placement(visible = false, transformation(extent = {{620, -40}, {650, -10}})));
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal
+    vppIPFWPHydraulicSpeedCommand annotation(
+      Placement(visible = false, transformation(extent = {{620, 0}, {650, 30}})));
+  output Real vppHPFWPHydraulicSpeedRPM(unit = "rev/min");
+  output Real vppIPFWPHydraulicSpeedRPM(unit = "rev/min");
   // TRIPLENS_ALL_FWP_CHECK_VALVES_OPCUA_V1
   TripLens_PumpPhysics.SpringLoadedCheckValve vppHPFWPCheckValve(closeFlow = 20, closedResistance = 1e5) annotation(
     Placement(visible = false, transformation(extent = {{747, -82}, {767, -62}})));
@@ -736,7 +762,8 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Boolean vppCauseLPDrumLL;
   output Boolean vppGTTripRequest;
   output Boolean vppSTTripRequest;
-  // TRIPLENS_PROTECTION_LOGIC_STABLE_V8_5: protection logic without hydraulic rewiring.
+  // TRIPLENS_PROTECTION_LOGIC_STABLE_V8_5: independent protection logic;
+  // HP/IP hydraulic coastdown is supplied by the V8.5.3 inertial adapters.
   // Independent HP/IP BFP operator protection chains.
   input Real vppHPFWPTripPushbuttonNative(start=0, min=0, max=1)
     "Operator HP BFP Trip pushbutton; writable OPC UA input";
@@ -1046,21 +1073,32 @@ equation
   vppIPFWPMassFlowTH = vppIPFWPCheckValveMassFlowTH;
   vppHPFWPDeltaPPa = PompeAlimHP.deltaP;
   vppIPFWPDeltaPPa = PompeAlimMP.deltaP;
-  vppHPFWPSpeedCommandRPM = PompeAlimHP.rpm_or_mpower.signal;
-  vppIPFWPSpeedCommandRPM = PompeAlimMP.rpm_or_mpower.signal;
-  // V8.5 publishes the unchanged V7 hydraulic speed as process evidence.
-  // Motor/running are protection indications, not a claim that the legacy
-  // StaticCentrifugalPump has a validated electrical coastdown model.
+  vppHPFWPSpeedCommandRPM = vppHPFWPHydraulicSpeedCommand.signal;
+  vppIPFWPSpeedCommandRPM = vppIPFWPHydraulicSpeedCommand.signal;
   vppHPFWPMotorEnergized = vppECMSVCBA01Closed;
   vppIPFWPMotorEnergized = vppECMSVCBB01Closed;
-  vppHPFWPSpeedRPM = vppHPFWPSpeedCommandRPM;
-  vppIPFWPSpeedRPM = vppIPFWPSpeedCommandRPM;
-  vppHPFWPSpeedProven = noEvent(vppHPFWPSpeedRPM > 1);
-  vppIPFWPSpeedProven = noEvent(vppIPFWPSpeedRPM > 1);
+  vppHPFWPDrive.breakerClosed.signal = vppHPFWPMotorEnergized;
+  vppIPFWPDrive.breakerClosed.signal = vppIPFWPMotorEnergized;
+  vppHPFWPDrive.pumpPower.signal = PompeAlimHP.Wm;
+  vppIPFWPDrive.pumpPower.signal = PompeAlimMP.Wm;
+  vppHPFWPHydraulicSpeedCommand.signal = noEvent(max(
+    vppHPFWPHydraulicSpeedFloorRPM, vppHPFWPDrive.speedRpm));
+  vppIPFWPHydraulicSpeedCommand.signal = noEvent(max(
+    vppIPFWPHydraulicSpeedFloorRPM, vppIPFWPDrive.speedRpm));
+  vppHPFWPSpeedRPM = vppHPFWPDrive.speedRpm;
+  vppIPFWPSpeedRPM = vppIPFWPDrive.speedRpm;
+  vppHPFWPHydraulicSpeedRPM = vppHPFWPHydraulicSpeedCommand.signal;
+  vppIPFWPHydraulicSpeedRPM = vppIPFWPHydraulicSpeedCommand.signal;
+  vppHPFWPSpeedProven = vppHPFWPSpeedRPM >= 0.9*vppHPFWPDrive.nominalSpeedRpm;
+  vppIPFWPSpeedProven = vppIPFWPSpeedRPM >= 0.9*vppIPFWPDrive.nominalSpeedRpm;
   vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven and
     noEvent(abs(vppHPFWPMassFlowTH) > 0.1);
   vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven and
     noEvent(abs(vppIPFWPMassFlowTH) > 0.1);
+  connect(vppHPFWPHydraulicSpeedCommand, PompeAlimHP.rpm_or_mpower) annotation(
+    Line(visible = false, points = {{650, -25}, {720, -25}, {720, -50}, {781, -50}}, color = {0, 0, 127}));
+  connect(vppIPFWPHydraulicSpeedCommand, PompeAlimMP.rpm_or_mpower) annotation(
+    Line(visible = false, points = {{650, 15}, {710, 15}, {710, -10}, {781, -10}}, color = {0, 0, 127}));
   vppSTTripLatched = vppSTTripLatch;
   // TRIPLENS_LP_BFP_OPERATOR_CHAIN_V1: observable protection chain
   vppLPFWPTripCommandNative =
@@ -1470,10 +1508,8 @@ equation
     Line(visible = false, points = {{565, 64.3}, {565, 50}}, color = {191, 95, 0}));
   connect(CapteurDebitEauHP.C1, EconomiseurHP4.Cws2) annotation(
     Line(visible = false, points = {{53.3, 26}, {53, 26}, {53, -30}}, smooth = Smooth.None));
-  connect(PompeAlimMP.rpm_or_mpower, arretPomesMp.y) annotation(
-    Line(visible = false, points = {{781, -21}, {781, -26}, {871.1, -26}}, smooth = Smooth.None));
-  connect(PompeAlimHP.rpm_or_mpower, arretPomesHP.y) annotation(
-    Line(visible = false, points = {{781, -61}, {781, -80}, {872.1, -80}}, smooth = Smooth.None));
+// TRIPLENS_HP_IP_FWP_INERTIAL_DRIVES_V8_6: the adapter owns the HP/IP
+// pump-speed inputs; legacy fixed Ramp connections are intentionally removed.
 // TRIPLENS_LP_FWP_OPCUA_ADAPTER_V1: adapter owns PompeAlimBP.rpm_or_mpower, arretPomesBP.y
   connect(SourceFumees.C, SurchauffeurHP3.Cfg1) annotation(
     Line(visible = false, points = {{-371, -49}, {-371, -50}, {-337, -50}}, color = {0, 0, 0}, thickness = 1));
