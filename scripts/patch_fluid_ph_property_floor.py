@@ -17,6 +17,9 @@ from pathlib import Path
 
 
 MARKER = "TRIPLENS_FLUID_PH_PROPERTY_FLOOR_V1"
+# IF97 asserts for p <= 611.657 Pa, so use a strict margin above the
+# triple-point boundary rather than the boundary value itself.
+IF97_PROPERTY_PRESSURE_FLOOR = 1000.0
 WATER_CALL = (
     "    pro := ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph(P, h, mode);"
 )
@@ -28,7 +31,7 @@ PATCH_DECLARATION = """    protected
 """
 PATCH_ALGORITHM = f"""algorithm
       // {MARKER}
-      Pthermo := noEvent(max(P, 611.657));
+      Pthermo := noEvent(max(P, {IF97_PROPERTY_PRESSURE_FLOOR}));
 """
 
 

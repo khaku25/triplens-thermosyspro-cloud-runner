@@ -37,7 +37,7 @@ class FluidPhPatchTests(unittest.TestCase):
     def test_guards_both_fluid_property_paths(self) -> None:
         patched = patch_text(NATIVE)
         self.assertEqual(patched.count(MARKER), 1)
-        self.assertIn("Pthermo := noEvent(max(P, 611.657));", patched)
+        self.assertIn("Pthermo := noEvent(max(P, 1000.0));", patched)
         self.assertIn("Water_Ph(Pthermo, h, mode)", patched)
         self.assertIn("C3H3F5_Ph(Pthermo, h)", patched)
         self.assertEqual(patch_text(patched), patched)
