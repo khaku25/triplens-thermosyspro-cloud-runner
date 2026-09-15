@@ -50,15 +50,30 @@ def main() -> int:
         raise RuntimeError("internal fault-injection signals are not excluded from AI RAW")
     for name in ("hp_bfp", "ip_bfp", "lp_bfp"):
         bfp = module.SCENARIOS[name]
-        if bfp["expected_domain"] != "GT+ST":
-            raise RuntimeError(f"{name} must prove Drum LL -> GT+ST")
-        if not bfp.get("cause", "").endswith("DrumLL"):
-            raise RuntimeError(f"{name} must require its Drum LL matrix cause")
-        if len(bfp["events"]) != 10:
-            raise RuntimeError(
-                f"{name} must require ten automatic events plus operator PB "
-                f"(found {len(bfp['events'])})"
-            )
+        if name == "lp_bfp":
+            if bfp["expected_domain"] != "GT+ST":
+                raise RuntimeError(f"{name} must prove Drum LL -> GT+ST")
+            if not bfp.get("cause", "").endswith("DrumLL"):
+                raise RuntimeError(f"{name} must require its Drum LL matrix cause")
+            if bfp.get("post_fault_model_seconds") != 100.0:
+                raise RuntimeError(f"{name} must retain the 100 s reference horizon")
+            if len(bfp["events"]) != 10:
+                raise RuntimeError(
+                    f"{name} must require ten automatic events plus operator PB "
+                    f"(found {len(bfp['events'])})"
+                )
+        else:
+            if bfp["expected_domain"] != "BFP" or bfp.get("requires_drum_trip"):
+                raise RuntimeError(f"{name} must be an equipment-only BFP proof")
+            if bfp.get("cause") is not None:
+                raise RuntimeError(f"{name} must leave Drum LL to its 100 s scenario")
+            if bfp.get("post_fault_model_seconds") != 45.0:
+                raise RuntimeError(f"{name} must use the 45 s short horizon")
+            if len(bfp["events"]) != 6:
+                raise RuntimeError(
+                    f"{name} must require six BFP physical/protection events "
+                    f"(found {len(bfp['events'])})"
+                )
     print(json.dumps({
         "status": "PASS", "scenario_count": len(scenarios),
         "common_trip_causes": 9, "independent_bfp_trips": 3,
