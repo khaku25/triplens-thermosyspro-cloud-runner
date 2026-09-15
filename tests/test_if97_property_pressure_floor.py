@@ -19,7 +19,7 @@ def _fixture() -> str:
       input Modelica.SIunits.AbsolutePressure {token} "Pressure";
       output Real result;
     algorithm
-      result := {token};
+      result := g.{token} + {token};
       result := helper({token}={token});
     annotation (smoothOrder=1);
     end {name};
@@ -34,8 +34,12 @@ class IF97PatchTests(unittest.TestCase):
         self.assertEqual(patched.count(MARKER), len(TARGETS))
         self.assertEqual(patched.count("max(P, 1000.0)"), 2)
         self.assertEqual(patched.count("max(p, 1000.0)"), 8)
-        self.assertIn("result := Pthermo;", patched)
-        self.assertIn("result := pthermo;", patched)
+        self.assertIn("g.P + Pthermo", patched)
+        self.assertIn("g.p + pthermo", patched)
+        self.assertNotIn("g.Pthermo", patched)
+        self.assertNotIn("g.pthermo", patched)
+        self.assertIn("helper(P=Pthermo)", patched)
+        self.assertIn("helper(p=pthermo)", patched)
         self.assertEqual(patch_text(patched), patched)
 
     def test_rejects_missing_target(self) -> None:
@@ -45,4 +49,3 @@ class IF97PatchTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

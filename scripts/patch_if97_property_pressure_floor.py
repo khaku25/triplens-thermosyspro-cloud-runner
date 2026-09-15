@@ -43,7 +43,11 @@ def _replace_token(code: str, token: str, replacement: str) -> str:
     return re.sub(
         # Do not rewrite named-argument labels (``p=...``); only rewrite the
         # value expression on the right-hand side.
-        rf"(?<![A-Za-z0-9_]){re.escape(token)}(?![A-Za-z0-9_=])",
+        # Do not rewrite record member names such as ``g.p`` or ``pro.P``;
+        # those are fields of IF97 records, not the function input.  The
+        # right-hand-side guard above separately preserves named-argument
+        # labels such as ``helper(p=...)``.
+        rf"(?<![A-Za-z0-9_.]){re.escape(token)}(?![A-Za-z0-9_=])",
         replacement,
         code,
     )
@@ -135,4 +139,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
