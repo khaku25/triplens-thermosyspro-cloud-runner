@@ -73,6 +73,13 @@ package TripLens_PumpPhysics
 
   model SpringLoadedCheckValve
     "Continuously moving non-return valve with spring-equivalent closing flow"
+    // TRIPLENS_CHECK_VALVE_HVOL_TRANSPORT_V2
+    // Use the same continuous flow-reversal transport law as ThermoSysPro's
+    // ControlValve/PipePressureLoss components.  The previous strict Q > 0
+    // branch changed the selected h_vol equation exactly at zero flow, which
+    // left HP/IP discharge initialization sensitive to the solver's first
+    // Newton iterate.  This is a transport regularization only; it does not
+    // equate the upstream and downstream control-volume enthalpies.
     parameter Modelica.SIunits.MassFlowRate closeFlow = 1
       "Forward flow below which the spring closes the valve";
     parameter Modelica.SIunits.MassFlowRate flowTransition = max(0.1,
@@ -111,9 +118,13 @@ package TripLens_PumpPhysics
     Q = C1.Q;
     deltaP = C1.P - C2.P;
 
-    // Preserve ThermoSysPro's directional enthalpy transport without adding
-    // a second IF97 property state to the large plant initialization system.
-    0 = if Q > 0 then C1.h - C1.h_vol else C2.h - C2.h_vol;
+    // Preserve ThermoSysPro's directional enthalpy transport while smoothing
+    // the zero-flow/reversal boundary.  Do not add C1.h_vol = C2.h_vol: those
+    // are the independent control-volume states on either side of the NRV.
+    0 = noEvent(if Q > flowTransition then C1.h - C1.h_vol else if
+      Q < -flowTransition then C2.h - C2.h_vol else C1.h - 0.5*((C1.h_vol -
+      C2.h_vol)*Modelica.Math.sin(Modelica.Constants.pi*Q/(2*flowTransition))
+      + C1.h_vol + C2.h_vol));
 
     // The spring target falls continuously as forward flow approaches the
     // closing threshold. Keeping flap position and resistance continuous
