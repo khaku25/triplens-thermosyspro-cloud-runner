@@ -298,6 +298,34 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
     "Finite valve opening retained only during a drum fault override";
   parameter Modelica.SIunits.Time vppDrumFaultValveStrokeTime(min = 0.1) = 2
     "Physical travel time used only while a drum-fault override is active";
+  // TRIPLENS_DRUM_INVENTORY_FAULT_PATH_V1
+  // The 12-scenario verifier drives these commands through three spare
+  // DynamicDrum liquid connections.  A positive command is a finite physical
+  // makeup inflow; a negative command is a finite liquid-loss outflow.  They
+  // never write the drum level, protection cause or trip latch directly.
+  parameter Modelica.SIunits.MassFlowRate vppHPDrumInventoryFaultCapacity = 250
+    "Maximum HP physical drum inventory disturbance";
+  parameter Modelica.SIunits.MassFlowRate vppIPDrumInventoryFaultCapacity = 250
+    "Maximum IP physical drum inventory disturbance";
+  parameter Modelica.SIunits.MassFlowRate vppLPDrumInventoryFaultCapacity = 160
+    "Maximum LP physical drum inventory disturbance";
+  parameter Modelica.SIunits.Time vppDrumInventoryFaultStrokeTime(min = 0.1) = 0.5
+    "Finite ramp applied to physical inventory disturbance";
+  input Real vppHPDrumInventoryFaultEnableNative(start=0);
+  input Real vppHPDrumInventoryFaultValueNative(start=0, min=-1, max=1);
+  output Boolean vppHPDrumInventoryFaultActive;
+  output Real vppHPDrumInventoryDisturbanceMassFlowTH(unit="t/h");
+  Real vppHPDrumInventoryFaultFlowState(start=0, fixed=true);
+  input Real vppIPDrumInventoryFaultEnableNative(start=0);
+  input Real vppIPDrumInventoryFaultValueNative(start=0, min=-1, max=1);
+  output Boolean vppIPDrumInventoryFaultActive;
+  output Real vppIPDrumInventoryDisturbanceMassFlowTH(unit="t/h");
+  Real vppIPDrumInventoryFaultFlowState(start=0, fixed=true);
+  input Real vppLPDrumInventoryFaultEnableNative(start=0);
+  input Real vppLPDrumInventoryFaultValueNative(start=0, min=-1, max=1);
+  output Boolean vppLPDrumInventoryFaultActive;
+  output Real vppLPDrumInventoryDisturbanceMassFlowTH(unit="t/h");
+  Real vppLPDrumInventoryFaultFlowState(start=0, fixed=true);
   input Real vppVlvHPFWCVModeAutoNative(start=1);
   input Real vppVlvHPFWCVManualCmdNative(start=0.8, min=0, max=1);
   input Real vppVlvHPFWCVFaultEnableNative(start=0);
@@ -881,6 +909,27 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
     Placement(visible = false, transformation(extent = {{570, -370}, {590, -350}})));
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppLPSprayFlowCommand annotation(
     Placement(visible = false, transformation(extent = {{470, -370}, {490, -350}})));
+  // Physical liquid make-up / loss sources connected only to the unused
+  // DynamicDrum Ce2 ports.  The source Q is the physical disturbance; the
+  // injector keeps that source boundary independent from the drum pressure.
+  ThermoSysPro.WaterSteam.BoundaryConditions.SourceQ vppHPDrumInventoryFaultSource(Q0 = 0, h0 = 1474422) annotation(
+    Placement(visible = false, transformation(extent = {{-80, -410}, {-40, -390}})));
+  VPPFixedFlowInjector vppHPDrumInventoryFaultInjector annotation(
+    Placement(visible = false, transformation(extent = {{-30, -410}, {-10, -390}})));
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppHPDrumInventoryFaultFlowCommand annotation(
+    Placement(visible = false, transformation(extent = {{-130, -410}, {-110, -390}})));
+  ThermoSysPro.WaterSteam.BoundaryConditions.SourceQ vppIPDrumInventoryFaultSource(Q0 = 0, h0 = 978915) annotation(
+    Placement(visible = false, transformation(extent = {{80, -410}, {120, -390}})));
+  VPPFixedFlowInjector vppIPDrumInventoryFaultInjector annotation(
+    Placement(visible = false, transformation(extent = {{130, -410}, {150, -390}})));
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppIPDrumInventoryFaultFlowCommand annotation(
+    Placement(visible = false, transformation(extent = {{30, -410}, {50, -390}})));
+  ThermoSysPro.WaterSteam.BoundaryConditions.SourceQ vppLPDrumInventoryFaultSource(Q0 = 0, h0 = 549250) annotation(
+    Placement(visible = false, transformation(extent = {{240, -410}, {280, -390}})));
+  VPPFixedFlowInjector vppLPDrumInventoryFaultInjector annotation(
+    Placement(visible = false, transformation(extent = {{290, -410}, {310, -390}})));
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppLPDrumInventoryFaultFlowCommand annotation(
+    Placement(visible = false, transformation(extent = {{190, -410}, {210, -390}})));
   VPPRegularizedMixingVolume vppCondenserSteamVolume(V = vppLPHeaderVolume,  // Condenser pressure already supplies the LP-side mass-storage state.
  // This header retains its own thermal hold-up without duplicating that
  // pressure state across an ideal (zero-pressure-drop) sensor connection.
@@ -1107,6 +1156,29 @@ equation
   vppHPDrumLevelM = BallonHP.yLevel.signal;
   vppIPDrumLevelM = BallonMP.yLevel.signal;
   vppLPDrumLevelM = BallonBP.yLevel.signal;
+  // TRIPLENS_DRUM_INVENTORY_FAULT_PATH_V1: finite, mass-balanced physical
+  // disturbance.  The raw level remains the only protection measurement.
+  vppHPDrumInventoryFaultActive = vppHPDrumInventoryFaultEnableNative >= 0.5;
+  der(vppHPDrumInventoryFaultFlowState) = ((if vppHPDrumInventoryFaultActive then
+      vppHPDrumInventoryFaultCapacity*noEvent(min(1, max(-1,
+      vppHPDrumInventoryFaultValueNative))) else 0) -
+      vppHPDrumInventoryFaultFlowState)/vppDrumInventoryFaultStrokeTime;
+  vppHPDrumInventoryFaultFlowCommand.signal = vppHPDrumInventoryFaultFlowState;
+  vppHPDrumInventoryDisturbanceMassFlowTH = 3.6*vppHPDrumInventoryFaultSource.Q;
+  vppIPDrumInventoryFaultActive = vppIPDrumInventoryFaultEnableNative >= 0.5;
+  der(vppIPDrumInventoryFaultFlowState) = ((if vppIPDrumInventoryFaultActive then
+      vppIPDrumInventoryFaultCapacity*noEvent(min(1, max(-1,
+      vppIPDrumInventoryFaultValueNative))) else 0) -
+      vppIPDrumInventoryFaultFlowState)/vppDrumInventoryFaultStrokeTime;
+  vppIPDrumInventoryFaultFlowCommand.signal = vppIPDrumInventoryFaultFlowState;
+  vppIPDrumInventoryDisturbanceMassFlowTH = 3.6*vppIPDrumInventoryFaultSource.Q;
+  vppLPDrumInventoryFaultActive = vppLPDrumInventoryFaultEnableNative >= 0.5;
+  der(vppLPDrumInventoryFaultFlowState) = ((if vppLPDrumInventoryFaultActive then
+      vppLPDrumInventoryFaultCapacity*noEvent(min(1, max(-1,
+      vppLPDrumInventoryFaultValueNative))) else 0) -
+      vppLPDrumInventoryFaultFlowState)/vppDrumInventoryFaultStrokeTime;
+  vppLPDrumInventoryFaultFlowCommand.signal = vppLPDrumInventoryFaultFlowState;
+  vppLPDrumInventoryDisturbanceMassFlowTH = 3.6*vppLPDrumInventoryFaultSource.Q;
   vppHPDrumPressurePa = BallonHP.P;
   vppIPDrumPressurePa = BallonMP.P;
   vppLPDrumPressurePa = BallonBP.P;
@@ -1314,6 +1386,27 @@ equation
     Line(visible = false, points = {{560, -360}, {570, -360}}, color = {0, 127, 255}));
   connect(vppLPSprayInjector.C2, vppCondenserSteamVolume.Ce3) annotation(
     Line(visible = false, points = {{590, -360}, {636, -360}, {636, -306}}, color = {0, 127, 255}));
+  // TRIPLENS_DRUM_INVENTORY_FAULT_PATH_V1: Ce2 is the otherwise unused
+  // liquid inlet on each physical DynamicDrum.  Positive source Q adds
+  // liquid inventory; negative Q removes it through the same mass balance.
+  connect(vppHPDrumInventoryFaultFlowCommand, vppHPDrumInventoryFaultSource.IMassFlow) annotation(
+    Line(visible = false, points = {{-120, -400}, {-80, -400}}, color = {0, 0, 127}));
+  connect(vppHPDrumInventoryFaultSource.C, vppHPDrumInventoryFaultInjector.C1) annotation(
+    Line(visible = false, points = {{-40, -400}, {-30, -400}}, color = {0, 127, 255}));
+  connect(vppHPDrumInventoryFaultInjector.C2, BallonHP.Ce2) annotation(
+    Line(visible = false, points = {{-10, -400}, {-20, -400}, {-20, 10}, {-35, 10}}, color = {0, 127, 255}));
+  connect(vppIPDrumInventoryFaultFlowCommand, vppIPDrumInventoryFaultSource.IMassFlow) annotation(
+    Line(visible = false, points = {{40, -400}, {80, -400}}, color = {0, 0, 127}));
+  connect(vppIPDrumInventoryFaultSource.C, vppIPDrumInventoryFaultInjector.C1) annotation(
+    Line(visible = false, points = {{120, -400}, {130, -400}}, color = {0, 127, 255}));
+  connect(vppIPDrumInventoryFaultInjector.C2, BallonMP.Ce2) annotation(
+    Line(visible = false, points = {{150, -400}, {300, -400}, {300, 10}, {287, 10}}, color = {0, 127, 255}));
+  connect(vppLPDrumInventoryFaultFlowCommand, vppLPDrumInventoryFaultSource.IMassFlow) annotation(
+    Line(visible = false, points = {{200, -400}, {240, -400}}, color = {0, 0, 127}));
+  connect(vppLPDrumInventoryFaultSource.C, vppLPDrumInventoryFaultInjector.C1) annotation(
+    Line(visible = false, points = {{280, -400}, {290, -400}}, color = {0, 127, 255}));
+  connect(vppLPDrumInventoryFaultInjector.C2, BallonBP.Ce2) annotation(
+    Line(visible = false, points = {{310, -400}, {535, -400}, {535, 10}, {527, 10}}, color = {0, 127, 255}));
   connect(SurchauffeurHP3.Cws1, SurchauffeurHP2.Cws2) annotation(
     Line(visible = false, points = {{-327, -30}, {-327, -10}, {-207, -10}, {-207, -30}}, color = {255, 0, 0}));
   connect(SurchauffeurHP2.Cws1, SurchauffeurHP1.Cws2) annotation(

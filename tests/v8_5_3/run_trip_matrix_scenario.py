@@ -70,25 +70,23 @@ GT_ST_NORMAL = {
 
 def drum_writes(section: str, level: str) -> dict[str, float]:
     prefix = section.upper()
-    feed = f"vppVlv{prefix}FWCV" if prefix in {"HP", "IP"} else "vppVlvLPFW"
-    steam = f"vppVlv{prefix}Steam"
-    high = level == "hh"
     return {
-        f"{feed}FaultValueNative": 1.0 if high else 0.0,
-        f"{steam}FaultValueNative": 0.0 if high else 1.0,
-        f"{feed}FaultEnableNative": 1.0,
-        f"{steam}FaultEnableNative": 1.0,
+        # A positive physical SourceQ adds liquid through DynamicDrum.Ce2;
+        # a negative value removes liquid through the same mass balance.
+        # No level, protection-cause or latch value is an OPC-UA write.
+        f"vpp{prefix}DrumInventoryFaultValueNative": 1.0 if level == "hh" else -1.0,
+        f"vpp{prefix}DrumInventoryFaultEnableNative": 1.0,
     }
 
 
 def write_inputs_atomically(client, ua, live, nodes, writes: dict[str, float], *, pause_runtime: bool) -> None:
-    """Apply a multi-valve drum fault without exposing a partial solver state.
+    """Apply a physical drum inventory fault without a partial solver state.
 
     The embedded OpenModelica server advances between OPC UA writes.  A drum
-    fault needs a coordinated pair of feedwater/steam valve overrides, so pause
-    the solver while the four inputs are changed and resume only after the
-    complete fault state exists.  All ordinary one-input scenarios retain the
-    direct write path.
+    fault needs its signed value and enable bit to change as one transaction,
+    so pause the solver while those inputs are written and resume only after
+    the complete physical-source command exists.  All ordinary one-input
+    scenarios retain the direct write path.
     """
     run_node = None
     paused = False
@@ -427,6 +425,9 @@ def validate(
         "vppIPTurbineSteamFlowTH", "vppLPTurbineSteamFlowTH",
         "vppHPDrumLevelM", "vppIPDrumLevelM", "vppLPDrumLevelM",
         "vppHPDrumPressurePa", "vppIPDrumPressurePa", "vppLPDrumPressurePa",
+        "vppHPDrumInventoryDisturbanceMassFlowTH",
+        "vppIPDrumInventoryDisturbanceMassFlowTH",
+        "vppLPDrumInventoryDisturbanceMassFlowTH",
         "vppHPFWPMassFlowTH", "vppIPFWPMassFlowTH", "vppLPFWPMassFlowTH",
         "vppHPFWPSpeedRPM", "vppIPFWPSpeedRPM", "vppLPFWPSpeedRPM",
         "vppHPFWPHydraulicSpeedRPM", "vppIPFWPHydraulicSpeedRPM",
@@ -448,6 +449,24 @@ def validate(
                     "after": after,
                     "delta": after - before,
                 }
+    if spec.get("drum"):
+        section = str(spec["drum"])
+        disturbance_field = f"vpp{section}DrumInventoryDisturbanceMassFlowTH"
+        disturbance = series(post_rows, disturbance_field)
+        if disturbance_field not in raw_fields or not disturbance:
+            problems.append(
+                f"physical drum inventory trajectory missing: {disturbance_field}"
+            )
+        elif spec.get("level") == "HH" and max(disturbance) < 100.0:
+            problems.append(
+                f"{section} Drum HH physical makeup flow not proven: "
+                f"max_post={max(disturbance):.6f} t/h"
+            )
+        elif spec.get("level") == "LL" and min(disturbance) > -100.0:
+            problems.append(
+                f"{section} Drum LL physical loss flow not proven: "
+                f"min_post={min(disturbance):.6f} t/h"
+            )
     if spec.get("pump"):
         pump = str(spec["pump"])
         speed_field = f"vpp{pump}FWPSpeedRPM"

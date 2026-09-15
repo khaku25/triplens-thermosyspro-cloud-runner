@@ -64,6 +64,7 @@ jobs:
             --run-controller scripts/opcua_run_controller.py
           python3 tests/v8_5_2/selftest_protection_matrix_v8.py \
             modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo
+          python3 tests/test_v8_physical_fault_paths.py
 
       - name: Pin ThermoSysPro and install Modelica 3.2.3
         run: |

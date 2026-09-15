@@ -105,6 +105,8 @@ package TripLens_PumpPhysics
     Real openingState(start=1, fixed=true)
       "Integrated flap state before numerical output limiting";
     Real valveTarget(min=0, max=1);
+    Real reverseFlowBlock(min=0, max=1)
+      "Smooth seat resistance activation when differential flow reverses";
     Real effectiveResistance(unit="Pa.s/kg");
     Modelica.SIunits.MassFlowRate Q "Mass flow rate";
     ThermoSysPro.Units.DifferentialPressure deltaP
@@ -139,8 +141,16 @@ package TripLens_PumpPhysics
     der(openingState) = (valveTarget - openingState)/noEvent(if valveTarget < openingState
       then closeTime else reopenTime);
     opening = noEvent(max(0, min(1, openingState)));
+    // A real non-return valve does not wait for the finite flap-travel state
+    // to complete before it opposes reverse flow.  The former expression
+    // could admit a large, short reverse-flow pulse while the flap moved from
+    // 1 to 0; on the HP train that pulse drove a downstream property trial to
+    // an unphysical zero-density state.  Add only the smooth seat resistance
+    // for reverse/near-zero flow.  At normal forward flow this term is zero,
+    // so the established V7/V8 running hydraulic topology is unchanged.
+    reverseFlowBlock = noEvent(0.5 - 0.5*Modelica.Math.tanh(Q/flowTransition));
     effectiveResistance = openResistance + (closedResistance -
-      openResistance)*(1 - opening)^2;
+      openResistance)*(1 - opening)^2 + closedResistance*reverseFlowBlock;
     deltaP = effectiveResistance*Q;
     ouvert = opening > closedPosition;
   end SpringLoadedCheckValve;

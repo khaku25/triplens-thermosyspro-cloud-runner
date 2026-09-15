@@ -44,16 +44,18 @@ def main() -> int:
         if ll["expected_domain"] != "GT+ST" or ll["expected"]["vppGTTripLatch"] != 1.0 or ll["expected"]["vppSTTripLatchPublished"] != 1.0:
             raise RuntimeError(f"{name} LL must trip GT+ST")
         if not hh.get("drum") or not ll.get("drum"):
-            raise RuntimeError(f"{name} drum scenarios must use coordinated valve faults")
+            raise RuntimeError(f"{name} drum scenarios must use physical inventory faults")
     runner_source = args.runner.read_text(encoding="utf-8")
     for contract in (
         "def write_inputs_atomically",
         "OPENMODELICA_RUN_NODE_ID = 10001",
         "pause_runtime=bool(spec.get(\"drum\"))",
         "--no-auto-resume",
+        "DrumInventoryFaultValueNative",
+        "DrumInventoryDisturbanceMassFlowTH",
     ):
         if contract not in runner_source:
-            raise RuntimeError(f"atomic drum-fault contract missing: {contract}")
+            raise RuntimeError(f"physical drum-fault contract missing: {contract}")
     engine = args.engine.read_text(encoding="utf-8-sig")
     for marker in ("BEGIN_SCENARIO", "BEGIN_MATRIX_SCENARIO", "MATRIX_SCENARIOS"):
         if marker not in engine:
