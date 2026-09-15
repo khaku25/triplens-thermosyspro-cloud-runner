@@ -18,6 +18,8 @@ package TripLens_PumpPhysics
     parameter Modelica.SIunits.Torque torqueLimit = 1e5;
     parameter Real torqueRegularizationSpeedRpm(unit="rev/min") = 30
       "Low-speed regularization used to recover load torque from pump power";
+    parameter Modelica.SIunits.Time pumpPowerFilterTime = 0.5
+      "First-order load-power filter that breaks the pump/shaft algebraic loop";
 
     ThermoSysPro.InstrumentationAndControl.Connectors.InputLogical
       breakerClosed;
@@ -32,6 +34,9 @@ package TripLens_PumpPhysics
     Modelica.SIunits.Torque hydraulicTorque;
     Modelica.SIunits.Torque frictionTorque;
     Modelica.SIunits.Torque netTorque;
+    Modelica.SIunits.Power pumpPowerFiltered(
+      start=initialTorque*nominalSpeedRpm*Modelica.Constants.pi/30,
+      fixed=true);
     Real speedError(unit="rev/min");
     Real integralState(start=initialTorque/integralGain, fixed=false);
 
@@ -45,6 +50,8 @@ package TripLens_PumpPhysics
     speedCommand.signal = speedRpm;
     speedError = nominalSpeedRpm - speedRpm;
     der(integralState) = if breakerClosed.signal then speedError else 0;
+    der(pumpPowerFiltered) = (max(pumpPower.signal, 0) -
+      pumpPowerFiltered)/pumpPowerFilterTime;
 
     motorTorque = if breakerClosed.signal then noEvent(max(0, min(
       torqueLimit,
@@ -53,7 +60,7 @@ package TripLens_PumpPhysics
     // StaticCentrifugalPump exposes its mechanical load as Wm. Recover the
     // opposing shaft torque smoothly so the expression remains finite at
     // standstill, where a direct Wm/angularSpeed division would be singular.
-    hydraulicTorque = noEvent(max(pumpPower.signal, 0)*max(angularSpeed, 0)/(
+    hydraulicTorque = noEvent(max(pumpPowerFiltered, 0)*max(angularSpeed, 0)/(
       angularSpeed^2 + (torqueRegularizationSpeedRpm*
       Modelica.Constants.pi/30)^2));
     frictionTorque = noEvent(if angularSpeed > 0 then
