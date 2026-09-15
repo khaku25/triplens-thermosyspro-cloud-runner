@@ -17,6 +17,7 @@ on:
       - "opcua_native_valve_nodes_v1.csv"
       - "tests/v8_5_3/**"
       - "scripts/patch_stodola_turbine.py"
+      - "scripts/patch_pressure_loss_property_floor.py"
       - "tests/test_stodola_patch.py"
       - ".github/workflows/verify-v8-all-trip-matrix.yml"
 
@@ -70,6 +71,13 @@ jobs:
           python3 tests/test_stodola_patch.py
           grep -q 'TRIPLENS_STODOLA_PRESSURE_CROSSOVER_V1' \
             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
+          python3 scripts/patch_pressure_loss_property_floor.py \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/ControlValve.mo \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo
+          grep -q 'TRIPLENS_PRESSURE_LOSS_PROPERTY_FLOOR_V1' \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/ControlValve.mo
+          grep -q 'TRIPLENS_PRESSURE_LOSS_PROPERTY_FLOOR_V1' \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo
           timeout --signal=TERM --kill-after=30s 8m \
             docker run --rm \
               -v "$PWD/build/omhome:/root" \
