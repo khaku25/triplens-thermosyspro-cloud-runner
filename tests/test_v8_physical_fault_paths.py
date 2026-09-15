@@ -24,11 +24,10 @@ def main() -> int:
             f"vpp{section}DrumInventoryFaultValueNative",
             f"vpp{section}DrumInventoryDisturbanceMassFlowTH",
             f"vpp{section}DrumInventoryFaultSource",
-            f"vpp{section}DrumInventoryFaultInjector",
             f"vpp{section}DrumInventoryFaultEnthalpyCommand.signal = Ballon",
             f"connect(vpp{section}DrumInventoryFaultEnthalpyCommand, "
             f"vpp{section}DrumInventoryFaultSource.ISpecificEnthalpy)",
-            f"connect(vpp{section}DrumInventoryFaultInjector.C2, Ballon"
+            f"connect(vpp{section}DrumInventoryFaultSource.C, Ballon"
             f"{'MP' if section == 'IP' else 'BP' if section == 'LP' else 'HP'}.Ce2)",
         ):
             if token not in source:

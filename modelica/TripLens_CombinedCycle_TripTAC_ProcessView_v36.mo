@@ -910,28 +910,22 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppLPSprayFlowCommand annotation(
     Placement(visible = false, transformation(extent = {{470, -370}, {490, -350}})));
   // Physical liquid make-up / loss sources connected only to the unused
-  // DynamicDrum Ce2 ports.  The source Q is the physical disturbance; the
-  // injector keeps that source boundary independent from the drum pressure.
+  // DynamicDrum Ce2 ports.  The source Q is the physical disturbance and
+  // the pressure/enthalpy is the receiving drum's physical liquid state.
   ThermoSysPro.WaterSteam.BoundaryConditions.SourceQ vppHPDrumInventoryFaultSource(Q0 = 0, h0 = 1474422) annotation(
     Placement(visible = false, transformation(extent = {{-80, -410}, {-40, -390}})));
-  VPPFixedFlowInjector vppHPDrumInventoryFaultInjector annotation(
-    Placement(visible = false, transformation(extent = {{-30, -410}, {-10, -390}})));
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppHPDrumInventoryFaultFlowCommand annotation(
     Placement(visible = false, transformation(extent = {{-130, -410}, {-110, -390}})));
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppHPDrumInventoryFaultEnthalpyCommand annotation(
     Placement(visible = false, transformation(extent = {{-130, -440}, {-110, -420}})));
   ThermoSysPro.WaterSteam.BoundaryConditions.SourceQ vppIPDrumInventoryFaultSource(Q0 = 0, h0 = 978915) annotation(
     Placement(visible = false, transformation(extent = {{80, -410}, {120, -390}})));
-  VPPFixedFlowInjector vppIPDrumInventoryFaultInjector annotation(
-    Placement(visible = false, transformation(extent = {{130, -410}, {150, -390}})));
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppIPDrumInventoryFaultFlowCommand annotation(
     Placement(visible = false, transformation(extent = {{30, -410}, {50, -390}})));
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppIPDrumInventoryFaultEnthalpyCommand annotation(
     Placement(visible = false, transformation(extent = {{30, -440}, {50, -420}})));
   ThermoSysPro.WaterSteam.BoundaryConditions.SourceQ vppLPDrumInventoryFaultSource(Q0 = 0, h0 = 549250) annotation(
     Placement(visible = false, transformation(extent = {{240, -410}, {280, -390}})));
-  VPPFixedFlowInjector vppLPDrumInventoryFaultInjector annotation(
-    Placement(visible = false, transformation(extent = {{290, -410}, {310, -390}})));
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppLPDrumInventoryFaultFlowCommand annotation(
     Placement(visible = false, transformation(extent = {{190, -410}, {210, -390}})));
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppLPDrumInventoryFaultEnthalpyCommand annotation(
@@ -1402,26 +1396,20 @@ equation
     Line(visible = false, points = {{-120, -400}, {-80, -400}}, color = {0, 0, 127}));
   connect(vppHPDrumInventoryFaultEnthalpyCommand, vppHPDrumInventoryFaultSource.ISpecificEnthalpy) annotation(
     Line(visible = false, points = {{-120, -430}, {-60, -430}, {-60, -410}}, color = {0, 0, 127}));
-  connect(vppHPDrumInventoryFaultSource.C, vppHPDrumInventoryFaultInjector.C1) annotation(
-    Line(visible = false, points = {{-40, -400}, {-30, -400}}, color = {0, 127, 255}));
-  connect(vppHPDrumInventoryFaultInjector.C2, BallonHP.Ce2) annotation(
-    Line(visible = false, points = {{-10, -400}, {-20, -400}, {-20, 10}, {-35, 10}}, color = {0, 127, 255}));
+  connect(vppHPDrumInventoryFaultSource.C, BallonHP.Ce2) annotation(
+    Line(visible = false, points = {{-40, -400}, {-20, -400}, {-20, 10}, {-35, 10}}, color = {0, 127, 255}));
   connect(vppIPDrumInventoryFaultFlowCommand, vppIPDrumInventoryFaultSource.IMassFlow) annotation(
     Line(visible = false, points = {{40, -400}, {80, -400}}, color = {0, 0, 127}));
   connect(vppIPDrumInventoryFaultEnthalpyCommand, vppIPDrumInventoryFaultSource.ISpecificEnthalpy) annotation(
     Line(visible = false, points = {{40, -430}, {100, -430}, {100, -410}}, color = {0, 0, 127}));
-  connect(vppIPDrumInventoryFaultSource.C, vppIPDrumInventoryFaultInjector.C1) annotation(
-    Line(visible = false, points = {{120, -400}, {130, -400}}, color = {0, 127, 255}));
-  connect(vppIPDrumInventoryFaultInjector.C2, BallonMP.Ce2) annotation(
-    Line(visible = false, points = {{150, -400}, {300, -400}, {300, 10}, {287, 10}}, color = {0, 127, 255}));
+  connect(vppIPDrumInventoryFaultSource.C, BallonMP.Ce2) annotation(
+    Line(visible = false, points = {{120, -400}, {300, -400}, {300, 10}, {287, 10}}, color = {0, 127, 255}));
   connect(vppLPDrumInventoryFaultFlowCommand, vppLPDrumInventoryFaultSource.IMassFlow) annotation(
     Line(visible = false, points = {{200, -400}, {240, -400}}, color = {0, 0, 127}));
   connect(vppLPDrumInventoryFaultEnthalpyCommand, vppLPDrumInventoryFaultSource.ISpecificEnthalpy) annotation(
     Line(visible = false, points = {{200, -430}, {260, -430}, {260, -410}}, color = {0, 0, 127}));
-  connect(vppLPDrumInventoryFaultSource.C, vppLPDrumInventoryFaultInjector.C1) annotation(
-    Line(visible = false, points = {{280, -400}, {290, -400}}, color = {0, 127, 255}));
-  connect(vppLPDrumInventoryFaultInjector.C2, BallonBP.Ce2) annotation(
-    Line(visible = false, points = {{310, -400}, {535, -400}, {535, 10}, {527, 10}}, color = {0, 127, 255}));
+  connect(vppLPDrumInventoryFaultSource.C, BallonBP.Ce2) annotation(
+    Line(visible = false, points = {{280, -400}, {535, -400}, {535, 10}, {527, 10}}, color = {0, 127, 255}));
   connect(SurchauffeurHP3.Cws1, SurchauffeurHP2.Cws2) annotation(
     Line(visible = false, points = {{-327, -30}, {-327, -10}, {-207, -10}, {-207, -30}}, color = {255, 0, 0}));
   connect(SurchauffeurHP2.Cws1, SurchauffeurHP1.Cws2) annotation(
