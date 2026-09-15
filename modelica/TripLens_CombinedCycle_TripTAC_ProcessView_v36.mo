@@ -216,8 +216,13 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
     nominalSpeedRpm = 1400, J = 300, frictionTorqueNominal = 20,
     initialTorque = 24000, torqueLimit = 8e4) annotation(
     Placement(visible = false, transformation(extent = {{660, -40}, {700, -10}})));
+  // TRIPLENS_IP_BFP_COASTDOWN_V8_7: the IP train is materially smaller than
+  // the LP reference train.  Its lower rotating inertia preserves the same
+  // breaker -> shaft -> static-pump boundary while targeting the existing 700
+  // rpm numerical pump-curve floor inside the dedicated 45 s equipment-only
+  // proof window.  The action run remains the physical acceptance check.
   TripLens_PumpPhysics.BreakerInertialPumpDrive vppIPFWPDrive(
-    nominalSpeedRpm = 1400, J = 300, frictionTorqueNominal = 20,
+    nominalSpeedRpm = 1400, J = 100, frictionTorqueNominal = 20,
     initialTorque = 12000, torqueLimit = 8e4) annotation(
     Placement(visible = false, transformation(extent = {{660, 0}, {700, 30}})));
   parameter Real vppHPFWPHydraulicSpeedFloorRPM(unit = "rev/min") = 700
@@ -284,6 +289,13 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   // TRIPLENS_NATIVE_OPCUA_VALVE_ADAPTER_SAFE_V2
   // Only the four writable commands are independent states.
   // Cv, flow and dP are algebraic aliases: no telemetry dynamics enter initialization.
+  // TRIPLENS_DRUM_FAULT_VALVE_MIN_OPENING_V8_7: ThermoSysPro's static
+  // ControlValve algebra divides by Cv^2.  A faulted closed drum valve is
+  // represented as a finite 1% seat-leak opening, never an algebraic Cv=0.
+  // Normal automatic and manual valve commands retain their exact values.
+  // The fault input remains excluded from RAW.csv by the dual-log contract.
+  parameter Real vppDrumFaultValveMinimumOpening(min = 0, max = 0.1) = 0.01
+    "Finite valve opening retained only during a drum fault override";
   input Real vppVlvHPFWCVModeAutoNative(start=1);
   input Real vppVlvHPFWCVManualCmdNative(start=0.8, min=0, max=1);
   input Real vppVlvHPFWCVFaultEnableNative(start=0);
@@ -872,7 +884,7 @@ equation
   // TRIPLENS_NATIVE_OPCUA_VALVE_ADAPTER_SAFE_V2: selection, physical drive and direct telemetry
   vppVlvHPFWCVAutoCmd = noEvent(min(1, max(0, regulation_Niveau_HP.SortieReelle1.signal)));
   vppVlvHPFWCVCmd = if noEvent(vppVlvHPFWCVModeAutoNative >= 0.5) then noEvent(min(1, max(0, regulation_Niveau_HP.SortieReelle1.signal))) else noEvent(min(1, max(0, vppVlvHPFWCVManualCmdNative)));
-  vppVlvHPFWCVTarget = if noEvent(vppVlvHPFWCVFaultEnableNative >= 0.5) then noEvent(min(1, max(0, vppVlvHPFWCVFaultValueNative))) else vppVlvHPFWCVCmd;
+  vppVlvHPFWCVTarget = if noEvent(vppVlvHPFWCVFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvHPFWCVFaultValueNative))))) else vppVlvHPFWCVCmd;
   vanne_alimentationHP.Ouv.signal = vppVlvHPFWCVTarget;
   vppVlvHPFWCVFb = noEvent(if abs(vanne_alimentationHP.Cvmax) > Modelica.Constants.eps then vanne_alimentationHP.Cv/vanne_alimentationHP.Cvmax else 0);
   vppVlvHPFWCVDeviation = vppVlvHPFWCVCmd - vppVlvHPFWCVFb;
@@ -882,7 +894,7 @@ equation
   vppVlvHPFWCVDPPa = vanne_alimentationHP.C1.P - vanne_alimentationHP.C2.P;
   vppVlvHPSteamAutoCmd = noEvent(min(1, max(0, constante_vanne_vapeurHP.y.signal))) - 1*Modelica.Constants.eps*(1 - cos(time));
   vppVlvHPSteamCmd = if noEvent(vppVlvHPSteamModeAutoNative >= 0.5) then noEvent(min(1, max(0, constante_vanne_vapeurHP.y.signal))) else noEvent(min(1, max(0, vppVlvHPSteamManualCmdNative)));
-  vppVlvHPSteamTarget = if noEvent(vppVlvHPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(0, vppVlvHPSteamFaultValueNative))) else vppVlvHPSteamCmd;
+  vppVlvHPSteamTarget = if noEvent(vppVlvHPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvHPSteamFaultValueNative))))) else vppVlvHPSteamCmd;
   vanne_vapeurHP.Ouv.signal = vppVlvHPSteamTarget;
   vppVlvHPSteamFb = noEvent(if abs(vanne_vapeurHP.Cvmax) > Modelica.Constants.eps then vanne_vapeurHP.Cv/vanne_vapeurHP.Cvmax else 0);
   vppVlvHPSteamDeviation = vppVlvHPSteamCmd - vppVlvHPSteamFb;
@@ -892,7 +904,7 @@ equation
   vppVlvHPSteamDPPa = vanne_vapeurHP.C1.P - vanne_vapeurHP.C2.P;
   vppVlvIPFWCVAutoCmd = noEvent(min(1, max(0, regulation_Niveau_MP.SortieReelle1.signal)));
   vppVlvIPFWCVCmd = if noEvent(vppVlvIPFWCVModeAutoNative >= 0.5) then noEvent(min(1, max(0, regulation_Niveau_MP.SortieReelle1.signal))) else noEvent(min(1, max(0, vppVlvIPFWCVManualCmdNative)));
-  vppVlvIPFWCVTarget = if noEvent(vppVlvIPFWCVFaultEnableNative >= 0.5) then noEvent(min(1, max(0, vppVlvIPFWCVFaultValueNative))) else vppVlvIPFWCVCmd;
+  vppVlvIPFWCVTarget = if noEvent(vppVlvIPFWCVFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvIPFWCVFaultValueNative))))) else vppVlvIPFWCVCmd;
   vanne_alimentationMP.Ouv.signal = vppVlvIPFWCVTarget;
   vppVlvIPFWCVFb = noEvent(if abs(vanne_alimentationMP.Cvmax) > Modelica.Constants.eps then vanne_alimentationMP.Cv/vanne_alimentationMP.Cvmax else 0);
   vppVlvIPFWCVDeviation = vppVlvIPFWCVCmd - vppVlvIPFWCVFb;
@@ -902,7 +914,7 @@ equation
   vppVlvIPFWCVDPPa = vanne_alimentationMP.C1.P - vanne_alimentationMP.C2.P;
   vppVlvIPSteamAutoCmd = noEvent(min(1, max(0, constante_vanne_vapeurMP.y.signal))) - 2*Modelica.Constants.eps*(1 - cos(time));
   vppVlvIPSteamCmd = if noEvent(vppVlvIPSteamModeAutoNative >= 0.5) then noEvent(min(1, max(0, constante_vanne_vapeurMP.y.signal))) else noEvent(min(1, max(0, vppVlvIPSteamManualCmdNative)));
-  vppVlvIPSteamTarget = if noEvent(vppVlvIPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(0, vppVlvIPSteamFaultValueNative))) else vppVlvIPSteamCmd;
+  vppVlvIPSteamTarget = if noEvent(vppVlvIPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvIPSteamFaultValueNative))))) else vppVlvIPSteamCmd;
   vanne_vapeurMP.Ouv.signal = vppVlvIPSteamTarget;
   vppVlvIPSteamFb = noEvent(if abs(vanne_vapeurMP.Cvmax) > Modelica.Constants.eps then vanne_vapeurMP.Cv/vanne_vapeurMP.Cvmax else 0);
   vppVlvIPSteamDeviation = vppVlvIPSteamCmd - vppVlvIPSteamFb;
@@ -912,7 +924,7 @@ equation
   vppVlvIPSteamDPPa = vanne_vapeurMP.C1.P - vanne_vapeurMP.C2.P;
   vppVlvLPSteamAutoCmd = noEvent(min(1, max(0, regulation_Niveau_BP.SortieReelle1.signal*vppLPDrumAdmissionMultiplier)));
   vppVlvLPSteamCmd = if noEvent(vppVlvLPSteamModeAutoNative >= 0.5) then noEvent(min(1, max(0, regulation_Niveau_BP.SortieReelle1.signal*vppLPDrumAdmissionMultiplier))) else noEvent(min(1, max(0, vppVlvLPSteamManualCmdNative)));
-  vppVlvLPSteamTarget = if noEvent(vppVlvLPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(0, vppVlvLPSteamFaultValueNative))) else vppVlvLPSteamCmd;
+  vppVlvLPSteamTarget = if noEvent(vppVlvLPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvLPSteamFaultValueNative))))) else vppVlvLPSteamCmd;
   vanne_vapeurBP.Ouv.signal = vppVlvLPSteamTarget;
   vppVlvLPSteamFb = noEvent(if abs(vanne_vapeurBP.Cvmax) > Modelica.Constants.eps then vanne_vapeurBP.Cv/vanne_vapeurBP.Cvmax else 0);
   vppVlvLPSteamDeviation = vppVlvLPSteamCmd - vppVlvLPSteamFb;
@@ -922,7 +934,7 @@ equation
   vppVlvLPSteamDPPa = vanne_vapeurBP.C1.P - vanne_vapeurBP.C2.P;
   vppVlvLPFWAutoCmd = noEvent(min(1, max(0, constante_vanne_vapeurBP.y.signal))) - 3*Modelica.Constants.eps*(1 - cos(time));
   vppVlvLPFWCmd = if noEvent(vppVlvLPFWModeAutoNative >= 0.5) then noEvent(min(1, max(0, constante_vanne_vapeurBP.y.signal))) else noEvent(min(1, max(0, vppVlvLPFWManualCmdNative)));
-  vppVlvLPFWTarget = if noEvent(vppVlvLPFWFaultEnableNative >= 0.5) then noEvent(min(1, max(0, vppVlvLPFWFaultValueNative))) else vppVlvLPFWCmd;
+  vppVlvLPFWTarget = if noEvent(vppVlvLPFWFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvLPFWFaultValueNative))))) else vppVlvLPFWCmd;
   vanne_alimentationBP.Ouv.signal = vppVlvLPFWTarget;
   vppVlvLPFWFb = noEvent(if abs(vanne_alimentationBP.Cvmax) > Modelica.Constants.eps then vanne_alimentationBP.Cv/vanne_alimentationBP.Cvmax else 0);
   vppVlvLPFWDeviation = vppVlvLPFWCmd - vppVlvLPFWFb;
