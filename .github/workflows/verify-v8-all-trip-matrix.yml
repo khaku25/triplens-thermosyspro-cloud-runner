@@ -16,6 +16,8 @@ on:
       - "config/alarm_registry_v1.csv"
       - "opcua_native_valve_nodes_v1.csv"
       - "tests/v8_5_3/**"
+      - "scripts/patch_stodola_turbine.py"
+      - "tests/test_stodola_patch.py"
       - ".github/workflows/verify-v8-all-trip-matrix.yml"
 
 permissions:
@@ -63,6 +65,11 @@ jobs:
           git -C vendor/ThermoSysPro checkout --detach "$THERMOSYSPRO_COMMIT"
           test "$(git -C vendor/ThermoSysPro rev-parse HEAD)" = "$THERMOSYSPRO_COMMIT"
           grep -Eq 'ThermoSysPro Version 3\.1' vendor/ThermoSysPro/ThermoSysPro/package.mo
+          python3 scripts/patch_stodola_turbine.py \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
+          python3 tests/test_stodola_patch.py
+          grep -q 'TRIPLENS_STODOLA_PRESSURE_CROSSOVER_V1' \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
           timeout --signal=TERM --kill-after=30s 8m \
             docker run --rm \
               -v "$PWD/build/omhome:/root" \
