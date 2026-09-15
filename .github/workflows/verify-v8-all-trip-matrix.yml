@@ -1,4 +1,4 @@
-name: Verify V8.5.3 all-trip 100 s matrix
+name: Verify V8.5.3 all-trip matrix (100 s full, 45 s HP/IP BFP)
 
 on:
   workflow_dispatch:
@@ -225,7 +225,6 @@ jobs:
                       --output "$output" \
                       --scenario "$scenario" \
                       --pre-fault-model-seconds "$PRE_FAULT_MODEL_SECONDS" \
-                      --post-fault-model-seconds "$POST_FAULT_MODEL_SECONDS" \
                       --timeout 480 \
                     > "$output/scenario-runner.log" 2>&1
                   runner_status=$?
@@ -294,7 +293,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v8-all-trip-matrix-100s-${{ github.run_number }}
+          name: v8-all-trip-matrix-mixed-horizon-${{ github.run_number }}
           path: |
             outputs/all-trip-matrix/LUNA_SUMMARY.*
             outputs/all-trip-matrix/LUNA_README.md
