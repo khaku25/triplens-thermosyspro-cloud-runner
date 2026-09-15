@@ -19,6 +19,8 @@ on:
       - "scripts/patch_stodola_turbine.py"
       - "scripts/patch_pressure_loss_property_floor.py"
       - "tests/test_stodola_patch.py"
+      - "scripts/patch_fluid_ph_property_floor.py"
+      - "tests/test_fluid_ph_property_floor.py"
       - ".github/workflows/verify-v8-all-trip-matrix.yml"
 
 permissions:
@@ -78,6 +80,11 @@ jobs:
             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/ControlValve.mo
           grep -q 'TRIPLENS_PRESSURE_LOSS_PROPERTY_FLOOR_V1' \
             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo
+          python3 scripts/patch_fluid_ph_property_floor.py \
+            vendor/ThermoSysPro/ThermoSysPro/Properties/Fluid/Ph.mo
+          python3 tests/test_fluid_ph_property_floor.py
+          grep -q 'TRIPLENS_FLUID_PH_PROPERTY_FLOOR_V1' \
+            vendor/ThermoSysPro/ThermoSysPro/Properties/Fluid/Ph.mo
           timeout --signal=TERM --kill-after=30s 8m \
             docker run --rm \
               -v "$PWD/build/omhome:/root" \
@@ -301,3 +308,4 @@ jobs:
             --pre-fault-model-seconds "$PRE_FAULT_MODEL_SECONDS" \
             --post-fault-model-seconds "$POST_FAULT_MODEL_SECONDS" \
             --require-all-pass
+
