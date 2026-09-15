@@ -60,7 +60,8 @@ jobs:
             tests/v8_5_3/*.py
           python3 tests/v8_5_3/selftest_all_trip_matrix.py \
             --runner tests/v8_5_3/run_trip_matrix_scenario.py \
-            --engine scripts/ecms_bfp_alarm_engine.py
+            --engine scripts/ecms_bfp_alarm_engine.py \
+            --run-controller scripts/opcua_run_controller.py
           python3 tests/v8_5_2/selftest_protection_matrix_v8.py \
             modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo
 
@@ -80,9 +81,12 @@ jobs:
           python3 scripts/patch_pressure_loss_property_floor.py \
             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/ControlValve.mo \
             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo
+          python3 tests/test_pressure_loss_property_floor.py
           grep -q 'TRIPLENS_PRESSURE_LOSS_PROPERTY_FLOOR_V1' \
             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/ControlValve.mo
           grep -q 'TRIPLENS_PRESSURE_LOSS_PROPERTY_FLOOR_V1' \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo
+          grep -q 'TRIPLENS_PRESSURE_LOSS_DENSITY_FLOOR_V1' \
             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo
           python3 scripts/patch_fluid_ph_property_floor.py \
             vendor/ThermoSysPro/ThermoSysPro/Properties/Fluid/Ph.mo
