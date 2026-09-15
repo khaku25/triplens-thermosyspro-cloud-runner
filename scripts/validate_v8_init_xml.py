@@ -29,6 +29,12 @@ EXTRA_INPUTS = (
     "vppExternalSTTripCommandNative",
     "vppGTTripResetNative",
     "vppSTTripResetNative",
+    "vppHPDrumInventoryFaultEnableNative",
+    "vppHPDrumInventoryFaultValueNative",
+    "vppIPDrumInventoryFaultEnableNative",
+    "vppIPDrumInventoryFaultValueNative",
+    "vppLPDrumInventoryFaultEnableNative",
+    "vppLPDrumInventoryFaultValueNative",
 )
 
 
@@ -46,9 +52,9 @@ def main() -> int:
             if row.get("direction", "").strip() == "WRITE"
         ]
     required = valve_inputs + list(EXTRA_INPUTS)
-    if len(required) != 66 or len(set(required)) != 66:
+    if len(required) != 72 or len(set(required)) != 72:
         raise SystemExit(
-            f"expected 66 unique command inputs, got total={len(required)} unique={len(set(required))}"
+            f"expected 72 unique command inputs, got total={len(required)} unique={len(set(required))}"
         )
 
     root = ET.parse(args.init_xml).getroot()

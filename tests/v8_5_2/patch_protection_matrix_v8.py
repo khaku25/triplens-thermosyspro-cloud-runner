@@ -7,13 +7,12 @@ separates the GT and ST latches, qualifies all six drum trips for 0.5 model
 seconds, and publishes every matrix input/output needed by the dashboard and
 RAW historian.
 
-V8.5 deliberately leaves the proven V7 ThermoSysPro hydraulic connections
-unchanged.  HP/IP breaker and protection states are executable, but they are
-not wired into the StaticCentrifugalPump speed boundary.  Earlier V8 builds
-forced that boundary to zero (and later to an artificial floor), which could
-invert turbine pressure relationships and terminate the embedded OPC UA
-server.  Physical pump coupling requires a separate, validated plant-model
-change; it is not part of this protection-logic release.
+V8.5.3-RC2 keeps the V7 plant topology but replaces the HP/IP fixed Ramp speed
+boundary with the same validated breaker/inertia adapter used by LP.  A BFP
+trip therefore removes motor torque, lets the static pump coast down, closes
+the discharge check valve and can produce the downstream drum-LL cause.  The
+protection matrix remains independent of the pump physics; it only consumes
+the resulting drum-level state.
 """
 
 from __future__ import annotations
@@ -27,6 +26,10 @@ from pathlib import Path
 MARKER = "TRIPLENS_PROTECTION_MATRIX_V8"
 LOOP_FIX_MARKER = "TRIPLENS_PROTECTION_MATRIX_V8_2_DISCRETE_LOOP_FIX"
 STABLE_MARKER = "TRIPLENS_PROTECTION_LOGIC_STABLE_V8_5"
+IP_COASTDOWN_MARKER = "TRIPLENS_IP_BFP_COASTDOWN_V8_7"
+DRUM_VALVE_REGULARIZATION_MARKER = "TRIPLENS_DRUM_FAULT_VALVE_MIN_OPENING_V8_7"
+V7_NORMAL_SPEED_MARKER = "TRIPLENS_HP_IP_V7_NORMAL_SPEED_BOUNDARY_V8_8"
+DRUM_FAULT_STROKE_MARKER = "TRIPLENS_DRUM_FAULT_STROKE_V8_8"
 REQUIRED_MARKERS = (
     "TRIPLENS_OPCUA_RUN_DRIVEN_LIVE_V2",
     "TRIPLENS_LP_BFP_OPERATOR_CHAIN_V1",
@@ -164,6 +167,41 @@ def install_matrix_declarations(source: str) -> str:
         r"\g<outputs>"
     )
     return replace_once(source, pattern, replacement, "protection matrix declarations")
+
+
+def install_hp_ip_inertial_declarations(source: str) -> str:
+    """Add physical HP/IP breaker/inertia adapters beside the existing LP one."""
+    marker = "TRIPLENS_HP_IP_FWP_INERTIAL_DRIVES_V8_6"
+    if marker in source:
+        return source
+    anchor = "  // TRIPLENS_ALL_FWP_CHECK_VALVES_OPCUA_V1\n"
+    if source.count(anchor) != 1:
+        raise ValueError("HP/IP inertial declaration anchor: expected one exact match")
+    declarations = (
+        f"  // {marker}\n"
+        "  TripLens_PumpPhysics.BreakerInertialPumpDrive vppHPFWPDrive(\n"
+        "    nominalSpeedRpm=1400, J=300, frictionTorqueNominal=20,\n"
+        "    initialTorque=24000, torqueLimit=8e4);\n"
+        "  TripLens_PumpPhysics.BreakerInertialPumpDrive vppIPFWPDrive(\n"
+        "    nominalSpeedRpm=1400, J=300, frictionTorqueNominal=20,\n"
+        "    initialTorque=12000, torqueLimit=8e4);\n"
+        "  parameter Real vppHPFWPHydraulicSpeedFloorRPM(unit=\"rev/min\") = 700;\n"
+        "  parameter Real vppIPFWPHydraulicSpeedFloorRPM(unit=\"rev/min\") = 700;\n"
+        "  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal\n"
+        "    vppHPFWPHydraulicSpeedCommand;\n"
+        "  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal\n"
+        "    vppIPFWPHydraulicSpeedCommand;\n"
+        "  output Real vppHPFWPHydraulicSpeedRPM(unit=\"rev/min\");\n"
+        "  output Real vppIPFWPHydraulicSpeedRPM(unit=\"rev/min\");\n"
+    )
+    source = source.replace(anchor, declarations + anchor, 1)
+    source = source.replace(
+        "  // TRIPLENS_PROTECTION_LOGIC_STABLE_V8_5: protection logic without hydraulic rewiring.\n",
+        "  // TRIPLENS_PROTECTION_LOGIC_STABLE_V8_5: independent protection logic;\n"
+        "  // HP/IP hydraulic coastdown is supplied by the V8.5.3 inertial adapters.\n",
+        1,
+    )
+    return source
 
 
 def install_published_equations(source: str) -> str:
@@ -361,22 +399,231 @@ def install_hp_ip_pump_proof_aliases(source: str) -> str:
         r"\s*vppIPFWPRunning\s*=\s*noEvent\([^;]+;"
     )
     replacement = (
-        r"\g<head>"
-        "  // V8.5 publishes the unchanged V7 hydraulic speed as process evidence.\n"
-        "  // Motor/running are protection indications, not a claim that the legacy\n"
-        "  // StaticCentrifugalPump has a validated electrical coastdown model.\n"
+        "  vppHPFWPSpeedCommandRPM = vppHPFWPHydraulicSpeedCommand.signal;\n"
+        "  vppIPFWPSpeedCommandRPM = vppIPFWPHydraulicSpeedCommand.signal;\n"
         "  vppHPFWPMotorEnergized = vppECMSVCBA01Closed;\n"
         "  vppIPFWPMotorEnergized = vppECMSVCBB01Closed;\n"
-        "  vppHPFWPSpeedRPM = vppHPFWPSpeedCommandRPM;\n"
-        "  vppIPFWPSpeedRPM = vppIPFWPSpeedCommandRPM;\n"
-        "  vppHPFWPSpeedProven = noEvent(vppHPFWPSpeedRPM > 1);\n"
-        "  vppIPFWPSpeedProven = noEvent(vppIPFWPSpeedRPM > 1);\n"
-        "  vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven and\n"
-        "    noEvent(abs(vppHPFWPMassFlowTH) > 0.1);\n"
-        "  vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven and\n"
-        "    noEvent(abs(vppIPFWPMassFlowTH) > 0.1);"
+        "  vppHPFWPDrive.breakerClosed.signal = vppHPFWPMotorEnergized;\n"
+        "  vppIPFWPDrive.breakerClosed.signal = vppIPFWPMotorEnergized;\n"
+        "  vppHPFWPDrive.pumpPower.signal = PompeAlimHP.Wm;\n"
+        "  vppIPFWPDrive.pumpPower.signal = PompeAlimMP.Wm;\n"
+        "  vppHPFWPHydraulicSpeedCommand.signal = noEvent(max(\n"
+        "    vppHPFWPHydraulicSpeedFloorRPM, vppHPFWPDrive.speedRpm));\n"
+        "  vppIPFWPHydraulicSpeedCommand.signal = noEvent(max(\n"
+        "    vppIPFWPHydraulicSpeedFloorRPM, vppIPFWPDrive.speedRpm));\n"
+        "  vppHPFWPSpeedRPM = vppHPFWPDrive.speedRpm;\n"
+        "  vppIPFWPSpeedRPM = vppIPFWPDrive.speedRpm;\n"
+        "  vppHPFWPHydraulicSpeedRPM = vppHPFWPHydraulicSpeedCommand.signal;\n"
+        "  vppIPFWPHydraulicSpeedRPM = vppIPFWPHydraulicSpeedCommand.signal;\n"
+        "  vppHPFWPSpeedProven = vppHPFWPSpeedRPM >= 0.9*vppHPFWPDrive.nominalSpeedRpm;\n"
+        "  vppIPFWPSpeedProven = vppIPFWPSpeedRPM >= 0.9*vppIPFWPDrive.nominalSpeedRpm;\n"
+        "  // Keep HP/IP running proof identical to the validated LP boundary.  Flow\n"
+        "  // remains an independent physical feedback/alarm, so a transient flow\n"
+        "  // reversal cannot mask the motor-speed loss event.\n"
+        "  vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven;\n"
+        "  vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven;\n"
+        "  connect(vppHPFWPHydraulicSpeedCommand, PompeAlimHP.rpm_or_mpower);\n"
+        "  connect(vppIPFWPHydraulicSpeedCommand, PompeAlimMP.rpm_or_mpower);"
     )
-    return replace_once(source, pattern, replacement, "HP/IP pump proof aliases")
+    source = replace_once(source, pattern, replacement, "HP/IP inertial pump aliases")
+    source = replace_once(
+        source,
+        "  connect(PompeAlimMP.rpm_or_mpower, arretPomesMp.y) annotation(\n"
+        "    Line(visible = false, points = {{781, -21}, {781, -26}, {871.1, -26}}, smooth = Smooth.None));\n",
+        "  // TRIPLENS_HP_IP_FWP_INERTIAL_DRIVES_V8_6: adapter owns the IP pump speed input.\n",
+        "remove legacy IP Ramp connection",
+    )
+    source = replace_once(
+        source,
+        "  connect(PompeAlimHP.rpm_or_mpower, arretPomesHP.y) annotation(\n"
+        "    Line(visible = false, points = {{781, -61}, {781, -80}, {872.1, -80}}, smooth = Smooth.None));\n",
+        "  // TRIPLENS_HP_IP_FWP_INERTIAL_DRIVES_V8_6: adapter owns the HP pump speed input.\n",
+        "remove legacy HP Ramp connection",
+    )
+    return source
+
+
+def normalize_hp_ip_running_proof(source: str) -> str:
+    """Upgrade an installed V8 source to the LP-equivalent running proof.
+
+    V8.5.3 sources may already contain the inertial adapters, so the normal
+    declaration installer intentionally leaves them in place.  Keep the
+    behavioral part upgradeable as well: flow is published independently and
+    must not gate the motor/speed loss proof used by the protection chain.
+    """
+    old = (
+        r"  vppHPFWPRunning\s*=\s*vppHPFWPMotorEnergized\s+and\s+"
+        r"vppHPFWPSpeedProven\s+and\s*\r?\n\s*"
+        r"noEvent\(abs\(vppHPFWPMassFlowTH\)\s*>\s*0\.1\);\s*\r?\n"
+        r"\s*vppIPFWPRunning\s*=\s*vppIPFWPMotorEnergized\s+and\s+"
+        r"vppIPFWPSpeedProven\s+and\s*\r?\n\s*"
+        r"noEvent\(abs\(vppIPFWPMassFlowTH\)\s*>\s*0\.1\);"
+    )
+    replacement = (
+        "  // Keep HP/IP running proof identical to the validated LP boundary.  Flow\n"
+        "  // remains an independent physical feedback/alarm, so a transient flow\n"
+        "  // reversal cannot mask the motor-speed loss event.\n"
+        "  vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven;\n"
+        "  vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven;"
+    )
+    upgraded, count = re.subn(old, replacement, source, count=1)
+    if count == 1:
+        return upgraded
+    if (
+        "vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven;"
+        in source
+        and "vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven;"
+        in source
+    ):
+        return source
+    raise ValueError("HP/IP running proof: expected old or upgraded equations")
+
+
+def install_ip_bfp_coastdown_tuning(source: str) -> str:
+    """Give the smaller IP feedwater-pump train its own physical inertia.
+
+    HP/IP keep the same LP-validated breaker/inertia topology.  Only the IP
+    rotating inertia differs: the original shared J=300 kept the IP shaft
+    above the static-pump numerical floor throughout the 45 s equipment proof.
+    """
+    if IP_COASTDOWN_MARKER in source:
+        return source
+    pattern = (
+        r"(?P<drive>\s*TripLens_PumpPhysics\.BreakerInertialPumpDrive\s+"
+        r"vppIPFWPDrive\(\s*\r?\n\s*nominalSpeedRpm\s*=\s*1400,\s*J\s*=\s*)300"
+        r"(?P<tail>,\s*frictionTorqueNominal\s*=\s*20,\s*\r?\n\s*"
+        r"initialTorque\s*=\s*12000,\s*torqueLimit\s*=\s*8e4\);)"
+    )
+    replacement = (
+        f"  // {IP_COASTDOWN_MARKER}: IP has lower rotating inertia than LP.\n"
+        r"\g<drive>100\g<tail>"
+    )
+    return replace_once(source, pattern, replacement, "IP BFP coastdown inertia")
+
+
+def install_drum_fault_valve_regularization(source: str) -> str:
+    """Keep drum-fault ControlValve Cv finite without changing normal control."""
+    if (
+        DRUM_VALVE_REGULARIZATION_MARKER in source
+        or DRUM_FAULT_STROKE_MARKER in source
+    ):
+        return source
+    declaration_anchor = (
+        "  // TRIPLENS_NATIVE_OPCUA_VALVE_ADAPTER_SAFE_V2\n"
+        "  // Only the four writable commands are independent states.\n"
+        "  // Cv, flow and dP are algebraic aliases: no telemetry dynamics enter initialization.\n"
+    )
+    declaration = (
+        f"{declaration_anchor}"
+        f"  // {DRUM_VALVE_REGULARIZATION_MARKER}: finite seat leakage prevents a\n"
+        "  // static ThermoSysPro ControlValve from entering its Cv=0 singularity.\n"
+        "  parameter Real vppDrumFaultValveMinimumOpening(min=0, max=0.1) = 0.01\n"
+        "    \"Finite valve opening retained only during a drum fault override\";\n"
+    )
+    if declaration_anchor not in source:
+        raise ValueError("drum-fault valve declaration anchor is missing")
+    source = source.replace(declaration_anchor, declaration, 1)
+    targets = (
+        ("vppVlvHPFWCVTarget", "vppVlvHPFWCVFaultEnableNative", "vppVlvHPFWCVFaultValueNative", "vppVlvHPFWCVCmd"),
+        ("vppVlvHPSteamTarget", "vppVlvHPSteamFaultEnableNative", "vppVlvHPSteamFaultValueNative", "vppVlvHPSteamCmd"),
+        ("vppVlvIPFWCVTarget", "vppVlvIPFWCVFaultEnableNative", "vppVlvIPFWCVFaultValueNative", "vppVlvIPFWCVCmd"),
+        ("vppVlvIPSteamTarget", "vppVlvIPSteamFaultEnableNative", "vppVlvIPSteamFaultValueNative", "vppVlvIPSteamCmd"),
+        ("vppVlvLPSteamTarget", "vppVlvLPSteamFaultEnableNative", "vppVlvLPSteamFaultValueNative", "vppVlvLPSteamCmd"),
+        ("vppVlvLPFWTarget", "vppVlvLPFWFaultEnableNative", "vppVlvLPFWFaultValueNative", "vppVlvLPFWCmd"),
+    )
+    for target, enabled, value, command in targets:
+        old = (
+            rf"  {target}\s*=\s*if noEvent\({enabled}\s*>=\s*0\.5\) then\s*"
+            rf"noEvent\(min\(1, max\(0, {value}\)\)\) else {command};"
+        )
+        new = (
+            f"  {target} = if noEvent({enabled} >= 0.5) then "
+            f"noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, {value}))))) "
+            f"else {command};"
+        )
+        source = replace_once(source, old, new, f"{target} fault regularization")
+    return source
+
+
+def install_hp_ip_v7_normal_speed_boundary(source: str) -> str:
+    """Keep the established V7 speed command exact until a HP/IP VCB opens."""
+    if V7_NORMAL_SPEED_MARKER in source:
+        return source
+    old = (
+        r"  vppHPFWPHydraulicSpeedCommand\.signal\s*=\s*noEvent\(max\(\s*"
+        r"vppHPFWPHydraulicSpeedFloorRPM\s*,\s*vppHPFWPDrive\.speedRpm\)\);\s*\r?\n"
+        r"\s*vppIPFWPHydraulicSpeedCommand\.signal\s*=\s*noEvent\(max\(\s*"
+        r"vppIPFWPHydraulicSpeedFloorRPM\s*,\s*vppIPFWPDrive\.speedRpm\)\);"
+    )
+    new = (
+        f"  // {V7_NORMAL_SPEED_MARKER}: preserve the V7 Ramp command while the\n"
+        "  // respective motor is energized; switch to physical coastdown only after\n"
+        "  // its own breaker has opened.\n"
+        "  vppHPFWPHydraulicSpeedCommand.signal = if vppHPFWPMotorEnergized then\n"
+        "    arretPomesHP.y.signal else noEvent(max(vppHPFWPHydraulicSpeedFloorRPM,\n"
+        "    vppHPFWPDrive.speedRpm));\n"
+        "  vppIPFWPHydraulicSpeedCommand.signal = if vppIPFWPMotorEnergized then\n"
+        "    arretPomesMp.y.signal else noEvent(max(vppIPFWPHydraulicSpeedFloorRPM,\n"
+        "    vppIPFWPDrive.speedRpm));"
+    )
+    return replace_once(source, old, new, "HP/IP V7 normal speed boundary")
+
+
+def install_drum_fault_stroke(source: str) -> str:
+    """Replace abrupt fault-valve jumps with finite, physical valve strokes."""
+    if DRUM_FAULT_STROKE_MARKER in source:
+        return source
+    if DRUM_VALVE_REGULARIZATION_MARKER not in source:
+        raise ValueError("drum-fault valve regularization must be installed first")
+
+    old_declaration = (
+        rf"  // {DRUM_VALVE_REGULARIZATION_MARKER}:[^\r\n]*"
+        r"(?:\r?\n\s*//[^\r\n]*)*\r?\n"
+        r"\s*parameter Real vppDrumFaultValveMinimumOpening\(min\s*=\s*0,\s*max\s*=\s*0\.1\)\s*=\s*0\.01\s*\r?\n"
+        r"\s*\"Finite valve opening retained only during a drum fault override\";"
+    )
+    new_declaration = (
+        f"  // {DRUM_FAULT_STROKE_MARKER}: a drum fault is a finite valve stroke,\n"
+        "  // never an algebraic Cv=0 jump.  Normal commands remain unmodified.\n"
+        "  parameter Real vppDrumFaultValveMinimumOpening(min=0, max=0.1) = 0.05\n"
+        "    \"Finite valve opening retained only during a drum fault override\";\n"
+        "  parameter Modelica.SIunits.Time vppDrumFaultValveStrokeTime(min=0.1) = 2\n"
+        "    \"Physical travel time used only while a drum-fault override is active\";"
+    )
+    source = replace_once(
+        source, old_declaration, new_declaration, "drum-fault stroke declarations"
+    )
+
+    targets = (
+        ("vppVlvHPFWCVTarget", "vppVlvHPFWCVFaultStroke", "vppVlvHPFWCVFaultEnableNative", "vppVlvHPFWCVFaultValueNative", "vppVlvHPFWCVCmd", "0.8"),
+        ("vppVlvHPSteamTarget", "vppVlvHPSteamFaultStroke", "vppVlvHPSteamFaultEnableNative", "vppVlvHPSteamFaultValueNative", "vppVlvHPSteamCmd", "0.5"),
+        ("vppVlvIPFWCVTarget", "vppVlvIPFWCVFaultStroke", "vppVlvIPFWCVFaultEnableNative", "vppVlvIPFWCVFaultValueNative", "vppVlvIPFWCVCmd", "0.8"),
+        ("vppVlvIPSteamTarget", "vppVlvIPSteamFaultStroke", "vppVlvIPSteamFaultEnableNative", "vppVlvIPSteamFaultValueNative", "vppVlvIPSteamCmd", "0.5"),
+        ("vppVlvLPSteamTarget", "vppVlvLPSteamFaultStroke", "vppVlvLPSteamFaultEnableNative", "vppVlvLPSteamFaultValueNative", "vppVlvLPSteamCmd", "0.8"),
+        ("vppVlvLPFWTarget", "vppVlvLPFWFaultStroke", "vppVlvLPFWFaultEnableNative", "vppVlvLPFWFaultValueNative", "vppVlvLPFWCmd", "0.5"),
+    )
+    for target, stroke, enabled, value, command, initial in targets:
+        source = replace_once(
+            source,
+            rf"  Real {target}\(min\s*=\s*0,\s*max\s*=\s*1\);",
+            f"  Real {target}(min=0, max=1);\n"
+            f"  Real {stroke}(min=0, max=1, start={initial}, fixed=true);",
+            f"{target} stroke state",
+        )
+        old_target = (
+            rf"  {target}\s*=\s*if\s+noEvent\(\s*{enabled}\s*>=\s*0\.5\s*\)\s+then\s*"
+            rf"noEvent\(\s*min\(\s*1\s*,\s*max\(\s*vppDrumFaultValveMinimumOpening\s*,\s*"
+            rf"min\(\s*1\s*,\s*max\(\s*0\s*,\s*{value}\s*\)\s*\)\s*\)\s*\)\s*\)\s*"
+            rf"else\s*{command}\s*;"
+        )
+        new_target = (
+            f"  der({stroke}) = ((if noEvent({enabled} >= 0.5) then "
+            f"noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, {value}))))) "
+            f"else {command}) - {stroke})/vppDrumFaultValveStrokeTime;\n"
+            f"  {target} = if noEvent({enabled} >= 0.5) then {stroke} else {command};"
+        )
+        source = replace_once(source, old_target, new_target, f"{target} fault stroke")
+    return source
 
 
 def bind_gt_physics_to_gt_latch(source: str) -> str:
@@ -402,7 +649,19 @@ def patch_text(source: str) -> str:
                 "an older V8 source is installed; restore the V7 source backup "
                 "before applying V8.5 Logic Stable"
             )
-        return repair_gt_breaker_discrete_loop(source)
+        source = repair_gt_breaker_discrete_loop(source)
+        # The installer may be run over a previously installed V8.5 source.
+        # Upgrade that source in place instead of treating the V8 marker as
+        # proof that the HP/IP physical adapter is already present.
+        if "TRIPLENS_HP_IP_FWP_INERTIAL_DRIVES_V8_6" not in source:
+            source = install_hp_ip_inertial_declarations(source)
+            source = install_hp_ip_pump_proof_aliases(source)
+        source = normalize_hp_ip_running_proof(source)
+        source = install_ip_bfp_coastdown_tuning(source)
+        source = install_drum_fault_valve_regularization(source)
+        source = install_hp_ip_v7_normal_speed_boundary(source)
+        source = install_drum_fault_stroke(source)
+        return source
     for marker in REQUIRED_MARKERS:
         if marker not in source:
             raise ValueError(f"required predecessor marker is missing: {marker}")
@@ -413,7 +672,13 @@ def patch_text(source: str) -> str:
     source = install_hp_ip_bfp_protection_chains(source)
     source = install_event_logic(source)
     source = bind_gt_physics_to_gt_latch(source)
+    source = install_hp_ip_inertial_declarations(source)
     source = install_hp_ip_pump_proof_aliases(source)
+    source = normalize_hp_ip_running_proof(source)
+    source = install_ip_bfp_coastdown_tuning(source)
+    source = install_drum_fault_valve_regularization(source)
+    source = install_hp_ip_v7_normal_speed_boundary(source)
+    source = install_drum_fault_stroke(source)
     source = repair_gt_breaker_discrete_loop(source)
 
     required = (
@@ -436,16 +701,25 @@ def patch_text(source: str) -> str:
         "vppCauseLPDrumLL",
         "if vppGTTripLatchInternal then vppGTExhaustMassFlowTrip",
         "if vppSTTripLatch then vppAdmissionSeatLeak",
+        "TRIPLENS_HP_IP_FWP_INERTIAL_DRIVES_V8_6",
+        IP_COASTDOWN_MARKER,
+        V7_NORMAL_SPEED_MARKER,
+        DRUM_FAULT_STROKE_MARKER,
+        "vppDrumFaultValveMinimumOpening",
+        "vppDrumFaultValveStrokeTime",
         "vppHPFWPMotorEnergized = vppECMSVCBA01Closed",
-        "vppIPFWPSpeedProven = noEvent(vppIPFWPSpeedRPM > 1)",
+        "vppHPFWPDrive.breakerClosed.signal = vppHPFWPMotorEnergized",
+        "vppIPFWPDrive.breakerClosed.signal = vppIPFWPMotorEnergized",
+        "vppHPFWPSpeedProven = vppHPFWPSpeedRPM >= 0.9*vppHPFWPDrive.nominalSpeedRpm",
+        "vppIPFWPSpeedProven = vppIPFWPSpeedRPM >= 0.9*vppIPFWPDrive.nominalSpeedRpm",
         "vppHPFWPTripLatchNative = vppHPFWPTripLatchState",
         "vppVCBA01TripCommandNative = vppHPFWPTripLatchState",
         "vppIPFWPTripLatchNative = vppIPFWPTripLatchState",
         "vppVCBB01TripCommandNative = vppIPFWPTripLatchState",
         "vppECMSVCBA01Closed = vppVCBA01TripCommandNative < 0.5",
         "vppECMSVCBB01Closed = vppVCBB01TripCommandNative < 0.5",
-        "connect(PompeAlimHP.rpm_or_mpower, arretPomesHP.y)",
-        "connect(PompeAlimMP.rpm_or_mpower, arretPomesMp.y)",
+        "connect(vppHPFWPHydraulicSpeedCommand, PompeAlimHP.rpm_or_mpower)",
+        "connect(vppIPFWPHydraulicSpeedCommand, PompeAlimMP.rpm_or_mpower)",
         STABLE_MARKER,
         LOOP_FIX_MARKER,
     )
@@ -460,8 +734,6 @@ def patch_text(source: str) -> str:
         "output Real vppExternalSTTripCommandNative",
         "elsewhen vppECMS52GTClosedCommandNative < 0.5 and\n"
         "      not vppGTTripLatchInternal then",
-        "vppHPFWPHydraulicSpeedCommand",
-        "vppIPFWPHydraulicSpeedCommand",
         "TRIPLENS_HP_IP_BFP_INERTIAL_DRIVE_V8_4",
     )
     for contract in forbidden:
@@ -490,7 +762,7 @@ def main() -> int:
     print("Protection inputs: direct GT/ST Trip/reset + HP/IP/LP BFP operator PBs")
     print("Matrix: 9 causes; GT and ST latches are independent")
     print("Drum HH/LL persistence: 0.5 model seconds")
-    print("HP/IP physical pump connections: V7 preserved (logic-only protection boundary)")
+    print("HP/IP physical pump connections: breaker/inertia coastdown adapter V8.5.3-RC2")
     return 0
 
 
