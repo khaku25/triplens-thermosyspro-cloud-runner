@@ -26,6 +26,8 @@ from pathlib import Path
 MARKER = "TRIPLENS_PROTECTION_MATRIX_V8"
 LOOP_FIX_MARKER = "TRIPLENS_PROTECTION_MATRIX_V8_2_DISCRETE_LOOP_FIX"
 STABLE_MARKER = "TRIPLENS_PROTECTION_LOGIC_STABLE_V8_5"
+IP_COASTDOWN_MARKER = "TRIPLENS_IP_BFP_COASTDOWN_V8_7"
+DRUM_VALVE_REGULARIZATION_MARKER = "TRIPLENS_DRUM_FAULT_VALVE_MIN_OPENING_V8_7"
 REQUIRED_MARKERS = (
     "TRIPLENS_OPCUA_RUN_DRIVEN_LIVE_V2",
     "TRIPLENS_LP_BFP_OPERATOR_CHAIN_V1",
@@ -475,6 +477,69 @@ def normalize_hp_ip_running_proof(source: str) -> str:
     raise ValueError("HP/IP running proof: expected old or upgraded equations")
 
 
+def install_ip_bfp_coastdown_tuning(source: str) -> str:
+    """Give the smaller IP feedwater-pump train its own physical inertia.
+
+    HP/IP keep the same LP-validated breaker/inertia topology.  Only the IP
+    rotating inertia differs: the original shared J=300 kept the IP shaft
+    above the static-pump numerical floor throughout the 45 s equipment proof.
+    """
+    if IP_COASTDOWN_MARKER in source:
+        return source
+    pattern = (
+        r"(?P<drive>\s*TripLens_PumpPhysics\.BreakerInertialPumpDrive\s+"
+        r"vppIPFWPDrive\(\s*\r?\n\s*nominalSpeedRpm\s*=\s*1400,\s*J\s*=\s*)300"
+        r"(?P<tail>,\s*frictionTorqueNominal\s*=\s*20,\s*\r?\n\s*"
+        r"initialTorque\s*=\s*12000,\s*torqueLimit\s*=\s*8e4\);)"
+    )
+    replacement = (
+        f"  // {IP_COASTDOWN_MARKER}: IP has lower rotating inertia than LP.\n"
+        r"\g<drive>100\g<tail>"
+    )
+    return replace_once(source, pattern, replacement, "IP BFP coastdown inertia")
+
+
+def install_drum_fault_valve_regularization(source: str) -> str:
+    """Keep drum-fault ControlValve Cv finite without changing normal control."""
+    if DRUM_VALVE_REGULARIZATION_MARKER in source:
+        return source
+    declaration_anchor = (
+        "  // TRIPLENS_NATIVE_OPCUA_VALVE_ADAPTER_SAFE_V2\n"
+        "  // Only the four writable commands are independent states.\n"
+        "  // Cv, flow and dP are algebraic aliases: no telemetry dynamics enter initialization.\n"
+    )
+    declaration = (
+        f"{declaration_anchor}"
+        f"  // {DRUM_VALVE_REGULARIZATION_MARKER}: finite seat leakage prevents a\n"
+        "  // static ThermoSysPro ControlValve from entering its Cv=0 singularity.\n"
+        "  parameter Real vppDrumFaultValveMinimumOpening(min=0, max=0.1) = 0.01\n"
+        "    \"Finite valve opening retained only during a drum fault override\";\n"
+    )
+    if declaration_anchor not in source:
+        raise ValueError("drum-fault valve declaration anchor is missing")
+    source = source.replace(declaration_anchor, declaration, 1)
+    targets = (
+        ("vppVlvHPFWCVTarget", "vppVlvHPFWCVFaultEnableNative", "vppVlvHPFWCVFaultValueNative", "vppVlvHPFWCVCmd"),
+        ("vppVlvHPSteamTarget", "vppVlvHPSteamFaultEnableNative", "vppVlvHPSteamFaultValueNative", "vppVlvHPSteamCmd"),
+        ("vppVlvIPFWCVTarget", "vppVlvIPFWCVFaultEnableNative", "vppVlvIPFWCVFaultValueNative", "vppVlvIPFWCVCmd"),
+        ("vppVlvIPSteamTarget", "vppVlvIPSteamFaultEnableNative", "vppVlvIPSteamFaultValueNative", "vppVlvIPSteamCmd"),
+        ("vppVlvLPSteamTarget", "vppVlvLPSteamFaultEnableNative", "vppVlvLPSteamFaultValueNative", "vppVlvLPSteamCmd"),
+        ("vppVlvLPFWTarget", "vppVlvLPFWFaultEnableNative", "vppVlvLPFWFaultValueNative", "vppVlvLPFWCmd"),
+    )
+    for target, enabled, value, command in targets:
+        old = (
+            rf"  {target}\s*=\s*if noEvent\({enabled}\s*>=\s*0\.5\) then\s*"
+            rf"noEvent\(min\(1, max\(0, {value}\)\)\) else {command};"
+        )
+        new = (
+            f"  {target} = if noEvent({enabled} >= 0.5) then "
+            f"noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, {value}))))) "
+            f"else {command};"
+        )
+        source = replace_once(source, old, new, f"{target} fault regularization")
+    return source
+
+
 def bind_gt_physics_to_gt_latch(source: str) -> str:
     source = replace_once(
         source,
@@ -506,6 +571,8 @@ def patch_text(source: str) -> str:
             source = install_hp_ip_inertial_declarations(source)
             source = install_hp_ip_pump_proof_aliases(source)
         source = normalize_hp_ip_running_proof(source)
+        source = install_ip_bfp_coastdown_tuning(source)
+        source = install_drum_fault_valve_regularization(source)
         return source
     for marker in REQUIRED_MARKERS:
         if marker not in source:
@@ -520,6 +587,8 @@ def patch_text(source: str) -> str:
     source = install_hp_ip_inertial_declarations(source)
     source = install_hp_ip_pump_proof_aliases(source)
     source = normalize_hp_ip_running_proof(source)
+    source = install_ip_bfp_coastdown_tuning(source)
+    source = install_drum_fault_valve_regularization(source)
     source = repair_gt_breaker_discrete_loop(source)
 
     required = (
@@ -543,6 +612,9 @@ def patch_text(source: str) -> str:
         "if vppGTTripLatchInternal then vppGTExhaustMassFlowTrip",
         "if vppSTTripLatch then vppAdmissionSeatLeak",
         "TRIPLENS_HP_IP_FWP_INERTIAL_DRIVES_V8_6",
+        IP_COASTDOWN_MARKER,
+        DRUM_VALVE_REGULARIZATION_MARKER,
+        "vppDrumFaultValveMinimumOpening",
         "vppHPFWPMotorEnergized = vppECMSVCBA01Closed",
         "vppHPFWPDrive.breakerClosed.signal = vppHPFWPMotorEnergized",
         "vppIPFWPDrive.breakerClosed.signal = vppIPFWPMotorEnergized",
