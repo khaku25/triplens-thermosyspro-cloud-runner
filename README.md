@@ -13,6 +13,11 @@ V8은 현재 V8.5.3 RC1 검증 단계입니다. LP BFP 단기 시나리오는 Gi
 검증 범위와 승격 조건은
 [`docs/V8_5_3_RC1_VALIDATION.md`](docs/V8_5_3_RC1_VALIDATION.md)를 기준으로 합니다.
 
+전체 검증은 `Verify V8.5.3 all-trip 100 s matrix` Action에서 수행합니다.
+V8을 한 번 빌드한 뒤 12개 시나리오마다 OPC UA 서버를 새로 시작하며, 결과
+아티팩트에는 사건별 `EVENT.csv`, `RAW.csv`와 저토큰 검토용
+`LUNA_SUMMARY.csv/json`이 포함됩니다.
+
 저장소에 함께 있는 MATLAB ECMS VPP와 Python 변환기는 웹 변환부 이관 및
 예제 검증을 위한 실행 가능한 기준 구현입니다. Action 실행 경로와는 분리되어
 있으며, RAW를 변경하지 않고 네 관측 계층으로 변환합니다.

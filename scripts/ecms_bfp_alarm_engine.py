@@ -166,6 +166,14 @@ RAW_DERIVED_COLUMNS = (
 )
 FORBIDDEN_AI_COLUMNS = {"scenario_id", "root_cause", "fault_injection", "fault_preset"}
 VISIBLE_EVENT_CLASSES = {"ALARM", "OPERATOR_ACTION", "PROTECTION", "ACK", "SYSTEM"}
+AI_EXCLUDED_HISTORIAN_SUFFIXES = (
+    "FaultEnableNative", "FaultValueNative", "FaultActive",
+)
+MATRIX_SCENARIOS = {
+    "direct_gt", "gt_breaker", "direct_st",
+    "hp_drum_hh", "ip_drum_hh", "lp_drum_hh",
+    "hp_drum_ll", "ip_drum_ll", "lp_drum_ll",
+}
 
 
 def parser() -> argparse.ArgumentParser:
@@ -520,7 +528,8 @@ def discover_historian_nodes(
             name = str(node.get_browse_name().Name)
         except Exception:
             continue
-        if name in required or name.startswith("vpp"):
+        ai_excluded = name.endswith(AI_EXCLUDED_HISTORIAN_SUFFIXES)
+        if name in required or (name.startswith("vpp") and not ai_excluded):
             matches.setdefault(name, []).append(node)
     missing = sorted(name for name in required if not matches.get(name))
     duplicate_required = sorted(name for name in required if len(matches.get(name, [])) > 1)
@@ -1157,6 +1166,22 @@ class AlarmEngine:
             self.start_incident()
             self.add_event("HIGH", "OPERATOR_ACTION", "LP BFP", "LP_BFP_TRIP_PB", "PRESSED", 1, "BOOL", "LP BFP TRIP PB PRESSED", "OPERATOR")
             self.start_control("PUMP_TRIP", "LP")
+        elif action == "BEGIN_SCENARIO":
+            scenario = str(command.get("scenario", "")).strip().lower()
+            if scenario not in MATRIX_SCENARIOS:
+                self.command_state = "BEGIN_SCENARIO_FAIL"
+                self.internal_audit(
+                    "BEGIN_MATRIX_SCENARIO_REJECTED", {"scenario": scenario}
+                )
+                return
+            self.armed_at = None
+            self.trip_at = None
+            self.start_incident()
+            self.command_state = f"SCENARIO:{scenario}_PASS"
+            self.internal_audit(
+                "BEGIN_MATRIX_SCENARIO", {"scenario": scenario}
+            )
+            self.force_raw = True
         elif action == "RESET":
             self.armed_at = None
             self.trip_at = None

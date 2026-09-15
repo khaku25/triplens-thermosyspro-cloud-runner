@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+"""Static contract test for the complete executable V8 trip matrix."""
+
+from __future__ import annotations
+
+import argparse
+import importlib.util
+import json
+from pathlib import Path
+
+
+EXPECTED = {
+    "direct_gt", "gt_breaker", "direct_st",
+    "hp_drum_hh", "ip_drum_hh", "lp_drum_hh",
+    "hp_drum_ll", "ip_drum_ll", "lp_drum_ll",
+    "hp_bfp", "ip_bfp", "lp_bfp",
+}
+
+
+def load(path: Path):
+    spec = importlib.util.spec_from_file_location("trip_matrix_runner", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--runner", type=Path, required=True)
+    parser.add_argument("--engine", type=Path, required=True)
+    args = parser.parse_args()
+    module = load(args.runner)
+    scenarios = set(module.SCENARIOS)
+    if scenarios != EXPECTED:
+        raise RuntimeError(f"scenario mismatch: {sorted(scenarios ^ EXPECTED)}")
+    for name in ("hp", "ip", "lp"):
+        hh = module.SCENARIOS[f"{name}_drum_hh"]
+        ll = module.SCENARIOS[f"{name}_drum_ll"]
+        if hh["expected_domain"] != "ST" or hh["expected"]["vppSTTripLatchPublished"] != 1.0:
+            raise RuntimeError(f"{name} HH must trip ST only")
+        if ll["expected_domain"] != "GT+ST" or ll["expected"]["vppGTTripLatch"] != 1.0 or ll["expected"]["vppSTTripLatchPublished"] != 1.0:
+            raise RuntimeError(f"{name} LL must trip GT+ST")
+    engine = args.engine.read_text(encoding="utf-8-sig")
+    for marker in ("BEGIN_SCENARIO", "BEGIN_MATRIX_SCENARIO", "MATRIX_SCENARIOS"):
+        if marker not in engine:
+            raise RuntimeError(f"engine scenario marker missing: {marker}")
+    if "AI_EXCLUDED_HISTORIAN_SUFFIXES" not in engine:
+        raise RuntimeError("internal fault-injection signals are not excluded from AI RAW")
+    if len(module.SCENARIOS["lp_bfp"]["events"]) != 6:
+        raise RuntimeError("LP BFP must require six automatic events plus operator PB")
+    print(json.dumps({
+        "status": "PASS", "scenario_count": len(scenarios),
+        "common_trip_causes": 9, "independent_bfp_trips": 3,
+        "post_fault_model_seconds": 100,
+    }, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
