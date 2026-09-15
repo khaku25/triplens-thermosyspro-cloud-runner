@@ -8,10 +8,12 @@ corresponding Drum LL cause to persist long enough for the GT+ST matrix trip.
 
 The GitHub Action builds the model once and starts a fresh OPC UA server for
 each of twelve scenarios. Every scenario is isolated, receives at least five
-seconds of pre-fault RAW, and is allowed to run for 100 seconds after its
-trigger. A failed scenario is recorded and cleaned up before the next one.
+seconds of pre-fault RAW, and is cleaned up before the next one. The LP BFP
+and all drum/matrix scenarios retain a 100-second post-fault window. HP/IP
+BFP-only scenarios use a 45-second equipment-coastdown window; their separate
+HP/IP Drum LL scenarios remain the 100-second matrix proof.
 
-For each BFP scenario the acceptance gate requires:
+For the LP end-to-end BFP scenario, the acceptance gate requires:
 
 - operator PB, breaker-open, motor-deenergized, running-lost, speed-lost,
   check-valve-closed, and feedwater-flow-low EVENT records;
@@ -19,6 +21,11 @@ For each BFP scenario the acceptance gate requires:
   check-valve trajectories in RAW;
 - the corresponding Drum LL matrix cause and final GT/ST latch state;
 - schema-safe `EVENT.csv` plus complete numeric `RAW.csv` output.
+
+For HP/IP BFP-only scenarios, the gate stops at the equipment chain (operator
+PB → breaker/motor → speed/flow loss → check-valve closure). HP/IP Drum LL
+and GT/ST behavior is checked by their dedicated 100-second drum scenarios,
+so a short HP/IP BFP run is not reported as a Drum LL proof.
 
 The downloadable artifact also contains `LUNA_SUMMARY.csv/json`, so a later
 review can start with the compact summary and open only failed scenarios.
