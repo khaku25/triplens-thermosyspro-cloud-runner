@@ -1,41 +1,87 @@
 {
-  "schema": "triplens.kiee2026.workflow/v1",
+  "schema": "triplens.kiee2026.workflow/v2",
   "workflow_name": "TripLens Incident Analysis",
   "release": "RC0_WORKING_DRAFT",
   "inputs": [
-    {"name": "EVENT.csv", "role": "alarm_protection_operator_event"},
-    {"name": "RAW.csv", "role": "historian_process_logic_state_evidence"}
+    {
+      "name": "EVENT.csv",
+      "role": "full_alarm_protection_operator_event_stream"
+    },
+    {
+      "name": "RAW.csv",
+      "role": "historian_process_logic_state_evidence"
+    }
   ],
+  "principles": {
+    "event_stream_is_prepruned_to_answer": false,
+    "engineering_layer_builds_ground_truth_causal_chain": false,
+    "agent_generates_causal_chain": true,
+    "verification_generates_causal_chain": false
+  },
   "steps": [
     {
       "id": "S01",
       "name": "Input Validation",
       "type": "deterministic",
-      "outputs": ["validated_input", "quality_flags"]
+      "outputs": [
+        "validated_input",
+        "quality_flags"
+      ]
     },
     {
       "id": "S02",
       "name": "Time Alignment and Normalization",
       "type": "deterministic",
-      "outputs": ["aligned_event_raw"]
+      "outputs": [
+        "aligned_event_raw"
+      ]
     },
     {
       "id": "S03",
-      "name": "Critical Event and Evidence Extraction",
-      "type": "deterministic",
-      "outputs": ["critical_event_candidates", "evidence_refs", "state_context"]
+      "name": "Event Index and Evidence Access",
+      "type": "deterministic_tooling",
+      "outputs": [
+        "event_index",
+        "raw_index",
+        "equipment_state_index",
+        "evidence_refs"
+      ],
+      "note": "This step organizes and exposes evidence. It does not decide the final critical-event set or causal chain."
     },
     {
       "id": "S04",
-      "name": "Causal Context Construction",
+      "name": "Tag Equipment and Logic Context Tools",
       "type": "engineering_context",
-      "outputs": ["causal_context", "missing_evidence"]
+      "outputs": [
+        "tag_semantics",
+        "equipment_context",
+        "logic_relationships"
+      ],
+      "note": "Logic/Tag context provides engineering meaning and possible relationships, not the incident answer."
     },
     {
       "id": "S05",
-      "name": "Gemini Evidence Review",
+      "name": "Gemini Evidence Navigation and Incident Reasoning",
       "type": "agent",
-      "outputs": ["incident_interpretation", "cause_layers", "recovery_checks"],
+      "outputs": [
+        "critical_events",
+        "cause_hypotheses",
+        "primary_cause_or_candidate",
+        "causal_chain",
+        "affected_equipment",
+        "recovery_checks",
+        "claim_evidence_map"
+      ],
+      "agent_tasks": [
+        "inspect_full_event_stream",
+        "select_critical_events",
+        "query_relevant_raw_evidence",
+        "separate_origin_trigger_and_propagation",
+        "compare_cause_hypotheses",
+        "generate_causal_chain",
+        "identify_missing_or_conflicting_evidence",
+        "produce_recovery_checks"
+      ],
       "restrictions": [
         "no_raw_value_modification",
         "no_event_timestamp_modification",
@@ -47,15 +93,35 @@
       "id": "S06",
       "name": "Verification and Fail-Closed",
       "type": "verification",
-      "allowed_dispositions": ["CONFIRMED", "INCONCLUSIVE", "UNKNOWN", "REVIEW_REQUIRED"]
+      "inputs": [
+        "critical_events",
+        "primary_cause_or_candidate",
+        "causal_chain",
+        "claim_evidence_map"
+      ],
+      "checks": [
+        "claim_has_evidence",
+        "causal_edge_has_support",
+        "timestamp_order_not_contradicted",
+        "missing_or_conflicting_evidence_handled",
+        "ground_truth_metadata_not_used"
+      ],
+      "allowed_dispositions": [
+        "CONFIRMED",
+        "INCONCLUSIVE",
+        "UNKNOWN",
+        "REVIEW_REQUIRED"
+      ]
     },
     {
       "id": "S07",
       "name": "Incident Brief Output",
       "type": "output",
       "outputs": [
+        "all_events",
         "incident_summary",
         "critical_events",
+        "cause_or_candidate",
         "causal_timeline",
         "key_evidence",
         "affected_equipment",
@@ -63,12 +129,36 @@
       ]
     }
   ],
+  "evidence_policy": {
+    "operationally_observable_evidence_allowed": [
+      "process_measurement",
+      "alarm_event",
+      "protection_condition",
+      "trip_request",
+      "trip_latch",
+      "breaker_state",
+      "equipment_state",
+      "operator_action",
+      "runtime_logic_state"
+    ],
+    "simulation_answer_or_injection_metadata_not_for_agent_reasoning": [
+      "scenario_id",
+      "expected_cause",
+      "ground_truth",
+      "fault_injector_internal_state",
+      "simulation_only_fault_injection_command",
+      "simulation_only_fault_metadata"
+    ],
+    "runtime_enforcement_status": "VERIFY_AT_RC_FREEZE"
+  },
   "blind_validation": {
     "scenario_id_visible_to_triplens": false,
     "expected_cause_visible_to_triplens": false,
     "ground_truth_visible_to_triplens": false,
     "engine_change_per_incident_allowed": false,
-    "ground_truth_use": "external_validator_after_analysis"
+    "ground_truth_use": "external_validator_after_analysis",
+    "evaluate_agent_generated_critical_events": true,
+    "evaluate_agent_generated_causal_chain": true
   },
   "safety": {
     "read_only": true,
@@ -81,6 +171,7 @@
     "freeze exact Gemini model and invocation method",
     "freeze RC version",
     "verify actual tool/function names against runtime",
+    "verify evidence-policy enforcement against runtime",
     "attach measured blind validation results"
   ]
 }
