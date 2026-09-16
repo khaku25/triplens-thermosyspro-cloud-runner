@@ -176,12 +176,12 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   // TRIPLENS_CHECK_VALVE_HVOL_INIT_V2: match the native LP pump discharge
   // control-volume enthalpy at the common adapter boundary.
   TripLens_PumpPhysics.SpringLoadedCheckValve vppLPFWPCheckValve(
-    // HP has a much larger downstream pressure differential than LP.  A
-    // closed valve therefore needs leakage in the sub-kg/s range rather than
-    // the LP adapter's permissive 1e5 Pa.s/kg numerical value; otherwise the
-    // reverse branch can pull the upstream HP pipe through a zero-density IF97
-    // property trial.  Open-flow resistance remains unchanged.
-    closeFlow = 70, closedResistance = 1e7,
+    // Close before the LP static-pump curve reaches its low-speed branch.
+    // The finite seat resistance is intentionally the same reverse-flow
+    // regularization used by the HP train; it prevents a zero-density IF97
+    // trial after the motor breaker opens while leaving normal V7 flow
+    // unchanged.
+    closeFlow = 100, closedResistance = 1e7,
     C1(h_vol(start = 194669.0)), C2(h_vol(start = 194669.0))) annotation(
     Placement(visible = false, transformation(extent = {{739, -446}, {759, -426}})));
   // TRIPLENS_LP_BFP_OPERATOR_CHAIN_V1
@@ -249,7 +249,7 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
     // forward-flow proxy is still reported.  Calibrate the spring threshold
     // to close before that branch, matching the proven LP valve behaviour;
     // the valve remains fully open at the 75 kg/s V7 normal operating flow.
-    closeFlow = 70, closedResistance = 1e5,
+    closeFlow = 70, closedResistance = 1e7,
     C1(h_vol(start = 630000.0)), C2(h_vol(start = 630000.0))) annotation(
     Placement(visible = false, transformation(extent = {{747, -82}, {767, -62}})));
   // TRIPLENS_CHECK_VALVE_HVOL_INIT_V2: IP pump discharge start state.

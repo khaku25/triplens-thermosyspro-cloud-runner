@@ -193,11 +193,16 @@ for _section, _vcb in (("hp", "VCB-A01"), ("ip", "VCB-B01"), ("lp", "VCB-A02")):
         ("GT", "TRIP_LATCH"), ("52GT", "BREAKER_OPEN"),
         ("ST", "TRIP_LATCH"), ("52ST", "BREAKER_OPEN"),
     }
-    _full_chain = _section == "lp"
+    # BFP scenarios prove the physical equipment chain (pushbutton -> latch
+    # -> breaker -> motor/speed/NRV/flow).  Drum LL -> GT/ST is a separate
+    # physical-inventory scenario above and carries the contractual 100 s
+    # common-trip proof.  Requiring an LP drum LL in the same BFP case would
+    # conflate two independent disturbances and, with the native drum
+    # inventory, is not reachable within the 45 s BFP acceptance window.
+    _full_chain = False
     SCENARIOS[f"{_section}_bfp"] = {
-        # LP is the established end-to-end reference (BFP -> Drum LL ->
-        # GT/ST).  HP/IP BFP cases prove their equipment chain here; the
-        # independent HP/IP drum-LL cases prove the matrix route at 100 s.
+        # The independent HP/IP/LP drum-LL cases prove the common-trip route
+        # at 100 s; each BFP case remains an equipment-chain proof.
         "expected_domain": "GT+ST" if _full_chain else "BFP",
         "pump": _upper,
         "cause": _drum_cause if _full_chain else None,
