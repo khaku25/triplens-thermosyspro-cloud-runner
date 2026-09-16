@@ -1,0 +1,86 @@
+{
+  "schema": "triplens.kiee2026.workflow/v1",
+  "workflow_name": "TripLens Incident Analysis",
+  "release": "RC0_WORKING_DRAFT",
+  "inputs": [
+    {"name": "EVENT.csv", "role": "alarm_protection_operator_event"},
+    {"name": "RAW.csv", "role": "historian_process_logic_state_evidence"}
+  ],
+  "steps": [
+    {
+      "id": "S01",
+      "name": "Input Validation",
+      "type": "deterministic",
+      "outputs": ["validated_input", "quality_flags"]
+    },
+    {
+      "id": "S02",
+      "name": "Time Alignment and Normalization",
+      "type": "deterministic",
+      "outputs": ["aligned_event_raw"]
+    },
+    {
+      "id": "S03",
+      "name": "Critical Event and Evidence Extraction",
+      "type": "deterministic",
+      "outputs": ["critical_event_candidates", "evidence_refs", "state_context"]
+    },
+    {
+      "id": "S04",
+      "name": "Causal Context Construction",
+      "type": "engineering_context",
+      "outputs": ["causal_context", "missing_evidence"]
+    },
+    {
+      "id": "S05",
+      "name": "Gemini Evidence Review",
+      "type": "agent",
+      "outputs": ["incident_interpretation", "cause_layers", "recovery_checks"],
+      "restrictions": [
+        "no_raw_value_modification",
+        "no_event_timestamp_modification",
+        "no_ground_truth_access",
+        "no_ot_write"
+      ]
+    },
+    {
+      "id": "S06",
+      "name": "Verification and Fail-Closed",
+      "type": "verification",
+      "allowed_dispositions": ["CONFIRMED", "INCONCLUSIVE", "UNKNOWN", "REVIEW_REQUIRED"]
+    },
+    {
+      "id": "S07",
+      "name": "Incident Brief Output",
+      "type": "output",
+      "outputs": [
+        "incident_summary",
+        "critical_events",
+        "causal_timeline",
+        "key_evidence",
+        "affected_equipment",
+        "recovery_check"
+      ]
+    }
+  ],
+  "blind_validation": {
+    "scenario_id_visible_to_triplens": false,
+    "expected_cause_visible_to_triplens": false,
+    "ground_truth_visible_to_triplens": false,
+    "engine_change_per_incident_allowed": false,
+    "ground_truth_use": "external_validator_after_analysis"
+  },
+  "safety": {
+    "read_only": true,
+    "ot_write": false,
+    "automatic_restoration": false,
+    "automatic_breaker_operation": false,
+    "fail_closed": true
+  },
+  "todo_before_submission": [
+    "freeze exact Gemini model and invocation method",
+    "freeze RC version",
+    "verify actual tool/function names against runtime",
+    "attach measured blind validation results"
+  ]
+}
