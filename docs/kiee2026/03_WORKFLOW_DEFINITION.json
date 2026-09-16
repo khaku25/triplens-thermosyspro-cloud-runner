@@ -1,0 +1,107 @@
+{
+  "schema": "triplens.kiee2026.workflow/v1",
+  "workflow_name": "TripLens Incident Analysis",
+  "release": "RC0_DRAFT",
+  "current_runtime": "Windows Local V8",
+  "ai_provider": "Google Gemini",
+  "ai_model": "TBD_AT_RC_FREEZE",
+  "inputs": [
+    {
+      "name": "EVENT.csv",
+      "role": "alarm_protection_operator_event"
+    },
+    {
+      "name": "RAW.csv",
+      "role": "historian_process_logic_state_evidence"
+    }
+  ],
+  "steps": [
+    {
+      "id": "S01",
+      "name": "Input Validation",
+      "type": "deterministic",
+      "inputs": ["EVENT.csv", "RAW.csv"],
+      "outputs": ["validated_input", "quality_flags"],
+      "fail_states": ["INVALID_SCHEMA", "MISSING_REQUIRED_INPUT"]
+    },
+    {
+      "id": "S02",
+      "name": "Time Alignment",
+      "type": "deterministic",
+      "inputs": ["validated_input"],
+      "outputs": ["aligned_event_raw"],
+      "constraints": ["preserve_original_timestamp", "record_alignment_basis"]
+    },
+    {
+      "id": "S03",
+      "name": "Engineering Evidence Extraction",
+      "type": "deterministic",
+      "inputs": ["aligned_event_raw"],
+      "outputs": ["critical_event_candidates", "evidence_refs", "state_context"]
+    },
+    {
+      "id": "S04",
+      "name": "Logic and Causal Context",
+      "type": "deterministic",
+      "inputs": ["critical_event_candidates", "evidence_refs"],
+      "outputs": ["logic_context", "causal_context", "missing_evidence"]
+    },
+    {
+      "id": "S05",
+      "name": "Gemini Evidence Review",
+      "type": "agent",
+      "inputs": ["logic_context", "causal_context", "evidence_refs", "missing_evidence"],
+      "outputs": ["incident_interpretation", "cause_layers", "recovery_checks"],
+      "restrictions": [
+        "no_raw_value_modification",
+        "no_event_timestamp_modification",
+        "no_ground_truth_access",
+        "no_ot_write"
+      ]
+    },
+    {
+      "id": "S06",
+      "name": "Verification Boundary",
+      "type": "deterministic",
+      "inputs": ["incident_interpretation", "evidence_refs", "missing_evidence"],
+      "outputs": ["verified_result"],
+      "allowed_dispositions": ["CONFIRMED", "INCONCLUSIVE", "UNKNOWN", "REVIEW_REQUIRED"]
+    },
+    {
+      "id": "S07",
+      "name": "Incident Brief Generation",
+      "type": "output",
+      "inputs": ["verified_result"],
+      "outputs": [
+        "incident_summary",
+        "critical_events",
+        "causal_timeline",
+        "key_evidence",
+        "affected_equipment",
+        "recovery_check"
+      ]
+    }
+  ],
+  "blind_validation": {
+    "scenario_id_visible_to_triplens": false,
+    "expected_cause_visible_to_triplens": false,
+    "ground_truth_visible_to_triplens": false,
+    "engine_change_per_incident_allowed": false,
+    "ground_truth_use": "external_validator_after_analysis"
+  },
+  "safety": {
+    "read_only": true,
+    "ot_write": false,
+    "automatic_restoration": false,
+    "automatic_breaker_operation": false,
+    "fail_closed": true
+  },
+  "known_runtime_scope": {
+    "v8_line": "V8.5.2 local verification package",
+    "writable_real_inputs": 66,
+    "protection_causes": 9,
+    "gt_st_latches": "independent",
+    "live_alarm_rules_bound": 67,
+    "dual_log": true
+  }
+}
