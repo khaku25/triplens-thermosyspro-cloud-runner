@@ -6,326 +6,428 @@
 
 ## 1. 개요
 
-발전소 Trip 또는 주요 설비고장 발생 시 DCS, ECMS, Protection, Historian에서 다수의 Alarm과 상태변화가 짧은 시간에 집중된다. 이때 운전원은 단순히 Alarm 개수를 줄이는 것보다 **최초 사건과 후속 파급을 구분하고, 실제 설비 응답을 근거로 현재 상황을 빠르게 구조화**해야 한다.
+발전소 Trip 또는 주요 설비고장 발생 시 DCS, ECMS, Protection, Historian 등 여러 계층에서 Alarm, Event, 상태변화, 공정값 변동이 짧은 시간에 집중된다. 운전원은 이 많은 정보 중에서 **무엇이 최초 사건인지, 무엇이 직접 계기인지, 무엇이 후속 파급인지, 그리고 지금 무엇을 확인해야 하는지**를 빠르게 구분해야 한다.
 
-TripLens는 이를 위해 `EVENT.csv`와 `RAW.csv`를 결합한다.
+TripLens는 이 초기 사고분석 구간을 지원하기 위한 **READ-ONLY Agentic AI 사고분석 시스템**이다.
 
-- EVENT는 “무슨 일이 언제 발생했는가”를 표현한다.
-- RAW는 “그 시점에 실제 설비와 공정이 어떻게 움직였는가”를 표현한다.
+TripLens의 핵심은 단순 Alarm 요약이 아니다. `EVENT.csv`와 `RAW.csv`를 함께 읽고, 시간축과 설비 관계를 기준으로 근거를 구조화한 뒤, Gemini 기반 Agent가 그 근거를 사용하여 사고 흐름과 확인사항을 제시한다.
 
-TripLens는 두 자료를 교차검증하고 Gemini 기반 Agentic AI가 근거 중심으로 사고 흐름을 설명하도록 설계되었다.
+핵심 입력과 출력은 다음과 같다.
 
----
-
-## 2. 목표와 범위
-
-### 2.1 목표
-
-1. 사고 직후 핵심 사건을 빠르게 식별
-2. 최초 원인 후보와 후속 파급 분리
-3. 판단에 사용한 Tag/Event 근거 제공
-4. 복구 시 우선 확인사항 정리
-5. 서로 다른 사고를 동일 분석엔진으로 처리
-6. 근거 부족 시 확정판정을 회피
-
-### 2.2 비목표
-
-TripLens는 다음 기능을 수행하지 않는다.
-
-- 보호계전 동작 대체
-- DCS/ECMS 자동제어
-- 자동복전
-- 운전원 조작명령 생성
-- 실제 발전소 승인 Logic 대체
-- 합성검증 결과를 현장 정확도로 일반화
+```text
+EVENT.csv + RAW.csv
+        ↓
+입력 검증 / 시간 정렬
+        ↓
+핵심 사건 및 관련 Evidence 추출
+        ↓
+설비·보호·상태 관계 구성
+        ↓
+Gemini Agent 분석
+        ↓
+Verification / Fail-Closed
+        ↓
+Incident Summary
+Critical Events
+Causal Timeline
+Key Evidence
+Affected Equipment
+Recovery Check
+```
 
 ---
 
-## 3. 현재 구현 기준
+## 2. 해결하려는 문제
 
-본 제출문서의 현재 구현 기준은 **Windows Local V8 Runtime**이다.
+### 2.1 Alarm Flood보다 어려운 것은 '정보의 우선순위'다
 
-현재 로컬 기준의 핵심 구성은 다음과 같다.
+사고 직후에는 많은 Alarm과 상태변화가 거의 동시에 발생한다. 단순히 Alarm 개수를 줄이는 것만으로는 다음 질문에 답하기 어렵다.
 
-- Native OPC UA
-- ECMS / Protection / Alarm Runtime
-- 9-cause GT/ST protection matrix
-- independent GT/ST latch
-- HP/IP BFP logical protection chain
-- Plant-wide Alarm binding
-- Live Historian
-- EVENT.csv + RAW.csv Dual Log
-- Gemini 사고분석 UI
+- 최초로 확인해야 할 Event는 무엇인가?
+- Trip의 직접 계기와 후속 결과는 어떻게 구분되는가?
+- 실제 RAW 값은 Event와 일치하는가?
+- 어떤 설비가 영향을 받았는가?
+- 현재 복구 전에 확인해야 할 항목은 무엇인가?
 
-최신 로컬 V8.5.2 검증 계약에서는 66개 writable Real input, 67개 live alarm rule binding, Dual Log E2E 등을 검증 대상으로 포함한다.
+TripLens는 이 질문을 하나의 사고분석 흐름으로 묶는다.
+
+### 2.2 기존 화면을 대체하지 않고, 그 위에서 정보를 재구성한다
+
+TripLens는 DCS, ECMS, Historian을 대체하는 새로운 제어시스템이 아니다. 기존 시스템에서 추출된 Event와 RAW 데이터를 읽어 **사고 초기 의사결정을 위한 정보 계층**을 추가한다.
+
+따라서 TripLens의 권한은 다음과 같이 제한된다.
+
+- READ-ONLY
+- OT Write 없음
+- 자동 복전 없음
+- Breaker 자동조작 없음
+- Protection Logic 변경 없음
+- 운전원 최종판단 대체 없음
 
 ---
 
-## 4. 데이터 계약
+## 3. TripLens 입력 구조
 
-### 4.1 EVENT.csv
+TripLens는 `EVENT.csv`와 `RAW.csv`를 서로 다른 역할의 증거로 취급한다.
 
-EVENT에는 사고 해석상 의미 있는 사건을 기록한다.
+### 3.1 EVENT.csv — "무슨 일이 언제 발생했는가"
+
+EVENT에는 사고 흐름에서 의미 있는 사건을 기록한다.
 
 예시:
+
 - Alarm ACTIVE / RETURN
 - Protection Event
-- Breaker Open
-- Motor Deenergized
-- Running Lost
-- Operator PB
+- Breaker 상태변화
+- 설비 Running Lost / Deenergized
+- Operator Action
 - Recovery Event
 
-### 4.2 RAW.csv
+EVENT의 목적은 원인 정답을 제공하는 것이 아니라, 사람이 읽을 수 있는 사고 시퀀스를 제공하는 것이다.
 
-RAW에는 수치·상태·명령·Logic의 원시 근거를 보존한다.
+### 3.2 RAW.csv — "그때 실제 설비가 어떻게 움직였는가"
+
+RAW에는 Event의 원인과 결과를 교차확인할 수 있는 시계열 근거를 보존한다.
 
 예시:
+
 - Pressure / Temperature / Flow / Level
 - Speed / Power
 - Breaker state
-- Trip Command
-- Latch
-- Logic state
-- Internal command
-- Quality / timestamp
+- Trip command
+- Latch / Logic state
+- 품질정보 및 timestamp
 
-### 4.3 V8.5.2 Dual Log 정책
+TripLens는 EVENT를 그대로 믿는 것이 아니라, 관련 RAW 구간을 함께 확인하여 사고 해석의 근거로 사용한다.
 
-정상적인 Alarm/Protection 사건은 EVENT에 남기며 내부 command 계열은 RAW evidence로 유지한다. 이를 통해 EVENT를 원인 정답표처럼 만들지 않고, 사람에게 의미 있는 SOE/Event로 유지한다.
+### 3.3 이기종 데이터 수용
 
----
+실제 발전소에서는 GT/ST, HRSG/BOP, ECMS 등이 서로 다른 플랫폼에 존재할 수 있다. TripLens는 입력 단계에서 Source와 Tag를 구분하고, 공통 사고분석 구조로 정리하는 것을 목표로 한다.
 
-## 5. Local V8 Virtual Plant / OPC UA / ECMS
-
-### 5.1 Local Runtime
-
-TripLens의 검증환경은 실제 발전소 Digital Twin으로 주장하지 않는다. 발전소 사고분석 Pipeline을 시험하기 위한 **검증용 Virtual Plant / Runtime**이다.
-
-### 5.2 Native OPC UA
-
-물리값, 상태값, 보호 Logic, 시험 Command가 OPC UA를 통해 전달된다.
-
-현재 Runtime은 값 자체뿐 아니라 실행 중 주소공간을 기준으로 연결상태를 검증하도록 구성한다.
-
-### 5.3 Protection
-
-최신 V8 계열에서 다음이 핵심이다.
-
-- GT/ST independent latch
-- 9-cause common protection matrix
-- GT breaker/open chain
-- HP/IP BFP logical trip chain
-- reset/reclose 구분
-
-### 5.4 물리범위 제한
-
-HP/IP BFP에 대해서는 Trip 이후 실제 축 coastdown을 완전 구현했다고 주장하지 않는다. 현재 안정판은 V7 물리경계를 보존하면서 Protection/Breaker 논리와 Historian 결과를 분리해 보여준다.
+현재 제출버전은 CSV 기반 입력을 사용하며, 현장 확장 시 Historian 또는 시스템별 Export 결과를 동일 데이터 계약으로 변환하는 방식을 전제로 한다.
 
 ---
 
-## 6. Engineering Core
+## 4. TripLens 분석 파이프라인
 
-TripLens의 Engineering Core는 AI 이전에 작동한다.
+### 4.1 Input Validation
 
-### 6.1 Input Validation
+분석 전에 입력 자체가 신뢰 가능한지 확인한다.
+
 - 필수 열 존재 여부
 - timestamp parsing
-- source/system 확인
-- 빈 값 / 품질 이상 탐지
+- Source/System 구분
+- 빈 값 및 품질 이상
+- Event/RAW 파일 존재 여부
 
-### 6.2 Time Alignment
-- EVENT와 RAW의 시간축 정렬
-- 원시 timestamp 보존
-- 보정 시 근거 기록
+입력 조건을 만족하지 못하면 분석을 계속하지 않고 오류 또는 검토 필요 상태로 전환한다.
 
-### 6.3 Evidence Extraction
-- 사건 주변의 관련 Tag 추출
-- Protection / Breaker / Process response 연결
-- 원인 후보와 후속현상 후보 분리
+### 4.2 Time Alignment
 
-### 6.4 Logic Context
-- 등록된 Logic/Protection 관계 확인
-- 입력 → 조건 → 출력 → 후속응답 구조화
+EVENT와 RAW는 서로 다른 시스템 또는 기록방식에서 생성될 수 있으므로 동일 시간축에서 비교해야 한다.
 
-### 6.5 Fail-Closed
-근거가 부족하면 AI가 억지로 CONFIRMED하지 않도록 한다.
+TripLens는 원래 timestamp를 보존하면서 Event 주변 RAW 변화를 확인할 수 있도록 정렬한다.
 
-허용 상태:
-- UNKNOWN
-- INCONCLUSIVE
-- REVIEW REQUIRED
-- ADDITIONAL EVIDENCE REQUIRED
+핵심 목적은 단순 timestamp 정렬이 아니라 다음 관계를 확인하는 것이다.
+
+```text
+Event 발생
+   ↓
+Command / Logic 변화
+   ↓
+Equipment State 변화
+   ↓
+Process Response
+   ↓
+후속 Alarm / Event
+```
+
+### 4.3 Critical Event Extraction
+
+모든 Event를 동일 중요도로 보여주지 않는다.
+
+TripLens는 사고 흐름을 이해하는 데 필요한 Event를 우선적으로 추출하고 다음처럼 분류한다.
+
+- Origin candidate
+- Direct trigger
+- Protection / Trip action
+- Propagation
+- Secondary alarm
+- Operator action
+- Recovery / unresolved state
+
+이 단계의 목적은 Alarm을 단순히 삭제하는 것이 아니라 **사고 이해에 필요한 Event의 우선순위를 재구성하는 것**이다.
+
+### 4.4 Evidence Extraction
+
+각 핵심 주장에는 실제 입력 데이터의 근거가 연결되어야 한다.
+
+예:
+
+```text
+주장: GT가 Trip 상태로 전환됨
+Evidence:
+- EVENT: GT TRIP EVENT
+- RAW: GT_TRIP_CMD = 1
+- RAW: 52GT CLOSED = 0
+- Timestamp relationship
+```
+
+TripLens는 가능한 경우 최종 설명이 원본 Event 또는 RAW Tag까지 추적될 수 있도록 구성한다.
+
+### 4.5 Causal Context 구성
+
+TripLens는 '동시에 나타난 값'과 '사고 흐름상 연결된 값'을 구분하려고 한다.
+
+이를 위해 Event 순서, 설비 관계, Logic/Protection 관계, 실제 Process response를 함께 본다.
+
+최종 결과에서는 다음 세 층을 구분하는 것을 목표로 한다.
+
+1. 원인 후보 / Origin
+2. 직접 계기 / Direct Trigger
+3. 후속 파급 / Propagation
 
 ---
 
-## 7. Gemini Agent
+## 5. Agentic AI — Gemini의 역할
 
-### 7.1 역할
+### 5.1 왜 Agent가 필요한가
 
-Gemini는 Engineering Core가 제공하는 근거를 바탕으로 사고 흐름을 해석한다.
+발전소 사고는 고정된 문장 Template만으로 설명하기 어렵다. 사고마다 관련 설비, Event 조합, RAW 변화, 누락된 근거가 달라지기 때문이다.
 
-주요 역할:
+TripLens의 Gemini Agent는 이미 구조화된 Evidence를 바탕으로 다음 작업을 수행한다.
+
 - 핵심 사건 요약
-- 원인 / 직접 계기 / 파급과정 설명
-- Evidence 근거 연결
-- 상충 근거 및 불확실성 설명
+- 사고 진행순서 설명
+- 원인 후보와 후속현상 구분
+- 서로 다른 Evidence의 연결
+- 상충하거나 부족한 근거 표시
+- 추가 확인이 필요한 Tag/Event 제시
 - Recovery Check 정리
 
-### 7.2 금지사항
+### 5.2 AI와 Engineering Layer의 역할 분리
 
-Gemini는 다음을 수정할 수 없다.
+TripLens의 구조는 다음과 같이 분리한다.
+
+```text
+Engineering Layer
+- Input validation
+- Time alignment
+- Evidence extraction
+- Tag / Logic context
+
+        ↓
+
+Gemini Agent
+- Evidence review
+- Incident interpretation
+- Causal explanation
+- Recovery check generation
+
+        ↓
+
+Verification Boundary
+- Evidence presence
+- Missing evidence
+- Unsupported claim
+- Fail-Closed
+```
+
+따라서 Gemini가 원본 데이터를 바꾸거나, Ground Truth를 읽고 정답을 재현하는 구조가 아니다.
+
+### 5.3 Gemini가 할 수 없는 것
+
+Gemini는 다음을 수정할 권한이 없다.
 
 - RAW 값
 - EVENT timestamp
 - Protection Logic
 - Ground Truth
-- 승인된 엔지니어링 설정
-- Verification 결과
-
-### 7.3 모델 정보
-
-- Provider: Google Gemini
-- Exact model: **TBD — RC Freeze 시 Runtime 설정에서 확정**
-- Invocation method: **TBD — 현재 실제 Runtime 방식 기준으로 기술**
-- Prompt / Tool details: **RC Freeze 이후 제출본에 고정**
+- 승인된 공학 설정
+- OT 장치 상태
 
 ---
 
-## 8. Verification Boundary
+## 6. TripLens 출력
 
-최종 결과는 AI 문장 자체가 아니라 **근거가 있는지**를 중심으로 평가한다.
+TripLens의 결과는 긴 AI 답변 하나가 아니라, 사고 초기 판단에 필요한 항목으로 분리한다.
 
-검증 질문:
-1. 주장에 실제 EVENT/RAW evidence가 있는가?
-2. 사건 순서가 timestamp와 일치하는가?
-3. 필수 근거가 누락되었는가?
-4. 상충하는 상태가 있는가?
-5. Ground Truth가 입력으로 누출되지 않았는가?
+### 6.1 Incident Summary
 
----
+사고를 짧게 요약한다.
 
-## 9. Blind Validation 방법
+### 6.2 Critical Events
 
-### 9.1 목적
+전체 Event 중 사고흐름을 이해하는 데 필요한 핵심 Event를 우선순위와 함께 보여준다.
 
-GT Trip 하나에 맞춘 Demo가 아니라, 서로 다른 사고 입력을 동일 엔진으로 분석할 수 있는지 검증한다.
+### 6.3 Causal Timeline
 
-### 9.2 원칙
+Origin → Direct Trigger → Protection/Trip → Propagation 순으로 사고흐름을 정리한다.
 
-- 사고별 엔진 코드 수정 0
-- Scenario ID 미입력
-- Expected Cause 미입력
-- Ground Truth 미입력
-- 결과 생성 이후에만 외부 Validator가 정답과 대조
-- 실패 Run도 보존
+### 6.4 Key Evidence
 
-### 9.3 후보 사고군
+결론에 사용된 EVENT/RAW Tag와 timestamp를 제시한다.
 
-1. GT Trip
-2. 6.6 kV Feeder Fault
-3. Third Case — RC Freeze 시 현재 V8 데이터 계약과 가장 잘 맞는 사고로 확정
-4. Corrupted / Missing Evidence Case
+### 6.5 Affected Equipment
 
-SST Supply Loss는 현재 Virtual Plant topology와의 일치 여부를 재검토한 뒤, 실제 VPP 구현이 아니라면 별도 synthetic electrical benchmark로만 명시한다.
+영향을 받은 설비를 사고흐름과 함께 정리한다.
 
----
+### 6.6 Recovery Check
 
-## 10. 정량 평가
+자동복구 명령이 아니라, 운전원이 다음으로 확인해야 할 항목을 제시한다.
 
-### 10.1 Critical Event Precision
+예:
 
-TripLens가 Critical Event로 선정한 사건 중 Ground Truth 핵심사건과 일치한 비율.
-
-### 10.2 Critical Event Recall
-
-Ground Truth 핵심사건 중 TripLens가 놓치지 않고 선정한 비율.
-
-### 10.3 Critical Event F1
-
-Precision과 Recall의 조화평균.
-
-### 10.4 Causal Chain Accuracy
-
-Ground Truth causal edge 중 TripLens가 올바른 방향으로 재구성한 비율.
-
-### 10.5 Evidence Grounding Rate
-
-최종 핵심 공학 주장 중 유효한 EVENT/RAW evidence reference를 가진 비율.
-
-### 10.6 Unsupported Engineering Claims
-
-근거 reference가 없거나 실제 입력에 존재하지 않는 공학 주장 수.
-
-### 10.7 Fail-Closed
-
-Missing evidence, timestamp offset, duplicate, out-of-order, BAD quality 등에서 부당하게 원인을 확정하지 않는지 평가한다.
-
-### 10.8 Time-to-Insight
-
-사고 데이터가 주어진 시점부터 사전에 정의한 핵심정보 세트를 확보하기까지의 시간.
-
-**MTTR 전체 감소율로 표현하지 않는다.**
+- Breaker 실제 상태 확인
+- Trip latch 잔류 여부
+- Essential auxiliary 상태
+- 공정값 안정 여부
+- 후속 Alarm 미복귀 여부
 
 ---
 
-## 11. 현재 Scorecard
+## 7. Verification 및 Fail-Closed
 
-| Metric | Current |
-|---|---:|
-| Blind Runs | NOT TESTED |
-| Engine Code Changes | NOT TESTED |
-| Critical Event Precision | NOT TESTED |
-| Critical Event Recall | NOT TESTED |
-| Critical Event F1 | NOT TESTED |
-| Causal Chain Accuracy | NOT TESTED |
-| Evidence Grounding | NOT TESTED |
-| Unsupported Claims | NOT TESTED |
-| Fail-Closed | NOT TESTED |
-| Alarm/Event Compression | NOT TESTED |
-| Time-to-Insight | NOT TESTED |
+TripLens는 AI가 반드시 하나의 원인을 확정하도록 강제하지 않는다.
 
-실측 Run이 생성될 때마다 `06_VALIDATION_RESULTS.csv`와 Validation Report를 갱신한다.
+근거가 부족하거나 서로 충돌할 경우 다음 상태를 허용한다.
+
+- `UNKNOWN`
+- `INCONCLUSIVE`
+- `REVIEW REQUIRED`
+- `ADDITIONAL EVIDENCE REQUIRED`
+
+최종 분석에서 확인할 항목은 다음과 같다.
+
+1. 주요 주장에 실제 EVENT/RAW 근거가 있는가?
+2. 사건 순서가 timestamp와 모순되지 않는가?
+3. 필요한 근거가 누락되어 있지 않은가?
+4. 상충하는 설비상태가 존재하는가?
+5. Ground Truth 또는 정답 metadata가 입력에 포함되지 않았는가?
+
+이 구조는 생성형 AI가 부족한 정보를 임의로 메우는 문제를 줄이기 위한 안전장치다.
 
 ---
 
-## 12. 실용성
+## 8. 일반화와 Blind Validation
 
-TripLens의 목표는 사고 복구작업 자체를 자동화하는 것이 아니라 **사고 초기 정보탐색과 판단지원 시간을 줄이는 것**이다.
+### 8.1 검증 질문
 
-기대효과:
+TripLens의 핵심 검증 질문은 다음과 같다.
+
+> **GT Trip 하나를 잘 설명하는가가 아니라, 서로 다른 사고 입력을 동일 TripLens Engine이 분석할 수 있는가?**
+
+### 8.2 Blind 원칙
+
+Blind Validation에서는 다음 정보를 TripLens에 제공하지 않는다.
+
+- Scenario ID
+- Expected Cause
+- Root Cause answer label
+- Ground Truth
+- Fault injection metadata
+
+TripLens 분석이 완료된 후 외부 Validator가 Ground Truth와 결과를 비교한다.
+
+또한 사고군별로 Engine 코드를 수정하지 않는 것을 원칙으로 한다.
+
+### 8.3 평가 지표
+
+공식 Scorecard는 실제 RC Run 이후 채운다.
+
+| Metric | 목적 |
+|---|---|
+| Critical Event Precision | 불필요한 핵심사건 선정 여부 |
+| Critical Event Recall | 중요한 사건 누락 여부 |
+| Critical Event F1 | 핵심사건 추출 종합성능 |
+| Causal Chain Accuracy | 사고흐름 재구성 정확도 |
+| Evidence Grounding Rate | 결론의 실제 근거 연결성 |
+| Unsupported Claims | 근거 없는 공학 주장 수 |
+| Fail-Closed | 불완전 데이터에서 안전한 중단 여부 |
+| Alarm/Event Compression | 전체 Event 대비 핵심 Event 축약 정도 |
+| Time-to-Insight | 핵심정보 확보시간 |
+
+실제 Run이 완료되기 전에는 수치를 임의로 채우지 않는다.
+
+---
+
+## 9. 검증용 데이터 생성 환경
+
+TripLens 자체와 검증환경은 구분한다.
+
+```text
+[Validation Environment]
+Virtual Plant / OPC UA / ECMS / Alarm Logic
+                ↓
+          EVENT.csv + RAW.csv
+                ↓
+--------------------------------------
+                ↓
+          [TripLens System]
+```
+
+검증환경의 목적은 TripLens에게 정답을 알려주는 것이 아니라, 분석할 수 있는 사고 Event와 RAW 시계열을 생성하는 것이다.
+
+GT Trip 등 일부 사고는 Local Virtual Plant와 Protection/Alarm Runtime을 통해 생성하며, 다른 사고군은 동일 입력계약을 만족하는 별도 Synthetic Benchmark를 사용할 수 있다.
+
+Virtual Plant의 상세 Protection matrix, OPC UA node 수, Alarm binding 수, Pump/Valve 물리구현 범위 등은 TripLens 분석기 자체의 기술사양이 아니므로 별도 문서 `09_VIRTUAL_PLANT_TEST_ENVIRONMENT.md`에서 기술한다.
+
+---
+
+## 10. 실용성
+
+TripLens의 목표는 물리적 수리시간 전체를 자동으로 줄이는 것이 아니라 **사고 초기 정보탐색과 판단지원 시간을 줄이는 것**이다.
+
+예상 활용영역:
+
 - Alarm Flood에서 핵심 사건 우선 제시
 - EVENT와 RAW 교차검증
-- 근거 Tag 기반 설명
-- 사고보고서 초안 구조화
-- 반복 사고 비교를 위한 표준화
+- 사고 초기 Brief 자동 구조화
+- 근거 Tag 기반 원인 후보 검토
+- 반복사고 분석 형식 표준화
+- 사고보고서 작성 전 초기 정리
+
+따라서 효과 측정 역시 MTTR 전체 감소율보다 `Time-to-Insight`를 우선 지표로 사용한다.
 
 ---
 
-## 13. AI 활용 및 사용자 기여
+## 11. AI 활용 및 개발자 기여
 
-자세한 내용은 `04_AI_USAGE_AND_LIMITATIONS.md`에 기록한다.
+TripLens 개발 과정에서는 생성형 AI를 코드 작성, 디버깅, 문서화, 테스트 설계 보조에 활용하였다.
 
-핵심 원칙:
-- 문제 정의와 공학적 검증기준은 사용자 주도
-- AI는 분석·설명·개발보조에 활용
-- 실제 Runtime 결과와 검증근거를 사람이 확인
-- AI가 임의로 정답/데이터를 만들어 성능을 주장하지 않음
+그러나 다음 항목은 실제 Runtime과 검증근거로 확인한다.
 
----
+- 프로그램 실행 여부
+- EVENT/RAW 생성 및 입력
+- 분석결과
+- Ground Truth 비교
+- 정량 Scorecard
 
-## 14. 한계
+문제 정의, 공학적 해석기준, 검증방법 및 최종 결과 검토는 개발자가 수행한다.
 
-- 합성/가상 환경 검증이며 현장 정확도 검증이 아님
-- 실제 발전소 수천~수만 태그 확장은 향후 과제
-- 일부 물리 transient는 검증범위가 제한됨
-- 승인 P&ID/SLD/C&E/정정값을 대체하지 않음
-- 실제 현장 데이터의 클라우드 AI 활용은 별도 보안/거버넌스 필요
+상세 내용은 `04_AI_USAGE_AND_LIMITATIONS.md`에 기록한다.
 
 ---
 
-## 15. 결론
+## 12. 한계 및 현장 적용 조건
 
-TripLens는 Virtual Plant와 Local V8 Runtime에서 생성된 EVENT/RAW evidence를 바탕으로 발전소 사고를 구조화하고, Gemini Agent가 근거 중심의 원인·파급·복구 정보를 설명하는 READ-ONLY 사고분석 시스템이다.
+현재 TripLens는 다음 한계를 가진다.
 
-제출 전 핵심 과제는 기능추가가 아니라 **동일 RC 버전으로 다중사고 Blind Validation을 수행하고 정량 Scorecard를 확정하는 것**이다.
+- Virtual Plant / Synthetic data 기반 검증 단계
+- 실제 발전소 현장 정확도 미검증
+- 실제 발전소 대규모 Tag 환경은 추가 확장검증 필요
+- 현장 승인 P&ID / SLD / C&E / Protection setting을 대체하지 않음
+- 클라우드 LLM 사용 시 사업장 보안·데이터 거버넌스 필요
+- TripLens는 제어시스템이 아닌 READ-ONLY decision support layer임
+
+---
+
+## 13. 결론
+
+TripLens의 핵심은 Virtual Plant 자체가 아니다.
+
+TripLens는 발전소 사고 후 흩어진 `EVENT + RAW`를 하나의 근거 구조로 정리하고, Agentic AI가 **핵심 사건, 사고흐름, 근거, 영향설비, 복구 확인사항**을 도출하도록 하는 사고분석 계층이다.
+
+Virtual Plant는 이 분석기를 반복적으로 시험하기 위한 검증환경이며, 실제 경쟁력은 서로 다른 사고에서도 동일 TripLens Engine이 근거 중심 결과를 생성하는지에 의해 평가한다.
+
+제출 전 핵심 과제는 기능 추가보다 **RC Freeze → Blind Validation → Scorecard 확정 → 제출문서/발표 일치**이다.
