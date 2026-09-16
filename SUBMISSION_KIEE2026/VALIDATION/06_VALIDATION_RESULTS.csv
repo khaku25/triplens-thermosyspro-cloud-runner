@@ -1,0 +1,5 @@
+Run ID,Incident Family,Blind,RC Version,Engine Code Changed,Input Hash,Critical Precision,Critical Recall,Critical F1,Causal Accuracy,Evidence Grounding,Unsupported Claims,Fail-Closed,Input Events,Selected Critical Events,Analysis Time s,Human Time s,Result,Notes
+TL_GT_001,GT Trip,YES,TBD_RC1,NO,,,,,,,,,,,,,NOT_TESTED,
+TL_FD_001,6.6 kV Feeder Fault,YES,TBD_RC1,NO,,,,,,,,,,,,,NOT_TESTED,
+TL_TC_001,Third Case,YES,TBD_RC1,NO,,,,,,,,,,,,,NOT_TESTED,
+TL_CORRUPT_001,Missing Evidence,YES,TBD_RC1,NO,,,,,,,,,,,,,NOT_TESTED,
