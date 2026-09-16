@@ -176,7 +176,12 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   // TRIPLENS_CHECK_VALVE_HVOL_INIT_V2: match the native LP pump discharge
   // control-volume enthalpy at the common adapter boundary.
   TripLens_PumpPhysics.SpringLoadedCheckValve vppLPFWPCheckValve(
-    closeFlow = 70, closedResistance = 1e5,
+    // Close before the LP static-pump curve reaches its low-speed branch.
+    // The finite seat resistance is intentionally the same reverse-flow
+    // regularization used by the HP train; it prevents a zero-density IF97
+    // trial after the motor breaker opens while leaving normal V7 flow
+    // unchanged.
+    closeFlow = 100, closedResistance = 1e7,
     C1(h_vol(start = 194669.0)), C2(h_vol(start = 194669.0))) annotation(
     Placement(visible = false, transformation(extent = {{739, -446}, {759, -426}})));
   // TRIPLENS_LP_BFP_OPERATOR_CHAIN_V1
@@ -240,7 +245,13 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   // TRIPLENS_ALL_FWP_CHECK_VALVES_OPCUA_V1
   // TRIPLENS_CHECK_VALVE_HVOL_INIT_V2: HP pump discharge start state.
   TripLens_PumpPhysics.SpringLoadedCheckValve vppHPFWPCheckValve(
-    closeFlow = 20, closedResistance = 1e5,
+    // The HP pump curve reaches its low-flow/unstable branch while a large
+    // forward-flow proxy is still reported.  Calibrate the spring threshold
+    // to close before that branch, matching the proven LP valve behaviour;
+    // the valve remains fully open at the 75 kg/s V7 normal operating flow.
+    // Keep the V7 finite seat resistance: 1e7 makes the coupled HP
+    // economizer initialization nearly singular before the trip occurs.
+    closeFlow = 70, closedResistance = 1e5,
     C1(h_vol(start = 630000.0)), C2(h_vol(start = 630000.0))) annotation(
     Placement(visible = false, transformation(extent = {{747, -82}, {767, -62}})));
   // TRIPLENS_CHECK_VALVE_HVOL_INIT_V2: IP pump discharge start state.
@@ -289,13 +300,38 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   // TRIPLENS_NATIVE_OPCUA_VALVE_ADAPTER_SAFE_V2
   // Only the four writable commands are independent states.
   // Cv, flow and dP are algebraic aliases: no telemetry dynamics enter initialization.
-  // TRIPLENS_DRUM_FAULT_VALVE_MIN_OPENING_V8_7: ThermoSysPro's static
-  // ControlValve algebra divides by Cv^2.  A faulted closed drum valve is
-  // represented as a finite 1% seat-leak opening, never an algebraic Cv=0.
-  // Normal automatic and manual valve commands retain their exact values.
-  // The fault input remains excluded from RAW.csv by the dual-log contract.
-  parameter Real vppDrumFaultValveMinimumOpening(min = 0, max = 0.1) = 0.01
+  // TRIPLENS_DRUM_FAULT_STROKE_V8_8: a drum fault must remain a physical
+  // valve movement, not a discontinuous Cv jump.  ThermoSysPro's static
+  // ControlValve algebra divides by Cv^2, so a finite 5% seat-leak opening
+  // and a two-second stroke avoid the singularity without changing normal
+  // automatic/manual commands.  Fault inputs remain excluded from RAW.csv.
+  parameter Real vppDrumFaultValveMinimumOpening(min = 0, max = 0.1) = 0.05
     "Finite valve opening retained only during a drum fault override";
+  parameter Modelica.SIunits.Time vppDrumFaultValveStrokeTime(min = 0.1) = 2
+    "Physical travel time used only while a drum-fault override is active";
+  // TRIPLENS_DRUM_INVENTORY_FAULT_PATH_V1
+  // The 12-scenario verifier drives these commands through three spare
+  // DynamicDrum liquid connections.  A positive command is a finite physical
+  // makeup inflow; a negative command is a finite liquid-loss outflow.  They
+  // never write the drum level, protection cause or trip latch directly.
+  parameter Modelica.SIunits.MassFlowRate vppHPDrumInventoryFaultCapacity = 250
+    "Maximum HP physical drum inventory disturbance";
+  parameter Modelica.SIunits.MassFlowRate vppIPDrumInventoryFaultCapacity = 250
+    "Maximum IP physical drum inventory disturbance";
+  parameter Modelica.SIunits.MassFlowRate vppLPDrumInventoryFaultCapacity = 160
+    "Maximum LP physical drum inventory disturbance";
+  input Real vppHPDrumInventoryFaultEnableNative(start=0);
+  input Real vppHPDrumInventoryFaultValueNative(start=0, min=-1, max=1);
+  output Boolean vppHPDrumInventoryFaultActive;
+  output Real vppHPDrumInventoryDisturbanceMassFlowTH(unit="t/h");
+  input Real vppIPDrumInventoryFaultEnableNative(start=0);
+  input Real vppIPDrumInventoryFaultValueNative(start=0, min=-1, max=1);
+  output Boolean vppIPDrumInventoryFaultActive;
+  output Real vppIPDrumInventoryDisturbanceMassFlowTH(unit="t/h");
+  input Real vppLPDrumInventoryFaultEnableNative(start=0);
+  input Real vppLPDrumInventoryFaultValueNative(start=0, min=-1, max=1);
+  output Boolean vppLPDrumInventoryFaultActive;
+  output Real vppLPDrumInventoryDisturbanceMassFlowTH(unit="t/h");
   input Real vppVlvHPFWCVModeAutoNative(start=1);
   input Real vppVlvHPFWCVManualCmdNative(start=0.8, min=0, max=1);
   input Real vppVlvHPFWCVFaultEnableNative(start=0);
@@ -309,6 +345,7 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Real vppVlvHPFWCVMassFlowTH(unit="t/h");
   output Real vppVlvHPFWCVDPPa(unit="Pa");
   Real vppVlvHPFWCVTarget(min=0, max=1);
+  Real vppVlvHPFWCVFaultStroke(min=0, max=1, start=0.8, fixed=true);
   input Real vppVlvHPSteamModeAutoNative(start=1);
   input Real vppVlvHPSteamManualCmdNative(start=0.5, min=0, max=1);
   input Real vppVlvHPSteamFaultEnableNative(start=0);
@@ -322,6 +359,7 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Real vppVlvHPSteamMassFlowTH(unit="t/h");
   output Real vppVlvHPSteamDPPa(unit="Pa");
   Real vppVlvHPSteamTarget(min=0, max=1);
+  Real vppVlvHPSteamFaultStroke(min=0, max=1, start=0.5, fixed=true);
   input Real vppVlvIPFWCVModeAutoNative(start=1);
   input Real vppVlvIPFWCVManualCmdNative(start=0.8, min=0, max=1);
   input Real vppVlvIPFWCVFaultEnableNative(start=0);
@@ -335,6 +373,7 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Real vppVlvIPFWCVMassFlowTH(unit="t/h");
   output Real vppVlvIPFWCVDPPa(unit="Pa");
   Real vppVlvIPFWCVTarget(min=0, max=1);
+  Real vppVlvIPFWCVFaultStroke(min=0, max=1, start=0.8, fixed=true);
   input Real vppVlvIPSteamModeAutoNative(start=1);
   input Real vppVlvIPSteamManualCmdNative(start=0.5, min=0, max=1);
   input Real vppVlvIPSteamFaultEnableNative(start=0);
@@ -348,6 +387,7 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Real vppVlvIPSteamMassFlowTH(unit="t/h");
   output Real vppVlvIPSteamDPPa(unit="Pa");
   Real vppVlvIPSteamTarget(min=0, max=1);
+  Real vppVlvIPSteamFaultStroke(min=0, max=1, start=0.5, fixed=true);
   input Real vppVlvLPSteamModeAutoNative(start=1);
   input Real vppVlvLPSteamManualCmdNative(start=0.8, min=0, max=1);
   input Real vppVlvLPSteamFaultEnableNative(start=0);
@@ -361,6 +401,7 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Real vppVlvLPSteamMassFlowTH(unit="t/h");
   output Real vppVlvLPSteamDPPa(unit="Pa");
   Real vppVlvLPSteamTarget(min=0, max=1);
+  Real vppVlvLPSteamFaultStroke(min=0, max=1, start=0.8, fixed=true);
   input Real vppVlvLPFWModeAutoNative(start=1);
   input Real vppVlvLPFWManualCmdNative(start=0.5, min=0, max=1);
   input Real vppVlvLPFWFaultEnableNative(start=0);
@@ -374,6 +415,7 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Real vppVlvLPFWMassFlowTH(unit="t/h");
   output Real vppVlvLPFWDPPa(unit="Pa");
   Real vppVlvLPFWTarget(min=0, max=1);
+  Real vppVlvLPFWFaultStroke(min=0, max=1, start=0.5, fixed=true);
   input Real vppVlvLPToHPIPFWModeAutoNative(start=1);
   input Real vppVlvLPToHPIPFWManualCmdNative(start=1, min=0, max=1);
   input Real vppVlvLPToHPIPFWFaultEnableNative(start=0);
@@ -873,18 +915,46 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
     Placement(visible = false, transformation(extent = {{570, -370}, {590, -350}})));
   ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppLPSprayFlowCommand annotation(
     Placement(visible = false, transformation(extent = {{470, -370}, {490, -350}})));
+  // Physical liquid make-up / loss sources connected only to the unused
+  // DynamicDrum Ce2 ports.  The source Q is the physical disturbance; an
+  // ideal injector isolates the source boundary from the drum pressure.
+  ThermoSysPro.WaterSteam.BoundaryConditions.SourceQ vppHPDrumInventoryFaultSource(Q0 = 0, h0 = 1474422) annotation(
+    Placement(visible = false, transformation(extent = {{-80, -410}, {-40, -390}})));
+  VPPFixedFlowInjector vppHPDrumInventoryFaultInjector annotation(
+    Placement(visible = false, transformation(extent = {{-30, -410}, {-10, -390}})));
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppHPDrumInventoryFaultFlowCommand annotation(
+    Placement(visible = false, transformation(extent = {{-130, -410}, {-110, -390}})));
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppHPDrumInventoryFaultEnthalpyCommand annotation(
+    Placement(visible = false, transformation(extent = {{-130, -440}, {-110, -420}})));
+  ThermoSysPro.WaterSteam.BoundaryConditions.SourceQ vppIPDrumInventoryFaultSource(Q0 = 0, h0 = 978915) annotation(
+    Placement(visible = false, transformation(extent = {{80, -410}, {120, -390}})));
+  VPPFixedFlowInjector vppIPDrumInventoryFaultInjector annotation(
+    Placement(visible = false, transformation(extent = {{130, -410}, {150, -390}})));
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppIPDrumInventoryFaultFlowCommand annotation(
+    Placement(visible = false, transformation(extent = {{30, -410}, {50, -390}})));
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppIPDrumInventoryFaultEnthalpyCommand annotation(
+    Placement(visible = false, transformation(extent = {{30, -440}, {50, -420}})));
+  ThermoSysPro.WaterSteam.BoundaryConditions.SourceQ vppLPDrumInventoryFaultSource(Q0 = 0, h0 = 549250) annotation(
+    Placement(visible = false, transformation(extent = {{240, -410}, {280, -390}})));
+  VPPFixedFlowInjector vppLPDrumInventoryFaultInjector annotation(
+    Placement(visible = false, transformation(extent = {{290, -410}, {310, -390}})));
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppLPDrumInventoryFaultFlowCommand annotation(
+    Placement(visible = false, transformation(extent = {{190, -410}, {210, -390}})));
+  ThermoSysPro.InstrumentationAndControl.Connectors.OutputReal vppLPDrumInventoryFaultEnthalpyCommand annotation(
+    Placement(visible = false, transformation(extent = {{190, -440}, {210, -420}})));
   VPPRegularizedMixingVolume vppCondenserSteamVolume(V = vppLPHeaderVolume,  // Condenser pressure already supplies the LP-side mass-storage state.
  // This header retains its own thermal hold-up without duplicating that
  // pressure state across an ideal (zero-pressure-drop) sensor connection.
   dynamic_mass_balance = false, steady_state = true, mode = 0, P(start = 6136, nominal = 1e4), h(start = 2401030, nominal = 2.5e6), Ce1(Q(start = vppCondenserSteamFlow0, nominal = 200), h(start = 2401030), h_vol(start = 2401030)), Ce2(Q(start = 0, nominal = 200), h(start = 2962470), h_vol(start = 2401030)), Ce3(Q(start = vppSpraySeatLeak, nominal = 200), h(start = 550000), h_vol(start = 2401030)), Cs(Q(start = vppCondenserSteamFlow0, nominal = 200), h(start = 2401030), h_vol(start = 2401030))) annotation(
     Placement(visible = false, transformation(extent = {{620, -306}, {660, -286}})));
 equation
-// TRIPLENS_ECMS_5605_SINGLE_SERVER_NODES_V1: electrically isolated command memory and feedback
+  // TRIPLENS_ECMS_5605_SINGLE_SERVER_NODES_V1: electrically isolated command memory and feedback
   // TRIPLENS_NATIVE_OPCUA_VALVE_ADAPTER_SAFE_V2: command states
   // TRIPLENS_NATIVE_OPCUA_VALVE_ADAPTER_SAFE_V2: selection, physical drive and direct telemetry
   vppVlvHPFWCVAutoCmd = noEvent(min(1, max(0, regulation_Niveau_HP.SortieReelle1.signal)));
   vppVlvHPFWCVCmd = if noEvent(vppVlvHPFWCVModeAutoNative >= 0.5) then noEvent(min(1, max(0, regulation_Niveau_HP.SortieReelle1.signal))) else noEvent(min(1, max(0, vppVlvHPFWCVManualCmdNative)));
-  vppVlvHPFWCVTarget = if noEvent(vppVlvHPFWCVFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvHPFWCVFaultValueNative))))) else vppVlvHPFWCVCmd;
+  der(vppVlvHPFWCVFaultStroke) = ((if noEvent(vppVlvHPFWCVFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvHPFWCVFaultValueNative))))) else vppVlvHPFWCVCmd) - vppVlvHPFWCVFaultStroke)/vppDrumFaultValveStrokeTime;
+  vppVlvHPFWCVTarget = if noEvent(vppVlvHPFWCVFaultEnableNative >= 0.5) then vppVlvHPFWCVFaultStroke else vppVlvHPFWCVCmd;
   vanne_alimentationHP.Ouv.signal = vppVlvHPFWCVTarget;
   vppVlvHPFWCVFb = noEvent(if abs(vanne_alimentationHP.Cvmax) > Modelica.Constants.eps then vanne_alimentationHP.Cv/vanne_alimentationHP.Cvmax else 0);
   vppVlvHPFWCVDeviation = vppVlvHPFWCVCmd - vppVlvHPFWCVFb;
@@ -894,7 +964,8 @@ equation
   vppVlvHPFWCVDPPa = vanne_alimentationHP.C1.P - vanne_alimentationHP.C2.P;
   vppVlvHPSteamAutoCmd = noEvent(min(1, max(0, constante_vanne_vapeurHP.y.signal))) - 1*Modelica.Constants.eps*(1 - cos(time));
   vppVlvHPSteamCmd = if noEvent(vppVlvHPSteamModeAutoNative >= 0.5) then noEvent(min(1, max(0, constante_vanne_vapeurHP.y.signal))) else noEvent(min(1, max(0, vppVlvHPSteamManualCmdNative)));
-  vppVlvHPSteamTarget = if noEvent(vppVlvHPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvHPSteamFaultValueNative))))) else vppVlvHPSteamCmd;
+  der(vppVlvHPSteamFaultStroke) = ((if noEvent(vppVlvHPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvHPSteamFaultValueNative))))) else vppVlvHPSteamCmd) - vppVlvHPSteamFaultStroke)/vppDrumFaultValveStrokeTime;
+  vppVlvHPSteamTarget = if noEvent(vppVlvHPSteamFaultEnableNative >= 0.5) then vppVlvHPSteamFaultStroke else vppVlvHPSteamCmd;
   vanne_vapeurHP.Ouv.signal = vppVlvHPSteamTarget;
   vppVlvHPSteamFb = noEvent(if abs(vanne_vapeurHP.Cvmax) > Modelica.Constants.eps then vanne_vapeurHP.Cv/vanne_vapeurHP.Cvmax else 0);
   vppVlvHPSteamDeviation = vppVlvHPSteamCmd - vppVlvHPSteamFb;
@@ -904,7 +975,8 @@ equation
   vppVlvHPSteamDPPa = vanne_vapeurHP.C1.P - vanne_vapeurHP.C2.P;
   vppVlvIPFWCVAutoCmd = noEvent(min(1, max(0, regulation_Niveau_MP.SortieReelle1.signal)));
   vppVlvIPFWCVCmd = if noEvent(vppVlvIPFWCVModeAutoNative >= 0.5) then noEvent(min(1, max(0, regulation_Niveau_MP.SortieReelle1.signal))) else noEvent(min(1, max(0, vppVlvIPFWCVManualCmdNative)));
-  vppVlvIPFWCVTarget = if noEvent(vppVlvIPFWCVFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvIPFWCVFaultValueNative))))) else vppVlvIPFWCVCmd;
+  der(vppVlvIPFWCVFaultStroke) = ((if noEvent(vppVlvIPFWCVFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvIPFWCVFaultValueNative))))) else vppVlvIPFWCVCmd) - vppVlvIPFWCVFaultStroke)/vppDrumFaultValveStrokeTime;
+  vppVlvIPFWCVTarget = if noEvent(vppVlvIPFWCVFaultEnableNative >= 0.5) then vppVlvIPFWCVFaultStroke else vppVlvIPFWCVCmd;
   vanne_alimentationMP.Ouv.signal = vppVlvIPFWCVTarget;
   vppVlvIPFWCVFb = noEvent(if abs(vanne_alimentationMP.Cvmax) > Modelica.Constants.eps then vanne_alimentationMP.Cv/vanne_alimentationMP.Cvmax else 0);
   vppVlvIPFWCVDeviation = vppVlvIPFWCVCmd - vppVlvIPFWCVFb;
@@ -914,7 +986,8 @@ equation
   vppVlvIPFWCVDPPa = vanne_alimentationMP.C1.P - vanne_alimentationMP.C2.P;
   vppVlvIPSteamAutoCmd = noEvent(min(1, max(0, constante_vanne_vapeurMP.y.signal))) - 2*Modelica.Constants.eps*(1 - cos(time));
   vppVlvIPSteamCmd = if noEvent(vppVlvIPSteamModeAutoNative >= 0.5) then noEvent(min(1, max(0, constante_vanne_vapeurMP.y.signal))) else noEvent(min(1, max(0, vppVlvIPSteamManualCmdNative)));
-  vppVlvIPSteamTarget = if noEvent(vppVlvIPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvIPSteamFaultValueNative))))) else vppVlvIPSteamCmd;
+  der(vppVlvIPSteamFaultStroke) = ((if noEvent(vppVlvIPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvIPSteamFaultValueNative))))) else vppVlvIPSteamCmd) - vppVlvIPSteamFaultStroke)/vppDrumFaultValveStrokeTime;
+  vppVlvIPSteamTarget = if noEvent(vppVlvIPSteamFaultEnableNative >= 0.5) then vppVlvIPSteamFaultStroke else vppVlvIPSteamCmd;
   vanne_vapeurMP.Ouv.signal = vppVlvIPSteamTarget;
   vppVlvIPSteamFb = noEvent(if abs(vanne_vapeurMP.Cvmax) > Modelica.Constants.eps then vanne_vapeurMP.Cv/vanne_vapeurMP.Cvmax else 0);
   vppVlvIPSteamDeviation = vppVlvIPSteamCmd - vppVlvIPSteamFb;
@@ -924,7 +997,8 @@ equation
   vppVlvIPSteamDPPa = vanne_vapeurMP.C1.P - vanne_vapeurMP.C2.P;
   vppVlvLPSteamAutoCmd = noEvent(min(1, max(0, regulation_Niveau_BP.SortieReelle1.signal*vppLPDrumAdmissionMultiplier)));
   vppVlvLPSteamCmd = if noEvent(vppVlvLPSteamModeAutoNative >= 0.5) then noEvent(min(1, max(0, regulation_Niveau_BP.SortieReelle1.signal*vppLPDrumAdmissionMultiplier))) else noEvent(min(1, max(0, vppVlvLPSteamManualCmdNative)));
-  vppVlvLPSteamTarget = if noEvent(vppVlvLPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvLPSteamFaultValueNative))))) else vppVlvLPSteamCmd;
+  der(vppVlvLPSteamFaultStroke) = ((if noEvent(vppVlvLPSteamFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvLPSteamFaultValueNative))))) else vppVlvLPSteamCmd) - vppVlvLPSteamFaultStroke)/vppDrumFaultValveStrokeTime;
+  vppVlvLPSteamTarget = if noEvent(vppVlvLPSteamFaultEnableNative >= 0.5) then vppVlvLPSteamFaultStroke else vppVlvLPSteamCmd;
   vanne_vapeurBP.Ouv.signal = vppVlvLPSteamTarget;
   vppVlvLPSteamFb = noEvent(if abs(vanne_vapeurBP.Cvmax) > Modelica.Constants.eps then vanne_vapeurBP.Cv/vanne_vapeurBP.Cvmax else 0);
   vppVlvLPSteamDeviation = vppVlvLPSteamCmd - vppVlvLPSteamFb;
@@ -934,7 +1008,8 @@ equation
   vppVlvLPSteamDPPa = vanne_vapeurBP.C1.P - vanne_vapeurBP.C2.P;
   vppVlvLPFWAutoCmd = noEvent(min(1, max(0, constante_vanne_vapeurBP.y.signal))) - 3*Modelica.Constants.eps*(1 - cos(time));
   vppVlvLPFWCmd = if noEvent(vppVlvLPFWModeAutoNative >= 0.5) then noEvent(min(1, max(0, constante_vanne_vapeurBP.y.signal))) else noEvent(min(1, max(0, vppVlvLPFWManualCmdNative)));
-  vppVlvLPFWTarget = if noEvent(vppVlvLPFWFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvLPFWFaultValueNative))))) else vppVlvLPFWCmd;
+  der(vppVlvLPFWFaultStroke) = ((if noEvent(vppVlvLPFWFaultEnableNative >= 0.5) then noEvent(min(1, max(vppDrumFaultValveMinimumOpening, min(1, max(0, vppVlvLPFWFaultValueNative))))) else vppVlvLPFWCmd) - vppVlvLPFWFaultStroke)/vppDrumFaultValveStrokeTime;
+  vppVlvLPFWTarget = if noEvent(vppVlvLPFWFaultEnableNative >= 0.5) then vppVlvLPFWFaultStroke else vppVlvLPFWCmd;
   vanne_alimentationBP.Ouv.signal = vppVlvLPFWTarget;
   vppVlvLPFWFb = noEvent(if abs(vanne_alimentationBP.Cvmax) > Modelica.Constants.eps then vanne_alimentationBP.Cv/vanne_alimentationBP.Cvmax else 0);
   vppVlvLPFWDeviation = vppVlvLPFWCmd - vppVlvLPFWFb;
@@ -1093,6 +1168,26 @@ equation
   vppHPDrumLevelM = BallonHP.yLevel.signal;
   vppIPDrumLevelM = BallonMP.yLevel.signal;
   vppLPDrumLevelM = BallonBP.yLevel.signal;
+  // TRIPLENS_DRUM_INVENTORY_FAULT_PATH_V1: finite, mass-balanced physical
+  // disturbance.  The raw level remains the only protection measurement.
+  vppHPDrumInventoryFaultActive = vppHPDrumInventoryFaultEnableNative >= 0.5;
+  vppHPDrumInventoryFaultFlowCommand.signal = noEvent(if
+      vppHPDrumInventoryFaultActive then vppHPDrumInventoryFaultCapacity*
+      min(1, max(-1, vppHPDrumInventoryFaultValueNative)) else 0);
+  vppHPDrumInventoryFaultEnthalpyCommand.signal = BallonHP.hl;
+  vppHPDrumInventoryDisturbanceMassFlowTH = 3.6*vppHPDrumInventoryFaultSource.Q;
+  vppIPDrumInventoryFaultActive = vppIPDrumInventoryFaultEnableNative >= 0.5;
+  vppIPDrumInventoryFaultFlowCommand.signal = noEvent(if
+      vppIPDrumInventoryFaultActive then vppIPDrumInventoryFaultCapacity*
+      min(1, max(-1, vppIPDrumInventoryFaultValueNative)) else 0);
+  vppIPDrumInventoryFaultEnthalpyCommand.signal = BallonMP.hl;
+  vppIPDrumInventoryDisturbanceMassFlowTH = 3.6*vppIPDrumInventoryFaultSource.Q;
+  vppLPDrumInventoryFaultActive = vppLPDrumInventoryFaultEnableNative >= 0.5;
+  vppLPDrumInventoryFaultFlowCommand.signal = noEvent(if
+      vppLPDrumInventoryFaultActive then vppLPDrumInventoryFaultCapacity*
+      min(1, max(-1, vppLPDrumInventoryFaultValueNative)) else 0);
+  vppLPDrumInventoryFaultEnthalpyCommand.signal = BallonBP.hl;
+  vppLPDrumInventoryDisturbanceMassFlowTH = 3.6*vppLPDrumInventoryFaultSource.Q;
   vppHPDrumPressurePa = BallonHP.P;
   vppIPDrumPressurePa = BallonMP.P;
   vppLPDrumPressurePa = BallonBP.P;
@@ -1108,10 +1203,17 @@ equation
   vppIPFWPDrive.breakerClosed.signal = vppIPFWPMotorEnergized;
   vppHPFWPDrive.pumpPower.signal = PompeAlimHP.Wm;
   vppIPFWPDrive.pumpPower.signal = PompeAlimMP.Wm;
-  vppHPFWPHydraulicSpeedCommand.signal = noEvent(max(
-    vppHPFWPHydraulicSpeedFloorRPM, vppHPFWPDrive.speedRpm));
-  vppIPFWPHydraulicSpeedCommand.signal = noEvent(max(
-    vppIPFWPHydraulicSpeedFloorRPM, vppIPFWPDrive.speedRpm));
+  // TRIPLENS_HP_IP_V7_NORMAL_SPEED_BOUNDARY_V8_8: retain the exact V7 Ramp
+  // command during normal operation.  Only after its own VCB opens does the
+  // same pump input follow the independently integrated shaft speed.  This
+  // preserves the proven pre-trip plant operating point and confines the
+  // V8 adapter to the physical coastdown interval.
+  vppHPFWPHydraulicSpeedCommand.signal = if vppHPFWPMotorEnergized then
+    arretPomesHP.y.signal else noEvent(max(vppHPFWPHydraulicSpeedFloorRPM,
+    vppHPFWPDrive.speedRpm));
+  vppIPFWPHydraulicSpeedCommand.signal = if vppIPFWPMotorEnergized then
+    arretPomesMp.y.signal else noEvent(max(vppIPFWPHydraulicSpeedFloorRPM,
+    vppIPFWPDrive.speedRpm));
   vppHPFWPSpeedRPM = vppHPFWPDrive.speedRpm;
   vppIPFWPSpeedRPM = vppIPFWPDrive.speedRpm;
   vppHPFWPHydraulicSpeedRPM = vppHPFWPHydraulicSpeedCommand.signal;
@@ -1293,6 +1395,33 @@ equation
     Line(visible = false, points = {{560, -360}, {570, -360}}, color = {0, 127, 255}));
   connect(vppLPSprayInjector.C2, vppCondenserSteamVolume.Ce3) annotation(
     Line(visible = false, points = {{590, -360}, {636, -360}, {636, -306}}, color = {0, 127, 255}));
+  // TRIPLENS_DRUM_INVENTORY_FAULT_PATH_V1: Ce2 is the otherwise unused
+  // liquid inlet on each physical DynamicDrum.  Positive source Q adds
+  // liquid inventory; negative Q removes it through the same mass balance.
+  connect(vppHPDrumInventoryFaultFlowCommand, vppHPDrumInventoryFaultSource.IMassFlow) annotation(
+    Line(visible = false, points = {{-120, -400}, {-80, -400}}, color = {0, 0, 127}));
+  connect(vppHPDrumInventoryFaultEnthalpyCommand, vppHPDrumInventoryFaultSource.ISpecificEnthalpy) annotation(
+    Line(visible = false, points = {{-120, -430}, {-60, -430}, {-60, -410}}, color = {0, 0, 127}));
+  connect(vppHPDrumInventoryFaultSource.C, vppHPDrumInventoryFaultInjector.C1) annotation(
+    Line(visible = false, points = {{-40, -400}, {-30, -400}}, color = {0, 127, 255}));
+  connect(vppHPDrumInventoryFaultInjector.C2, BallonHP.Ce2) annotation(
+    Line(visible = false, points = {{-10, -400}, {-20, -400}, {-20, 10}, {-35, 10}}, color = {0, 127, 255}));
+  connect(vppIPDrumInventoryFaultFlowCommand, vppIPDrumInventoryFaultSource.IMassFlow) annotation(
+    Line(visible = false, points = {{40, -400}, {80, -400}}, color = {0, 0, 127}));
+  connect(vppIPDrumInventoryFaultEnthalpyCommand, vppIPDrumInventoryFaultSource.ISpecificEnthalpy) annotation(
+    Line(visible = false, points = {{40, -430}, {100, -430}, {100, -410}}, color = {0, 0, 127}));
+  connect(vppIPDrumInventoryFaultSource.C, vppIPDrumInventoryFaultInjector.C1) annotation(
+    Line(visible = false, points = {{120, -400}, {130, -400}}, color = {0, 127, 255}));
+  connect(vppIPDrumInventoryFaultInjector.C2, BallonMP.Ce2) annotation(
+    Line(visible = false, points = {{150, -400}, {300, -400}, {300, 10}, {287, 10}}, color = {0, 127, 255}));
+  connect(vppLPDrumInventoryFaultFlowCommand, vppLPDrumInventoryFaultSource.IMassFlow) annotation(
+    Line(visible = false, points = {{200, -400}, {240, -400}}, color = {0, 0, 127}));
+  connect(vppLPDrumInventoryFaultEnthalpyCommand, vppLPDrumInventoryFaultSource.ISpecificEnthalpy) annotation(
+    Line(visible = false, points = {{200, -430}, {260, -430}, {260, -410}}, color = {0, 0, 127}));
+  connect(vppLPDrumInventoryFaultSource.C, vppLPDrumInventoryFaultInjector.C1) annotation(
+    Line(visible = false, points = {{280, -400}, {290, -400}}, color = {0, 127, 255}));
+  connect(vppLPDrumInventoryFaultInjector.C2, BallonBP.Ce2) annotation(
+    Line(visible = false, points = {{310, -400}, {535, -400}, {535, 10}, {527, 10}}, color = {0, 127, 255}));
   connect(SurchauffeurHP3.Cws1, SurchauffeurHP2.Cws2) annotation(
     Line(visible = false, points = {{-327, -30}, {-327, -10}, {-207, -10}, {-207, -30}}, color = {255, 0, 0}));
   connect(SurchauffeurHP2.Cws1, SurchauffeurHP1.Cws2) annotation(

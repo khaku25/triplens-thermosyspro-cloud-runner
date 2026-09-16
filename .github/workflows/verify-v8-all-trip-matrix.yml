@@ -25,6 +25,8 @@ on:
       - "tests/test_if97_property_pressure_floor.py"
       - "scripts/patch_baseif97_property_pressure_floor.py"
       - "tests/test_baseif97_property_pressure_floor.py"
+      - "config/common_trip_matrix.csv"
+      - "config/protection_evidence_catalog.csv"
       - ".github/workflows/verify-v8-all-trip-matrix.yml"
 
 permissions:
@@ -63,6 +65,9 @@ jobs:
             --engine scripts/ecms_bfp_alarm_engine.py
           python3 tests/v8_5_2/selftest_protection_matrix_v8.py \
             modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo
+          python3 tests/v8_5_3/selftest_matrix_evidence_contract.py \
+            --matrix config/common_trip_matrix.csv \
+            --catalog config/protection_evidence_catalog.csv
 
       - name: Pin ThermoSysPro and install Modelica 3.2.3
         run: |

@@ -181,8 +181,12 @@ MATLAB 합성 fallback에서도 마지막 명령처럼 사고 전·후 1 ms 구�
 있습니다. 이 결과는 계속 `MATLAB_NATIVE_SYNTHETIC_FALLBACK`으로 표시되며,
 ThermoSysPro 물리 실행으로 취급되지 않습니다.
 
-공통 Trip은 `config/common_trip_matrix.csv`가 실행 원본입니다. GT Trip은 GT와
-ST를 함께 요청하고, Drum HH는 ST만, Drum LL은 GT와 ST를 함께 요청합니다.
+공통 Trip 실행 원본은 `config/common_trip_matrix.csv`입니다. 각 행에는
+`active_tag_master_tag`, `evidence_status`, `implementation_status`가 함께 있어
+코드 실행 경로와 Active Tag/RAW·EVENT 근거를 구분합니다. GT Trip은 GT와 ST를
+함께 요청하고, Drum HH는 ST만, Drum LL은 GT와 ST를 함께 요청합니다.
+근거가 없는 일반 보호개념은 `config/protection_evidence_catalog.csv`에서
+`FUTURE_EXTENSION`으로만 기록하며 본선 9-cause 실행 행으로 취급하지 않습니다.
 STG Active Power는 추세·전류계산용 측정값만 유지하며 H/HH/L/LL 및
 `stg_low_state`를 만들지 않습니다. FWP 정상 STOP은
 VCB를 닫힌 상태로 유지하고, TRIP만 latch와 VCB 개방을 발생시키며 RESET만으로는

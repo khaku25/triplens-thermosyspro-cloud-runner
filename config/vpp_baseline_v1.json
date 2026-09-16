@@ -176,7 +176,8 @@
   },
   "common_trip": {
     "matrix_source": "config/common_trip_matrix.csv",
-    "matrix_adoption": "ALL_ROWS_ARE_VPP_BASELINE_V1",
+    "matrix_adoption": "EXECUTION_ROWS_WITH_EXPLICIT_EVIDENCE_STATUS",
+    "evidence_catalog": "config/protection_evidence_catalog.csv",
     "rules": {
       "DIRECT_GT_TRIP": {"gt_trip": true, "st_trip": true},
       "GT_BREAKER_OPEN_WHILE_RUNNING": {"gt_trip": true, "st_trip": true},
@@ -201,7 +202,8 @@
     "ratings_and_protection": "config/ecms_a_settings.csv",
     "fwp_equipment": "config/ecms_a_equipment.csv",
     "alarm_rules": "config/dcs_alarm_rules.csv",
-    "trip_coupling": "config/common_trip_matrix.csv"
+    "trip_coupling": "config/common_trip_matrix.csv",
+    "trip_evidence": "config/protection_evidence_catalog.csv"
   },
   "setting_paths": {
     "ratings.grid_voltage_kv": "config/ecms_a_settings.csv#GRID_VOLTAGE_KV",
@@ -217,6 +219,7 @@
     "dynamics.gt_power_decay_s": "config/ecms_a_settings.csv#GT_POWER_DECAY_MS/1000",
     "relay": "config/ecms_a_settings.csv#FEEDER_*",
     "alarms": "config/dcs_alarm_rules.csv#ALL_ROWS",
-    "common_trip": "config/common_trip_matrix.csv#ALL_ROWS"
+    "common_trip": "config/common_trip_matrix.csv#ALL_ROWS",
+    "common_trip_evidence": "config/protection_evidence_catalog.csv#ALL_ROWS"
   }
 }

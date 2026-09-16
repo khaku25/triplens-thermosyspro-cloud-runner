@@ -67,7 +67,10 @@ model value.
 
 ## Coupling contract
 
-The eight rows of `config/common_trip_matrix.csv` are part of this Baseline.
+The nine execution rows of `config/common_trip_matrix.csv` are part of this
+Baseline. Evidence and implementation status columns distinguish model
+execution from Active Tag Master/RAW·EVENT verification; they do not claim
+plant-approved C&E values.
 Direct GT Trip intertrips ST; direct ST Trip affects ST only. HP/IP/LP drum HH
 trips ST, while HP/IP/LP drum LL trips both GT and ST. FWP Trip remains local to
 the selected pump feeder.
