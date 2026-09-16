@@ -91,11 +91,12 @@ def selftest(source_path: Path) -> None:
         if re.search(rf"der\({re.escape(name)}\)", v8):
             raise AssertionError(f"writable input has a derivative: {name}")
 
-    # 48 valve + 8 breaker + 6 BFP PB + 4 GT/ST protection = 66 Real inputs.
+    # 48 valve + 8 breaker + 6 BFP PB + 4 GT/ST protection + 6 physical drum
+    # fault controls = 72 Real inputs in the current V8.5.3 model.
     input_names = re.findall(r"^\s*input Real\s+(vpp[A-Za-z0-9_]+)", v8, re.MULTILINE)
-    if len(input_names) != 66 or len(set(input_names)) != 66:
+    if len(input_names) != 72 or len(set(input_names)) != 72:
         raise AssertionError(
-            f"expected 66 unique writable Real inputs, got {len(input_names)}/"
+            f"expected 72 unique writable Real inputs, got {len(input_names)}/"
             f"{len(set(input_names))}"
         )
 
@@ -151,7 +152,7 @@ def selftest(source_path: Path) -> None:
         "vppVCBA02TripCommandNative = vppLPFWPTripLatchState;",
         "TRIPLENS_IP_BFP_COASTDOWN_V8_7",
         "vppIPFWPDrive(\n    nominalSpeedRpm = 1400, J = 100,",
-        "TRIPLENS_DRUM_FAULT_VALVE_MIN_OPENING_V8_7",
+        patch_protection_matrix_v8.DRUM_VALVE_REGULARIZATION_MARKER,
         "parameter Real vppDrumFaultValveMinimumOpening",
         "vppHPFWPMotorEnergized = vppECMSVCBA01Closed;",
         "vppIPFWPMotorEnergized = vppECMSVCBB01Closed;",
@@ -240,7 +241,7 @@ def selftest(source_path: Path) -> None:
 
     print("PASS: TRIPLENS_PROTECTION_MATRIX_V8_STATIC_SELFTEST")
     print(f"source={source_path}")
-    print("writable_real_inputs=66")
+    print("writable_real_inputs=72")
     print("matrix_causes=9")
     print("drum_trip_delay_s=0.5")
     print("gt_st_latches=independent")
