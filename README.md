@@ -1,17 +1,26 @@
 # TripLens ThermoSysPro V8 / ECMS VPP Reference
 
 GitHub Actions에서 ThermoSysPro/OpenModelica 물리 원천을 생성하는 저장소입니다.
-기존 GT·HP BFP Action은 계속 RAW-only 경계를 유지합니다. 별도의
-`Verify V8.5.2 LP BFP Dual Log physics` 검증 Action은 로컬에서 통과한 V8.5.2
-보호 로직을 실제 OPC UA 입력으로 실행하고, LP BFP 시나리오의 `EVENT.csv`,
-`RAW.csv`, 결합 분석 및 검증 JSON을 독립 artifact로 게시합니다.
+기존 GT·HP BFP Action은 계속 RAW-only 경계를 유지합니다. `Verify V8.5.3
+all-trip matrix` Action은 보호 로직과 HP/IP/LP BFP의 물리적 차단기·관성
+coastdown 경계를 실제 OPC UA 입력으로 실행하고, 사건별 `EVENT.csv`, `RAW.csv`,
+결합 분석 및 검증 JSON을 독립 artifact로 게시합니다.
 
-V8은 현재 V8.5.3 RC1 검증 단계입니다. LP BFP 단기 시나리오는 GitHub Actions에서
-실제 OPC UA 입력과 EVENT/RAW 출력까지 통과했지만, 이는 장시간 안정성이
-입증됐다는 뜻은 아닙니다. V7 안정 기준은 `archive/pre-v8-main-20260915`
+V8은 현재 V8.5.3 RC2 검증 단계입니다. LP에서 먼저 검증된
+`BreakerInertialPumpDrive` 경계를 HP/IP에도 적용해 BFP Trip 후 속도·유량 저하,
+토출 체크밸브 폐쇄, Drum LL→GT/ST 공통 Trip까지 확인하도록 강화했습니다.
+검증 비용을 줄이기 위해 HP/IP BFP 단독 시나리오는 45초 장비 연쇄만 확인하고,
+HP/IP Drum LL→GT/ST 연쇄는 별도 100초 시나리오로 검증합니다. LP BFP는
+기존처럼 100초 전체 연쇄의 기준 시나리오입니다.
+GitHub 물리 실행이 완료되기 전까지는 RC2를 안정판으로 표시하지 않습니다. V7 안정 기준은 `archive/pre-v8-main-20260915`
 브랜치에 보존되어 있습니다.
 검증 범위와 승격 조건은
-[`docs/V8_5_3_RC1_VALIDATION.md`](docs/V8_5_3_RC1_VALIDATION.md)를 기준으로 합니다.
+[`docs/V8_5_3_RC2_VALIDATION.md`](docs/V8_5_3_RC2_VALIDATION.md)를 기준으로 합니다.
+
+전체 검증은 `Verify V8.5.3 all-trip matrix` Action에서 수행합니다.
+V8을 한 번 빌드한 뒤 12개 시나리오마다 OPC UA 서버를 새로 시작하며, 결과
+아티팩트에는 사건별 `EVENT.csv`, `RAW.csv`와 저토큰 검토용
+`LUNA_SUMMARY.csv/json`이 포함됩니다.
 
 저장소에 함께 있는 MATLAB ECMS VPP와 Python 변환기는 웹 변환부 이관 및
 예제 검증을 위한 실행 가능한 기준 구현입니다. Action 실행 경로와는 분리되어
@@ -172,8 +181,12 @@ MATLAB 합성 fallback에서도 마지막 명령처럼 사고 전·후 1 ms 구�
 있습니다. 이 결과는 계속 `MATLAB_NATIVE_SYNTHETIC_FALLBACK`으로 표시되며,
 ThermoSysPro 물리 실행으로 취급되지 않습니다.
 
-공통 Trip은 `config/common_trip_matrix.csv`가 실행 원본입니다. GT Trip은 GT와
-ST를 함께 요청하고, Drum HH는 ST만, Drum LL은 GT와 ST를 함께 요청합니다.
+공통 Trip 실행 원본은 `config/common_trip_matrix.csv`입니다. 각 행에는
+`active_tag_master_tag`, `evidence_status`, `implementation_status`가 함께 있어
+코드 실행 경로와 Active Tag/RAW·EVENT 근거를 구분합니다. GT Trip은 GT와 ST를
+함께 요청하고, Drum HH는 ST만, Drum LL은 GT와 ST를 함께 요청합니다.
+근거가 없는 일반 보호개념은 `config/protection_evidence_catalog.csv`에서
+`FUTURE_EXTENSION`으로만 기록하며 본선 9-cause 실행 행으로 취급하지 않습니다.
 STG Active Power는 추세·전류계산용 측정값만 유지하며 H/HH/L/LL 및
 `stg_low_state`를 만들지 않습니다. FWP 정상 STOP은
 VCB를 닫힌 상태로 유지하고, TRIP만 latch와 VCB 개방을 발생시키며 RESET만으로는

@@ -105,7 +105,7 @@ def main() -> int:
         "event_raw_preserved": True,
         "gt_breaker_discrete_loop_guard": True,
         "isolated_live_cases": True,
-        "hp_ip_hydraulic_boundary": "V7_PRESERVED",
+        "hp_ip_hydraulic_boundary": "V8_5_3_BREAKER_INERTIA_ADAPTER",
     }
     print(json.dumps(result, sort_keys=True))
     return 0

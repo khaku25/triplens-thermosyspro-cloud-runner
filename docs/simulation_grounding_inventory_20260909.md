@@ -32,7 +32,7 @@ Layer 1 only declares the state. It does not itself contain breaker/relay sequen
 
 ### Layer 2 — common GT/ST protection matrix
 
-The common plant trip relationships are intentionally separated from Layer 1 and are now explicit in `config/common_trip_matrix.csv` and the ECMS Simulink A-logic interface.
+The common plant trip relationships are intentionally separated from Layer 1 and are now explicit in `config/common_trip_matrix.csv` and the ECMS Simulink A-logic interface. The matrix now carries an explicit Active Tag/evidence status per row; executable model logic is not automatically treated as plant-approved C&E.
 
 - Direct `GT Trip` → `GT Trip request` + `ST Trip request`
 - Direct `ST Trip` → `ST Trip request` only
@@ -51,6 +51,13 @@ or Active Power H/HH/L/LL output. GT→ST Trip linkage is signal-based, not an
 indirect consequence of ST output rundown.
 
 Layer 3 actuation remains separate from the matrix: resolved GT request feeds the existing 86GT→52GT path; resolved ST request feeds the 52ST trip latch. The current breaker timing values are virtual-model provisional values, not plant-approved C&E settings.
+
+The supplied Active Tag Master evidence catalog is maintained in
+`config/protection_evidence_catalog.csv`. FWP state/speed/VCB tags and GT exhaust
+temperature/flow are observable evidence only; they are not common-trip causes
+unless a future protection route is implemented and verified. Vibration, Lube
+Oil, Axial, Flame Loss, and Exhaust Spread have no current RAW/EVENT evidence and
+are recorded as `FUTURE_EXTENSION`.
 
 ### Deferred beyond the common matrix
 

@@ -25,7 +25,9 @@ DECLARATIONS = f'''
     "Numerical floor for the upstream static pump curve; shaft speed remains physical";
   TripLens_PumpPhysics.SpringLoadedCheckValve vppLPFWPCheckValve(
     closeFlow=70,
-    closedResistance=1e5);
+    closedResistance=1e5,
+    C1(h_vol(start=194669.0)),
+    C2(h_vol(start=194669.0)));
   output Real vppLPFWPTripCommandNative(start=0, fixed=true, stateSelect=StateSelect.always);
   output Real vppLPFWPTripLatchNative(start=0, fixed=true, stateSelect=StateSelect.always);
   output Real vppVCBA02TripCommandNative(start=0, fixed=true, stateSelect=StateSelect.always);
