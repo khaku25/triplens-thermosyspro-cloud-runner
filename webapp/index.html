@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TripLens — Independent Incident Analysis</title>
+  <link rel="stylesheet" href="/webapp/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">READ-ONLY · V8 DUAL LOG</div>
+      <h1>TripLens</h1>
+      <p>Thermal power plant incident reconstruction from EVENT.csv + RAW.csv</p>
+    </div>
+    <div class="status-pill" id="runtimeStatus">LOCAL EVIDENCE MODE</div>
+  </header>
+
+  <main class="layout">
+    <section class="card intake">
+      <div class="section-head">
+        <div><span class="kicker">01</span><h2>Dual Log Intake</h2></div>
+        <span id="registryStatus" class="muted">Loading EVENT registry…</span>
+      </div>
+      <div class="upload-grid">
+        <label class="upload-box">EVENT.csv<input id="eventFile" type="file" accept=".csv,text/csv" /><small>Alarm / Protection / Operator / Equipment events</small></label>
+        <label class="upload-box">RAW.csv<input id="rawFile" type="file" accept=".csv,text/csv" /><small>Historian wide time-series + CMD / Latch / Process values</small></label>
+      </div>
+      <div class="actions">
+        <button id="analyzeBtn" class="primary">Analyze Dual Log</button>
+        <button id="geminiBtn" disabled>Gemini Engineering Review</button>
+        <button id="analysisCsvBtn" disabled>Analysis CSV</button>
+        <button id="pinpointBtn" disabled>PINPOINT.csv</button>
+        <button id="pdfBtn" disabled>Full PDF Report</button>
+      </div>
+      <div id="validation" class="validation">Select both files to begin.</div>
+    </section>
+
+    <section class="metrics" aria-label="analysis counters">
+      <div class="metric"><span>EVENT</span><strong id="eventCount">0</strong></div>
+      <div class="metric"><span>RAW rows</span><strong id="rawCount">0</strong></div>
+      <div class="metric"><span>Mapped</span><strong id="mappedCount">0</strong></div>
+      <div class="metric"><span>Unmapped</span><strong id="unmappedCount">0</strong></div>
+      <div class="metric"><span>Critical</span><strong id="criticalCount">0</strong></div>
+    </section>
+
+    <section class="analysis-grid" id="analysisWorkspace">
+      <article class="card span2"><div class="section-head"><div><span class="kicker">02</span><h2>Incident Summary</h2></div></div><div id="incident_summary" class="section-body empty">No analysis yet.</div></article>
+      <article class="card"><div class="section-head"><div><span class="kicker">03</span><h2>Critical Events</h2></div></div><div id="critical_events" class="section-body empty">No analysis yet.</div></article>
+      <article class="card"><div class="section-head"><div><span class="kicker">04</span><h2>Primary Cause</h2></div></div><div id="primary_cause" class="section-body empty">No analysis yet.</div></article>
+      <article class="card"><div class="section-head"><div><span class="kicker">05</span><h2>Direct Trigger</h2></div></div><div id="direct_trigger" class="section-body empty">No analysis yet.</div></article>
+      <article class="card"><div class="section-head"><div><span class="kicker">06</span><h2>Propagation</h2></div></div><div id="propagation" class="section-body empty">No analysis yet.</div></article>
+      <article class="card span2"><div class="section-head"><div><span class="kicker">07</span><h2>Causal Chain</h2></div></div><div id="causal_chain" class="section-body empty">No analysis yet.</div></article>
+      <article class="card span2"><div class="section-head"><div><span class="kicker">08</span><h2>Key Evidence</h2></div></div><div id="key_evidence" class="section-body empty">No analysis yet.</div></article>
+      <article class="card"><div class="section-head"><div><span class="kicker">09</span><h2>Recovery Check</h2></div></div><div id="recovery_check" class="section-body empty">No analysis yet.</div></article>
+      <article class="card"><div class="section-head"><div><span class="kicker">10</span><h2>Gemini Analysis</h2></div></div><div id="gemini_analysis" class="section-body empty">Not requested. Deterministic analysis remains authoritative evidence baseline.</div></article>
+    </section>
+  </main>
+
+  <button id="mobileBack" class="mobile-back" type="button" aria-label="Back to analysis">← Analysis</button>
+
+  <script src="/webapp/event_tag_resolver.js"></script>
+  <script src="/webapp/triplens_report_export.js"></script>
+  <script src="/webapp/triplens_core.js"></script>
+  <script src="/webapp/app.js"></script>
+</body>
+</html>
