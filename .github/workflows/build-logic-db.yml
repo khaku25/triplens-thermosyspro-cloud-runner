@@ -11,14 +11,18 @@ on:
       - 'config/alarm_registry_v1.csv'
       - 'config/signal_map.json'
       - 'logic_db/**'
+      - 'webapp/**'
       - 'tests/test_event_tag_master_coverage.py'
+      - 'tests/test_report_export.mjs'
       - '.github/workflows/build-logic-db.yml'
   pull_request:
     branches: [main]
     paths:
       - 'config/alarm_registry_v1.csv'
       - 'logic_db/**'
+      - 'webapp/**'
       - 'tests/test_event_tag_master_coverage.py'
+      - 'tests/test_report_export.mjs'
       - '.github/workflows/build-logic-db.yml'
   workflow_dispatch:
 
@@ -70,6 +74,9 @@ jobs:
           python3 -m pip install pytest
           python3 -m pytest -q tests/test_event_tag_master_coverage.py
 
+      - name: Report PDF and PINPOINT export regression tests
+        run: node --test tests/test_report_export.mjs
+
       - name: Query smoke test
         run: |
           python3 logic_db/query_logic_db.py outputs/triplens_logic_master_v2.sqlite --limit 5
@@ -85,8 +92,9 @@ jobs:
           import csv, sqlite3
           from pathlib import Path
           db = sqlite3.connect('outputs/triplens_logic_master_v2.sqlite')
-          rows = db.execute('SELECT * FROM v_event_tag_map ORDER BY rule_id').fetchall()
-          cols = [d[0] for d in db.execute('SELECT * FROM v_event_tag_map LIMIT 0').description]
+          cur = db.execute('SELECT * FROM v_event_tag_map ORDER BY rule_id')
+          cols = [d[0] for d in cur.description]
+          rows = cur.fetchall()
           out = Path('outputs/event_tag_map.csv')
           with out.open('w', encoding='utf-8-sig', newline='') as f:
               w = csv.writer(f); w.writerow(cols); w.writerows(rows)
