@@ -13,6 +13,7 @@ on:
       - 'logic_db/**'
       - 'webapp/**'
       - 'tests/test_event_tag_master_coverage.py'
+      - 'tests/test_event_tag_resolver.mjs'
       - 'tests/test_report_export.mjs'
       - '.github/workflows/build-logic-db.yml'
   pull_request:
@@ -22,6 +23,7 @@ on:
       - 'logic_db/**'
       - 'webapp/**'
       - 'tests/test_event_tag_master_coverage.py'
+      - 'tests/test_event_tag_resolver.mjs'
       - 'tests/test_report_export.mjs'
       - '.github/workflows/build-logic-db.yml'
   workflow_dispatch:
@@ -73,6 +75,9 @@ jobs:
         run: |
           python3 -m pip install pytest
           python3 -m pytest -q tests/test_event_tag_master_coverage.py
+
+      - name: Web EVENT resolver regression tests
+        run: node --test tests/test_event_tag_resolver.mjs
 
       - name: Report PDF and PINPOINT export regression tests
         run: node --test tests/test_report_export.mjs
