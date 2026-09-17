@@ -1,5 +1,4 @@
 import csv
-import json
 import sqlite3
 import subprocess
 import sys
@@ -17,6 +16,11 @@ def build_db(tmp: Path) -> Path:
         str(ROOT / "logic_db" / "build_logic_db.py"),
         "--output", str(out),
         "--manifest", str(manifest),
+    ], cwd=ROOT, check=True)
+    subprocess.run([
+        sys.executable,
+        str(ROOT / "logic_db" / "event_tag_master.py"),
+        str(out),
     ], cwd=ROOT, check=True)
     return out
 
@@ -63,5 +67,21 @@ def test_gt_trip_latch_resolves_to_gt_trip_latch_tag():
                 "SELECT tag_id FROM event_tag_link WHERE rule_id='GT_TRIP_LATCH'"
             ).fetchone()
             assert row == ("GT.TRIP.LATCH",)
+        finally:
+            db.close()
+
+
+def test_event_lookup_key_disambiguates_generic_event_tag_names():
+    with tempfile.TemporaryDirectory() as td:
+        db_path = build_db(Path(td))
+        db = sqlite3.connect(db_path)
+        try:
+            rows = db.execute(
+                "SELECT rule_id,event_lookup_key FROM event_tag_link WHERE event_lookup_key LIKE '%::FLOW_LOW_LOW'"
+            ).fetchall()
+            keys = [row[1] for row in rows]
+            assert "HP TURBINE::FLOW_LOW_LOW" in keys
+            assert "IP TURBINE::FLOW_LOW_LOW" in keys
+            assert len(keys) == len(set(keys))
         finally:
             db.close()
