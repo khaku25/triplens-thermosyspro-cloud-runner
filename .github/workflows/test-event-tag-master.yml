@@ -1,0 +1,23 @@
+name: Test EVENT Tag Master coverage
+
+on:
+  pull_request:
+    paths:
+      - 'logic_db/**'
+      - 'config/alarm_registry_v1.csv'
+      - 'config/dcs_alarm_rules.csv'
+      - 'config/signal_map.json'
+      - 'tests/test_event_tag_master_coverage.py'
+      - '.github/workflows/test-event-tag-master.yml'
+  workflow_dispatch:
+
+jobs:
+  event-tag-master:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pytest
+      - run: python -m pytest -q tests/test_event_tag_master_coverage.py
