@@ -1,0 +1,97 @@
+{
+  "standard": {
+    "id": "triplens-industrial-incident-design-standard",
+    "version": "1.0",
+    "status": "FIXED_BASELINE",
+    "figma": "https://www.figma.com/design/j2F3TQql9I15F9760qtWe9?node-id=10-545"
+  },
+  "principles": [
+    "DOCUMENT_FIRST",
+    "EVIDENCE_FIRST",
+    "HIERARCHY_OVER_DECORATION",
+    "HUMAN_AUTHORITY",
+    "UNCERTAINTY_VISIBLE"
+  ],
+  "visual": {
+    "report_monochrome_safe": true,
+    "report_radius_px_max": 2,
+    "web_control_radius_px_max": 6,
+    "large_rounded_cards": "AVOID",
+    "gradient": "FORBIDDEN",
+    "glow": "FORBIDDEN",
+    "glass": "FORBIDDEN",
+    "emoji_headings": "FORBIDDEN"
+  },
+  "status_notation": {
+    "CONFIRMED": "■ 확인 (CONFIRMED)",
+    "CANDIDATE": "△ 후보 (CANDIDATE)",
+    "OBSERVED": "○ 관측 (OBSERVED)",
+    "UNKNOWN": "— 미확인 (UNKNOWN)"
+  },
+  "report_structure": [
+    "개요",
+    "사고 발생 전 운전 현황",
+    "장애 현상",
+    "시간대별 조치사항",
+    "발생 원인",
+    "조치 결과",
+    "추정 원인 및 미확인 사항",
+    "재발방지 대책",
+    "증거자료"
+  ],
+  "analysis_mapping": {
+    "Primary Cause": "발생 원인 > 선행 원인",
+    "Direct Trigger": "발생 원인 > 직접 Trip 원인",
+    "Propagation": "발생 원인 > 파급 과정",
+    "Causal Chain": "chronological evidence first; concise summary second"
+  },
+  "chronology": {
+    "arbitrary_item_limit": null,
+    "full_soe": "VARIABLE_LENGTH",
+    "critical_events": "SUBSET_OF_SOE",
+    "web": "VERTICAL_SCROLL_OR_EXPAND",
+    "pdf": "AUTO_CONTINUATION_PAGES",
+    "csv": "PRESERVE_ALL_APPLICABLE_ROWS"
+  },
+  "evidence": {
+    "cause_requires_evidence_id": true,
+    "required_fields": [
+      "status",
+      "claim",
+      "evidence_id",
+      "related_tags",
+      "recorded_time",
+      "source",
+      "logic_master_verification"
+    ]
+  },
+  "tag": {
+    "show_raw_and_friendly": true,
+    "unregistered_labels": [
+      "미등록 관측 태그",
+      "로직 조건식 추론 금지"
+    ],
+    "infer_unregistered_logic": false
+  },
+  "verification": {
+    "ai_confidence_separate_from_engineering_status": true,
+    "hold": {
+      "label": "검증 미완료",
+      "draft_export_allowed": true,
+      "forbidden_final_wording": [
+        "최종 확정",
+        "Root Cause Confirmed"
+      ],
+      "output_label": "고장보고서 초안"
+    }
+  },
+  "safety": {
+    "read_only": true,
+    "ai_equipment_operation_commands": false,
+    "invent_tags": false,
+    "scenario_answer_as_evidence": false,
+    "evidence_policy_failure_to_gemini": false,
+    "event_raw_immutable": true,
+    "human_finalization_required": true
+  }
+}
