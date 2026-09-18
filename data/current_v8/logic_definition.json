@@ -1,0 +1,4260 @@
+{
+  "blocks": [
+    {
+      "block_id": "logic:AL-GT-FLOW-L",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 545 kg/s",
+      "delay": "0.2 s",
+      "reset_hysteresis": "+6 kg/s",
+      "rule_id": "AL-GT-FLOW-L"
+    },
+    {
+      "block_id": "delay:AL-GT-FLOW-L",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.2 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-GT-FLOW-L"
+    },
+    {
+      "block_id": "logic:AL-GT-FLOW-LL",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 300 kg/s",
+      "delay": "0.2 s",
+      "reset_hysteresis": "+6 kg/s",
+      "rule_id": "AL-GT-FLOW-LL"
+    },
+    {
+      "block_id": "delay:AL-GT-FLOW-LL",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.2 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-GT-FLOW-LL"
+    },
+    {
+      "block_id": "logic:AL-GT-TEMP-L",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 805 K",
+      "delay": "0.2 s",
+      "reset_hysteresis": "+5 K",
+      "rule_id": "AL-GT-TEMP-L"
+    },
+    {
+      "block_id": "delay:AL-GT-TEMP-L",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.2 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-GT-TEMP-L"
+    },
+    {
+      "block_id": "logic:AL-GT-TEMP-LL",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 580 K",
+      "delay": "0.2 s",
+      "reset_hysteresis": "+5 K",
+      "rule_id": "AL-GT-TEMP-LL"
+    },
+    {
+      "block_id": "delay:AL-GT-TEMP-LL",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.2 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-GT-TEMP-LL"
+    },
+    {
+      "block_id": "logic:AL-HP-FLOW-L",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 486 t/h",
+      "delay": "0.2 s",
+      "reset_hysteresis": "10.8 t/h",
+      "rule_id": "AL-HP-FLOW-L"
+    },
+    {
+      "block_id": "delay:AL-HP-FLOW-L",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.2 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-HP-FLOW-L"
+    },
+    {
+      "block_id": "logic:AL-HP-FLOW-LL",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 324 t/h",
+      "delay": "0.2 s",
+      "reset_hysteresis": "10.8 t/h",
+      "rule_id": "AL-HP-FLOW-LL"
+    },
+    {
+      "block_id": "delay:AL-HP-FLOW-LL",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.2 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-HP-FLOW-LL"
+    },
+    {
+      "block_id": "logic:AL-HP-LEVEL-H",
+      "block_type": "ALARM",
+      "condition_or_label": "value > 1.15 m",
+      "delay": "0.5 s",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-HP-LEVEL-H"
+    },
+    {
+      "block_id": "delay:AL-HP-LEVEL-H",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-HP-LEVEL-H"
+    },
+    {
+      "block_id": "logic:AL-HP-LEVEL-HH",
+      "block_type": "ALARM",
+      "condition_or_label": "value > 1.25 m",
+      "delay": "0.5 s",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-HP-LEVEL-HH"
+    },
+    {
+      "block_id": "delay:AL-HP-LEVEL-HH",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-HP-LEVEL-HH"
+    },
+    {
+      "block_id": "logic:AL-HP-LEVEL-L",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 0.95 m",
+      "delay": "0.5 s",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-HP-LEVEL-L"
+    },
+    {
+      "block_id": "delay:AL-HP-LEVEL-L",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-HP-LEVEL-L"
+    },
+    {
+      "block_id": "logic:AL-HP-LEVEL-LL",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 0.85 m",
+      "delay": "0.5 s",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-HP-LEVEL-LL"
+    },
+    {
+      "block_id": "delay:AL-HP-LEVEL-LL",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-HP-LEVEL-LL"
+    },
+    {
+      "block_id": "logic:AL-HP-PRESS-L",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 12000000 Pa",
+      "delay": "0.5 s",
+      "reset_hysteresis": "200000 Pa",
+      "rule_id": "AL-HP-PRESS-L"
+    },
+    {
+      "block_id": "delay:AL-HP-PRESS-L",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-HP-PRESS-L"
+    },
+    {
+      "block_id": "logic:AL-HP-PRESS-LL",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 10800000 Pa",
+      "delay": "0.5 s",
+      "reset_hysteresis": "200000 Pa",
+      "rule_id": "AL-HP-PRESS-LL"
+    },
+    {
+      "block_id": "delay:AL-HP-PRESS-LL",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-HP-PRESS-LL"
+    },
+    {
+      "block_id": "logic:AL-IP-FLOW-L",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 576 t/h",
+      "delay": "0.2 s",
+      "reset_hysteresis": "10.8 t/h",
+      "rule_id": "AL-IP-FLOW-L"
+    },
+    {
+      "block_id": "delay:AL-IP-FLOW-L",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.2 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-IP-FLOW-L"
+    },
+    {
+      "block_id": "logic:AL-IP-FLOW-LL",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 378 t/h",
+      "delay": "0.2 s",
+      "reset_hysteresis": "10.8 t/h",
+      "rule_id": "AL-IP-FLOW-LL"
+    },
+    {
+      "block_id": "delay:AL-IP-FLOW-LL",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.2 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-IP-FLOW-LL"
+    },
+    {
+      "block_id": "logic:AL-IP-LEVEL-H",
+      "block_type": "ALARM",
+      "condition_or_label": "value > 1.15 m",
+      "delay": "0.5 s",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-IP-LEVEL-H"
+    },
+    {
+      "block_id": "delay:AL-IP-LEVEL-H",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-IP-LEVEL-H"
+    },
+    {
+      "block_id": "logic:AL-IP-LEVEL-HH",
+      "block_type": "ALARM",
+      "condition_or_label": "value > 1.25 m",
+      "delay": "0.5 s",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-IP-LEVEL-HH"
+    },
+    {
+      "block_id": "delay:AL-IP-LEVEL-HH",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-IP-LEVEL-HH"
+    },
+    {
+      "block_id": "logic:AL-IP-LEVEL-L",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 0.95 m",
+      "delay": "0.5 s",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-IP-LEVEL-L"
+    },
+    {
+      "block_id": "delay:AL-IP-LEVEL-L",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-IP-LEVEL-L"
+    },
+    {
+      "block_id": "logic:AL-IP-LEVEL-LL",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 0.85 m",
+      "delay": "0.5 s",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-IP-LEVEL-LL"
+    },
+    {
+      "block_id": "delay:AL-IP-LEVEL-LL",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-IP-LEVEL-LL"
+    },
+    {
+      "block_id": "logic:AL-IP-PRESS-L",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 2550000 Pa",
+      "delay": "0.5 s",
+      "reset_hysteresis": "50000 Pa",
+      "rule_id": "AL-IP-PRESS-L"
+    },
+    {
+      "block_id": "delay:AL-IP-PRESS-L",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-IP-PRESS-L"
+    },
+    {
+      "block_id": "logic:AL-IP-PRESS-LL",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 2300000 Pa",
+      "delay": "0.5 s",
+      "reset_hysteresis": "50000 Pa",
+      "rule_id": "AL-IP-PRESS-LL"
+    },
+    {
+      "block_id": "delay:AL-IP-PRESS-LL",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-IP-PRESS-LL"
+    },
+    {
+      "block_id": "logic:AL-LP-FLOW-L",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 630 t/h",
+      "delay": "0.2 s",
+      "reset_hysteresis": "10.8 t/h",
+      "rule_id": "AL-LP-FLOW-L"
+    },
+    {
+      "block_id": "delay:AL-LP-FLOW-L",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.2 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-LP-FLOW-L"
+    },
+    {
+      "block_id": "logic:AL-LP-FLOW-LL",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 424.8 t/h",
+      "delay": "0.2 s",
+      "reset_hysteresis": "10.8 t/h",
+      "rule_id": "AL-LP-FLOW-LL"
+    },
+    {
+      "block_id": "delay:AL-LP-FLOW-LL",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.2 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-LP-FLOW-LL"
+    },
+    {
+      "block_id": "logic:AL-LP-LEVEL-H",
+      "block_type": "ALARM",
+      "condition_or_label": "value > 1.85 m",
+      "delay": "0.5 s",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-LP-LEVEL-H"
+    },
+    {
+      "block_id": "delay:AL-LP-LEVEL-H",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-LP-LEVEL-H"
+    },
+    {
+      "block_id": "logic:AL-LP-LEVEL-HH",
+      "block_type": "ALARM",
+      "condition_or_label": "value > 1.95 m",
+      "delay": "0.5 s",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-LP-LEVEL-HH"
+    },
+    {
+      "block_id": "delay:AL-LP-LEVEL-HH",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-LP-LEVEL-HH"
+    },
+    {
+      "block_id": "logic:AL-LP-LEVEL-L",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 1.65 m",
+      "delay": "0.5 s",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-LP-LEVEL-L"
+    },
+    {
+      "block_id": "delay:AL-LP-LEVEL-L",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-LP-LEVEL-L"
+    },
+    {
+      "block_id": "logic:AL-LP-LEVEL-LL",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 1.55 m",
+      "delay": "0.5 s",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-LP-LEVEL-LL"
+    },
+    {
+      "block_id": "delay:AL-LP-LEVEL-LL",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-LP-LEVEL-LL"
+    },
+    {
+      "block_id": "logic:AL-LP-PRESS-L",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 500000 Pa",
+      "delay": "0.5 s",
+      "reset_hysteresis": "10000 Pa",
+      "rule_id": "AL-LP-PRESS-L"
+    },
+    {
+      "block_id": "delay:AL-LP-PRESS-L",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-LP-PRESS-L"
+    },
+    {
+      "block_id": "logic:AL-LP-PRESS-LL",
+      "block_type": "ALARM",
+      "condition_or_label": "value < 450000 Pa",
+      "delay": "0.5 s",
+      "reset_hysteresis": "10000 Pa",
+      "rule_id": "AL-LP-PRESS-LL"
+    },
+    {
+      "block_id": "delay:AL-LP-PRESS-LL",
+      "block_type": "TON",
+      "condition_or_label": "",
+      "delay": "0.5 s",
+      "reset_hysteresis": "",
+      "rule_id": "AL-LP-PRESS-LL"
+    },
+    {
+      "block_id": "logic:CMD-FWP-HP-RESET",
+      "block_type": "COMMAND_INTERFACE",
+      "condition_or_label": "operator/test reset PB",
+      "delay": "external runtime interface",
+      "reset_hysteresis": "-",
+      "rule_id": "CMD-FWP-HP-RESET"
+    },
+    {
+      "block_id": "logic:CMD-FWP-HP-TRIP",
+      "block_type": "COMMAND_INTERFACE",
+      "condition_or_label": "operator/test PB writes trip command through runtime interface",
+      "delay": "external runtime interface",
+      "reset_hysteresis": "reset PB",
+      "rule_id": "CMD-FWP-HP-TRIP"
+    },
+    {
+      "block_id": "logic:CMD-FWP-IP-RESET",
+      "block_type": "COMMAND_INTERFACE",
+      "condition_or_label": "operator/test reset PB",
+      "delay": "external runtime interface",
+      "reset_hysteresis": "-",
+      "rule_id": "CMD-FWP-IP-RESET"
+    },
+    {
+      "block_id": "logic:CMD-FWP-IP-TRIP",
+      "block_type": "COMMAND_INTERFACE",
+      "condition_or_label": "operator/test PB writes trip command through runtime interface",
+      "delay": "external runtime interface",
+      "reset_hysteresis": "reset PB",
+      "rule_id": "CMD-FWP-IP-TRIP"
+    },
+    {
+      "block_id": "logic:CMD-FWP-LP-RESET",
+      "block_type": "COMMAND_INTERFACE",
+      "condition_or_label": "operator/test reset PB",
+      "delay": "external runtime interface",
+      "reset_hysteresis": "-",
+      "rule_id": "CMD-FWP-LP-RESET"
+    },
+    {
+      "block_id": "logic:CMD-FWP-LP-TRIP",
+      "block_type": "COMMAND_INTERFACE",
+      "condition_or_label": "operator/test PB writes trip command through runtime interface",
+      "delay": "external runtime interface",
+      "reset_hysteresis": "reset PB",
+      "rule_id": "CMD-FWP-LP-TRIP"
+    },
+    {
+      "block_id": "logic:PROT-DIRECT-GT",
+      "block_type": "PROTECTION_CAUSE",
+      "condition_or_label": "command >= 0.5",
+      "delay": "0 s",
+      "reset_hysteresis": "reset by GT reset",
+      "rule_id": "PROT-DIRECT-GT"
+    },
+    {
+      "block_id": "logic:PROT-DIRECT-ST",
+      "block_type": "PROTECTION_CAUSE",
+      "condition_or_label": "command >= 0.5",
+      "delay": "0 s",
+      "reset_hysteresis": "reset by ST reset",
+      "rule_id": "PROT-DIRECT-ST"
+    },
+    {
+      "block_id": "logic:PROT-GT-BRK-OPEN",
+      "block_type": "PROTECTION_CAUSE",
+      "condition_or_label": "52GT close command < 0.5 AND GT latch not active",
+      "delay": "0 s",
+      "reset_hysteresis": "state reset",
+      "rule_id": "PROT-GT-BRK-OPEN"
+    },
+    {
+      "block_id": "logic:PROT-GT-LATCH",
+      "block_type": "LATCH",
+      "condition_or_label": "request=1 AND reset<0.5 -> latch; reset clears",
+      "delay": "event-driven",
+      "reset_hysteresis": "reset input",
+      "rule_id": "PROT-GT-LATCH"
+    },
+    {
+      "block_id": "logic:PROT-GT-REQUEST",
+      "block_type": "TRIP_REQUEST",
+      "condition_or_label": "OR(all inputs)",
+      "delay": "0 s",
+      "reset_hysteresis": "GT reset",
+      "rule_id": "PROT-GT-REQUEST"
+    },
+    {
+      "block_id": "logic:PROT-HP-DRUM-HH",
+      "block_type": "PROTECTION_CAUSE",
+      "condition_or_label": "raw HH state == 1",
+      "delay": "runtime-defined",
+      "reset_hysteresis": "reset/return per runtime",
+      "rule_id": "PROT-HP-DRUM-HH"
+    },
+    {
+      "block_id": "logic:PROT-HP-DRUM-LL",
+      "block_type": "PROTECTION_CAUSE",
+      "condition_or_label": "raw LL state == 1",
+      "delay": "runtime-defined",
+      "reset_hysteresis": "reset/return per runtime",
+      "rule_id": "PROT-HP-DRUM-LL"
+    },
+    {
+      "block_id": "logic:PROT-IP-DRUM-HH",
+      "block_type": "PROTECTION_CAUSE",
+      "condition_or_label": "raw HH state == 1",
+      "delay": "runtime-defined",
+      "reset_hysteresis": "reset/return per runtime",
+      "rule_id": "PROT-IP-DRUM-HH"
+    },
+    {
+      "block_id": "logic:PROT-IP-DRUM-LL",
+      "block_type": "PROTECTION_CAUSE",
+      "condition_or_label": "raw LL state == 1",
+      "delay": "runtime-defined",
+      "reset_hysteresis": "reset/return per runtime",
+      "rule_id": "PROT-IP-DRUM-LL"
+    },
+    {
+      "block_id": "logic:PROT-LP-DRUM-HH",
+      "block_type": "PROTECTION_CAUSE",
+      "condition_or_label": "raw HH state == 1",
+      "delay": "runtime-defined",
+      "reset_hysteresis": "reset/return per runtime",
+      "rule_id": "PROT-LP-DRUM-HH"
+    },
+    {
+      "block_id": "logic:PROT-LP-DRUM-LL",
+      "block_type": "PROTECTION_CAUSE",
+      "condition_or_label": "raw LL state == 1",
+      "delay": "runtime-defined",
+      "reset_hysteresis": "reset/return per runtime",
+      "rule_id": "PROT-LP-DRUM-LL"
+    },
+    {
+      "block_id": "logic:PROT-ST-LATCH",
+      "block_type": "LATCH",
+      "condition_or_label": "request=1 AND reset<0.5 -> latch; reset clears",
+      "delay": "event-driven",
+      "reset_hysteresis": "reset input",
+      "rule_id": "PROT-ST-LATCH"
+    },
+    {
+      "block_id": "logic:PROT-ST-REQUEST",
+      "block_type": "TRIP_REQUEST",
+      "condition_or_label": "OR(all 9 causes)",
+      "delay": "0 s",
+      "reset_hysteresis": "ST reset",
+      "rule_id": "PROT-ST-REQUEST"
+    },
+    {
+      "block_id": "logic:RESP-GT-POWER",
+      "block_type": "PHYSICAL_RESPONSE",
+      "condition_or_label": "if 52GT not closed then GT generator power = 0",
+      "delay": "immediate model relation",
+      "reset_hysteresis": "-",
+      "rule_id": "RESP-GT-POWER"
+    },
+    {
+      "block_id": "logic:RESP-GT-SPEED",
+      "block_type": "PHYSICAL_RESPONSE",
+      "condition_or_label": "if 52GT opens, speed decays from nominal by coastdown model",
+      "delay": "dynamic",
+      "reset_hysteresis": "-",
+      "rule_id": "RESP-GT-SPEED"
+    },
+    {
+      "block_id": "logic:SEQ-52GT-OPEN",
+      "block_type": "BREAKER_SEQUENCE",
+      "condition_or_label": "GT latch active -> breaker opens",
+      "delay": "0.080 s",
+      "reset_hysteresis": "-",
+      "rule_id": "SEQ-52GT-OPEN"
+    },
+    {
+      "block_id": "delay:SEQ-52GT-OPEN",
+      "block_type": "DEFINED_DELAY",
+      "condition_or_label": "",
+      "delay": "0.080 s",
+      "reset_hysteresis": "",
+      "rule_id": "SEQ-52GT-OPEN"
+    },
+    {
+      "block_id": "logic:SEQ-52GT-TRIPCMD",
+      "block_type": "BREAKER_SEQUENCE",
+      "condition_or_label": "GT latch active",
+      "delay": "0.055 s",
+      "reset_hysteresis": "-",
+      "rule_id": "SEQ-52GT-TRIPCMD"
+    },
+    {
+      "block_id": "delay:SEQ-52GT-TRIPCMD",
+      "block_type": "DEFINED_DELAY",
+      "condition_or_label": "",
+      "delay": "0.055 s",
+      "reset_hysteresis": "",
+      "rule_id": "SEQ-52GT-TRIPCMD"
+    },
+    {
+      "block_id": "logic:SEQ-52ST-OPEN",
+      "block_type": "BREAKER_SEQUENCE",
+      "condition_or_label": "ST latch active -> breaker opens",
+      "delay": "0.100 s",
+      "reset_hysteresis": "-",
+      "rule_id": "SEQ-52ST-OPEN"
+    },
+    {
+      "block_id": "delay:SEQ-52ST-OPEN",
+      "block_type": "DEFINED_DELAY",
+      "condition_or_label": "",
+      "delay": "0.100 s",
+      "reset_hysteresis": "",
+      "rule_id": "SEQ-52ST-OPEN"
+    },
+    {
+      "block_id": "logic:SEQ-52ST-TRIPCMD",
+      "block_type": "BREAKER_SEQUENCE",
+      "condition_or_label": "ST latch active",
+      "delay": "0 s",
+      "reset_hysteresis": "-",
+      "rule_id": "SEQ-52ST-TRIPCMD"
+    }
+  ],
+  "definitions": [
+    {
+      "condition": "value < 545 kg/s",
+      "delay": "0.2 s",
+      "group": "GT Exhaust",
+      "input_group_id": "IG-001",
+      "input_nodes": "vppGTExhaustMassFlowState",
+      "logic_name": "GT exhaust flow low",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "GT.EXHAUST.FLOW.L",
+      "reset_hysteresis": "+6 kg/s",
+      "rule_id": "AL-GT-FLOW-L",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 300 kg/s",
+      "delay": "0.2 s",
+      "group": "GT Exhaust",
+      "input_group_id": "IG-001",
+      "input_nodes": "vppGTExhaustMassFlowState",
+      "logic_name": "GT exhaust flow low-low",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "GT.EXHAUST.FLOW.LL",
+      "reset_hysteresis": "+6 kg/s",
+      "rule_id": "AL-GT-FLOW-LL",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 805 K",
+      "delay": "0.2 s",
+      "group": "GT Exhaust",
+      "input_group_id": "IG-002",
+      "input_nodes": "vppGTExhaustTemperatureK",
+      "logic_name": "GT exhaust temperature low",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "GT.EXHAUST.TEMP.L",
+      "reset_hysteresis": "+5 K",
+      "rule_id": "AL-GT-TEMP-L",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 580 K",
+      "delay": "0.2 s",
+      "group": "GT Exhaust",
+      "input_group_id": "IG-002",
+      "input_nodes": "vppGTExhaustTemperatureK",
+      "logic_name": "GT exhaust temperature low-low",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "GT.EXHAUST.TEMP.LL",
+      "reset_hysteresis": "+5 K",
+      "rule_id": "AL-GT-TEMP-LL",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 486 t/h",
+      "delay": "0.2 s",
+      "group": "HP Steam Flow",
+      "input_group_id": "IG-005",
+      "input_nodes": "vppHPTurbineSteamFlowTH",
+      "logic_name": "HP turbine steam flow L",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.HP.STEAM.FLOW.L",
+      "reset_hysteresis": "10.8 t/h",
+      "rule_id": "AL-HP-FLOW-L",
+      "source_basis": "Current DCS alarm rule; RAW node is vpp*TurbineSteamFlowTH; threshold converted exactly from kg/s × 3.6",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 324 t/h",
+      "delay": "0.2 s",
+      "group": "HP Steam Flow",
+      "input_group_id": "IG-005",
+      "input_nodes": "vppHPTurbineSteamFlowTH",
+      "logic_name": "HP turbine steam flow LL",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.HP.STEAM.FLOW.LL",
+      "reset_hysteresis": "10.8 t/h",
+      "rule_id": "AL-HP-FLOW-LL",
+      "source_basis": "Current DCS alarm rule; RAW node is vpp*TurbineSteamFlowTH; threshold converted exactly from kg/s × 3.6",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value > 1.15 m",
+      "delay": "0.5 s",
+      "group": "HP Drum",
+      "input_group_id": "IG-003",
+      "input_nodes": "vppHPDrumLevelM",
+      "logic_name": "HP drum level H",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.HP.DRUM.LEVEL.H",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-HP-LEVEL-H",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value > 1.25 m",
+      "delay": "0.5 s",
+      "group": "HP Drum",
+      "input_group_id": "IG-003",
+      "input_nodes": "vppHPDrumLevelM",
+      "logic_name": "HP drum level HH",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.HP.DRUM.LEVEL.HH",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-HP-LEVEL-HH",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 0.95 m",
+      "delay": "0.5 s",
+      "group": "HP Drum",
+      "input_group_id": "IG-003",
+      "input_nodes": "vppHPDrumLevelM",
+      "logic_name": "HP drum level L",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.HP.DRUM.LEVEL.L",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-HP-LEVEL-L",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 0.85 m",
+      "delay": "0.5 s",
+      "group": "HP Drum",
+      "input_group_id": "IG-003",
+      "input_nodes": "vppHPDrumLevelM",
+      "logic_name": "HP drum level LL",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.HP.DRUM.LEVEL.LL",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-HP-LEVEL-LL",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 12000000 Pa",
+      "delay": "0.5 s",
+      "group": "HP Drum",
+      "input_group_id": "IG-004",
+      "input_nodes": "vppHPDrumPressurePa",
+      "logic_name": "HP drum pressure L",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.HP.DRUM.PRESS.L",
+      "reset_hysteresis": "200000 Pa",
+      "rule_id": "AL-HP-PRESS-L",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 10800000 Pa",
+      "delay": "0.5 s",
+      "group": "HP Drum",
+      "input_group_id": "IG-004",
+      "input_nodes": "vppHPDrumPressurePa",
+      "logic_name": "HP drum pressure LL",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.HP.DRUM.PRESS.LL",
+      "reset_hysteresis": "200000 Pa",
+      "rule_id": "AL-HP-PRESS-LL",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 576 t/h",
+      "delay": "0.2 s",
+      "group": "IP Steam Flow",
+      "input_group_id": "IG-008",
+      "input_nodes": "vppIPTurbineSteamFlowTH",
+      "logic_name": "IP turbine steam flow L",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.IP.STEAM.FLOW.L",
+      "reset_hysteresis": "10.8 t/h",
+      "rule_id": "AL-IP-FLOW-L",
+      "source_basis": "Current DCS alarm rule; RAW node is vpp*TurbineSteamFlowTH; threshold converted exactly from kg/s × 3.6",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 378 t/h",
+      "delay": "0.2 s",
+      "group": "IP Steam Flow",
+      "input_group_id": "IG-008",
+      "input_nodes": "vppIPTurbineSteamFlowTH",
+      "logic_name": "IP turbine steam flow LL",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.IP.STEAM.FLOW.LL",
+      "reset_hysteresis": "10.8 t/h",
+      "rule_id": "AL-IP-FLOW-LL",
+      "source_basis": "Current DCS alarm rule; RAW node is vpp*TurbineSteamFlowTH; threshold converted exactly from kg/s × 3.6",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value > 1.15 m",
+      "delay": "0.5 s",
+      "group": "IP Drum",
+      "input_group_id": "IG-006",
+      "input_nodes": "vppIPDrumLevelM",
+      "logic_name": "IP drum level H",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.IP.DRUM.LEVEL.H",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-IP-LEVEL-H",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value > 1.25 m",
+      "delay": "0.5 s",
+      "group": "IP Drum",
+      "input_group_id": "IG-006",
+      "input_nodes": "vppIPDrumLevelM",
+      "logic_name": "IP drum level HH",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.IP.DRUM.LEVEL.HH",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-IP-LEVEL-HH",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 0.95 m",
+      "delay": "0.5 s",
+      "group": "IP Drum",
+      "input_group_id": "IG-006",
+      "input_nodes": "vppIPDrumLevelM",
+      "logic_name": "IP drum level L",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.IP.DRUM.LEVEL.L",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-IP-LEVEL-L",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 0.85 m",
+      "delay": "0.5 s",
+      "group": "IP Drum",
+      "input_group_id": "IG-006",
+      "input_nodes": "vppIPDrumLevelM",
+      "logic_name": "IP drum level LL",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.IP.DRUM.LEVEL.LL",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-IP-LEVEL-LL",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 2550000 Pa",
+      "delay": "0.5 s",
+      "group": "IP Drum",
+      "input_group_id": "IG-007",
+      "input_nodes": "vppIPDrumPressurePa",
+      "logic_name": "IP drum pressure L",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.IP.DRUM.PRESS.L",
+      "reset_hysteresis": "50000 Pa",
+      "rule_id": "AL-IP-PRESS-L",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 2300000 Pa",
+      "delay": "0.5 s",
+      "group": "IP Drum",
+      "input_group_id": "IG-007",
+      "input_nodes": "vppIPDrumPressurePa",
+      "logic_name": "IP drum pressure LL",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.IP.DRUM.PRESS.LL",
+      "reset_hysteresis": "50000 Pa",
+      "rule_id": "AL-IP-PRESS-LL",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 630 t/h",
+      "delay": "0.2 s",
+      "group": "LP Steam Flow",
+      "input_group_id": "IG-011",
+      "input_nodes": "vppLPTurbineSteamFlowTH",
+      "logic_name": "LP turbine steam flow L",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.LP.STEAM.FLOW.L",
+      "reset_hysteresis": "10.8 t/h",
+      "rule_id": "AL-LP-FLOW-L",
+      "source_basis": "Current DCS alarm rule; RAW node is vpp*TurbineSteamFlowTH; threshold converted exactly from kg/s × 3.6",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 424.8 t/h",
+      "delay": "0.2 s",
+      "group": "LP Steam Flow",
+      "input_group_id": "IG-011",
+      "input_nodes": "vppLPTurbineSteamFlowTH",
+      "logic_name": "LP turbine steam flow LL",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.LP.STEAM.FLOW.LL",
+      "reset_hysteresis": "10.8 t/h",
+      "rule_id": "AL-LP-FLOW-LL",
+      "source_basis": "Current DCS alarm rule; RAW node is vpp*TurbineSteamFlowTH; threshold converted exactly from kg/s × 3.6",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value > 1.85 m",
+      "delay": "0.5 s",
+      "group": "LP Drum",
+      "input_group_id": "IG-009",
+      "input_nodes": "vppLPDrumLevelM",
+      "logic_name": "LP drum level H",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.LP.DRUM.LEVEL.H",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-LP-LEVEL-H",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value > 1.95 m",
+      "delay": "0.5 s",
+      "group": "LP Drum",
+      "input_group_id": "IG-009",
+      "input_nodes": "vppLPDrumLevelM",
+      "logic_name": "LP drum level HH",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.LP.DRUM.LEVEL.HH",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-LP-LEVEL-HH",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 1.65 m",
+      "delay": "0.5 s",
+      "group": "LP Drum",
+      "input_group_id": "IG-009",
+      "input_nodes": "vppLPDrumLevelM",
+      "logic_name": "LP drum level L",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.LP.DRUM.LEVEL.L",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-LP-LEVEL-L",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 1.55 m",
+      "delay": "0.5 s",
+      "group": "LP Drum",
+      "input_group_id": "IG-009",
+      "input_nodes": "vppLPDrumLevelM",
+      "logic_name": "LP drum level LL",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.LP.DRUM.LEVEL.LL",
+      "reset_hysteresis": "0.02 m",
+      "rule_id": "AL-LP-LEVEL-LL",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 500000 Pa",
+      "delay": "0.5 s",
+      "group": "LP Drum",
+      "input_group_id": "IG-010",
+      "input_nodes": "vppLPDrumPressurePa",
+      "logic_name": "LP drum pressure L",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.LP.DRUM.PRESS.L",
+      "reset_hysteresis": "10000 Pa",
+      "rule_id": "AL-LP-PRESS-L",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "value < 450000 Pa",
+      "delay": "0.5 s",
+      "group": "LP Drum",
+      "input_group_id": "IG-010",
+      "input_nodes": "vppLPDrumPressurePa",
+      "logic_name": "LP drum pressure LL",
+      "logic_type": "ALARM",
+      "output_class": "DERIVED_ALARM",
+      "output_nodes_or_tags": "HRSG.LP.DRUM.PRESS.LL",
+      "reset_hysteresis": "10000 Pa",
+      "rule_id": "AL-LP-PRESS-LL",
+      "source_basis": "Current DCS alarm rule; RAW input node exists",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "operator/test reset PB",
+      "delay": "external runtime interface",
+      "group": "FWP HP",
+      "input_group_id": "IG-031",
+      "input_nodes": "vppHPFWPResetPushbuttonNative",
+      "logic_name": "HP FWP reset command interface",
+      "logic_type": "COMMAND_INTERFACE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppHPFWPTripLatchNative",
+      "reset_hysteresis": "-",
+      "rule_id": "CMD-FWP-HP-RESET",
+      "source_basis": "Reset node exists in RAW; exact reset sequencing remains runtime-owned",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "operator/test PB writes trip command through runtime interface",
+      "delay": "external runtime interface",
+      "group": "FWP HP",
+      "input_group_id": "IG-030",
+      "input_nodes": "vppHPFWPTripPushbuttonNative",
+      "logic_name": "HP FWP trip command interface",
+      "logic_type": "COMMAND_INTERFACE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppHPFWPTripCommandNative | vppHPFWPTripLatchNative | vppVCBA01TripCommandNative",
+      "reset_hysteresis": "reset PB",
+      "rule_id": "CMD-FWP-HP-TRIP",
+      "source_basis": "All command/latch/breaker nodes exist in RAW; exact client-side sequencing is not re-invented here",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "operator/test reset PB",
+      "delay": "external runtime interface",
+      "group": "FWP IP",
+      "input_group_id": "IG-033",
+      "input_nodes": "vppIPFWPResetPushbuttonNative",
+      "logic_name": "IP FWP reset command interface",
+      "logic_type": "COMMAND_INTERFACE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppIPFWPTripLatchNative",
+      "reset_hysteresis": "-",
+      "rule_id": "CMD-FWP-IP-RESET",
+      "source_basis": "Reset node exists in RAW; exact reset sequencing remains runtime-owned",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "operator/test PB writes trip command through runtime interface",
+      "delay": "external runtime interface",
+      "group": "FWP IP",
+      "input_group_id": "IG-032",
+      "input_nodes": "vppIPFWPTripPushbuttonNative",
+      "logic_name": "IP FWP trip command interface",
+      "logic_type": "COMMAND_INTERFACE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppIPFWPTripCommandNative | vppIPFWPTripLatchNative | vppVCBB01TripCommandNative",
+      "reset_hysteresis": "reset PB",
+      "rule_id": "CMD-FWP-IP-TRIP",
+      "source_basis": "All command/latch/breaker nodes exist in RAW; exact client-side sequencing is not re-invented here",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "operator/test reset PB",
+      "delay": "external runtime interface",
+      "group": "FWP LP",
+      "input_group_id": "IG-035",
+      "input_nodes": "vppLPFWPResetPushbuttonNative",
+      "logic_name": "LP FWP reset command interface",
+      "logic_type": "COMMAND_INTERFACE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppLPFWPTripLatchNative",
+      "reset_hysteresis": "-",
+      "rule_id": "CMD-FWP-LP-RESET",
+      "source_basis": "Reset node exists in RAW; exact reset sequencing remains runtime-owned",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "operator/test PB writes trip command through runtime interface",
+      "delay": "external runtime interface",
+      "group": "FWP LP",
+      "input_group_id": "IG-034",
+      "input_nodes": "vppLPFWPTripPushbuttonNative",
+      "logic_name": "LP FWP trip command interface",
+      "logic_type": "COMMAND_INTERFACE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppLPFWPTripCommandNative | vppLPFWPTripLatchNative | vppVCBA02TripCommandNative",
+      "reset_hysteresis": "reset PB",
+      "rule_id": "CMD-FWP-LP-TRIP",
+      "source_basis": "All command/latch/breaker nodes exist in RAW; exact client-side sequencing is not re-invented here",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "command >= 0.5",
+      "delay": "0 s",
+      "group": "GT Protection",
+      "input_group_id": "IG-012",
+      "input_nodes": "vppExternalTripCommandNative",
+      "logic_name": "Direct GT trip cause",
+      "logic_type": "PROTECTION_CAUSE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppCauseDirectGTTrip",
+      "reset_hysteresis": "reset by GT reset",
+      "rule_id": "PROT-DIRECT-GT",
+      "source_basis": "RAW node + runtime regression evidence",
+      "validation_status": "PASS"
+    },
+    {
+      "condition": "command >= 0.5",
+      "delay": "0 s",
+      "group": "ST Protection",
+      "input_group_id": "IG-013",
+      "input_nodes": "vppExternalSTTripCommandNative",
+      "logic_name": "Direct ST trip cause",
+      "logic_type": "PROTECTION_CAUSE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppCauseDirectSTTrip",
+      "reset_hysteresis": "reset by ST reset",
+      "rule_id": "PROT-DIRECT-ST",
+      "source_basis": "RAW node + runtime regression evidence",
+      "validation_status": "PASS"
+    },
+    {
+      "condition": "52GT close command < 0.5 AND GT latch not active",
+      "delay": "0 s",
+      "group": "GT Protection",
+      "input_group_id": "IG-014",
+      "input_nodes": "vppECMS52GTClosedCommandNative | vppGTTripLatchInternal",
+      "logic_name": "GT breaker open while running cause",
+      "logic_type": "PROTECTION_CAUSE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppCauseGTBreakerOpenWhileRunning",
+      "reset_hysteresis": "state reset",
+      "rule_id": "PROT-GT-BRK-OPEN",
+      "source_basis": "Exact expression recovered from model compile trace",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "request=1 AND reset<0.5 -> latch; reset clears",
+      "delay": "event-driven",
+      "group": "GT Protection",
+      "input_group_id": "IG-023",
+      "input_nodes": "vppGTTripRequest | vppGTTripResetNative",
+      "logic_name": "GT trip latch",
+      "logic_type": "LATCH",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppGTTripLatch",
+      "reset_hysteresis": "reset input",
+      "rule_id": "PROT-GT-LATCH",
+      "source_basis": "Runtime latch node and request/reset nodes exist",
+      "validation_status": "PASS"
+    },
+    {
+      "condition": "OR(all inputs)",
+      "delay": "0 s",
+      "group": "GT Protection",
+      "input_group_id": "IG-021",
+      "input_nodes": "vppCauseDirectGTTrip | vppCauseGTBreakerOpenWhileRunning | vppCauseHPDrumLL | vppCauseIPDrumLL | vppCauseLPDrumLL",
+      "logic_name": "GT trip request OR matrix",
+      "logic_type": "TRIP_REQUEST",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppGTTripRequest",
+      "reset_hysteresis": "GT reset",
+      "rule_id": "PROT-GT-REQUEST",
+      "source_basis": "Exact GT request equation recovered from model compile trace",
+      "validation_status": "PASS"
+    },
+    {
+      "condition": "raw HH state == 1",
+      "delay": "runtime-defined",
+      "group": "HP Drum Protection",
+      "input_group_id": "IG-015",
+      "input_nodes": "vppHPDrumHHRaw",
+      "logic_name": "HP drum HH protection cause",
+      "logic_type": "PROTECTION_CAUSE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppCauseHPDrumHH",
+      "reset_hysteresis": "reset/return per runtime",
+      "rule_id": "PROT-HP-DRUM-HH",
+      "source_basis": "RAW comparator/cause nodes exist; exact internal debounce retained in runtime",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "raw LL state == 1",
+      "delay": "runtime-defined",
+      "group": "HP Drum Protection",
+      "input_group_id": "IG-016",
+      "input_nodes": "vppHPDrumLLRaw",
+      "logic_name": "HP drum LL protection cause",
+      "logic_type": "PROTECTION_CAUSE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppCauseHPDrumLL",
+      "reset_hysteresis": "reset/return per runtime",
+      "rule_id": "PROT-HP-DRUM-LL",
+      "source_basis": "RAW comparator/cause nodes exist; exact internal debounce retained in runtime",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "raw HH state == 1",
+      "delay": "runtime-defined",
+      "group": "IP Drum Protection",
+      "input_group_id": "IG-017",
+      "input_nodes": "vppIPDrumHHRaw",
+      "logic_name": "IP drum HH protection cause",
+      "logic_type": "PROTECTION_CAUSE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppCauseIPDrumHH",
+      "reset_hysteresis": "reset/return per runtime",
+      "rule_id": "PROT-IP-DRUM-HH",
+      "source_basis": "RAW comparator/cause nodes exist; exact internal debounce retained in runtime",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "raw LL state == 1",
+      "delay": "runtime-defined",
+      "group": "IP Drum Protection",
+      "input_group_id": "IG-018",
+      "input_nodes": "vppIPDrumLLRaw",
+      "logic_name": "IP drum LL protection cause",
+      "logic_type": "PROTECTION_CAUSE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppCauseIPDrumLL",
+      "reset_hysteresis": "reset/return per runtime",
+      "rule_id": "PROT-IP-DRUM-LL",
+      "source_basis": "RAW comparator/cause nodes exist; exact internal debounce retained in runtime",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "raw HH state == 1",
+      "delay": "runtime-defined",
+      "group": "LP Drum Protection",
+      "input_group_id": "IG-019",
+      "input_nodes": "vppLPDrumHHRaw",
+      "logic_name": "LP drum HH protection cause",
+      "logic_type": "PROTECTION_CAUSE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppCauseLPDrumHH",
+      "reset_hysteresis": "reset/return per runtime",
+      "rule_id": "PROT-LP-DRUM-HH",
+      "source_basis": "RAW comparator/cause nodes exist; exact internal debounce retained in runtime",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "raw LL state == 1",
+      "delay": "runtime-defined",
+      "group": "LP Drum Protection",
+      "input_group_id": "IG-020",
+      "input_nodes": "vppLPDrumLLRaw",
+      "logic_name": "LP drum LL protection cause",
+      "logic_type": "PROTECTION_CAUSE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppCauseLPDrumLL",
+      "reset_hysteresis": "reset/return per runtime",
+      "rule_id": "PROT-LP-DRUM-LL",
+      "source_basis": "RAW comparator/cause nodes exist; exact internal debounce retained in runtime",
+      "validation_status": "PARTIAL"
+    },
+    {
+      "condition": "request=1 AND reset<0.5 -> latch; reset clears",
+      "delay": "event-driven",
+      "group": "ST Protection",
+      "input_group_id": "IG-024",
+      "input_nodes": "vppSTTripRequest | vppSTTripResetNative",
+      "logic_name": "ST trip latch",
+      "logic_type": "LATCH",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppSTTripLatchPublished",
+      "reset_hysteresis": "reset input",
+      "rule_id": "PROT-ST-LATCH",
+      "source_basis": "Runtime latch node and request/reset nodes exist",
+      "validation_status": "PASS"
+    },
+    {
+      "condition": "OR(all 9 causes)",
+      "delay": "0 s",
+      "group": "ST Protection",
+      "input_group_id": "IG-022",
+      "input_nodes": "vppCauseDirectGTTrip | vppCauseDirectSTTrip | vppCauseGTBreakerOpenWhileRunning | vppCauseHPDrumHH | vppCauseIPDrumHH | vppCauseLPDrumHH | vppCauseHPDrumLL | vppCauseIPDrumLL | vppCauseLPDrumLL",
+      "logic_name": "ST trip request common-trip matrix",
+      "logic_type": "TRIP_REQUEST",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppSTTripRequest",
+      "reset_hysteresis": "ST reset",
+      "rule_id": "PROT-ST-REQUEST",
+      "source_basis": "9-cause common-trip matrix + RAW nodes",
+      "validation_status": "PASS"
+    },
+    {
+      "condition": "if 52GT not closed then GT generator power = 0",
+      "delay": "immediate model relation",
+      "group": "GT Response",
+      "input_group_id": "IG-029",
+      "input_nodes": "vpp52GTClosed",
+      "logic_name": "GT power response after breaker open",
+      "logic_type": "PHYSICAL_RESPONSE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppGTGPowerMW",
+      "reset_hysteresis": "-",
+      "rule_id": "RESP-GT-POWER",
+      "source_basis": "Exact model equation",
+      "validation_status": "PASS"
+    },
+    {
+      "condition": "if 52GT opens, speed decays from nominal by coastdown model",
+      "delay": "dynamic",
+      "group": "GT Response",
+      "input_group_id": "IG-029",
+      "input_nodes": "vpp52GTClosed",
+      "logic_name": "GT speed coastdown after breaker open",
+      "logic_type": "PHYSICAL_RESPONSE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppGTGSpeedRPM",
+      "reset_hysteresis": "-",
+      "rule_id": "RESP-GT-SPEED",
+      "source_basis": "Exact model equation",
+      "validation_status": "PASS"
+    },
+    {
+      "condition": "GT latch active -> breaker opens",
+      "delay": "0.080 s",
+      "group": "GT Protection",
+      "input_group_id": "IG-026",
+      "input_nodes": "vppGTTripLatch | vppECMS52GTClosedCommandNative",
+      "logic_name": "52GT breaker open timing",
+      "logic_type": "BREAKER_SEQUENCE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vpp52GTClosed",
+      "reset_hysteresis": "-",
+      "rule_id": "SEQ-52GT-OPEN",
+      "source_basis": "vppGTBreakerOpenDelay = 0.080 s; EVENT run observed 48.44 -> 48.520005",
+      "validation_status": "PASS"
+    },
+    {
+      "condition": "GT latch active",
+      "delay": "0.055 s",
+      "group": "GT Protection",
+      "input_group_id": "IG-025",
+      "input_nodes": "vppGTTripLatch",
+      "logic_name": "52GT trip command timing",
+      "logic_type": "BREAKER_SEQUENCE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vpp52GTTripCmd",
+      "reset_hysteresis": "-",
+      "rule_id": "SEQ-52GT-TRIPCMD",
+      "source_basis": "vppGTTripCommandDelay = 0.055 s",
+      "validation_status": "PASS"
+    },
+    {
+      "condition": "ST latch active -> breaker opens",
+      "delay": "0.100 s",
+      "group": "ST Protection",
+      "input_group_id": "IG-028",
+      "input_nodes": "vppSTTripLatchPublished | vppECMS52STClosedCommandNative",
+      "logic_name": "52ST breaker open timing",
+      "logic_type": "BREAKER_SEQUENCE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vpp52STClosed",
+      "reset_hysteresis": "-",
+      "rule_id": "SEQ-52ST-OPEN",
+      "source_basis": "vppSTBreakerOpenDelay = 0.100 s; EVENT run observed 48.44 -> 48.540005",
+      "validation_status": "PASS"
+    },
+    {
+      "condition": "ST latch active",
+      "delay": "0 s",
+      "group": "ST Protection",
+      "input_group_id": "IG-027",
+      "input_nodes": "vppSTTripLatchPublished",
+      "logic_name": "52ST trip command",
+      "logic_type": "BREAKER_SEQUENCE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vpp52STTripCmd",
+      "reset_hysteresis": "-",
+      "rule_id": "SEQ-52ST-TRIPCMD",
+      "source_basis": "Runtime node sequence",
+      "validation_status": "PASS"
+    }
+  ],
+  "edges": [
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-GT-FLOW-L",
+      "rule_id": "AL-GT-FLOW-L",
+      "to_id": "delay:AL-GT-FLOW-L"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-GT-FLOW-L",
+      "to_id": "logic:AL-GT-FLOW-L"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-GT-FLOW-L",
+      "rule_id": "AL-GT-FLOW-L",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-GT-FLOW-LL",
+      "rule_id": "AL-GT-FLOW-LL",
+      "to_id": "delay:AL-GT-FLOW-LL"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-GT-FLOW-LL",
+      "to_id": "logic:AL-GT-FLOW-LL"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-GT-FLOW-LL",
+      "rule_id": "AL-GT-FLOW-LL",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-GT-TEMP-L",
+      "rule_id": "AL-GT-TEMP-L",
+      "to_id": "delay:AL-GT-TEMP-L"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-GT-TEMP-L",
+      "to_id": "logic:AL-GT-TEMP-L"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-GT-TEMP-L",
+      "rule_id": "AL-GT-TEMP-L",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-GT-TEMP-LL",
+      "rule_id": "AL-GT-TEMP-LL",
+      "to_id": "delay:AL-GT-TEMP-LL"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-GT-TEMP-LL",
+      "to_id": "logic:AL-GT-TEMP-LL"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-GT-TEMP-LL",
+      "rule_id": "AL-GT-TEMP-LL",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-HP-FLOW-L",
+      "rule_id": "AL-HP-FLOW-L",
+      "to_id": "delay:AL-HP-FLOW-L"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-HP-FLOW-L",
+      "to_id": "logic:AL-HP-FLOW-L"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-HP-FLOW-L",
+      "rule_id": "AL-HP-FLOW-L",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-HP-FLOW-LL",
+      "rule_id": "AL-HP-FLOW-LL",
+      "to_id": "delay:AL-HP-FLOW-LL"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-HP-FLOW-LL",
+      "to_id": "logic:AL-HP-FLOW-LL"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-HP-FLOW-LL",
+      "rule_id": "AL-HP-FLOW-LL",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-HP-LEVEL-H",
+      "rule_id": "AL-HP-LEVEL-H",
+      "to_id": "delay:AL-HP-LEVEL-H"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-HP-LEVEL-H",
+      "to_id": "logic:AL-HP-LEVEL-H"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-HP-LEVEL-H",
+      "rule_id": "AL-HP-LEVEL-H",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-HP-LEVEL-HH",
+      "rule_id": "AL-HP-LEVEL-HH",
+      "to_id": "delay:AL-HP-LEVEL-HH"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-HP-LEVEL-HH",
+      "to_id": "logic:AL-HP-LEVEL-HH"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-HP-LEVEL-HH",
+      "rule_id": "AL-HP-LEVEL-HH",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-HP-LEVEL-L",
+      "rule_id": "AL-HP-LEVEL-L",
+      "to_id": "delay:AL-HP-LEVEL-L"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-HP-LEVEL-L",
+      "to_id": "logic:AL-HP-LEVEL-L"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-HP-LEVEL-L",
+      "rule_id": "AL-HP-LEVEL-L",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-HP-LEVEL-LL",
+      "rule_id": "AL-HP-LEVEL-LL",
+      "to_id": "delay:AL-HP-LEVEL-LL"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-HP-LEVEL-LL",
+      "to_id": "logic:AL-HP-LEVEL-LL"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-HP-LEVEL-LL",
+      "rule_id": "AL-HP-LEVEL-LL",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-HP-PRESS-L",
+      "rule_id": "AL-HP-PRESS-L",
+      "to_id": "delay:AL-HP-PRESS-L"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-HP-PRESS-L",
+      "to_id": "logic:AL-HP-PRESS-L"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-HP-PRESS-L",
+      "rule_id": "AL-HP-PRESS-L",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-HP-PRESS-LL",
+      "rule_id": "AL-HP-PRESS-LL",
+      "to_id": "delay:AL-HP-PRESS-LL"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-HP-PRESS-LL",
+      "to_id": "logic:AL-HP-PRESS-LL"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-HP-PRESS-LL",
+      "rule_id": "AL-HP-PRESS-LL",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-IP-FLOW-L",
+      "rule_id": "AL-IP-FLOW-L",
+      "to_id": "delay:AL-IP-FLOW-L"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-IP-FLOW-L",
+      "to_id": "logic:AL-IP-FLOW-L"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-IP-FLOW-L",
+      "rule_id": "AL-IP-FLOW-L",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-IP-FLOW-LL",
+      "rule_id": "AL-IP-FLOW-LL",
+      "to_id": "delay:AL-IP-FLOW-LL"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-IP-FLOW-LL",
+      "to_id": "logic:AL-IP-FLOW-LL"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-IP-FLOW-LL",
+      "rule_id": "AL-IP-FLOW-LL",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-IP-LEVEL-H",
+      "rule_id": "AL-IP-LEVEL-H",
+      "to_id": "delay:AL-IP-LEVEL-H"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-IP-LEVEL-H",
+      "to_id": "logic:AL-IP-LEVEL-H"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-IP-LEVEL-H",
+      "rule_id": "AL-IP-LEVEL-H",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-IP-LEVEL-HH",
+      "rule_id": "AL-IP-LEVEL-HH",
+      "to_id": "delay:AL-IP-LEVEL-HH"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-IP-LEVEL-HH",
+      "to_id": "logic:AL-IP-LEVEL-HH"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-IP-LEVEL-HH",
+      "rule_id": "AL-IP-LEVEL-HH",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-IP-LEVEL-L",
+      "rule_id": "AL-IP-LEVEL-L",
+      "to_id": "delay:AL-IP-LEVEL-L"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-IP-LEVEL-L",
+      "to_id": "logic:AL-IP-LEVEL-L"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-IP-LEVEL-L",
+      "rule_id": "AL-IP-LEVEL-L",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-IP-LEVEL-LL",
+      "rule_id": "AL-IP-LEVEL-LL",
+      "to_id": "delay:AL-IP-LEVEL-LL"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-IP-LEVEL-LL",
+      "to_id": "logic:AL-IP-LEVEL-LL"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-IP-LEVEL-LL",
+      "rule_id": "AL-IP-LEVEL-LL",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-IP-PRESS-L",
+      "rule_id": "AL-IP-PRESS-L",
+      "to_id": "delay:AL-IP-PRESS-L"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-IP-PRESS-L",
+      "to_id": "logic:AL-IP-PRESS-L"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-IP-PRESS-L",
+      "rule_id": "AL-IP-PRESS-L",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-IP-PRESS-LL",
+      "rule_id": "AL-IP-PRESS-LL",
+      "to_id": "delay:AL-IP-PRESS-LL"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-IP-PRESS-LL",
+      "to_id": "logic:AL-IP-PRESS-LL"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-IP-PRESS-LL",
+      "rule_id": "AL-IP-PRESS-LL",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-LP-FLOW-L",
+      "rule_id": "AL-LP-FLOW-L",
+      "to_id": "delay:AL-LP-FLOW-L"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-LP-FLOW-L",
+      "to_id": "logic:AL-LP-FLOW-L"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-LP-FLOW-L",
+      "rule_id": "AL-LP-FLOW-L",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-LP-FLOW-LL",
+      "rule_id": "AL-LP-FLOW-LL",
+      "to_id": "delay:AL-LP-FLOW-LL"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-LP-FLOW-LL",
+      "to_id": "logic:AL-LP-FLOW-LL"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-LP-FLOW-LL",
+      "rule_id": "AL-LP-FLOW-LL",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-LP-LEVEL-H",
+      "rule_id": "AL-LP-LEVEL-H",
+      "to_id": "delay:AL-LP-LEVEL-H"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-LP-LEVEL-H",
+      "to_id": "logic:AL-LP-LEVEL-H"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-LP-LEVEL-H",
+      "rule_id": "AL-LP-LEVEL-H",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-LP-LEVEL-HH",
+      "rule_id": "AL-LP-LEVEL-HH",
+      "to_id": "delay:AL-LP-LEVEL-HH"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-LP-LEVEL-HH",
+      "to_id": "logic:AL-LP-LEVEL-HH"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-LP-LEVEL-HH",
+      "rule_id": "AL-LP-LEVEL-HH",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-LP-LEVEL-L",
+      "rule_id": "AL-LP-LEVEL-L",
+      "to_id": "delay:AL-LP-LEVEL-L"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-LP-LEVEL-L",
+      "to_id": "logic:AL-LP-LEVEL-L"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-LP-LEVEL-L",
+      "rule_id": "AL-LP-LEVEL-L",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-LP-LEVEL-LL",
+      "rule_id": "AL-LP-LEVEL-LL",
+      "to_id": "delay:AL-LP-LEVEL-LL"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-LP-LEVEL-LL",
+      "to_id": "logic:AL-LP-LEVEL-LL"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-LP-LEVEL-LL",
+      "rule_id": "AL-LP-LEVEL-LL",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-LP-PRESS-L",
+      "rule_id": "AL-LP-PRESS-L",
+      "to_id": "delay:AL-LP-PRESS-L"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-LP-PRESS-L",
+      "to_id": "logic:AL-LP-PRESS-L"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-LP-PRESS-L",
+      "rule_id": "AL-LP-PRESS-L",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:AL-LP-PRESS-LL",
+      "rule_id": "AL-LP-PRESS-LL",
+      "to_id": "delay:AL-LP-PRESS-LL"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "AL-LP-PRESS-LL",
+      "to_id": "logic:AL-LP-PRESS-LL"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:AL-LP-PRESS-LL",
+      "rule_id": "AL-LP-PRESS-LL",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "CMD-FWP-HP-RESET",
+      "to_id": "logic:CMD-FWP-HP-RESET"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:CMD-FWP-HP-RESET",
+      "rule_id": "CMD-FWP-HP-RESET",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "CMD-FWP-HP-TRIP",
+      "to_id": "logic:CMD-FWP-HP-TRIP"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:CMD-FWP-HP-TRIP",
+      "rule_id": "CMD-FWP-HP-TRIP",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:CMD-FWP-HP-TRIP",
+      "rule_id": "CMD-FWP-HP-TRIP",
+      "to_id": "PORT:OUT-02"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:CMD-FWP-HP-TRIP",
+      "rule_id": "CMD-FWP-HP-TRIP",
+      "to_id": "PORT:OUT-03"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "CMD-FWP-IP-RESET",
+      "to_id": "logic:CMD-FWP-IP-RESET"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:CMD-FWP-IP-RESET",
+      "rule_id": "CMD-FWP-IP-RESET",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "CMD-FWP-IP-TRIP",
+      "to_id": "logic:CMD-FWP-IP-TRIP"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:CMD-FWP-IP-TRIP",
+      "rule_id": "CMD-FWP-IP-TRIP",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:CMD-FWP-IP-TRIP",
+      "rule_id": "CMD-FWP-IP-TRIP",
+      "to_id": "PORT:OUT-02"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:CMD-FWP-IP-TRIP",
+      "rule_id": "CMD-FWP-IP-TRIP",
+      "to_id": "PORT:OUT-03"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "CMD-FWP-LP-RESET",
+      "to_id": "logic:CMD-FWP-LP-RESET"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:CMD-FWP-LP-RESET",
+      "rule_id": "CMD-FWP-LP-RESET",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "CMD-FWP-LP-TRIP",
+      "to_id": "logic:CMD-FWP-LP-TRIP"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:CMD-FWP-LP-TRIP",
+      "rule_id": "CMD-FWP-LP-TRIP",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:CMD-FWP-LP-TRIP",
+      "rule_id": "CMD-FWP-LP-TRIP",
+      "to_id": "PORT:OUT-02"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:CMD-FWP-LP-TRIP",
+      "rule_id": "CMD-FWP-LP-TRIP",
+      "to_id": "PORT:OUT-03"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "PROT-DIRECT-GT",
+      "to_id": "logic:PROT-DIRECT-GT"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:PROT-DIRECT-GT",
+      "rule_id": "PROT-DIRECT-GT",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "PROT-DIRECT-ST",
+      "to_id": "logic:PROT-DIRECT-ST"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:PROT-DIRECT-ST",
+      "rule_id": "PROT-DIRECT-ST",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "PROT-GT-BRK-OPEN",
+      "to_id": "logic:PROT-GT-BRK-OPEN"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-02",
+      "rule_id": "PROT-GT-BRK-OPEN",
+      "to_id": "logic:PROT-GT-BRK-OPEN"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:PROT-GT-BRK-OPEN",
+      "rule_id": "PROT-GT-BRK-OPEN",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "PROT-GT-LATCH",
+      "to_id": "logic:PROT-GT-LATCH"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-02",
+      "rule_id": "PROT-GT-LATCH",
+      "to_id": "logic:PROT-GT-LATCH"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:PROT-GT-LATCH",
+      "rule_id": "PROT-GT-LATCH",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "PROT-GT-REQUEST",
+      "to_id": "logic:PROT-GT-REQUEST"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-02",
+      "rule_id": "PROT-GT-REQUEST",
+      "to_id": "logic:PROT-GT-REQUEST"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-03",
+      "rule_id": "PROT-GT-REQUEST",
+      "to_id": "logic:PROT-GT-REQUEST"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-04",
+      "rule_id": "PROT-GT-REQUEST",
+      "to_id": "logic:PROT-GT-REQUEST"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-05",
+      "rule_id": "PROT-GT-REQUEST",
+      "to_id": "logic:PROT-GT-REQUEST"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:PROT-GT-REQUEST",
+      "rule_id": "PROT-GT-REQUEST",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "PROT-HP-DRUM-HH",
+      "to_id": "logic:PROT-HP-DRUM-HH"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:PROT-HP-DRUM-HH",
+      "rule_id": "PROT-HP-DRUM-HH",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "PROT-HP-DRUM-LL",
+      "to_id": "logic:PROT-HP-DRUM-LL"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:PROT-HP-DRUM-LL",
+      "rule_id": "PROT-HP-DRUM-LL",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "PROT-IP-DRUM-HH",
+      "to_id": "logic:PROT-IP-DRUM-HH"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:PROT-IP-DRUM-HH",
+      "rule_id": "PROT-IP-DRUM-HH",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "PROT-IP-DRUM-LL",
+      "to_id": "logic:PROT-IP-DRUM-LL"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:PROT-IP-DRUM-LL",
+      "rule_id": "PROT-IP-DRUM-LL",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "PROT-LP-DRUM-HH",
+      "to_id": "logic:PROT-LP-DRUM-HH"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:PROT-LP-DRUM-HH",
+      "rule_id": "PROT-LP-DRUM-HH",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "PROT-LP-DRUM-LL",
+      "to_id": "logic:PROT-LP-DRUM-LL"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:PROT-LP-DRUM-LL",
+      "rule_id": "PROT-LP-DRUM-LL",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "PROT-ST-LATCH",
+      "to_id": "logic:PROT-ST-LATCH"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-02",
+      "rule_id": "PROT-ST-LATCH",
+      "to_id": "logic:PROT-ST-LATCH"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:PROT-ST-LATCH",
+      "rule_id": "PROT-ST-LATCH",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "PROT-ST-REQUEST",
+      "to_id": "logic:PROT-ST-REQUEST"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-02",
+      "rule_id": "PROT-ST-REQUEST",
+      "to_id": "logic:PROT-ST-REQUEST"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-03",
+      "rule_id": "PROT-ST-REQUEST",
+      "to_id": "logic:PROT-ST-REQUEST"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-04",
+      "rule_id": "PROT-ST-REQUEST",
+      "to_id": "logic:PROT-ST-REQUEST"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-05",
+      "rule_id": "PROT-ST-REQUEST",
+      "to_id": "logic:PROT-ST-REQUEST"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-06",
+      "rule_id": "PROT-ST-REQUEST",
+      "to_id": "logic:PROT-ST-REQUEST"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-07",
+      "rule_id": "PROT-ST-REQUEST",
+      "to_id": "logic:PROT-ST-REQUEST"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-08",
+      "rule_id": "PROT-ST-REQUEST",
+      "to_id": "logic:PROT-ST-REQUEST"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-09",
+      "rule_id": "PROT-ST-REQUEST",
+      "to_id": "logic:PROT-ST-REQUEST"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:PROT-ST-REQUEST",
+      "rule_id": "PROT-ST-REQUEST",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "RESP-GT-POWER",
+      "to_id": "logic:RESP-GT-POWER"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:RESP-GT-POWER",
+      "rule_id": "RESP-GT-POWER",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "RESP-GT-SPEED",
+      "to_id": "logic:RESP-GT-SPEED"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:RESP-GT-SPEED",
+      "rule_id": "RESP-GT-SPEED",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:SEQ-52GT-OPEN",
+      "rule_id": "SEQ-52GT-OPEN",
+      "to_id": "delay:SEQ-52GT-OPEN"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "SEQ-52GT-OPEN",
+      "to_id": "logic:SEQ-52GT-OPEN"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-02",
+      "rule_id": "SEQ-52GT-OPEN",
+      "to_id": "logic:SEQ-52GT-OPEN"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:SEQ-52GT-OPEN",
+      "rule_id": "SEQ-52GT-OPEN",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:SEQ-52GT-TRIPCMD",
+      "rule_id": "SEQ-52GT-TRIPCMD",
+      "to_id": "delay:SEQ-52GT-TRIPCMD"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "SEQ-52GT-TRIPCMD",
+      "to_id": "logic:SEQ-52GT-TRIPCMD"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:SEQ-52GT-TRIPCMD",
+      "rule_id": "SEQ-52GT-TRIPCMD",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "DEFINED_DELAY",
+      "from_id": "logic:SEQ-52ST-OPEN",
+      "rule_id": "SEQ-52ST-OPEN",
+      "to_id": "delay:SEQ-52ST-OPEN"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "SEQ-52ST-OPEN",
+      "to_id": "logic:SEQ-52ST-OPEN"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-02",
+      "rule_id": "SEQ-52ST-OPEN",
+      "to_id": "logic:SEQ-52ST-OPEN"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "delay:SEQ-52ST-OPEN",
+      "rule_id": "SEQ-52ST-OPEN",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
+      "rule_id": "SEQ-52ST-TRIPCMD",
+      "to_id": "logic:SEQ-52ST-TRIPCMD"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "logic:SEQ-52ST-TRIPCMD",
+      "rule_id": "SEQ-52ST-TRIPCMD",
+      "to_id": "PORT:OUT-01"
+    }
+  ],
+  "groups": [
+    {
+      "branch_count": 2,
+      "input_group_id": "IG-001",
+      "input_signature": "vppGTExhaustMassFlowState",
+      "outputs": "GT.EXHAUST.FLOW.L; GT.EXHAUST.FLOW.LL",
+      "page_id": "IG-001",
+      "rule_ids": "AL-GT-FLOW-L; AL-GT-FLOW-LL"
+    },
+    {
+      "branch_count": 2,
+      "input_group_id": "IG-002",
+      "input_signature": "vppGTExhaustTemperatureK",
+      "outputs": "GT.EXHAUST.TEMP.L; GT.EXHAUST.TEMP.LL",
+      "page_id": "IG-002",
+      "rule_ids": "AL-GT-TEMP-L; AL-GT-TEMP-LL"
+    },
+    {
+      "branch_count": 4,
+      "input_group_id": "IG-003",
+      "input_signature": "vppHPDrumLevelM",
+      "outputs": "HRSG.HP.DRUM.LEVEL.H; HRSG.HP.DRUM.LEVEL.HH; HRSG.HP.DRUM.LEVEL.L; HRSG.HP.DRUM.LEVEL.LL",
+      "page_id": "IG-003",
+      "rule_ids": "AL-HP-LEVEL-H; AL-HP-LEVEL-HH; AL-HP-LEVEL-L; AL-HP-LEVEL-LL"
+    },
+    {
+      "branch_count": 2,
+      "input_group_id": "IG-004",
+      "input_signature": "vppHPDrumPressurePa",
+      "outputs": "HRSG.HP.DRUM.PRESS.L; HRSG.HP.DRUM.PRESS.LL",
+      "page_id": "IG-004",
+      "rule_ids": "AL-HP-PRESS-L; AL-HP-PRESS-LL"
+    },
+    {
+      "branch_count": 2,
+      "input_group_id": "IG-005",
+      "input_signature": "vppHPTurbineSteamFlowTH",
+      "outputs": "HRSG.HP.STEAM.FLOW.L; HRSG.HP.STEAM.FLOW.LL",
+      "page_id": "IG-005",
+      "rule_ids": "AL-HP-FLOW-L; AL-HP-FLOW-LL"
+    },
+    {
+      "branch_count": 4,
+      "input_group_id": "IG-006",
+      "input_signature": "vppIPDrumLevelM",
+      "outputs": "HRSG.IP.DRUM.LEVEL.H; HRSG.IP.DRUM.LEVEL.HH; HRSG.IP.DRUM.LEVEL.L; HRSG.IP.DRUM.LEVEL.LL",
+      "page_id": "IG-006",
+      "rule_ids": "AL-IP-LEVEL-H; AL-IP-LEVEL-HH; AL-IP-LEVEL-L; AL-IP-LEVEL-LL"
+    },
+    {
+      "branch_count": 2,
+      "input_group_id": "IG-007",
+      "input_signature": "vppIPDrumPressurePa",
+      "outputs": "HRSG.IP.DRUM.PRESS.L; HRSG.IP.DRUM.PRESS.LL",
+      "page_id": "IG-007",
+      "rule_ids": "AL-IP-PRESS-L; AL-IP-PRESS-LL"
+    },
+    {
+      "branch_count": 2,
+      "input_group_id": "IG-008",
+      "input_signature": "vppIPTurbineSteamFlowTH",
+      "outputs": "HRSG.IP.STEAM.FLOW.L; HRSG.IP.STEAM.FLOW.LL",
+      "page_id": "IG-008",
+      "rule_ids": "AL-IP-FLOW-L; AL-IP-FLOW-LL"
+    },
+    {
+      "branch_count": 4,
+      "input_group_id": "IG-009",
+      "input_signature": "vppLPDrumLevelM",
+      "outputs": "HRSG.LP.DRUM.LEVEL.H; HRSG.LP.DRUM.LEVEL.HH; HRSG.LP.DRUM.LEVEL.L; HRSG.LP.DRUM.LEVEL.LL",
+      "page_id": "IG-009",
+      "rule_ids": "AL-LP-LEVEL-H; AL-LP-LEVEL-HH; AL-LP-LEVEL-L; AL-LP-LEVEL-LL"
+    },
+    {
+      "branch_count": 2,
+      "input_group_id": "IG-010",
+      "input_signature": "vppLPDrumPressurePa",
+      "outputs": "HRSG.LP.DRUM.PRESS.L; HRSG.LP.DRUM.PRESS.LL",
+      "page_id": "IG-010",
+      "rule_ids": "AL-LP-PRESS-L; AL-LP-PRESS-LL"
+    },
+    {
+      "branch_count": 2,
+      "input_group_id": "IG-011",
+      "input_signature": "vppLPTurbineSteamFlowTH",
+      "outputs": "HRSG.LP.STEAM.FLOW.L; HRSG.LP.STEAM.FLOW.LL",
+      "page_id": "IG-011",
+      "rule_ids": "AL-LP-FLOW-L; AL-LP-FLOW-LL"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-012",
+      "input_signature": "vppExternalTripCommandNative",
+      "outputs": "vppCauseDirectGTTrip",
+      "page_id": "IG-012",
+      "rule_ids": "PROT-DIRECT-GT"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-013",
+      "input_signature": "vppExternalSTTripCommandNative",
+      "outputs": "vppCauseDirectSTTrip",
+      "page_id": "IG-013",
+      "rule_ids": "PROT-DIRECT-ST"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-014",
+      "input_signature": "vppECMS52GTClosedCommandNative | vppGTTripLatchInternal",
+      "outputs": "vppCauseGTBreakerOpenWhileRunning",
+      "page_id": "IG-014",
+      "rule_ids": "PROT-GT-BRK-OPEN"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-015",
+      "input_signature": "vppHPDrumHHRaw",
+      "outputs": "vppCauseHPDrumHH",
+      "page_id": "IG-015",
+      "rule_ids": "PROT-HP-DRUM-HH"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-016",
+      "input_signature": "vppHPDrumLLRaw",
+      "outputs": "vppCauseHPDrumLL",
+      "page_id": "IG-016",
+      "rule_ids": "PROT-HP-DRUM-LL"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-017",
+      "input_signature": "vppIPDrumHHRaw",
+      "outputs": "vppCauseIPDrumHH",
+      "page_id": "IG-017",
+      "rule_ids": "PROT-IP-DRUM-HH"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-018",
+      "input_signature": "vppIPDrumLLRaw",
+      "outputs": "vppCauseIPDrumLL",
+      "page_id": "IG-018",
+      "rule_ids": "PROT-IP-DRUM-LL"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-019",
+      "input_signature": "vppLPDrumHHRaw",
+      "outputs": "vppCauseLPDrumHH",
+      "page_id": "IG-019",
+      "rule_ids": "PROT-LP-DRUM-HH"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-020",
+      "input_signature": "vppLPDrumLLRaw",
+      "outputs": "vppCauseLPDrumLL",
+      "page_id": "IG-020",
+      "rule_ids": "PROT-LP-DRUM-LL"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-021",
+      "input_signature": "vppCauseDirectGTTrip | vppCauseGTBreakerOpenWhileRunning | vppCauseHPDrumLL | vppCauseIPDrumLL | vppCauseLPDrumLL",
+      "outputs": "vppGTTripRequest",
+      "page_id": "IG-021",
+      "rule_ids": "PROT-GT-REQUEST"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-022",
+      "input_signature": "vppCauseDirectGTTrip | vppCauseDirectSTTrip | vppCauseGTBreakerOpenWhileRunning | vppCauseHPDrumHH | vppCauseHPDrumLL | vppCauseIPDrumHH | vppCauseIPDrumLL | vppCauseLPDrumHH | vppCauseLPDrumLL",
+      "outputs": "vppSTTripRequest",
+      "page_id": "IG-022",
+      "rule_ids": "PROT-ST-REQUEST"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-023",
+      "input_signature": "vppGTTripRequest | vppGTTripResetNative",
+      "outputs": "vppGTTripLatch",
+      "page_id": "IG-023",
+      "rule_ids": "PROT-GT-LATCH"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-024",
+      "input_signature": "vppSTTripRequest | vppSTTripResetNative",
+      "outputs": "vppSTTripLatchPublished",
+      "page_id": "IG-024",
+      "rule_ids": "PROT-ST-LATCH"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-025",
+      "input_signature": "vppGTTripLatch",
+      "outputs": "vpp52GTTripCmd",
+      "page_id": "IG-025",
+      "rule_ids": "SEQ-52GT-TRIPCMD"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-026",
+      "input_signature": "vppECMS52GTClosedCommandNative | vppGTTripLatch",
+      "outputs": "vpp52GTClosed",
+      "page_id": "IG-026",
+      "rule_ids": "SEQ-52GT-OPEN"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-027",
+      "input_signature": "vppSTTripLatchPublished",
+      "outputs": "vpp52STTripCmd",
+      "page_id": "IG-027",
+      "rule_ids": "SEQ-52ST-TRIPCMD"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-028",
+      "input_signature": "vppECMS52STClosedCommandNative | vppSTTripLatchPublished",
+      "outputs": "vpp52STClosed",
+      "page_id": "IG-028",
+      "rule_ids": "SEQ-52ST-OPEN"
+    },
+    {
+      "branch_count": 2,
+      "input_group_id": "IG-029",
+      "input_signature": "vpp52GTClosed",
+      "outputs": "vppGTGPowerMW; vppGTGSpeedRPM",
+      "page_id": "IG-029",
+      "rule_ids": "RESP-GT-POWER; RESP-GT-SPEED"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-030",
+      "input_signature": "vppHPFWPTripPushbuttonNative",
+      "outputs": "vppHPFWPTripCommandNative; vppHPFWPTripLatchNative; vppVCBA01TripCommandNative",
+      "page_id": "IG-030",
+      "rule_ids": "CMD-FWP-HP-TRIP"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-031",
+      "input_signature": "vppHPFWPResetPushbuttonNative",
+      "outputs": "vppHPFWPTripLatchNative",
+      "page_id": "IG-031",
+      "rule_ids": "CMD-FWP-HP-RESET"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-032",
+      "input_signature": "vppIPFWPTripPushbuttonNative",
+      "outputs": "vppIPFWPTripCommandNative; vppIPFWPTripLatchNative; vppVCBB01TripCommandNative",
+      "page_id": "IG-032",
+      "rule_ids": "CMD-FWP-IP-TRIP"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-033",
+      "input_signature": "vppIPFWPResetPushbuttonNative",
+      "outputs": "vppIPFWPTripLatchNative",
+      "page_id": "IG-033",
+      "rule_ids": "CMD-FWP-IP-RESET"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-034",
+      "input_signature": "vppLPFWPTripPushbuttonNative",
+      "outputs": "vppLPFWPTripCommandNative; vppLPFWPTripLatchNative; vppVCBA02TripCommandNative",
+      "page_id": "IG-034",
+      "rule_ids": "CMD-FWP-LP-TRIP"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-035",
+      "input_signature": "vppLPFWPResetPushbuttonNative",
+      "outputs": "vppLPFWPTripLatchNative",
+      "page_id": "IG-035",
+      "rule_ids": "CMD-FWP-LP-RESET"
+    }
+  ],
+  "links": [
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "GT.EXHAUST.FLOW.L",
+      "input_group_id": "IG-001",
+      "input_nodes": "vppGTExhaustMassFlowState",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-GT-FLOW-L",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "GT.EXHAUST.FLOW.LL",
+      "input_group_id": "IG-001",
+      "input_nodes": "vppGTExhaustMassFlowState",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-GT-FLOW-LL",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "GT.EXHAUST.TEMP.L",
+      "input_group_id": "IG-002",
+      "input_nodes": "vppGTExhaustTemperatureK",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-GT-TEMP-L",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "GT.EXHAUST.TEMP.LL",
+      "input_group_id": "IG-002",
+      "input_nodes": "vppGTExhaustTemperatureK",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-GT-TEMP-LL",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.HP.STEAM.FLOW.L",
+      "input_group_id": "IG-005",
+      "input_nodes": "vppHPTurbineSteamFlowTH",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-HP-FLOW-L",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.HP.STEAM.FLOW.LL",
+      "input_group_id": "IG-005",
+      "input_nodes": "vppHPTurbineSteamFlowTH",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-HP-FLOW-LL",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.HP.DRUM.LEVEL.H",
+      "input_group_id": "IG-003",
+      "input_nodes": "vppHPDrumLevelM",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-HP-LEVEL-H",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.HP.DRUM.LEVEL.HH",
+      "input_group_id": "IG-003",
+      "input_nodes": "vppHPDrumLevelM",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-HP-LEVEL-HH",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.HP.DRUM.LEVEL.L",
+      "input_group_id": "IG-003",
+      "input_nodes": "vppHPDrumLevelM",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-HP-LEVEL-L",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.HP.DRUM.LEVEL.LL",
+      "input_group_id": "IG-003",
+      "input_nodes": "vppHPDrumLevelM",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-HP-LEVEL-LL",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.HP.DRUM.PRESS.L",
+      "input_group_id": "IG-004",
+      "input_nodes": "vppHPDrumPressurePa",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-HP-PRESS-L",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.HP.DRUM.PRESS.LL",
+      "input_group_id": "IG-004",
+      "input_nodes": "vppHPDrumPressurePa",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-HP-PRESS-LL",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.IP.STEAM.FLOW.L",
+      "input_group_id": "IG-008",
+      "input_nodes": "vppIPTurbineSteamFlowTH",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-IP-FLOW-L",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.IP.STEAM.FLOW.LL",
+      "input_group_id": "IG-008",
+      "input_nodes": "vppIPTurbineSteamFlowTH",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-IP-FLOW-LL",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.IP.DRUM.LEVEL.H",
+      "input_group_id": "IG-006",
+      "input_nodes": "vppIPDrumLevelM",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-IP-LEVEL-H",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.IP.DRUM.LEVEL.HH",
+      "input_group_id": "IG-006",
+      "input_nodes": "vppIPDrumLevelM",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-IP-LEVEL-HH",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.IP.DRUM.LEVEL.L",
+      "input_group_id": "IG-006",
+      "input_nodes": "vppIPDrumLevelM",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-IP-LEVEL-L",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.IP.DRUM.LEVEL.LL",
+      "input_group_id": "IG-006",
+      "input_nodes": "vppIPDrumLevelM",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-IP-LEVEL-LL",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.IP.DRUM.PRESS.L",
+      "input_group_id": "IG-007",
+      "input_nodes": "vppIPDrumPressurePa",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-IP-PRESS-L",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.IP.DRUM.PRESS.LL",
+      "input_group_id": "IG-007",
+      "input_nodes": "vppIPDrumPressurePa",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-IP-PRESS-LL",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.LP.STEAM.FLOW.L",
+      "input_group_id": "IG-011",
+      "input_nodes": "vppLPTurbineSteamFlowTH",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-LP-FLOW-L",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.LP.STEAM.FLOW.LL",
+      "input_group_id": "IG-011",
+      "input_nodes": "vppLPTurbineSteamFlowTH",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-LP-FLOW-LL",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.LP.DRUM.LEVEL.H",
+      "input_group_id": "IG-009",
+      "input_nodes": "vppLPDrumLevelM",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-LP-LEVEL-H",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.LP.DRUM.LEVEL.HH",
+      "input_group_id": "IG-009",
+      "input_nodes": "vppLPDrumLevelM",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-LP-LEVEL-HH",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.LP.DRUM.LEVEL.L",
+      "input_group_id": "IG-009",
+      "input_nodes": "vppLPDrumLevelM",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-LP-LEVEL-L",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.LP.DRUM.LEVEL.LL",
+      "input_group_id": "IG-009",
+      "input_nodes": "vppLPDrumLevelM",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-LP-LEVEL-LL",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.LP.DRUM.PRESS.L",
+      "input_group_id": "IG-010",
+      "input_nodes": "vppLPDrumPressurePa",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-LP-PRESS-L",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "HRSG.LP.DRUM.PRESS.LL",
+      "input_group_id": "IG-010",
+      "input_nodes": "vppLPDrumPressurePa",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "AL-LP-PRESS-LL",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": ""
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "",
+      "input_group_id": "IG-031",
+      "input_nodes": "vppHPFWPResetPushbuttonNative",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "CMD-FWP-HP-RESET",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppHPFWPTripLatchNative"
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "",
+      "input_group_id": "IG-030",
+      "input_nodes": "vppHPFWPTripPushbuttonNative",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "CMD-FWP-HP-TRIP",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppHPFWPTripCommandNative | vppHPFWPTripLatchNative | vppVCBA01TripCommandNative"
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "",
+      "input_group_id": "IG-033",
+      "input_nodes": "vppIPFWPResetPushbuttonNative",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "CMD-FWP-IP-RESET",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppIPFWPTripLatchNative"
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "",
+      "input_group_id": "IG-032",
+      "input_nodes": "vppIPFWPTripPushbuttonNative",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "CMD-FWP-IP-TRIP",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppIPFWPTripCommandNative | vppIPFWPTripLatchNative | vppVCBB01TripCommandNative"
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "",
+      "input_group_id": "IG-035",
+      "input_nodes": "vppLPFWPResetPushbuttonNative",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "CMD-FWP-LP-RESET",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppLPFWPTripLatchNative"
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "",
+      "input_group_id": "IG-034",
+      "input_nodes": "vppLPFWPTripPushbuttonNative",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "CMD-FWP-LP-TRIP",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppLPFWPTripCommandNative | vppLPFWPTripLatchNative | vppVCBA02TripCommandNative"
+    },
+    {
+      "behaviour_status": "PASS",
+      "derived_outputs": "",
+      "input_group_id": "IG-012",
+      "input_nodes": "vppExternalTripCommandNative",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "PROT-DIRECT-GT",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppCauseDirectGTTrip"
+    },
+    {
+      "behaviour_status": "PASS",
+      "derived_outputs": "",
+      "input_group_id": "IG-013",
+      "input_nodes": "vppExternalSTTripCommandNative",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "PROT-DIRECT-ST",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppCauseDirectSTTrip"
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "",
+      "input_group_id": "IG-014",
+      "input_nodes": "vppECMS52GTClosedCommandNative | vppGTTripLatchInternal",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "PROT-GT-BRK-OPEN",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppCauseGTBreakerOpenWhileRunning"
+    },
+    {
+      "behaviour_status": "PASS",
+      "derived_outputs": "",
+      "input_group_id": "IG-023",
+      "input_nodes": "vppGTTripRequest | vppGTTripResetNative",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "PROT-GT-LATCH",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppGTTripLatch"
+    },
+    {
+      "behaviour_status": "PASS",
+      "derived_outputs": "",
+      "input_group_id": "IG-021",
+      "input_nodes": "vppCauseDirectGTTrip | vppCauseGTBreakerOpenWhileRunning | vppCauseHPDrumLL | vppCauseIPDrumLL | vppCauseLPDrumLL",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "PROT-GT-REQUEST",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppGTTripRequest"
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "",
+      "input_group_id": "IG-015",
+      "input_nodes": "vppHPDrumHHRaw",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "PROT-HP-DRUM-HH",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppCauseHPDrumHH"
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "",
+      "input_group_id": "IG-016",
+      "input_nodes": "vppHPDrumLLRaw",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "PROT-HP-DRUM-LL",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppCauseHPDrumLL"
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "",
+      "input_group_id": "IG-017",
+      "input_nodes": "vppIPDrumHHRaw",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "PROT-IP-DRUM-HH",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppCauseIPDrumHH"
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "",
+      "input_group_id": "IG-018",
+      "input_nodes": "vppIPDrumLLRaw",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "PROT-IP-DRUM-LL",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppCauseIPDrumLL"
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "",
+      "input_group_id": "IG-019",
+      "input_nodes": "vppLPDrumHHRaw",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "PROT-LP-DRUM-HH",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppCauseLPDrumHH"
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "",
+      "input_group_id": "IG-020",
+      "input_nodes": "vppLPDrumLLRaw",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "PROT-LP-DRUM-LL",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppCauseLPDrumLL"
+    },
+    {
+      "behaviour_status": "PASS",
+      "derived_outputs": "",
+      "input_group_id": "IG-024",
+      "input_nodes": "vppSTTripRequest | vppSTTripResetNative",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "PROT-ST-LATCH",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppSTTripLatchPublished"
+    },
+    {
+      "behaviour_status": "PASS",
+      "derived_outputs": "",
+      "input_group_id": "IG-022",
+      "input_nodes": "vppCauseDirectGTTrip | vppCauseDirectSTTrip | vppCauseGTBreakerOpenWhileRunning | vppCauseHPDrumHH | vppCauseIPDrumHH | vppCauseLPDrumHH | vppCauseHPDrumLL | vppCauseIPDrumLL | vppCauseLPDrumLL",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "PROT-ST-REQUEST",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppSTTripRequest"
+    },
+    {
+      "behaviour_status": "PASS",
+      "derived_outputs": "",
+      "input_group_id": "IG-029",
+      "input_nodes": "vpp52GTClosed",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "RESP-GT-POWER",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppGTGPowerMW"
+    },
+    {
+      "behaviour_status": "PASS",
+      "derived_outputs": "",
+      "input_group_id": "IG-029",
+      "input_nodes": "vpp52GTClosed",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "RESP-GT-SPEED",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppGTGSpeedRPM"
+    },
+    {
+      "behaviour_status": "PASS",
+      "derived_outputs": "",
+      "input_group_id": "IG-026",
+      "input_nodes": "vppGTTripLatch | vppECMS52GTClosedCommandNative",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "SEQ-52GT-OPEN",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vpp52GTClosed"
+    },
+    {
+      "behaviour_status": "PASS",
+      "derived_outputs": "",
+      "input_group_id": "IG-025",
+      "input_nodes": "vppGTTripLatch",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "SEQ-52GT-TRIPCMD",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vpp52GTTripCmd"
+    },
+    {
+      "behaviour_status": "PASS",
+      "derived_outputs": "",
+      "input_group_id": "IG-028",
+      "input_nodes": "vppSTTripLatchPublished | vppECMS52STClosedCommandNative",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "SEQ-52ST-OPEN",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vpp52STClosed"
+    },
+    {
+      "behaviour_status": "PASS",
+      "derived_outputs": "",
+      "input_group_id": "IG-027",
+      "input_nodes": "vppSTTripLatchPublished",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "SEQ-52ST-TRIPCMD",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vpp52STTripCmd"
+    }
+  ],
+  "ports": [
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppGTExhaustMassFlowState",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-GT-FLOW-L"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "GT.EXHAUST.FLOW.L",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-GT-FLOW-L"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppGTExhaustMassFlowState",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-GT-FLOW-LL"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "GT.EXHAUST.FLOW.LL",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-GT-FLOW-LL"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppGTExhaustTemperatureK",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-GT-TEMP-L"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "GT.EXHAUST.TEMP.L",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-GT-TEMP-L"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppGTExhaustTemperatureK",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-GT-TEMP-LL"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "GT.EXHAUST.TEMP.LL",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-GT-TEMP-LL"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppHPTurbineSteamFlowTH",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-HP-FLOW-L"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.HP.STEAM.FLOW.L",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-HP-FLOW-L"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppHPTurbineSteamFlowTH",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-HP-FLOW-LL"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.HP.STEAM.FLOW.LL",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-HP-FLOW-LL"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppHPDrumLevelM",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-HP-LEVEL-H"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.HP.DRUM.LEVEL.H",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-HP-LEVEL-H"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppHPDrumLevelM",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-HP-LEVEL-HH"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.HP.DRUM.LEVEL.HH",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-HP-LEVEL-HH"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppHPDrumLevelM",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-HP-LEVEL-L"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.HP.DRUM.LEVEL.L",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-HP-LEVEL-L"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppHPDrumLevelM",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-HP-LEVEL-LL"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.HP.DRUM.LEVEL.LL",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-HP-LEVEL-LL"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppHPDrumPressurePa",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-HP-PRESS-L"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.HP.DRUM.PRESS.L",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-HP-PRESS-L"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppHPDrumPressurePa",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-HP-PRESS-LL"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.HP.DRUM.PRESS.LL",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-HP-PRESS-LL"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppIPTurbineSteamFlowTH",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-IP-FLOW-L"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.IP.STEAM.FLOW.L",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-IP-FLOW-L"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppIPTurbineSteamFlowTH",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-IP-FLOW-LL"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.IP.STEAM.FLOW.LL",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-IP-FLOW-LL"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppIPDrumLevelM",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-IP-LEVEL-H"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.IP.DRUM.LEVEL.H",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-IP-LEVEL-H"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppIPDrumLevelM",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-IP-LEVEL-HH"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.IP.DRUM.LEVEL.HH",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-IP-LEVEL-HH"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppIPDrumLevelM",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-IP-LEVEL-L"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.IP.DRUM.LEVEL.L",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-IP-LEVEL-L"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppIPDrumLevelM",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-IP-LEVEL-LL"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.IP.DRUM.LEVEL.LL",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-IP-LEVEL-LL"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppIPDrumPressurePa",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-IP-PRESS-L"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.IP.DRUM.PRESS.L",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-IP-PRESS-L"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppIPDrumPressurePa",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-IP-PRESS-LL"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.IP.DRUM.PRESS.LL",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-IP-PRESS-LL"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppLPTurbineSteamFlowTH",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-LP-FLOW-L"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.LP.STEAM.FLOW.L",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-LP-FLOW-L"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppLPTurbineSteamFlowTH",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-LP-FLOW-LL"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.LP.STEAM.FLOW.LL",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-LP-FLOW-LL"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppLPDrumLevelM",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-LP-LEVEL-H"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.LP.DRUM.LEVEL.H",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-LP-LEVEL-H"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppLPDrumLevelM",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-LP-LEVEL-HH"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.LP.DRUM.LEVEL.HH",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-LP-LEVEL-HH"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppLPDrumLevelM",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-LP-LEVEL-L"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.LP.DRUM.LEVEL.L",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-LP-LEVEL-L"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppLPDrumLevelM",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-LP-LEVEL-LL"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.LP.DRUM.LEVEL.LL",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-LP-LEVEL-LL"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppLPDrumPressurePa",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-LP-PRESS-L"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.LP.DRUM.PRESS.L",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-LP-PRESS-L"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppLPDrumPressurePa",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "AL-LP-PRESS-LL"
+    },
+    {
+      "kind": "DERIVED_TAG",
+      "node_or_tag": "HRSG.LP.DRUM.PRESS.LL",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "AL-LP-PRESS-LL"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppHPFWPResetPushbuttonNative",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "CMD-FWP-HP-RESET"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppHPFWPTripLatchNative",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "CMD-FWP-HP-RESET"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppHPFWPTripPushbuttonNative",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "CMD-FWP-HP-TRIP"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppHPFWPTripCommandNative",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "CMD-FWP-HP-TRIP"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppHPFWPTripLatchNative",
+      "port_id": "OUT-02",
+      "relation": "OUTPUT",
+      "rule_id": "CMD-FWP-HP-TRIP"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppVCBA01TripCommandNative",
+      "port_id": "OUT-03",
+      "relation": "OUTPUT",
+      "rule_id": "CMD-FWP-HP-TRIP"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppIPFWPResetPushbuttonNative",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "CMD-FWP-IP-RESET"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppIPFWPTripLatchNative",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "CMD-FWP-IP-RESET"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppIPFWPTripPushbuttonNative",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "CMD-FWP-IP-TRIP"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppIPFWPTripCommandNative",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "CMD-FWP-IP-TRIP"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppIPFWPTripLatchNative",
+      "port_id": "OUT-02",
+      "relation": "OUTPUT",
+      "rule_id": "CMD-FWP-IP-TRIP"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppVCBB01TripCommandNative",
+      "port_id": "OUT-03",
+      "relation": "OUTPUT",
+      "rule_id": "CMD-FWP-IP-TRIP"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppLPFWPResetPushbuttonNative",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "CMD-FWP-LP-RESET"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppLPFWPTripLatchNative",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "CMD-FWP-LP-RESET"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppLPFWPTripPushbuttonNative",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "CMD-FWP-LP-TRIP"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppLPFWPTripCommandNative",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "CMD-FWP-LP-TRIP"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppLPFWPTripLatchNative",
+      "port_id": "OUT-02",
+      "relation": "OUTPUT",
+      "rule_id": "CMD-FWP-LP-TRIP"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppVCBA02TripCommandNative",
+      "port_id": "OUT-03",
+      "relation": "OUTPUT",
+      "rule_id": "CMD-FWP-LP-TRIP"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppExternalTripCommandNative",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "PROT-DIRECT-GT"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseDirectGTTrip",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "PROT-DIRECT-GT"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppExternalSTTripCommandNative",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "PROT-DIRECT-ST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseDirectSTTrip",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "PROT-DIRECT-ST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppECMS52GTClosedCommandNative",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "PROT-GT-BRK-OPEN"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppGTTripLatchInternal",
+      "port_id": "IN-02",
+      "relation": "INPUT",
+      "rule_id": "PROT-GT-BRK-OPEN"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseGTBreakerOpenWhileRunning",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "PROT-GT-BRK-OPEN"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppGTTripRequest",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "PROT-GT-LATCH"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppGTTripResetNative",
+      "port_id": "IN-02",
+      "relation": "INPUT",
+      "rule_id": "PROT-GT-LATCH"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppGTTripLatch",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "PROT-GT-LATCH"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseDirectGTTrip",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "PROT-GT-REQUEST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseGTBreakerOpenWhileRunning",
+      "port_id": "IN-02",
+      "relation": "INPUT",
+      "rule_id": "PROT-GT-REQUEST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseHPDrumLL",
+      "port_id": "IN-03",
+      "relation": "INPUT",
+      "rule_id": "PROT-GT-REQUEST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseIPDrumLL",
+      "port_id": "IN-04",
+      "relation": "INPUT",
+      "rule_id": "PROT-GT-REQUEST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseLPDrumLL",
+      "port_id": "IN-05",
+      "relation": "INPUT",
+      "rule_id": "PROT-GT-REQUEST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppGTTripRequest",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "PROT-GT-REQUEST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppHPDrumHHRaw",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "PROT-HP-DRUM-HH"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseHPDrumHH",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "PROT-HP-DRUM-HH"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppHPDrumLLRaw",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "PROT-HP-DRUM-LL"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseHPDrumLL",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "PROT-HP-DRUM-LL"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppIPDrumHHRaw",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "PROT-IP-DRUM-HH"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseIPDrumHH",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "PROT-IP-DRUM-HH"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppIPDrumLLRaw",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "PROT-IP-DRUM-LL"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseIPDrumLL",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "PROT-IP-DRUM-LL"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppLPDrumHHRaw",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "PROT-LP-DRUM-HH"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseLPDrumHH",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "PROT-LP-DRUM-HH"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppLPDrumLLRaw",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "PROT-LP-DRUM-LL"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseLPDrumLL",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "PROT-LP-DRUM-LL"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppSTTripRequest",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "PROT-ST-LATCH"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppSTTripResetNative",
+      "port_id": "IN-02",
+      "relation": "INPUT",
+      "rule_id": "PROT-ST-LATCH"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppSTTripLatchPublished",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "PROT-ST-LATCH"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseDirectGTTrip",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "PROT-ST-REQUEST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseDirectSTTrip",
+      "port_id": "IN-02",
+      "relation": "INPUT",
+      "rule_id": "PROT-ST-REQUEST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseGTBreakerOpenWhileRunning",
+      "port_id": "IN-03",
+      "relation": "INPUT",
+      "rule_id": "PROT-ST-REQUEST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseHPDrumHH",
+      "port_id": "IN-04",
+      "relation": "INPUT",
+      "rule_id": "PROT-ST-REQUEST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseIPDrumHH",
+      "port_id": "IN-05",
+      "relation": "INPUT",
+      "rule_id": "PROT-ST-REQUEST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseLPDrumHH",
+      "port_id": "IN-06",
+      "relation": "INPUT",
+      "rule_id": "PROT-ST-REQUEST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseHPDrumLL",
+      "port_id": "IN-07",
+      "relation": "INPUT",
+      "rule_id": "PROT-ST-REQUEST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseIPDrumLL",
+      "port_id": "IN-08",
+      "relation": "INPUT",
+      "rule_id": "PROT-ST-REQUEST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppCauseLPDrumLL",
+      "port_id": "IN-09",
+      "relation": "INPUT",
+      "rule_id": "PROT-ST-REQUEST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppSTTripRequest",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "PROT-ST-REQUEST"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vpp52GTClosed",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "RESP-GT-POWER"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppGTGPowerMW",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "RESP-GT-POWER"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vpp52GTClosed",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "RESP-GT-SPEED"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppGTGSpeedRPM",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "RESP-GT-SPEED"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppGTTripLatch",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "SEQ-52GT-OPEN"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppECMS52GTClosedCommandNative",
+      "port_id": "IN-02",
+      "relation": "INPUT",
+      "rule_id": "SEQ-52GT-OPEN"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vpp52GTClosed",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "SEQ-52GT-OPEN"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppGTTripLatch",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "SEQ-52GT-TRIPCMD"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vpp52GTTripCmd",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "SEQ-52GT-TRIPCMD"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppSTTripLatchPublished",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "SEQ-52ST-OPEN"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppECMS52STClosedCommandNative",
+      "port_id": "IN-02",
+      "relation": "INPUT",
+      "rule_id": "SEQ-52ST-OPEN"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vpp52STClosed",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "SEQ-52ST-OPEN"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppSTTripLatchPublished",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "SEQ-52ST-TRIPCMD"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vpp52STTripCmd",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "SEQ-52ST-TRIPCMD"
+    }
+  ]
+}

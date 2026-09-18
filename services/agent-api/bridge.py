@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from triplens.agent_tools import EvidenceStore
+from triplens.current_catalog import load_catalog
 from triplens.dual_log_analyzer import analyze_dual_logs
 
 SERVICE_ROOT = Path(__file__).resolve().parent
@@ -36,71 +37,16 @@ def sha256_files(*paths: Path) -> str:
 
 
 def current_v8_manifest() -> dict[str, Any]:
-    if not LIVE_MANIFEST.exists():
-        raise RuntimeError(f"Current V8 manifest missing: {LIVE_MANIFEST}")
-    return json.loads(LIVE_MANIFEST.read_text(encoding="utf-8-sig"))
+    return load_catalog(CURRENT_V8_ROOT)[0]
 
 
 def live_tag_allowlist() -> set[str]:
-    if not LIVE_TAG_ALLOWLIST.exists():
-        raise RuntimeError(f"Current V8 tag allowlist missing: {LIVE_TAG_ALLOWLIST}")
-    with LIVE_TAG_ALLOWLIST.open("r", encoding="utf-8-sig", newline="") as stream:
-        rows = list(csv.DictReader(stream))
-    tags = {str(row.get("raw_tag_id", "")).strip() for row in rows}
-    tags.discard("")
-    if len(tags) != 603:
-        raise RuntimeError(f"Current V8 live tag count mismatch: {len(tags)} != 603")
-    return tags
+    return load_catalog(CURRENT_V8_ROOT)[1]
 
 
 def runtime_logic_rows() -> list[dict[str, Any]]:
-    """Load only the live-validated 53-rule Current V8 Logic Master.
-
-    Vercel must not fall back to older catalogues or infer logic for tags that are
-    not registered in this exact live baseline.
-    """
-    if not LIVE_LOGIC.exists():
-        raise RuntimeError(f"Current V8 live logic missing: {LIVE_LOGIC}")
-
-    allowed = live_tag_allowlist()
-    rows: list[dict[str, Any]] = []
-    with LIVE_LOGIC.open("r", encoding="utf-8-sig", newline="") as stream:
-        for row in csv.DictReader(stream):
-            if str(row.get("status", "")).strip().upper() != "ACTIVE":
-                continue
-
-            linked = [
-                part.strip()
-                for part in str(row.get("linked_tag_ids", "")).replace(",", ";").split(";")
-                if part.strip()
-            ]
-            source_nodes = [tag for tag in linked if tag.startswith("vpp")]
-            missing_live = sorted(tag for tag in source_nodes if tag not in allowed)
-            if missing_live:
-                raise RuntimeError(
-                    f"Current V8 logic references non-live OPC UA tags: "
-                    f"{row.get('logic_id', '')}: {missing_live}"
-                )
-
-            logic_type = str(row.get("logic_type", "")).strip().upper()
-            if logic_type == "ALARM":
-                event_class = "ALARM"
-            elif logic_type in PROTECTION_LOGIC_TYPES:
-                event_class = "PROTECTION"
-            elif logic_type == "COMMAND_INTERFACE":
-                event_class = "OPERATOR_ACTION"
-            else:
-                event_class = "SYSTEM"
-
-            item = dict(row)
-            item["event_class"] = event_class
-            item["canonical_tag"] = row.get("event_tag", "")
-            item["verification_status"] = "LIVE_OPCUA_VALIDATED"
-            rows.append(item)
-
-    if len(rows) != 53:
-        raise RuntimeError(f"Current V8 logic rule count mismatch: {len(rows)} != 53")
-    return rows
+    # Hash-checked source identities and original semantic status stay separate.
+    return load_catalog(CURRENT_V8_ROOT)[2]
 
 
 def logic_summary() -> dict[str, Any]:

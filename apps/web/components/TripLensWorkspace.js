@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { LogicLibraryDialog, LogicLinks, openLogicLibrary } from './LogicLibrary';
 import {
   DEFAULT_LOGIC_SUMMARY,
   DEMO_ANALYSIS,
@@ -71,7 +72,7 @@ function ClaimCard({ title, item }) {
       <div className="claim-text">{item?.claim || '분석 결과 대기'}</div>
       <div className="claim-meta">
         <span>근거: {(item?.evidence_ids || []).join(', ') || '—'}</span>
-        <span>태그: {(item?.related_tags || []).join(', ') || '—'}</span>
+        <span>태그: <LogicLinks tags={item?.related_tags || []} /></span>
         {item?.recorded_time ? <span>시각: {item.recorded_time}s</span> : null}
       </div>
     </section>
@@ -191,7 +192,7 @@ function EvidenceView({ analysis }) {
       <section className="report-table">
         <div className="table-head"><span>근거 ID</span><span>상태</span><span>연결 Claim</span><span>관련 태그</span></div>
         {evidence.length ? evidence.map((row, i) => (
-          <div className="table-row" key={`${row.id}-${i}`}><span>{row.id}</span><span>{row.status}</span><span>{row.claim}</span><span>{row.tags || '—'}</span></div>
+          <div className="table-row" key={`${row.id}-${i}`}><span>{row.id}</span><span>{row.status}</span><span>{row.claim}</span><span><LogicLinks tags={row.tags} /></span></div>
         )) : <div className="empty-line">Evidence ID가 아직 없습니다.</div>}
       </section>
     </div>
@@ -294,7 +295,7 @@ export default function TripLensWorkspace({ mode = 'blind' }) {
             ))}
           </nav>
           <div className="side-links">
-            <button onClick={() => setDrawer(true)}><b>LM</b><span>Event Logic Master<em>Live {logic.live_rules} · ALARM {logic.alarm} · PROT {logic.protection}</em></span></button>
+            <button onClick={() => openLogicLibrary()}><b>LM</b><span>Event Logic Master<em>Live {logic.live_rules} · ALARM {logic.alarm} · PROT {logic.protection}</em></span></button>
             <a href="https://www.notion.so/" target="_blank" rel="noreferrer"><b>N</b><span>Notion 현황판<em>개발 · 검증 기록</em></span></a>
             <a href="https://triplens-m-alarm-console.junsic25.chatgpt.site/" target="_blank" rel="noreferrer"><b>AC</b><span>알림발생기<em>Dual Log 생성 보조</em></span></a>
           </div>
@@ -361,6 +362,7 @@ export default function TripLensWorkspace({ mode = 'blind' }) {
           </aside>
         </div>
       ) : null}
+    <LogicLibraryDialog />
     </main>
   );
 }
