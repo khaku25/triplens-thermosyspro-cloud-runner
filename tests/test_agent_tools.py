@@ -13,7 +13,7 @@ EVENT_FIELDS = [
     'event_id','event_sequence','session_id','incident_id','model_time_s','wall_time_utc',
     'priority','event_class','equipment','tag','state','value','unit','message','source','acknowledged'
 ]
-RAW_FIELDS = ['record_sequence','session_id','incident_id','model_time_s','wall_time_utc','quality','TAG_A','TAG_B']
+RAW_FIELDS = ['record_sequence','session_id','incident_id','model_time_s','wall_time_utc','collector_quality','TAG_A','TAG_B']
 
 
 def write_csv(path, fields, rows):
@@ -41,7 +41,7 @@ class AgentToolsTest(unittest.TestCase):
         for i in range(200):
             raw_rows.append({
                 'record_sequence':i+1,'session_id':'S1','incident_id':'I1','model_time_s':f'{i*0.1:.3f}',
-                'wall_time_utc':'2026-09-18T00:00:00.000+00:00','quality':'GOOD',
+                'wall_time_utc':'2026-09-18T00:00:00.000+00:00','collector_quality':'GOOD',
                 'TAG_A':100-i*0.25,'TAG_B':i,
             })
         self.event = self.dir/'EVENT.csv'; self.raw = self.dir/'RAW.csv'
