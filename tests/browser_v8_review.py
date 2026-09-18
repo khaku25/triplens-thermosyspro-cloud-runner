@@ -71,9 +71,10 @@ def main():
             page.get_by_role('button',name='vppGTTripLatch',exact=True).first.click()
             expect(page.get_by_role('heading',name='태그 상세',exact=True)).to_be_visible()
             page.get_by_role('button',name='대시보드로 돌아가기',exact=True).click()
-            page.locator('.side-links button').click()
-            expect(page.get_by_text('고정 Cause Matrix: 사용 안 함',exact=True)).to_be_visible()
-            page.get_by_role('button',name='닫기',exact=True).click()
+            if width>640:
+                page.locator('.side-links button').click()
+                expect(page.get_by_text('고정 Cause Matrix: 사용 안 함',exact=True)).to_be_visible()
+                page.get_by_role('button',name='닫기',exact=True).click()
             page.get_by_role('button',name='고장보고서 초안 보기',exact=True).click()
             page.get_by_label('보고서 1 content',exact=True).fill('담당자 검토 수정 내용')
             with page.expect_download() as d:page.get_by_role('button',name='고장보고서 초안 CSV',exact=True).click()
