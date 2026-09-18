@@ -1,27 +1,17 @@
-name: Run Local Gemini Engineering Review
+name: Run Paid Gemini Engineering Review
 on:
-  push:
-    branches: [feature/semantic-engineering-review]
-    paths:
-      - 'services/agent-api/**'
-      - 'apps/web/lib/analysisClient.mjs'
-      - 'tests/build_report_rows.mjs'
-      - 'tests/run_local_semantic_review.py'
-      - '.github/workflows/run-local-gemini-engineering-review.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'services/agent-api/**'
-      - 'apps/web/lib/analysisClient.mjs'
-      - 'tests/build_report_rows.mjs'
-      - 'tests/run_local_semantic_review.py'
-      - '.github/workflows/run-local-gemini-engineering-review.yml'
   workflow_dispatch:
+    inputs:
+      confirm_paid_review:
+        description: 'Type RUN to spend Gemini API credits on analyzer + independent reviewer'
+        required: true
+        default: ''
 permissions:
   contents: read
   actions: read
 jobs:
   engineering-review:
+    if: ${{ inputs.confirm_paid_review == 'RUN' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -40,7 +30,7 @@ jobs:
         run: |
           mkdir -p outputs/semantic-engineering-review
           gh api repos/khaku25/triplens-thermosyspro-cloud-runner/actions/artifacts/10404407335/zip > outputs/run41.zip
-      - name: Run current analyzer and independent engineering reviewer
+      - name: Run one actual analyzer plus one independent Engineering Reviewer
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           TRIPLENS_GEMINI_MODEL: gemini-3.8-flash
@@ -50,6 +40,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: semantic-engineering-review-${{ github.run_id }}
+          name: paid-semantic-engineering-review-${{ github.run_id }}
           path: outputs/semantic-engineering-review/
           retention-days: 14
