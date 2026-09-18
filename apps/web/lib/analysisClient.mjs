@@ -58,7 +58,7 @@ export function buildDraftRows(envelope){
  if(a.additional_evidence_required.length)a.additional_evidence_required.forEach((v,i)=>add('추정 원인 및 미확인 사항',`추가 확인 ${i+1}`,{claim:v,status:'UNKNOWN'}));
  else add('추정 원인 및 미확인 사항','추가 확인',{},'담당자 최종 검토 필요');
  const recommendations=a.review_recommendations.length?a.review_recommendations:['재발방지 대책은 운전·정비 담당자 검토 후 작성'];
- recommendations.forEach((v,i)=>add('재발방지 대책 — 검토 권고사항',`검토 권고 ${i+1}`,{claim:v,status:'CANDIDATE'},'담당자 승인 필요 / 설비 조작 명령 아님');
+ recommendations.forEach((v,i)=>add('재발방지 대책 — 검토 권고사항',`검토 권고 ${i+1}`,{claim:v,status:'CANDIDATE'},'담당자 승인 필요 / 설비 조작 명령 아님'));
  const evidence=envelope?.evidence_catalog?.length?envelope.evidence_catalog:events.map(e=>({...e,evidence_id:e.evidence_id||e.event_id,source_kind:'EVENT'}));
  if(evidence.length)evidence.forEach((e,i)=>add('증거자료',`Evidence ${i+1}`,{claim:e.message||`${e.source_kind||'EVIDENCE'} · ${e.source_node||e.tag||''}`.trim(),status:'OBSERVED',evidence_ids:[e.evidence_id||e.event_id].filter(Boolean),related_tags:[e.source_node||e.tag].filter(Boolean),model_time_s:e.model_time_s},e.source_kind||e.source||''));
  else add('증거자료','검토 상태',{},'연결된 Evidence 없음');
