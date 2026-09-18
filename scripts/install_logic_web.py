@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""One-time guarded integration into the existing TripLens app; idempotent.
+"""Guarded, idempotent integration into the existing TripLens application.
 
-The actual modified application files are committed with the feature. This script
-never replaces the site with a different app or edits any physical model file.
+Preserves the current evidence/report UI and GroundedEvidenceStore. Only adds
+logic navigation and the hash-checked catalog loader. No plant/runtime changes.
 """
 from pathlib import Path
 import re
@@ -15,11 +15,21 @@ def once(source,old,new,label):
     return source.replace(old,new,1)
 
 def patch_workspace(source):
-    if '<LogicLibraryDialog />' in source and 'openLogicLibrary()' in source:return source
-    source=once(source,"import { useEffect, useMemo, useState } from 'react';", "import { useEffect, useMemo, useState } from 'react';\nimport { LogicLibraryDialog, LogicLinks, openLogicLibrary } from './LogicLibrary';",'workspace import')
-    source=once(source,'<button onClick={() => setDrawer(true)}><b>LM</b>', '<button onClick={() => openLogicLibrary()}><b>LM</b>','workspace navigation')
-    source=once(source,"<span>태그: {(item?.related_tags || []).join(', ') || '—'}</span>","<span>태그: <LogicLinks tags={item?.related_tags || []} /></span>",'workspace claim tags')
-    source=once(source,"<span>{row.tags || '—'}</span>","<span><LogicLinks tags={row.tags} /></span>",'workspace evidence tags')
+    if '<LogicLibraryDialog />' in source and 'openLogicLibrary()' in source:
+        return source
+    modern = "import {useEffect,useMemo,useRef,useState} from 'react';"
+    if modern in source:
+        source=once(source,modern,modern+"\nimport { LogicLibraryDialog, openLogicLibrary } from './LogicLibrary';",'workspace import')
+        source=once(source,'<button onClick={()=>setDrawer(true)}><b>LM</b>',
+                    '<button onClick={()=>openLogicLibrary()}><b>LM</b>','workspace navigation')
+        anchor='<code className="wrap-code">{detail.value}</code>'
+        detail=anchor+"{detail.kind==='tag'&&<button type=\"button\" className=\"back-button\" onClick={()=>openLogicLibrary({tag:detail.value})}>관련 로직·도면 보기</button>}"
+        source=once(source,anchor,detail,'workspace tag detail')
+    else:
+        source=once(source,"import { useEffect, useMemo, useState } from 'react';", "import { useEffect, useMemo, useState } from 'react';\nimport { LogicLibraryDialog, LogicLinks, openLogicLibrary } from './LogicLibrary';",'workspace import')
+        source=once(source,'<button onClick={() => setDrawer(true)}><b>LM</b>', '<button onClick={() => openLogicLibrary()}><b>LM</b>','workspace navigation')
+        source=once(source,"<span>태그: {(item?.related_tags || []).join(', ') || '—'}</span>","<span>태그: <LogicLinks tags={item?.related_tags || []} /></span>",'workspace claim tags')
+        source=once(source,"<span>{row.tags || '—'}</span>","<span><LogicLinks tags={row.tags} /></span>",'workspace evidence tags')
     source=once(source,'</main>','<LogicLibraryDialog />\n    </main>','workspace dialog')
     return source
 
@@ -31,7 +41,9 @@ def patch_contracts(source):
 
 def patch_bridge(source):
     if 'load_catalog(CURRENT_V8_ROOT)' in source:return source
-    source=once(source,'from triplens.agent_tools import EvidenceStore', 'from triplens.agent_tools import EvidenceStore\nfrom triplens.current_catalog import load_catalog','bridge import')
+    grounded='from triplens.evidence_context import GroundedEvidenceStore as EvidenceStore, VERSION'
+    original=grounded if grounded in source else 'from triplens.agent_tools import EvidenceStore'
+    source=once(source,original,original+'\nfrom triplens.current_catalog import load_catalog','bridge import')
     start=source.find('def current_v8_manifest(');end=source.find('def logic_summary(')
     if start<0 or end<start:raise ValueError('bridge catalog function boundary missing')
     return source[:start]+'''def current_v8_manifest() -> dict[str, Any]:
