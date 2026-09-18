@@ -1,0 +1,134 @@
+name: Replay Captured Actual Gemini Result UI
+on:
+  push:
+    branches: [verify/integrated-engineering-119b750-20260918]
+    paths: [.github/workflows/replay-captured-review-ui-once.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  real-result-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 119b750d352090eecc776e6474b5ae86e1ef09dd
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download already generated real Gemini result
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p outputs/actual-result-ui/captured
+          gh api repos/khaku25/triplens-thermosyspro-cloud-runner/actions/artifacts/10543286910/zip > outputs/actual-result-ui/capture.zip
+          python - <<'PY'
+          import hashlib,zipfile
+          from pathlib import Path
+          p=Path('outputs/actual-result-ui/capture.zip')
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='c247f1f2b65131645858371cecce92290a19d435c812b9b2416f43c4b9dfdd49'
+          with zipfile.ZipFile(p) as z:
+              for name in ('direct-gt/EVENT.csv','direct-gt/RAW.csv','direct-gt/envelope.json','direct-gt/report_rows.json','review_capture.json','execution_provenance.json'):
+                  dest=Path('outputs/actual-result-ui/captured')/Path(name).name
+                  dest.write_bytes(z.read(name))
+          PY
+      - name: Install and build pinned application
+        run: |
+          python -m pip install -e services/agent-api playwright==1.57.0
+          python -m playwright install --with-deps chromium
+          npm ci --prefix apps/web
+          npm run build --prefix apps/web
+      - name: Replay original model response in actual browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run start --prefix apps/web -- --hostname 127.0.0.1 --port 3000 > outputs/actual-result-ui/server.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          python - <<'PY'
+          import csv,hashlib,json,sys,time,urllib.request
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright,expect
+          sys.path.insert(0,str(Path('services/agent-api').resolve()))
+          import bridge
+          from triplens.engineering_reviewer import REPORT_SECTIONS
+          out=Path('outputs/actual-result-ui');captured=out/'captured'
+          response=json.loads((captured/'envelope.json').read_text())
+          rows=json.loads((captured/'report_rows.json').read_text())
+          event=captured/'EVENT.csv';raw=captured/'RAW.csv'
+          response['contract']=bridge.public_contract()
+          response['data_digest']=bridge.sha256_files(event,raw)
+          response['analysis_key']='CAPTURE_REPLAY_'+response['data_digest']
+          response['evidence_readiness']=bridge.evidence_readiness(event,raw)
+          assert response['evidence_readiness']['status']=='PASS'
+          assert response['analysis']['verification_gate']=='HOLD'
+          assert len(response['events'])==21 and len(rows)==151
+          for attempt in range(60):
+              try:urllib.request.urlopen('http://127.0.0.1:3000',timeout=2).close();break
+              except Exception:time.sleep(1)
+          else:raise SystemExit('Next.js not ready')
+          results=[]
+          with sync_playwright() as p:
+              browser=p.chromium.launch(headless=True)
+              for name,width in [('desktop',1440),('mobile',390)]:
+                  context=browser.new_context(viewport={'width':width,'height':1000},accept_downloads=True)
+                  counts={'analyze':0};errors=[]
+                  def route_api(route):
+                      path=route.request.url.rsplit('/',1)[-1]
+                      headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type'}
+                      if route.request.method=='OPTIONS':route.fulfill(status=204,headers=headers);return
+                      if path=='contract':data=response['contract']
+                      elif path=='bootstrap':data={k:v for k,v in response.items() if k not in {'analysis','evidence_catalog'}}
+                      elif path=='analyze':counts['analyze']+=1;data=response
+                      else:route.abort();return
+                      route.fulfill(status=200,json=data,headers=headers)
+                  context.route('https://triplens-agent-api-preview.vercel.app/**',route_api)
+                  page=context.new_page();page.on('pageerror',lambda error:errors.append(str(error)))
+                  page.goto('http://127.0.0.1:3000/')
+                  expect(page.get_by_label('EVENT 파일')).to_be_enabled()
+                  page.get_by_label('EVENT 파일').set_input_files(str(event))
+                  page.get_by_label('RAW 파일').set_input_files(str(raw))
+                  page.get_by_role('button',name='이 Dual Log 분석하기',exact=True).click()
+                  expect(page.locator('.gate')).to_contain_text('HOLD',timeout=30000)
+                  expect(page.locator('.claim-text').first).to_contain_text('vppExternalTripCommandNative')
+                  assert page.locator('.status-badge').filter(has_text='CONFIRMED').count()==0
+                  page.screenshot(path=str(out/f'{name}-actual-analysis.png'),full_page=True)
+                  page.get_by_role('button',name='vppExternalTripCommandNative',exact=True).first.click()
+                  expect(page.get_by_role('heading',name='태그 상세',exact=True)).to_be_visible()
+                  page.get_by_role('button',name='관련 로직·도면 보기',exact=True).click()
+                  page.locator('dialog[open]').wait_for()
+                  frame=page.frame_locator('dialog iframe')
+                  frame.locator('body[data-ready="true"]').wait_for()
+                  assert frame.locator('#related-rules button').count()>0
+                  page.screenshot(path=str(out/f'{name}-actual-tag-logic.png'),full_page=False)
+                  page.get_by_role('button',name='닫기',exact=True).click()
+                  page.get_by_role('button',name='대시보드로 돌아가기',exact=True).click()
+                  page.get_by_role('button',name='고장보고서 초안 보기',exact=True).click()
+                  expect(page.locator('.editable-report tbody tr')).to_have_count(len(rows))
+                  with page.expect_download() as dl:
+                      page.get_by_role('button',name='고장보고서 초안 CSV',exact=True).click()
+                  dest=out/f'{name}-actual-report.csv';dl.value.save_as(str(dest))
+                  with dest.open(encoding='utf-8-sig',newline='') as stream:exported=list(csv.reader(stream))
+                  assert len(exported)==len(rows)+1
+                  assert list(dict.fromkeys(row[0] for row in exported[1:]))==REPORT_SECTIONS
+                  page.locator('.report-preview').scroll_into_view_if_needed()
+                  page.screenshot(path=str(out/f'{name}-actual-report.png'),full_page=False)
+                  assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1')
+                  assert not errors, errors
+                  results.append({'viewport':name,'status':'PASS','recorded_model_output':True,'additional_model_calls':0,'api_transport':'INTERCEPTED_REPLAY_NOT_DEPLOYED_API','report_rows':len(rows),'sections':REPORT_SECTIONS,'analysis_gate':'HOLD','tag_diagram_navigation':True,'page_errors':errors})
+                  context.close()
+              browser.close()
+          (out/'actual-result-browser-checks.json').write_text(json.dumps(results,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(results,ensure_ascii=False))
+          PY
+      - name: Save real-result replay evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: actual-result-ui-${{ github.run_id }}
+          path: outputs/actual-result-ui/
+          retention-days: 14
