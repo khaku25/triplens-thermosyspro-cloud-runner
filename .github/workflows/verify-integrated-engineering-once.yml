@@ -1,0 +1,166 @@
+name: Verify Integrated Gemini Review Once
+on:
+  push:
+    branches: [verify/integrated-engineering-119b750-20260918]
+    paths: [.github/workflows/verify-integrated-engineering-once.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: integrated-engineering-review-119b750
+  cancel-in-progress: false
+jobs:
+  regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 119b750d352090eecc776e6474b5ae86e1ef09dd
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test dependencies
+        run: |
+          python -m pip install -e services/agent-api playwright==1.57.0
+          python -m playwright install --with-deps chromium
+      - name: Source, diagram, backend and report regressions
+        run: |
+          python scripts/update_triplens_logic.py --check
+          python -m unittest discover -s tests -p 'test_logic_*.py' -v
+          python -m unittest discover -s tests -p test_current_catalog.py -v
+          python -m unittest discover -s services/agent-api/tests -p 'test_*.py' -v
+          node --test tests/test_analysis_client.mjs tests/test_report_semantic_placement.mjs tests/test_ai_output_contract.mjs tests/test_event_tag_resolver.mjs tests/test_report_export.mjs
+          python tests/test_gemini_sdk_transport.py
+      - name: Build and exercise integrated application in a real browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p outputs/integration-review
+          npm ci --prefix apps/web
+          npm run build --prefix apps/web
+          npm run start --prefix apps/web -- --hostname 127.0.0.1 --port 3000 > outputs/integration-review/next-server.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          python - <<'PY'
+          import time, urllib.request
+          from playwright.sync_api import sync_playwright, expect
+          for attempt in range(60):
+              try:
+                  urllib.request.urlopen('http://127.0.0.1:3000', timeout=2).close(); break
+              except Exception:
+                  time.sleep(1)
+          else:
+              raise SystemExit('Next.js did not become ready')
+          with sync_playwright() as p:
+              browser=p.chromium.launch(headless=True)
+              page=browser.new_page(viewport={'width':1440,'height':1000})
+              errors=[]
+              page.on('pageerror', lambda error: errors.append(str(error)))
+              page.goto('http://127.0.0.1:3000/logic?tag=vppHPDrumLevelM')
+              frame=page.frame_locator('iframe')
+              frame.locator('body[data-ready="true"]').wait_for()
+              expect(frame.locator('#related-rules button')).to_have_count(4)
+              frame.locator('#related-rules button[data-rule="AL-HP-LEVEL-HH"]').click()
+              assert frame.locator('#page-select').input_value()=='IG-003'
+              page.screenshot(path='outputs/integration-review/pinned-main-logic.png',full_page=True)
+              assert not errors, errors
+              browser.close()
+          print('PINNED_MAIN_LOGIC_BROWSER_PASS')
+          PY
+          python tests/browser_v8_review.py
+      - name: Preserve browser and regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integrated-browser-${{ github.run_id }}
+          path: outputs/integration-review/
+          retention-days: 14
+  actual-review:
+    needs: regression
+    if: github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 119b750d352090eecc776e6474b5ae86e1ef09dd
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install original Agent API dependencies
+        run: python -m pip install -e services/agent-api
+      - name: Fetch untouched archived V8 evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p outputs/semantic-engineering-review
+          gh api repos/khaku25/triplens-thermosyspro-cloud-runner/actions/artifacts/10404407335/zip > outputs/run41.zip
+      - name: Run original analyzer and separate reviewer with failure artifacts
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TRIPLENS_GEMINI_MODEL: gemini-3.8-flash
+          TRIPLENS_REVIEWER_MODEL: gemini-3.8-flash
+        run: |
+          python - <<'PY'
+          import hashlib, importlib.util, json, subprocess, sys, time, traceback
+          from pathlib import Path
+          spec=importlib.util.spec_from_file_location('original_review', 'tests/run_local_semantic_review.py')
+          h=importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
+          out=h.OUT; out.mkdir(parents=True,exist_ok=True)
+          def save(name, value):
+              (out/name).write_text(json.dumps(value,ensure_ascii=False,indent=2),encoding='utf-8')
+          save('execution_provenance.json', {'application_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'mode':'ACTUAL_GEMINI_NOT_MOCK','analyzer_sessions_budget':1,'reviewer_sessions_budget':1,'plant_rerun':False,'vercel_deployment_test':False})
+          original_analyze=h.run_gemini_analysis
+          original_review=h.run_engineering_review
+          captured={}
+          def capture_analysis(store, **kwargs):
+              started=time.monotonic()
+              result=original_analyze(store,**kwargs)
+              captured['package']={'analysis':result,'events':[store.describe_event(e) for e in store.event_rows],'evidence_catalog':store.evidence_catalog(),'logic_rows':store.logic_rows,'validation':store.validation}
+              save('analysis_capture.json',result)
+              save('evidence_capture.json',captured['package'])
+              save('analysis_call.json',{'duration_s':round(time.monotonic()-started,2),'actual_provider_call':True})
+              return result
+          def capture_review(package, **kwargs):
+              save('reviewer_attempted.json',{'attempted':True,'actual_provider_call':True})
+              save('reviewer_input.json',package)
+              result=original_review(package,**kwargs)
+              save('review_capture.json',result)
+              return result
+          h.run_gemini_analysis=capture_analysis
+          h.run_engineering_review=capture_review
+          sys.argv=['tests/run_local_semantic_review.py','--archive','outputs/run41.zip']
+          try:
+              h.main()
+          except Exception as exc:
+              save('original_harness_failure.json',{'type':type(exc).__name__,'message':str(exc),'traceback':traceback.format_exc()})
+              # Preserve the original failure; still ask the requested reviewer to inspect
+              # an analyzer result when a deterministic assertion stopped the original harness.
+              package=captured.get('package')
+              if package and not (out/'reviewer_attempted.json').exists():
+                  envelope=out/'captured_envelope.json'; save(envelope.name,package)
+                  rows_path=out/'captured_report_rows.json'
+                  try:
+                      subprocess.run(['node','tests/build_report_rows.mjs',str(envelope),str(rows_path)],check=True)
+                      package['report_rows']=json.loads(rows_path.read_text(encoding='utf-8'))
+                      capture_review(package)
+                  except Exception as reviewer_exc:
+                      save('reviewer_failure.json',{'type':type(reviewer_exc).__name__,'message':str(reviewer_exc),'traceback':traceback.format_exc()})
+              raise SystemExit('Original review harness failed; findings and evidence preserved, NOT a PASS')
+          finally:
+              subprocess.run(['git','diff','--exit-code'],check=True)
+          PY
+      - name: Preserve actual model outputs and reviewer verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integrated-actual-review-${{ github.run_id }}
+          path: outputs/semantic-engineering-review/
+          retention-days: 14
