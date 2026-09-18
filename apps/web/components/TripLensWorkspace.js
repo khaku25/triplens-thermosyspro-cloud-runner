@@ -9,7 +9,7 @@ import {
   WORKSPACE_TABS,
 } from '../lib/contracts';
 
-const API_BASE = (process.env.NEXT_PUBLIC_TRIPLENS_API_BASE || '').replace(/\/$/, '');
+const API_BASE = (process.env.NEXT_PUBLIC_TRIPLENS_API_BASE || 'https://triplens-agent-api-preview.vercel.app').replace(/\/$/, '');
 const DIRECT_UPLOAD_LIMIT = 4_000_000;
 
 function splitCsvLine(line) {
