@@ -2,7 +2,7 @@ name: Update TripLens Logic Assets
 
 on:
   push:
-    branches: [logic-drawio-one-update]
+    branches: [integration/logic-review-rc-20260918]
   pull_request:
     paths:
       - 'scripts/logic_assets/**'
@@ -18,15 +18,15 @@ on:
   workflow_dispatch:
     inputs:
       refresh_drive:
-        description: Download latest 06 and 07 from their existing Google Drive file IDs
+        description: Download latest authorized 06/07 source snapshots
         type: boolean
-        default: true
+        default: false
       sync_drive:
-        description: Upload generated 08/09/10 (requires authorized Drive access token secret)
+        description: Upload derived 08/09/10 using separately authorized Drive credentials
         type: boolean
         default: false
       publish:
-        description: Commit generated assets to the selected branch after validation
+        description: Save tested assets on selected branch only
         type: boolean
         default: true
 
@@ -40,32 +40,52 @@ concurrency:
 jobs:
   logic-assets:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
           fetch-depth: 0
-      - name: Integrate latest main before deployment verification
-        if: github.event_name == 'push' && github.ref_name == 'logic-drawio-one-update'
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git fetch origin main
-          git merge --no-edit origin/main
-          echo "INTEGRATION_TEST_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify web integration is installed
+      - name: Integrate current main without reverting evidence or report functionality
+        if: github.event_name == 'push' && github.ref_name == 'integration/logic-review-rc-20260918'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          base=$(git rev-parse origin/main)
+          echo "RC_BASE_SHA=$base" >> "$GITHUB_ENV"
+          if ! git merge --no-commit --no-ff "$base"; then
+            RC_BASE_SHA="$base" python - <<'PY'
+          import os, subprocess
+          from pathlib import Path
+          conflicts=set(subprocess.check_output(['git','diff','--name-only','--diff-filter=U'],text=True).splitlines())
+          reviewed={'apps/web/components/TripLensWorkspace.js','services/agent-api/bridge.py'}
+          print('MERGE_CONFLICTS',sorted(conflicts))
+          if not conflicts or not conflicts <= reviewed:
+              raise SystemExit('Unexpected merge conflicts; stop without publishing')
+          for name in sorted(conflicts):
+              data=subprocess.check_output(['git','show',os.environ['RC_BASE_SHA']+':'+name])
+              Path(name).write_bytes(data)
+              subprocess.check_call(['git','add','--',name])
+          PY
+          fi
+          python scripts/install_logic_web.py
+          git add -- apps/web/components/TripLensWorkspace.js apps/web/lib/contracts.js services/agent-api/bridge.py
+          test -z "$(git diff --name-only --diff-filter=U)"
+          git diff --cached --check
+          git diff --exit-code "$base" -- modelica scripts/native_ecms_opcua_client.py ECMSVPP.m
+      - name: Verify idempotent web integration
         run: python scripts/install_logic_web.py
-      - name: Generate one consistent release
+      - name: Generate and validate a consistent source/diagram/API release
         env:
           REFRESH_DRIVE: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_drive }}
           SYNC_DRIVE: ${{ github.event_name == 'workflow_dispatch' && inputs.sync_drive }}
@@ -78,7 +98,6 @@ jobs:
           python scripts/update_triplens_logic.py "${args[@]}"
           python scripts/update_triplens_logic.py --check
       - name: Install browser and API test dependencies
-        shell: bash
         run: |
           python -m pip install playwright==1.57.0
           python -m playwright install --with-deps chromium
@@ -87,7 +106,7 @@ jobs:
           spec=tomllib.loads(pathlib.Path('services/agent-api/pyproject.toml').read_text())
           subprocess.check_call([sys.executable,'-m','pip','install',*spec['project']['dependencies']])
           PY
-      - name: Source, diagram, layout and browser tests
+      - name: Source diagram layout and integrated API regression tests
         env:
           TRIPLENS_DESKTOP_SCREENSHOT: ${{ runner.temp }}/logic-desktop.png
           TRIPLENS_MOBILE_SCREENSHOT: ${{ runner.temp }}/logic-mobile.png
@@ -95,19 +114,20 @@ jobs:
           python -m unittest discover -s tests -p 'test_logic_*.py' -v
           python -m unittest discover -s tests -p test_current_catalog.py -v
           python -m unittest discover -s services/agent-api/tests -p 'test_*.py' -v
-      - name: Existing evidence UI and offline Gemini regression tests
+      - name: Existing analysis report placement and Gemini serialization regressions
         run: |
-          node --test tests/test_analysis_client.mjs
+          node --test tests/test_analysis_client.mjs tests/test_report_semantic_placement.mjs
           node --test tests/test_ai_output_contract.mjs tests/test_event_tag_resolver.mjs tests/test_report_export.mjs
-          if test -f tests/test_gemini_sdk_transport.py; then python tests/test_gemini_sdk_transport.py; fi
-      - name: Build existing Next.js application with logic detail route
+          python tests/test_gemini_sdk_transport.py
+      - name: Build integrated Next.js application
         run: |
           npm ci --prefix apps/web
           npm run build --prefix apps/web
-      - name: Verify actual Next.js navigation and embedded diagram
+      - name: Real browser tag to diagram navigation and original report UI
         shell: bash
         run: |
-          npm run start --prefix apps/web -- --port 3000 > "$RUNNER_TEMP/logic-next.log" 2>&1 &
+          mkdir -p outputs/integration-review
+          npm run start --prefix apps/web -- --hostname 127.0.0.1 --port 3000 > "$RUNNER_TEMP/logic-next.log" 2>&1 &
           server=$!
           trap 'kill "$server" 2>/dev/null || true' EXIT
           python - <<'PY'
@@ -121,8 +141,10 @@ jobs:
           with sync_playwright() as p:
               browser=p.chromium.launch(headless=True)
               page=browser.new_page(viewport={'width':1440,'height':1000})
+              errors=[]
+              page.on('pageerror',lambda error: errors.append(str(error)))
               page.goto('http://127.0.0.1:3000')
-              page.get_by_role('button',name=re.compile('Event Logic Master')).click()
+              page.get_by_role('button',name=re.compile('Logic Master')).first.click()
               page.locator('dialog[open]').wait_for()
               frame=page.frame_locator('dialog iframe')
               frame.locator('body[data-ready="true"]').wait_for()
@@ -138,31 +160,35 @@ jobs:
               frame=page.frame_locator('iframe')
               frame.locator('body[data-ready="true"]').wait_for()
               assert frame.locator('#related-rules button').count()==4
+              assert not errors, errors
               browser.close()
-          print('NEXT_LOGIC_DIALOG_AND_TAG_DEEPLINK_PASS')
+          print('RC_LOGIC_DIALOG_AND_TAG_DEEPLINK_PASS')
           PY
           python tests/browser_v8_review.py
-      - name: Verify generated files are consistent
-        run: python scripts/update_triplens_logic.py --check
-      - name: Save verified generated files and integrated main in selected branch
+      - name: Final consistency check
+        run: |
+          python scripts/update_triplens_logic.py --check
+          git diff --check
+      - name: Save verified integration on the selected branch only
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -- data/current_v8 logic_diagrams generated/logic apps/web/lib/current-logic-summary.json apps/web/public/logic-assets services/agent-api/triplens/current_v8
+          git add -- data/current_v8 logic_diagrams generated/logic apps/web/components/TripLensWorkspace.js apps/web/lib/contracts.js apps/web/lib/current-logic-summary.json apps/web/public/logic-assets services/agent-api/bridge.py services/agent-api/triplens/current_v8
           git reset -- ':(glob)**/__pycache__/**' ':(glob)**/*.pyc' || true
-          if ! git diff --cached --quiet; then
-            git commit -m 'Update synchronized TripLens masters, draw.io and web logic assets'
+          if test -f .git/MERGE_HEAD || ! git diff --cached --quiet; then
+            git commit -m 'Integrate tested draw.io library with current grounded evidence and report review'
           fi
           git push origin HEAD:"${GITHUB_REF_NAME}"
           echo "VERIFIED_RELEASE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
-      - name: Preserve evidence and generated deliverables
+          git rev-parse HEAD > outputs/integration-review/verified-release-sha.txt
+      - name: Preserve evidence and release artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: triplens-logic-assets-${{ github.run_number }}
+          name: triplens-integrated-logic-${{ github.run_id }}
           path: |
             generated/logic/
             data/current_v8/masters/
@@ -175,14 +201,8 @@ jobs:
           if-no-files-found: warn
       - name: Summary
         if: always()
-        shell: bash
         run: |
-          echo '## TripLens Logic Asset Update' >> "$GITHUB_STEP_SUMMARY"
-          echo 'Metadata, diagrams and read-only web/API assets only. No Modelica or OPC UA protection runtime changes.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'Drive uploads require separately authorized credentials. A saved commit does not prove a Vercel deployment is READY.' >> "$GITHUB_STEP_SUMMARY"
-          echo "Verified release commit: ${VERIFIED_RELEASE_SHA:-not-published}" >> "$GITHUB_STEP_SUMMARY"
-          if test -f generated/logic/asset_manifest.json; then
-            echo '```json' >> "$GITHUB_STEP_SUMMARY"
-            cat generated/logic/asset_manifest.json >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-          fi
+          echo '## TripLens integrated Logic/Report RC' >> "$GITHUB_STEP_SUMMARY"
+          echo "Base: ${RC_BASE_SHA:-existing-checkout}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Verified release: ${VERIFIED_RELEASE_SHA:-not-published}" >> "$GITHUB_STEP_SUMMARY"
+          echo 'No physical model or protection runtime edits. Vercel deployment and live Gemini accuracy remain separately verifiable.' >> "$GITHUB_STEP_SUMMARY"
