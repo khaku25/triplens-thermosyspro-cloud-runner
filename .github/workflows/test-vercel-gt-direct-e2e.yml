@@ -1,0 +1,134 @@
+name: Test Vercel GT Direct Trip E2E
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/test-vercel-gt-direct-e2e.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gt-direct-trip-e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build blind GT Direct Trip dual log
+        shell: python
+        run: |
+          import csv
+          from pathlib import Path
+
+          event_fields = [
+              "event_id","event_sequence","session_id","incident_id","model_time_s","wall_time_utc",
+              "priority","event_class","equipment","tag","state","value","unit","message","source","acknowledged"
+          ]
+          events = [
+              ["EV-GT-001",1,"GT-E2E","INC-GT-E2E","30.000","","CRITICAL","OPERATOR_ACTION","GTG","GT.TRIP.CMD","ACTIVE","1","BOOL","GT Trip command asserted","DCS1","false"],
+              ["EV-GT-002",2,"GT-E2E","INC-GT-E2E","30.000","","CRITICAL","PROTECTION","GTG","GT.TRIP.REQUEST","ACTIVE","1","BOOL","Resolved GT Trip request active","ECMS","false"],
+              ["EV-GT-003",3,"GT-E2E","INC-GT-E2E","30.000","","CRITICAL","PROTECTION","STG","ST.TRIP.REQUEST","ACTIVE","1","BOOL","GT Trip intertrip ST request active","ECMS","false"],
+              ["EV-GT-004",4,"GT-E2E","INC-GT-E2E","30.020","","CRITICAL","PROTECTION","86GT","86GT.TRIP.RECEIVED","ACTIVE","1","BOOL","86GT trip signal received","ECMS","false"],
+              ["EV-GT-005",5,"GT-E2E","INC-GT-E2E","30.055","","CRITICAL","PROTECTION","GTG","GT.TRIP.LATCH","ACTIVE","1","BOOL","GT Trip latch active","ECMS","false"],
+              ["EV-GT-006",6,"GT-E2E","INC-GT-E2E","30.055","","CRITICAL","PROTECTION","STG","ST.TRIP.LATCH","ACTIVE","1","BOOL","ST Trip latch active from GT intertrip","ECMS","false"],
+              ["EV-GT-007",7,"GT-E2E","INC-GT-E2E","30.055","","CRITICAL","PROTECTION","52GT","ECMS.52GT.TRIP_CMD","ACTIVE","1","BOOL","52GT Trip command active","ECMS","false"],
+              ["EV-GT-008",8,"GT-E2E","INC-GT-E2E","30.080","","CRITICAL","PROTECTION","52GT","ECMS.52GT.CLOSED","OPEN","0","BOOL","52GT breaker open feedback","ECMS","false"],
+              ["EV-GT-009",9,"GT-E2E","INC-GT-E2E","30.100","","CRITICAL","PROTECTION","52ST","ECMS.52ST.CLOSED","OPEN","0","BOOL","52ST breaker open feedback","ECMS","false"],
+              ["EV-GT-010",10,"GT-E2E","INC-GT-E2E","31.000","","MEDIUM","ALARM","GT EXHAUST","GT.EXHAUST.FLOW.L","ACTIVE","1","BOOL","GT exhaust flow low after trip","DCS1","false"],
+              ["EV-GT-011",11,"GT-E2E","INC-GT-E2E","32.000","","MEDIUM","ALARM","GT EXHAUST","GT.EXHAUST.TEMP.L","ACTIVE","1","BOOL","GT exhaust temperature low after trip","DCS1","false"],
+          ]
+          with Path("EVENT.csv").open("w", encoding="utf-8-sig", newline="") as f:
+              w = csv.writer(f)
+              w.writerow(event_fields)
+              w.writerows(events)
+
+          raw_fields = [
+              "record_sequence","session_id","incident_id","model_time_s","wall_time_utc","collector_quality",
+              "vppGTTripCmd","vppGTTripRequest","vppGTTripLatch","vppSTTripRequest","vppSTTripLatchPublished",
+              "vpp52GTTripCmd","vpp52GTClosed","vpp52STTripCmd","vpp52STClosed",
+              "vppGTExhaustMassFlowTH","vppGTExhaustTemperatureK"
+          ]
+          times = [0,10,20,29,29.9,30.0,30.02,30.055,30.08,30.1,30.2,31,32,35,40,60,80,100]
+          rows = []
+          for seq,t in enumerate(times, start=1):
+              gt_cmd = 1 if t >= 30.0 else 0
+              gt_req = 1 if t >= 30.0 else 0
+              st_req = 1 if t >= 30.0 else 0
+              gt_latch = 1 if t >= 30.055 else 0
+              st_latch = 1 if t >= 30.055 else 0
+              gt_trip_cmd = 1 if t >= 30.055 else 0
+              st_trip_cmd = 1 if t >= 30.055 else 0
+              gt_closed = 0 if t >= 30.08 else 1
+              st_closed = 0 if t >= 30.1 else 1
+              if t < 30:
+                  flow, temp = 2185.2, 893.75
+              else:
+                  dt = t - 30
+                  flow = max(250.0, 2185.2 - 500.0 * dt)
+                  temp = max(520.0, 893.75 - 110.0 * dt)
+              rows.append([
+                  seq,"GT-E2E","INC-GT-E2E",f"{t:.3f}","","GOOD",
+                  gt_cmd,gt_req,gt_latch,st_req,st_latch,
+                  gt_trip_cmd,gt_closed,st_trip_cmd,st_closed,
+                  f"{flow:.3f}",f"{temp:.3f}"
+              ])
+          with Path("RAW.csv").open("w", encoding="utf-8-sig", newline="") as f:
+              w = csv.writer(f)
+              w.writerow(raw_fields)
+              w.writerows(rows)
+
+          print(f"EVENT rows={len(events)} RAW rows={len(rows)}")
+          print("Blind policy: no scenario_id/root_cause/expected answer metadata columns")
+
+      - name: Call deployed TripLens analyze endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          API="https://triplens-agent-api-preview.vercel.app"
+          code=$(curl --retry 2 --retry-delay 2 -sS \
+            -o response.json \
+            -w "%{http_code}" \
+            -F "event=@EVENT.csv;type=text/csv" \
+            -F "raw=@RAW.csv;type=text/csv" \
+            "$API/analyze")
+          echo "HTTP_STATUS=$code"
+          cat response.json
+          echo
+          test "$code" = "200"
+
+      - name: Validate and summarize Gemini result
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path("response.json").read_text(encoding="utf-8"))
+          analysis = data["analysis"]
+          print("RUN_ID=", data.get("run_id"))
+          print("DATA_DIGEST=", data.get("data_digest"))
+          print("VERIFICATION_GATE=", analysis.get("verification_gate"))
+          print("PRIMARY_CAUSE=", json.dumps(analysis.get("primary_cause"), ensure_ascii=False))
+          print("DIRECT_TRIGGER=", json.dumps(analysis.get("direct_trigger"), ensure_ascii=False))
+          print("CRITICAL_EVENTS=", json.dumps(analysis.get("critical_events"), ensure_ascii=False))
+          print("PROPAGATION=", json.dumps(analysis.get("propagation"), ensure_ascii=False))
+          print("CAUSAL_CHAIN=", json.dumps(analysis.get("causal_chain"), ensure_ascii=False))
+          print("COUNTER_EVIDENCE=", json.dumps(analysis.get("counter_evidence"), ensure_ascii=False))
+          print("ADDITIONAL_EVIDENCE=", json.dumps(analysis.get("additional_evidence_required"), ensure_ascii=False))
+
+          required = ["primary_cause","direct_trigger","critical_events","propagation","causal_chain","verification_gate"]
+          missing = [key for key in required if key not in analysis]
+          if missing:
+              raise SystemExit(f"missing analysis keys: {missing}")
+
+      - name: Upload GT Direct Trip E2E evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: triplens-vercel-gt-direct-e2e
+          path: |
+            EVENT.csv
+            RAW.csv
+            response.json
+          retention-days: 7
