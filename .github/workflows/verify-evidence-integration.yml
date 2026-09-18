@@ -1,0 +1,48 @@
+name: Verify Evidence Integration
+
+on:
+  push:
+    branches: ['fix/evidence-ui-integration']
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'services/agent-api/**'
+      - 'scripts/triplens_*'
+      - 'tests/test_*integration*'
+      - '.github/workflows/verify-evidence-integration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Existing evidence regression
+        run: |
+          python tests/test_agent_tools.py
+          python tests/test_dual_log_agent_role.py
+          python -m unittest discover -s services/agent-api/tests -p 'test_*.py' -v
+          node --test tests/test_ai_output_contract.mjs tests/test_report_export.mjs tests/test_event_tag_resolver.mjs
+      - name: Reproducible source snapshot (tracked files only)
+        if: always()
+        run: |
+          mkdir -p evidence-review
+          git rev-parse HEAD > evidence-review/source-sha.txt
+          git archive --format=zip HEAD -o evidence-review/source.zip
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evidence-integration-review
+          path: evidence-review/
+          retention-days: 7
