@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "authoritative_identity": {
+    "raw_or_opcua_source": "exact raw_tag_id / opcua_browse_name",
+    "logic_input_rule": "exact match only",
+    "fuzzy_or_semantic_substitution": false
+  },
+  "classes": {
+    "NATIVE_OPCUA_BROWSENAME_OBSERVED": "Observed in RAW through OPC UA browse/read path.",
+    "GITHUB_OPCUA_WRITE_SOURCE_CONFIRMED": "Writable OPC UA node defined by current GitHub source contract.",
+    "CSV_DERIVED_ALIAS_NOT_OPCUA_NODE": "Deterministic readability field; not an OPC UA node.",
+    "TRIPLENS_LOCAL_DISPLAY_ALIAS": "Display-only normalization; never source-existence evidence.",
+    "TRIPLENS_DERIVED_OUTPUT_NOT_OPCUA": "Logic/alarm output; not an OPC UA source node."
+  },
+  "audited_counts": {
+    "run41_native_vpp_browsenames": 683,
+    "deterministic_csv_aliases": 10,
+    "current_github_fault_write_nodes_not_in_run41_raw": 24,
+    "local_display_aliases_moved_out_of_source_canonical_field": 65,
+    "exact_github_control_canonical_ids_retained": 48,
+    "hallucinated_source_tag_ids_detected": 0
+  },
+  "scenario_lab": {
+    "inventory_fault_commands": "lab_only",
+    "analyzer_inputs": [
+      "EVENT.csv",
+      "RAW.csv"
+    ],
+    "forbidden_answer_metadata": [
+      "scenario_id",
+      "scenario_name",
+      "fault_preset",
+      "expected_cause",
+      "root_cause",
+      "ground_truth",
+      "answer_label"
+    ]
+  }
+}
