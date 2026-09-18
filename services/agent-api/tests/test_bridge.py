@@ -43,9 +43,11 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual(contract["logic_summary"]["live_rules"], 67)
         self.assertEqual(contract["logic_summary"]["alarm"], 54)
         self.assertEqual(contract["logic_summary"]["protection"], 13)
-        self.assertEqual(contract["version"], "VERCEL_MIGRATION_P0_SELF_CONTAINED")
+        self.assertEqual(contract["version"], "VERCEL_MIGRATION_P1_GENERIC_EVIDENCE")
         self.assertTrue((SERVICE / "triplens" / "agent_tools.py").exists())
         self.assertTrue((SERVICE / "triplens" / "alarm_registry_v1.csv").exists())
+        self.assertEqual(contract["evidence_readiness_version"], "GENERIC_DUAL_LOG_EVIDENCE_V2")
+        self.assertEqual(contract["direct_trigger_definition"], "FIRST_DOWNSTREAM_PROTECTION_ACTUATION_NOT_TRIP_REQUEST")
 
     def test_store_exposes_six_bounded_tools(self):
         with tempfile.TemporaryDirectory() as temp:
