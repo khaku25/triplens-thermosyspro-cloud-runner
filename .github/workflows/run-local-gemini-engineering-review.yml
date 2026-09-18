@@ -8,6 +8,14 @@ on:
       - 'tests/build_report_rows.mjs'
       - 'tests/run_local_semantic_review.py'
       - '.github/workflows/run-local-gemini-engineering-review.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'services/agent-api/**'
+      - 'apps/web/lib/analysisClient.mjs'
+      - 'tests/build_report_rows.mjs'
+      - 'tests/run_local_semantic_review.py'
+      - '.github/workflows/run-local-gemini-engineering-review.yml'
   workflow_dispatch:
 permissions:
   contents: read
