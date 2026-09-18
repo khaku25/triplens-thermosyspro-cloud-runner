@@ -99,9 +99,30 @@ def analyze_dual_logs(event_csv: Path, raw_csv: Path) -> dict[str, Any]:
         )
     if not event_rows:
         return {
-            "status": "WAITING", "message": "EVENT evidence 대기",
-            "event_input_read": True, "raw_input_read": True,
-            "event_rows": 0, "raw_rows": len(raw_rows),
+            "status": "WAITING",
+            "status_scope": "EVIDENCE_READINESS_ONLY",
+            "mode": "DUAL_INPUT_EVENT_PLUS_RAW",
+            "analysis_role": "EVIDENCE_PROVIDER_ONLY",
+            "decision_authority": "GEMINI_AGENT",
+            "decision_fields_generated_by_python": [],
+            "message": "EVENT evidence 대기",
+            "event_input_read": True,
+            "raw_input_read": True,
+            "event_rows": 0,
+            "raw_rows": len(raw_rows),
+            "candidate_evidence": {
+                "onset_candidate": None,
+                "protection_chain_candidates": [],
+                "process_response_candidates": [],
+            },
+            "agent_policy": {
+                "max_tool_calls_per_analysis": 8,
+                "reserved_decisions": [
+                    "critical_events", "primary_cause", "direct_trigger", "propagation", "causal_chain",
+                ],
+                "python_may_filter_and_rank_candidates": True,
+                "python_may_finalize_causal_decisions": False,
+            },
         }
     incident_id = event_rows[-1].get("incident_id", "")
     if incident_id:
