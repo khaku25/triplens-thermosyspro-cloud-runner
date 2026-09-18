@@ -1,0 +1,85 @@
+﻿rule_id,block_id,block_type,condition_or_label,delay,reset_hysteresis
+AL-GT-FLOW-L,logic:AL-GT-FLOW-L,ALARM,value < 545 kg/s,0.2 s,+6 kg/s
+AL-GT-FLOW-L,delay:AL-GT-FLOW-L,TON,,0.2 s,
+AL-GT-FLOW-LL,logic:AL-GT-FLOW-LL,ALARM,value < 300 kg/s,0.2 s,+6 kg/s
+AL-GT-FLOW-LL,delay:AL-GT-FLOW-LL,TON,,0.2 s,
+AL-GT-TEMP-L,logic:AL-GT-TEMP-L,ALARM,value < 805 K,0.2 s,+5 K
+AL-GT-TEMP-L,delay:AL-GT-TEMP-L,TON,,0.2 s,
+AL-GT-TEMP-LL,logic:AL-GT-TEMP-LL,ALARM,value < 580 K,0.2 s,+5 K
+AL-GT-TEMP-LL,delay:AL-GT-TEMP-LL,TON,,0.2 s,
+AL-HP-FLOW-L,logic:AL-HP-FLOW-L,ALARM,value < 486 t/h,0.2 s,10.8 t/h
+AL-HP-FLOW-L,delay:AL-HP-FLOW-L,TON,,0.2 s,
+AL-HP-FLOW-LL,logic:AL-HP-FLOW-LL,ALARM,value < 324 t/h,0.2 s,10.8 t/h
+AL-HP-FLOW-LL,delay:AL-HP-FLOW-LL,TON,,0.2 s,
+AL-HP-LEVEL-H,logic:AL-HP-LEVEL-H,ALARM,value > 1.15 m,0.5 s,0.02 m
+AL-HP-LEVEL-H,delay:AL-HP-LEVEL-H,TON,,0.5 s,
+AL-HP-LEVEL-HH,logic:AL-HP-LEVEL-HH,ALARM,value > 1.25 m,0.5 s,0.02 m
+AL-HP-LEVEL-HH,delay:AL-HP-LEVEL-HH,TON,,0.5 s,
+AL-HP-LEVEL-L,logic:AL-HP-LEVEL-L,ALARM,value < 0.95 m,0.5 s,0.02 m
+AL-HP-LEVEL-L,delay:AL-HP-LEVEL-L,TON,,0.5 s,
+AL-HP-LEVEL-LL,logic:AL-HP-LEVEL-LL,ALARM,value < 0.85 m,0.5 s,0.02 m
+AL-HP-LEVEL-LL,delay:AL-HP-LEVEL-LL,TON,,0.5 s,
+AL-HP-PRESS-L,logic:AL-HP-PRESS-L,ALARM,value < 12000000 Pa,0.5 s,200000 Pa
+AL-HP-PRESS-L,delay:AL-HP-PRESS-L,TON,,0.5 s,
+AL-HP-PRESS-LL,logic:AL-HP-PRESS-LL,ALARM,value < 10800000 Pa,0.5 s,200000 Pa
+AL-HP-PRESS-LL,delay:AL-HP-PRESS-LL,TON,,0.5 s,
+AL-IP-FLOW-L,logic:AL-IP-FLOW-L,ALARM,value < 576 t/h,0.2 s,10.8 t/h
+AL-IP-FLOW-L,delay:AL-IP-FLOW-L,TON,,0.2 s,
+AL-IP-FLOW-LL,logic:AL-IP-FLOW-LL,ALARM,value < 378 t/h,0.2 s,10.8 t/h
+AL-IP-FLOW-LL,delay:AL-IP-FLOW-LL,TON,,0.2 s,
+AL-IP-LEVEL-H,logic:AL-IP-LEVEL-H,ALARM,value > 1.15 m,0.5 s,0.02 m
+AL-IP-LEVEL-H,delay:AL-IP-LEVEL-H,TON,,0.5 s,
+AL-IP-LEVEL-HH,logic:AL-IP-LEVEL-HH,ALARM,value > 1.25 m,0.5 s,0.02 m
+AL-IP-LEVEL-HH,delay:AL-IP-LEVEL-HH,TON,,0.5 s,
+AL-IP-LEVEL-L,logic:AL-IP-LEVEL-L,ALARM,value < 0.95 m,0.5 s,0.02 m
+AL-IP-LEVEL-L,delay:AL-IP-LEVEL-L,TON,,0.5 s,
+AL-IP-LEVEL-LL,logic:AL-IP-LEVEL-LL,ALARM,value < 0.85 m,0.5 s,0.02 m
+AL-IP-LEVEL-LL,delay:AL-IP-LEVEL-LL,TON,,0.5 s,
+AL-IP-PRESS-L,logic:AL-IP-PRESS-L,ALARM,value < 2550000 Pa,0.5 s,50000 Pa
+AL-IP-PRESS-L,delay:AL-IP-PRESS-L,TON,,0.5 s,
+AL-IP-PRESS-LL,logic:AL-IP-PRESS-LL,ALARM,value < 2300000 Pa,0.5 s,50000 Pa
+AL-IP-PRESS-LL,delay:AL-IP-PRESS-LL,TON,,0.5 s,
+AL-LP-FLOW-L,logic:AL-LP-FLOW-L,ALARM,value < 630 t/h,0.2 s,10.8 t/h
+AL-LP-FLOW-L,delay:AL-LP-FLOW-L,TON,,0.2 s,
+AL-LP-FLOW-LL,logic:AL-LP-FLOW-LL,ALARM,value < 424.8 t/h,0.2 s,10.8 t/h
+AL-LP-FLOW-LL,delay:AL-LP-FLOW-LL,TON,,0.2 s,
+AL-LP-LEVEL-H,logic:AL-LP-LEVEL-H,ALARM,value > 1.85 m,0.5 s,0.02 m
+AL-LP-LEVEL-H,delay:AL-LP-LEVEL-H,TON,,0.5 s,
+AL-LP-LEVEL-HH,logic:AL-LP-LEVEL-HH,ALARM,value > 1.95 m,0.5 s,0.02 m
+AL-LP-LEVEL-HH,delay:AL-LP-LEVEL-HH,TON,,0.5 s,
+AL-LP-LEVEL-L,logic:AL-LP-LEVEL-L,ALARM,value < 1.65 m,0.5 s,0.02 m
+AL-LP-LEVEL-L,delay:AL-LP-LEVEL-L,TON,,0.5 s,
+AL-LP-LEVEL-LL,logic:AL-LP-LEVEL-LL,ALARM,value < 1.55 m,0.5 s,0.02 m
+AL-LP-LEVEL-LL,delay:AL-LP-LEVEL-LL,TON,,0.5 s,
+AL-LP-PRESS-L,logic:AL-LP-PRESS-L,ALARM,value < 500000 Pa,0.5 s,10000 Pa
+AL-LP-PRESS-L,delay:AL-LP-PRESS-L,TON,,0.5 s,
+AL-LP-PRESS-LL,logic:AL-LP-PRESS-LL,ALARM,value < 450000 Pa,0.5 s,10000 Pa
+AL-LP-PRESS-LL,delay:AL-LP-PRESS-LL,TON,,0.5 s,
+CMD-FWP-HP-RESET,logic:CMD-FWP-HP-RESET,COMMAND_INTERFACE,operator/test reset PB,external runtime interface,-
+CMD-FWP-HP-TRIP,logic:CMD-FWP-HP-TRIP,COMMAND_INTERFACE,operator/test PB writes trip command through runtime interface,external runtime interface,reset PB
+CMD-FWP-IP-RESET,logic:CMD-FWP-IP-RESET,COMMAND_INTERFACE,operator/test reset PB,external runtime interface,-
+CMD-FWP-IP-TRIP,logic:CMD-FWP-IP-TRIP,COMMAND_INTERFACE,operator/test PB writes trip command through runtime interface,external runtime interface,reset PB
+CMD-FWP-LP-RESET,logic:CMD-FWP-LP-RESET,COMMAND_INTERFACE,operator/test reset PB,external runtime interface,-
+CMD-FWP-LP-TRIP,logic:CMD-FWP-LP-TRIP,COMMAND_INTERFACE,operator/test PB writes trip command through runtime interface,external runtime interface,reset PB
+PROT-DIRECT-GT,logic:PROT-DIRECT-GT,PROTECTION_CAUSE,command >= 0.5,0 s,reset by GT reset
+PROT-DIRECT-ST,logic:PROT-DIRECT-ST,PROTECTION_CAUSE,command >= 0.5,0 s,reset by ST reset
+PROT-GT-BRK-OPEN,logic:PROT-GT-BRK-OPEN,PROTECTION_CAUSE,52GT close command < 0.5 AND GT latch not active,0 s,state reset
+PROT-GT-LATCH,logic:PROT-GT-LATCH,LATCH,request=1 AND reset<0.5 -> latch; reset clears,event-driven,reset input
+PROT-GT-REQUEST,logic:PROT-GT-REQUEST,TRIP_REQUEST,OR(all inputs),0 s,GT reset
+PROT-HP-DRUM-HH,logic:PROT-HP-DRUM-HH,PROTECTION_CAUSE,raw HH state == 1,runtime-defined,reset/return per runtime
+PROT-HP-DRUM-LL,logic:PROT-HP-DRUM-LL,PROTECTION_CAUSE,raw LL state == 1,runtime-defined,reset/return per runtime
+PROT-IP-DRUM-HH,logic:PROT-IP-DRUM-HH,PROTECTION_CAUSE,raw HH state == 1,runtime-defined,reset/return per runtime
+PROT-IP-DRUM-LL,logic:PROT-IP-DRUM-LL,PROTECTION_CAUSE,raw LL state == 1,runtime-defined,reset/return per runtime
+PROT-LP-DRUM-HH,logic:PROT-LP-DRUM-HH,PROTECTION_CAUSE,raw HH state == 1,runtime-defined,reset/return per runtime
+PROT-LP-DRUM-LL,logic:PROT-LP-DRUM-LL,PROTECTION_CAUSE,raw LL state == 1,runtime-defined,reset/return per runtime
+PROT-ST-LATCH,logic:PROT-ST-LATCH,LATCH,request=1 AND reset<0.5 -> latch; reset clears,event-driven,reset input
+PROT-ST-REQUEST,logic:PROT-ST-REQUEST,TRIP_REQUEST,OR(all 9 causes),0 s,ST reset
+RESP-GT-POWER,logic:RESP-GT-POWER,PHYSICAL_RESPONSE,if 52GT not closed then GT generator power = 0,immediate model relation,-
+RESP-GT-SPEED,logic:RESP-GT-SPEED,PHYSICAL_RESPONSE,"if 52GT opens, speed decays from nominal by coastdown model",dynamic,-
+SEQ-52GT-OPEN,logic:SEQ-52GT-OPEN,BREAKER_SEQUENCE,GT latch active -> breaker opens,0.080 s,-
+SEQ-52GT-OPEN,delay:SEQ-52GT-OPEN,DEFINED_DELAY,,0.080 s,
+SEQ-52GT-TRIPCMD,logic:SEQ-52GT-TRIPCMD,BREAKER_SEQUENCE,GT latch active,0.055 s,-
+SEQ-52GT-TRIPCMD,delay:SEQ-52GT-TRIPCMD,DEFINED_DELAY,,0.055 s,
+SEQ-52ST-OPEN,logic:SEQ-52ST-OPEN,BREAKER_SEQUENCE,ST latch active -> breaker opens,0.100 s,-
+SEQ-52ST-OPEN,delay:SEQ-52ST-OPEN,DEFINED_DELAY,,0.100 s,
+SEQ-52ST-TRIPCMD,logic:SEQ-52ST-TRIPCMD,BREAKER_SEQUENCE,ST latch active,0 s,-

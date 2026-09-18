@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "census_sha256": "1f9dafddc23eb356e2854708d440be3385607df3548b967baa780553b33c8254",
+  "validation_run": {
+    "number": 54,
+    "id": 35309650110,
+    "url": "https://github.com/khaku25/triplens-thermosyspro-cloud-runner/actions/runs/35309650110"
+  },
+  "scope": "Recorded OPC UA browse/read census. This asset update does not rerun or revalidate plant behaviour.",
+  "expected_vpp_count": 603
+}
