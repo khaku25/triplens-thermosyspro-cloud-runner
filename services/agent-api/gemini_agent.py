@@ -6,8 +6,11 @@ import json
 import os
 from typing import Any
 
-from bridge import ROOT
-from triplens_agent_tools import AgentToolSession, EvidenceStore
+from pathlib import Path
+
+from triplens.agent_tools import AgentToolSession, EvidenceStore
+
+SERVICE_ROOT = Path(__file__).resolve().parent
 
 DEFAULT_MODEL = "gemini-3.8-flash"
 
@@ -103,7 +106,7 @@ TOOL_DECLARATIONS = [
 
 
 def _system_prompt() -> str:
-    path = ROOT / "docs" / "triplens_hybrid_agent_prompt.md"
+    path = SERVICE_ROOT / "triplens" / "hybrid_agent_prompt.md"
     if path.exists():
         return path.read_text(encoding="utf-8")
     return (
