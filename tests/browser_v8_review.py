@@ -59,6 +59,7 @@ def main():
             expect(page.get_by_text('52GT 차단기 개방 관측',exact=True)).to_be_visible(timeout=30000)
             expect(page.get_by_text('52ST 차단기 개방 관측',exact=True)).to_be_visible()
             expect(page.get_by_text(re.compile('Run ID: RUN-UI-REGRESSION'))).to_be_visible()
+            expect(page.get_by_text('원인 탐색: Current Logic Master upstream 동적 추적 · 고정 Cause Matrix 사용 안 함',exact=True)).to_be_visible()
             assert page.locator('.status-badge').filter(has_text='CONFIRMED').count()==0
             assert '2026-09-15T14:52:04.212+00:00s' not in page.locator('body').inner_text()
             page.screenshot(path=str(OUT/f'{name}-analysis.png'),full_page=True)
@@ -70,6 +71,9 @@ def main():
             page.get_by_role('button',name='vppGTTripLatch',exact=True).first.click()
             expect(page.get_by_role('heading',name='태그 상세',exact=True)).to_be_visible()
             page.get_by_role('button',name='대시보드로 돌아가기',exact=True).click()
+            page.get_by_role('button',name=re.compile('Logic Master')).click()
+            expect(page.get_by_text('고정 Cause Matrix: 사용 안 함',exact=True)).to_be_visible()
+            page.get_by_role('button',name='닫기',exact=True).click()
             page.get_by_role('button',name='고장보고서 초안 보기',exact=True).click()
             page.get_by_label('보고서 1 content',exact=True).fill('담당자 검토 수정 내용')
             with page.expect_download() as d:page.get_by_role('button',name='고장보고서 초안 CSV',exact=True).click()
