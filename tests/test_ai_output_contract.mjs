@@ -36,3 +36,40 @@ test('hold verification blocks final-confirmed wording', () => {
   assert.equal(normalized.finality.can_mark_final_confirmed, false);
   assert.equal(normalized.finality.output_label, '고장보고서 초안');
 });
+
+
+test('post-trigger secondary cause cannot be confirmed as primary cause', () => {
+  const normalized = contract.normalizeAnalysis({
+    verification_gate: 'PASS',
+    direct_trigger: {
+      status: 'CONFIRMED', claim: 'GT trip latch',
+      evidence_ids: ['EV-TRIP'], recorded_time: '48.440',
+      logic_master_status: 'VERIFIED',
+    },
+    primary_cause: {
+      status: 'CONFIRMED', claim: 'IP drum HH',
+      evidence_ids: ['EV-IP-HH'], recorded_time: '131.925',
+      logic_master_status: 'VERIFIED', time_order_valid: true, counter_evidence: [],
+    },
+  });
+  assert.equal(normalized.primary_cause.status, 'CANDIDATE');
+  assert.equal(normalized.primary_cause.time_order_valid, false);
+});
+
+test('preceding verified cause may remain confirmed when gate passes', () => {
+  const normalized = contract.normalizeAnalysis({
+    verification_gate: 'PASS',
+    direct_trigger: {
+      status: 'CONFIRMED', claim: 'GT trip latch',
+      evidence_ids: ['EV-TRIP'], recorded_time: '48.440',
+      logic_master_status: 'VERIFIED',
+    },
+    primary_cause: {
+      status: 'CONFIRMED', claim: 'Direct GT command',
+      evidence_ids: ['RAW-CMD'], recorded_time: '48.400',
+      logic_master_status: 'VERIFIED', time_order_valid: true, counter_evidence: [],
+    },
+  });
+  assert.equal(normalized.primary_cause.status, 'CONFIRMED');
+  assert.equal(normalized.primary_cause.time_order_valid, true);
+});
