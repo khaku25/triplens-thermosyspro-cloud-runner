@@ -118,6 +118,61 @@ jobs:
       - name: Install the pinned OPC UA client
         run: python3 -m pip install --disable-pip-version-check -r requirements-live.txt
 
+      - name: Live-audit OPC UA tag identity and writable valve contract
+        run: |
+          audit_server="triplens-v8-tag-audit-${GITHUB_RUN_ID}"
+          docker run --rm --name "$audit_server" --network host \
+            -v "$PWD:/workspace" \
+            -w /workspace/build/v8-lpbfp \
+            "$OPENMODELICA_IMAGE" \
+            ./TripLens_V8_5_2_LP_BFP_CI \
+              -startTime=0 \
+              -stopTime=600 \
+              -stepSize="$LIVE_STEP_SIZE_S" \
+              -tolerance=0.001 \
+              -s=dassl \
+              -outputFormat=mat \
+              -r=TripLens_V8_5_2_LP_BFP_CI_tag_audit_res.mat \
+              -rt=1 -w \
+              -lv=LOG_ASSERT,LOG_STATS \
+              -embeddedServer=opc-ua \
+              -embeddedServerPort=4841 \
+            > outputs/v8-lpbfp/openmodelica-tag-audit.log 2>&1 &
+          audit_pid=$!
+          audit_cleanup() {
+            docker rm -f "$audit_server" >/dev/null 2>&1 || true
+            wait "$audit_pid" 2>/dev/null || true
+          }
+          trap audit_cleanup EXIT
+          for attempt in $(seq 1 240); do
+            if (echo > /dev/tcp/127.0.0.1/4841) >/dev/null 2>&1; then break; fi
+            if ! kill -0 "$audit_pid" 2>/dev/null; then
+              tail -n 300 outputs/v8-lpbfp/openmodelica-tag-audit.log || true
+              exit 1
+            fi
+            sleep 0.5
+          done
+          (echo > /dev/tcp/127.0.0.1/4841) >/dev/null 2>&1
+          python3 scripts/opcua_run_controller.py --endpoint "$ENDPOINT"
+          python3 tests/v8_5_2/audit_live_opcua_tags.py \
+            --endpoint "$ENDPOINT" \
+            --output-csv outputs/v8-lpbfp/live-opcua-tags.csv \
+            --summary outputs/v8-lpbfp/live-opcua-tag-audit.json \
+            --expected-min-vpp 680
+          python3 tests/v8_5_2/verify_opcua_write_persistence.py \
+            --endpoint "$ENDPOINT" \
+            --map opcua_native_valve_nodes_v1.csv \
+            --mode live \
+            --step-size "$LIVE_STEP_SIZE_S" \
+            --commit-timeout 60 \
+            | tee outputs/v8-lpbfp/opcua-write-persistence.jsonl
+          audit_cleanup
+          trap - EXIT
+          if (echo > /dev/tcp/127.0.0.1/4841) >/dev/null 2>&1; then
+            echo "OPC UA audit port 4841 is still open after cleanup" >&2
+            exit 1
+          fi
+
       - name: Trip LP BFP and prove EVENT plus RAW
         run: |
           server_name="triplens-v8-lpbfp-${GITHUB_RUN_ID}"
