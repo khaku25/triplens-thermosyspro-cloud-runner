@@ -1,11 +1,13 @@
 """Bounded Gemini tool loop. No precomputed causal decisions or hidden answers."""
 from __future__ import annotations
+import copy
 import json
 import os
 import time
 from pathlib import Path
 from triplens.agent_tools import AgentToolSession
 from triplens.analysis_contract import ANALYSIS_SCHEMA,normalize_analysis
+from triplens.citation_support import citation_feedback, REPAIR_INSTRUCTION
 SERVICE_ROOT=Path(__file__).resolve().parent
 DEFAULT_MODEL='gemini-3.8-flash'
 
@@ -65,8 +67,34 @@ def run_gemini_analysis(store,*,run_id,data_digest,model=None,client=None):
             if needed and session.calls_used<session.max_calls and not corrected:
                 corrected=True
                 history.append({'type':'user_input','content':[{'type':'text','text':'조회가 불충분합니다. 원인을 단정하거나 없다고 결론내리기 전에 등록된 Logic upstream 태그와 실제 RAW 표본을 조회하세요. 도구로 확인되지 않은 항목은 UNKNOWN으로 남기세요.'}]});continue
+            feedback=citation_feedback(raw,store)
+            repair={'attempts':0,'status':'NOT_NEEDED','initial_issue_count':len(feedback),'remaining_issue_count':len(feedback),
+                    'scope':'MODEL_CORRECTION_OVER_ALREADY_RETRIEVED_EVIDENCE_ONLY'}
+            model_turns=turn+1
+            if feedback:
+                repair['initial_draft']=copy.deepcopy(raw)
+                repair['status']='SKIPPED_DEADLINE'
+                # Reserve the provider timeout inside the existing 210-second budget.
+                if time.monotonic()-started<165:
+                    repair['attempts']=1;model_turns+=1
+                    repair_history=history+[{'type':'user_input','content':[{'type':'text','text':REPAIR_INSTRUCTION+json.dumps({'draft_to_revise':raw,'reference_feedback':feedback},ensure_ascii=False)}]}]
+                    try:
+                        revision=client.interactions.create(model=model_name,store=False,input=repair_history,
+                            system_instruction=_system_prompt(),response_format={'type':'text','mime_type':'application/json','schema':ANALYSIS_SCHEMA})
+                        if any(s.type=='function_call' for s in revision.steps):raise ValueError('Reference repair cannot execute tools')
+                        candidate=_json_from_text(revision.output_text)
+                        # Malformed/empty replacement cannot erase the initial draft.
+                        if any(k not in candidate for k in raw if k in ANALYSIS_SCHEMA['properties']):raise ValueError('Incomplete citation revision')
+                        raw=candidate
+                        repair['status']='MODEL_REVISED'
+                        u=getattr(revision,'usage',None)
+                        if u is not None:usage.append(u.model_dump() if hasattr(u,'model_dump') else u if isinstance(u,dict) else {})
+                    except Exception as exc:
+                        repair['status']='REPAIR_FAILED_RETAINED_INITIAL_DRAFT';repair['error_type']=type(exc).__name__
+                repair['remaining_issue_count']=len(citation_feedback(raw,store))
             output=normalize_analysis(raw,store,trace)
-            output['agent_execution']={'model':model_name,'tool_calls_used':session.calls_used,'tool_budget':8,'model_turns':turn+1,'duration_ms':round((time.monotonic()-started)*1000),'usage':usage,'causal_decision_author':'GEMINI','reference_verifier':'PYTHON'}
+            output['citation_repair']=repair
+            output['agent_execution']={'model':model_name,'tool_calls_used':session.calls_used,'tool_budget':8,'model_turns':model_turns,'duration_ms':round((time.monotonic()-started)*1000),'usage':usage,'causal_decision_author':'GEMINI','reference_verifier':'PYTHON'}
             return output
         for call in calls:
             arguments=dict(call.arguments or {});t0=time.monotonic();executed=False
