@@ -1,0 +1,54 @@
+name: Verify Vercel Web Migration
+
+on:
+  push:
+    branches: [vercel-web-v1]
+    paths:
+      - 'apps/web/**'
+      - 'services/agent-api/**'
+      - '.github/workflows/verify-vercel-web.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'services/agent-api/**'
+      - '.github/workflows/verify-vercel-web.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/web/package.json
+      - name: Install frontend dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build Next.js preview shell
+        run: npm run build
+
+  agent-api-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile Vercel Python service
+        run: |
+          python -m py_compile             services/agent-api/app.py             services/agent-api/bridge.py             services/agent-api/gemini_agent.py
+      - name: Verify Vercel service bridge
+        run: python -m unittest discover -s services/agent-api/tests -p 'test_*.py' -v
+      - name: Re-run Hybrid Agent evidence tool contract
+        run: python tests/test_agent_tools.py

@@ -12,6 +12,8 @@ on:
       - 'config/signal_map.json'
       - 'logic_db/**'
       - 'webapp/**'
+      - 'apps/web/**'
+      - 'services/agent-api/**'
       - 'scripts/triplens_agent_tools.py'
       - 'scripts/triplens_dual_log_analyzer.py'
       - 'config/triplens_hybrid_agent_v1.json'
@@ -27,6 +29,8 @@ on:
       - 'config/alarm_registry_v1.csv'
       - 'logic_db/**'
       - 'webapp/**'
+      - 'apps/web/**'
+      - 'services/agent-api/**'
       - 'scripts/triplens_agent_tools.py'
       - 'scripts/triplens_dual_log_analyzer.py'
       - 'config/triplens_hybrid_agent_v1.json'
@@ -96,6 +100,17 @@ jobs:
 
       - name: Report PDF and PINPOINT export regression tests
         run: node --test tests/test_report_export.mjs
+
+      - name: Vercel Agent API bridge regression tests
+        run: |
+          python3 -m py_compile services/agent-api/app.py services/agent-api/bridge.py services/agent-api/gemini_agent.py
+          python3 -m unittest discover -s services/agent-api/tests -p 'test_*.py' -v
+
+      - name: Build Vercel Next.js preview shell
+        run: |
+          cd apps/web
+          npm install --no-audit --no-fund
+          npm run build
 
       - name: Query smoke test
         run: |
