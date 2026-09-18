@@ -1,23 +1,19 @@
-"""Bridge the existing TripLens Python evidence core into the Vercel API service."""
+"""Self-contained bridge for the TripLens Vercel Agent API."""
 
 from __future__ import annotations
 
 import csv
 import hashlib
 import os
-import sys
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[2]
-SCRIPTS = ROOT / "scripts"
-if str(SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS))
+from triplens.agent_tools import EvidenceStore, load_logic_rows
+from triplens.dual_log_analyzer import analyze_dual_logs
 
-from triplens_agent_tools import EvidenceStore, load_logic_rows  # type: ignore  # noqa: E402
-from triplens_dual_log_analyzer import analyze_dual_logs  # type: ignore  # noqa: E402
-
-RUNTIME_REGISTRY = ROOT / "config" / "alarm_registry_v1.csv"
+SERVICE_ROOT = Path(__file__).resolve().parent
+PACKAGE_ROOT = SERVICE_ROOT / "triplens"
+RUNTIME_REGISTRY = PACKAGE_ROOT / "alarm_registry_v1.csv"
 DEFAULT_ACTIVE_LOGIC_CORE = 440
 
 
@@ -69,7 +65,7 @@ def logic_summary() -> dict[str, Any]:
         "alarm": alarm,
         "protection": protection,
         "active_logic_core": DEFAULT_ACTIVE_LOGIC_CORE,
-        "source": "GitHub main Current V8 runtime registry",
+        "source": "Self-contained Current V8 runtime registry",
     }
 
 
@@ -83,7 +79,7 @@ def evidence_readiness(event_path: Path, raw_path: Path) -> dict[str, Any]:
 
 def public_contract() -> dict[str, Any]:
     return {
-        "version": "VERCEL_MIGRATION_P0",
+        "version": "VERCEL_MIGRATION_P0_SELF_CONTAINED",
         "runtime_baseline": "Windows Local V8",
         "input": ["EVENT.csv", "RAW.csv"],
         "read_only": True,
