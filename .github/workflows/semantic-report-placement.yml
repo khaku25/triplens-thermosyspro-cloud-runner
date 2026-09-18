@@ -1,0 +1,25 @@
+name: Semantic Report Placement Red Green
+on:
+  push:
+    branches: [feature/semantic-engineering-review]
+    paths:
+      - 'apps/web/lib/analysisClient.mjs'
+      - 'tests/test_report_semantic_placement.mjs'
+      - '.github/workflows/semantic-report-placement.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/web/lib/analysisClient.mjs'
+      - 'tests/test_report_semantic_placement.mjs'
+      - '.github/workflows/semantic-report-placement.yml'
+permissions:
+  contents: read
+jobs:
+  placement:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/test_report_semantic_placement.mjs
