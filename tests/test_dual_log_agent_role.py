@@ -34,4 +34,16 @@ class DualLogAgentRoleTest(unittest.TestCase):
             for key in ('primary_cause','direct_trigger','critical_events','propagation','causal_chain'):
                 self.assertNotIn(key,out)
 
+
+    def test_waiting_state_keeps_agent_role_boundary(self):
+        with tempfile.TemporaryDirectory() as d:
+            d=Path(d); e=d/'EVENT.csv'; r=d/'RAW.csv'
+            write(e,EVENT_FIELDS,[])
+            write(r,RAW_FIELDS,[])
+            out=analyzer.analyze_dual_logs(e,r)
+            self.assertEqual(out['status'],'WAITING')
+            self.assertEqual(out['analysis_role'],'EVIDENCE_PROVIDER_ONLY')
+            self.assertEqual(out['decision_authority'],'GEMINI_AGENT')
+            self.assertEqual(out['decision_fields_generated_by_python'],[])
+
 if __name__=='__main__': unittest.main()
