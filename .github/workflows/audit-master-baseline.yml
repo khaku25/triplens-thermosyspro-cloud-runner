@@ -1,0 +1,49 @@
+name: Audit Pinned Current V8 Masters
+on:
+  push:
+    branches: [audit/master-baseline-c69a0f2]
+    paths: ['.github/workflows/audit-master-baseline.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: c69a0f234ca08a966972c2be5c70ba427378083f
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Preserve exact tracked source and provenance
+        run: |
+          mkdir -p "$RUNNER_TEMP/master-audit"
+          git rev-parse HEAD > "$RUNNER_TEMP/master-audit/commit.txt"
+          git archive --format=tar.gz HEAD > "$RUNNER_TEMP/master-audit/pinned-source.tar.gz"
+          sha256sum "$RUNNER_TEMP/master-audit/pinned-source.tar.gz" > "$RUNNER_TEMP/master-audit/source-sha256.txt"
+      - name: Check generated masters diagrams and catalogs without writing
+        run: |
+          set -o pipefail
+          python scripts/update_triplens_logic.py --check | tee "$RUNNER_TEMP/master-audit/asset-check.txt"
+          python -m unittest discover -s tests -p test_logic_assets.py -v 2>&1 | tee "$RUNNER_TEMP/master-audit/logic-assets-tests.txt"
+          python -m unittest discover -s tests -p test_logic_pipeline.py -v 2>&1 | tee "$RUNNER_TEMP/master-audit/logic-pipeline-tests.txt"
+          python -m unittest discover -s tests -p test_current_catalog.py -v 2>&1 | tee "$RUNNER_TEMP/master-audit/current-catalog-tests.txt"
+      - name: Check current report reference and API regressions without a paid model
+        run: |
+          set -o pipefail
+          python -m unittest discover -s services/agent-api/tests -p 'test_*.py' -v 2>&1 | tee "$RUNNER_TEMP/master-audit/api-tests.txt"
+          node --test tests/test_analysis_client.mjs tests/test_report_row_identity.mjs tests/test_report_semantic_placement.mjs 2>&1 | tee "$RUNNER_TEMP/master-audit/report-tests.txt"
+      - name: Preserve audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pinned-master-audit-${{ github.run_id }}
+          path: ${{ runner.temp }}/master-audit/
+          retention-days: 30
+      - name: Boundary
+        if: always()
+        run: echo 'Pinned source/metadata audit only. No live OPC UA, Gemini call, Drive writeback, production commit or Vercel deployment.' >> "$GITHUB_STEP_SUMMARY"
