@@ -1,255 +1,102 @@
-"""Gemini Interactions API loop for bounded TripLens evidence tools."""
-
+"""Bounded Gemini tool loop. No precomputed causal decisions or hidden answers."""
 from __future__ import annotations
-
 import json
 import os
-from typing import Any
-
+import time
 from pathlib import Path
+from triplens.agent_tools import AgentToolSession
+from triplens.analysis_contract import ANALYSIS_SCHEMA, normalize_analysis
 
-from triplens.agent_tools import AgentToolSession, EvidenceStore
+SERVICE_ROOT=Path(__file__).resolve().parent
+DEFAULT_MODEL='gemini-3.8-flash'
 
-SERVICE_ROOT = Path(__file__).resolve().parent
+def declaration(name,description,properties,required=()):
+    return {'type':'function','name':name,'description':description,'parameters':{'type':'object','properties':properties,'required':list(required)}}
+STR={'type':'string'}; NUM={'type':'number'}; INT={'type':'integer'}; TAGS={'type':'array','items':STR}
+TOOL_DECLARATIONS=[
+ declaration('search_events','Search actual EVENT records; original and exact mapped source identities are returned. A limited result is not proof that other events do not exist.',{'query':STR,'equipment':STR,'event_class':STR,'tags':TAGS,'limit':INT}),
+ declaration('get_event_window','Chronological EVENT near a model-time center; each side <=10s, max30 rows.',{'center_time_s':NUM,'before_s':NUM,'after_s':NUM,'limit':INT},['center_time_s']),
+ declaration('get_raw_window','Read <=8 exact inventory tags over <=20s. Every returned value has a RAW Evidence ID. Never guess tag names.',{'tags':TAGS,'start_time_s':NUM,'end_time_s':NUM,'max_rows':INT},['tags','start_time_s','end_time_s']),
+ declaration('get_tag_series','Read one exact RAW tag. Includes extrema, bounded points, and binary transition bracketing samples with IDs.',{'tag':STR,'start_time_s':NUM,'end_time_s':NUM,'max_points':INT},['tag','start_time_s','end_time_s']),
+ declaration('get_logic_context','Exact source tag or equipment::event tag lookup. Returns registered upstream tags to query in RAW. VERIFIED here means registration only, not incident causality.',{'tags':TAGS,'limit':INT},['tags']),
+ declaration('get_equipment_state','Read equipment events and explicit RAW states near model time; stale nearest samples are marked.',{'equipment':STR,'at_time_s':NUM,'tags':TAGS},['equipment','at_time_s'])]
 
-DEFAULT_MODEL = "gemini-3.8-flash"
+def _system_prompt():
+    return (SERVICE_ROOT/'triplens'/'hybrid_agent_prompt.md').read_text(encoding='utf-8')
 
-TOOL_DECLARATIONS = [
-    {
-        "type": "function",
-        "name": "search_events",
-        "description": "Search filtered EVENT evidence. Returns at most 20 evidence-linked rows.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string"},
-                "equipment": {"type": "string"},
-                "event_class": {"type": "string"},
-                "tags": {"type": "array", "items": {"type": "string"}},
-                "limit": {"type": "integer"},
-            },
-        },
-    },
-    {
-        "type": "function",
-        "name": "get_event_window",
-        "description": "Read chronological EVENT evidence around a model-time center.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "center_time_s": {"type": "number"},
-                "before_s": {"type": "number"},
-                "after_s": {"type": "number"},
-                "limit": {"type": "integer"},
-            },
-            "required": ["center_time_s"],
-        },
-    },
-    {
-        "type": "function",
-        "name": "get_raw_window",
-        "description": "Read only explicitly requested RAW tags in a bounded time window.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "tags": {"type": "array", "items": {"type": "string"}},
-                "start_time_s": {"type": "number"},
-                "end_time_s": {"type": "number"},
-                "max_rows": {"type": "integer"},
-            },
-            "required": ["tags", "start_time_s", "end_time_s"],
-        },
-    },
-    {
-        "type": "function",
-        "name": "get_tag_series",
-        "description": "Read one RAW tag with bounded points plus numeric summary.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "tag": {"type": "string"},
-                "start_time_s": {"type": "number"},
-                "end_time_s": {"type": "number"},
-                "max_points": {"type": "integer"},
-            },
-            "required": ["tag", "start_time_s", "end_time_s"],
-        },
-    },
-    {
-        "type": "function",
-        "name": "get_logic_context",
-        "description": "Return exact Logic Master matches only. Never infer unregistered logic.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "tags": {"type": "array", "items": {"type": "string"}},
-                "limit": {"type": "integer"},
-            },
-            "required": ["tags"],
-        },
-    },
-    {
-        "type": "function",
-        "name": "get_equipment_state",
-        "description": "Return nearby equipment events and only explicitly requested RAW tags.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "equipment": {"type": "string"},
-                "at_time_s": {"type": "number"},
-                "tags": {"type": "array", "items": {"type": "string"}},
-            },
-            "required": ["equipment", "at_time_s"],
-        },
-    },
-]
+def _json_from_text(value):
+    candidate=(value or '').strip()
+    if candidate.startswith('```'):
+        candidate='\n'.join(candidate.splitlines()[1:-1])
+    raw=json.loads(candidate)
+    if not isinstance(raw,dict): raise ValueError('Gemini output must be an object')
+    return raw
 
+def fail_closed_contract(raw=None):
+    """Compatibility entry point: no ledger => no engineering confirmation."""
+    return normalize_analysis(raw)
 
-def _system_prompt() -> str:
-    path = SERVICE_ROOT / "triplens" / "hybrid_agent_prompt.md"
-    if path.exists():
-        return path.read_text(encoding="utf-8")
-    return (
-        "You are the TripLens read-only incident analysis agent. "
-        "Use tools for evidence. Return only structured JSON. "
-        "Unsupported claims must be UNKNOWN."
-    )
+def evidence_ids(value):
+    ids=[]
+    if isinstance(value,dict):
+        if isinstance(value.get('evidence_id'),str): ids.append(value['evidence_id'])
+        for key,v in value.items():
+            if key=='evidence_ids': ids.extend(v.values() if isinstance(v,dict) else v if isinstance(v,list) else [])
+            else: ids.extend(evidence_ids(v))
+    elif isinstance(value,list):
+        for v in value: ids.extend(evidence_ids(v))
+    return list(dict.fromkeys(x for x in ids if isinstance(x,str)))
 
-
-def _json_from_text(text: str) -> dict[str, Any]:
-    candidate = (text or "").strip()
-    fence = chr(96) * 3
-    if candidate.startswith(fence):
-        lines = candidate.splitlines()
-        if lines and lines[0].startswith(fence):
-            lines = lines[1:]
-        if lines and lines[-1].strip() == fence:
-            lines = lines[:-1]
-        candidate = "\n".join(lines).strip()
-    start = candidate.find("{")
-    end = candidate.rfind("}")
-    if start >= 0 and end >= start:
-        candidate = candidate[start : end + 1]
-    value = json.loads(candidate)
-    if not isinstance(value, dict):
-        raise ValueError("Gemini output must be a JSON object")
-    return value
-
-
-def fail_closed_contract(raw: dict[str, Any] | None = None) -> dict[str, Any]:
-    source = dict(raw or {})
-    source.setdefault("critical_events", [])
-    source.setdefault(
-        "primary_cause",
-        {"status": "UNKNOWN", "claim": "", "evidence_ids": [], "related_tags": []},
-    )
-    source.setdefault(
-        "direct_trigger",
-        {"status": "UNKNOWN", "claim": "", "evidence_ids": [], "related_tags": []},
-    )
-    source.setdefault("propagation", [])
-    source.setdefault("causal_chain", [])
-    source.setdefault("counter_evidence", [])
-    source.setdefault("additional_evidence_required", [])
-    source.setdefault("review_recommendations", [])
-    source["verification_gate"] = "HOLD"
-    source["verification_notes"] = [
-        "Vercel P0: Gemini result returned; deterministic final Verification Gate not yet promoted to PASS."
-    ]
-    return source
-
-
-def run_gemini_analysis(
-    store: EvidenceStore,
-    *,
-    run_id: str,
-    data_digest: str,
-    model: str | None = None,
-) -> dict[str, Any]:
-    if not os.getenv("GEMINI_API_KEY"):
-        raise RuntimeError("GEMINI_API_KEY is not configured")
-
-    from google import genai
-
-    api_key = os.environ["GEMINI_API_KEY"].strip()
-    if not api_key:
-        raise RuntimeError("GEMINI_API_KEY is empty")
-    client = genai.Client(api_key=api_key)
-    session = AgentToolSession(store)
-    model_name = model or os.getenv("TRIPLENS_GEMINI_MODEL", DEFAULT_MODEL)
-    bootstrap = store.build_agent_bootstrap(run_id=run_id, data_digest=data_digest)
-
-    initial_text = (
-        "Analyze this TripLens incident using only the provided tools. "
-        "Do not assume a hidden scenario answer. Seek counter-evidence before finalizing. "
-        "After tool use, return the required structured JSON object only.\n\n"
-        f"BOOTSTRAP:\n{json.dumps(bootstrap, ensure_ascii=False)}"
-    )
-    history: list[dict[str, Any]] = [
-        {
-            "type": "user_input",
-            "content": [{"type": "text", "text": initial_text}],
-        }
-    ]
-
-    for _turn in range(12):
-        interaction = client.interactions.create(
-            model=model_name,
-            store=False,
-            input=history,
-            tools=TOOL_DECLARATIONS,
-            system_instruction=_system_prompt(),
-        )
-        for step in interaction.steps:
-            history.append(step.model_dump())
-
-        function_calls = [step for step in interaction.steps if step.type == "function_call"]
-        if not function_calls:
-            return fail_closed_contract(_json_from_text(interaction.output_text or ""))
-
-        for step in function_calls:
-            if session.calls_used >= session.max_calls:
-                history.append(
-                    {
-                        "type": "user_input",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": (
-                                    "The tool-call budget is exhausted. "
-                                    "Return the structured result now. Use UNKNOWN and Additional Evidence Required "
-                                    "for unsupported conclusions."
-                                ),
-                            }
-                        ],
-                    }
-                )
-                final_interaction = client.interactions.create(
-                    model=model_name,
-                    store=False,
-                    input=history,
-                    system_instruction=_system_prompt(),
-                )
-                return fail_closed_contract(_json_from_text(final_interaction.output_text or ""))
-
-            try:
-                result = session.call(step.name, dict(step.arguments or {}))
-            except Exception as exc:
-                result = {"status": "TOOL_ERROR", "tool": step.name, "error": str(exc)}
-
-            history.append(
-                {
-                    "type": "function_result",
-                    "name": step.name,
-                    "call_id": step.id,
-                    "result": [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}],
-                }
-            )
-
-    return fail_closed_contract(
-        {
-            "additional_evidence_required": [
-                "Agent interaction turn limit reached before a structured conclusion was produced."
-            ]
-        }
-    )
+def run_gemini_analysis(store,*,run_id,data_digest,model=None,client=None):
+    if client is None:
+        key=os.getenv('GEMINI_API_KEY','').strip()
+        if not key: raise RuntimeError('GEMINI_API_KEY is not configured')
+        from google import genai
+        client=genai.Client(api_key=key,http_options={'timeout':45000})
+    model_name=model or os.getenv('TRIPLENS_GEMINI_MODEL',DEFAULT_MODEL)
+    session=AgentToolSession(store)
+    bootstrap=store.build_agent_bootstrap(run_id=run_id,data_digest=data_digest)
+    history=[{'type':'user_input','content':[{'type':'text','text':'한국어로 분석하세요. 아래는 입력에서 확인한 조회 안내이며 정답이 아닙니다. '+json.dumps(bootstrap,ensure_ascii=False)}]}]
+    trace=[]; usage=[]; started=time.monotonic(); corrected=False
+    for turn in range(10):
+        if time.monotonic()-started>210: raise TimeoutError('Agent analysis deadline exceeded')
+        kwargs={'model':model_name,'store':False,'input':history,'system_instruction':_system_prompt(),
+                'response_format':{'type':'text','mime_type':'application/json','schema':ANALYSIS_SCHEMA}}
+        if session.calls_used<session.max_calls: kwargs['tools']=TOOL_DECLARATIONS
+        result=client.interactions.create(**kwargs)
+        for step in result.steps: history.append(step.model_dump())
+        u=getattr(result,'usage',None)
+        if u is not None: usage.append(u.model_dump() if hasattr(u,'model_dump') else u if isinstance(u,dict) else {})
+        calls=[s for s in result.steps if s.type=='function_call']
+        if not calls:
+            raw=_json_from_text(result.output_text)
+            successful={t['name'] for t in trace if t['status']=='OK'}
+            needed=not(successful&{'get_raw_window','get_tag_series','get_equipment_state'}) or 'get_logic_context' not in successful
+            if needed and session.calls_used<session.max_calls and not corrected:
+                corrected=True
+                history.append({'type':'user_input','content':[{'type':'text','text':'조회가 불충분합니다. 원인을 단정하거나 없다고 결론내리기 전에 등록된 Logic upstream 태그와 실제 RAW 표본을 조회하세요. 도구로 확인되지 않은 항목은 UNKNOWN으로 남기세요.'}]})
+                continue
+            output=normalize_analysis(raw,store,trace)
+            output['agent_execution']={'model':model_name,'tool_calls_used':session.calls_used,'tool_budget':8,'model_turns':turn+1,'duration_ms':round((time.monotonic()-started)*1000),'usage':usage,'causal_decision_author':'GEMINI','reference_verifier':'PYTHON'}
+            return output
+        # Every function call, including denied over-budget calls, gets a result.
+        for call in calls:
+            arguments=dict(call.arguments or {}); t0=time.monotonic(); executed=False
+            if session.calls_used>=session.max_calls:
+                value={'status':'BUDGET_EXHAUSTED','message':'Return UNKNOWN for unsupported claims.'}; status='BUDGET_EXHAUSTED'
+            else:
+                executed=True
+                try:
+                    value=session.call(call.name,arguments); status='OK'
+                    if call.name in {'get_raw_window','get_tag_series','get_equipment_state'} and not evidence_ids(value): status='NO_EVIDENCE'
+                    if call.name=='get_logic_context' and not value.get('items'): status='NO_EVIDENCE'
+                except (ValueError,TypeError,KeyError,RuntimeError) as exc:
+                    # No arbitrary exception text, credentials or model thoughts in diagnostics.
+                    value={'status':'TOOL_ERROR','error_type':type(exc).__name__,'message':'도구 인자 또는 조회 범위를 확인하세요.'}; status='TOOL_ERROR'
+            ids=evidence_ids(value)
+            trace.append({'name':call.name,'arguments':arguments,'status':status,'executed':executed,
+                          'evidence_ids':ids,'evidence_count':len(ids),'duration_ms':round((time.monotonic()-t0)*1000)})
+            history.append({'type':'function_result','name':call.name,'call_id':call.id,'result':[{'type':'text','text':json.dumps(value,ensure_ascii=False,allow_nan=False)}]})
+    output=normalize_analysis({'additional_evidence_required':['모델 왕복 횟수 한도에 도달했습니다.']},store,trace)
+    output['agent_execution']={'model':model_name,'tool_calls_used':session.calls_used,'tool_budget':8,'model_turns':10,'causal_decision_author':'GEMINI'}
+    return output
