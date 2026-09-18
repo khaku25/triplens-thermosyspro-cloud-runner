@@ -31,6 +31,8 @@ The total executed call budget is eight, not eight calls per function. The UI di
 
 A real `GT::TRIP_LATCH` event resolves through the recorder registry to `vppGTTripLatch` while preserving the original tag. Registered design rows identify upstream request/input tags. Gemini can discover those actual RAW names, query samples and propose a cause. Python does not choose the active cause for the model.
 
+TripLens analysis does not use a fixed `9-cause matrix` as its diagnostic frame. It follows the currently registered Logic Master upstream relationships dynamically. The physical V8 protection model may still contain the present GT/ST cause inputs and OR relationships; those model semantics remain untouched. If the registered input set changes later, the Agent follows the new registered set without changing an analysis-side fixed cause count.
+
 All raw values cited in output have `RAW:<original-data-row>:<tag>` IDs, original record sequence, model time and audit time. Digital transition samples include bracketing times; a one-second historian interval cannot establish millisecond onset. Simultaneous GT/ST trips can share a common input and are not automatically interpreted as GT-to-ST intertrip.
 
 ## Contract and safety
