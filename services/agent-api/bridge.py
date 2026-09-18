@@ -79,7 +79,7 @@ def evidence_readiness(event_path: Path, raw_path: Path) -> dict[str, Any]:
 
 def public_contract() -> dict[str, Any]:
     return {
-        "version": "VERCEL_MIGRATION_P0_SELF_CONTAINED",
+        "version": "VERCEL_MIGRATION_P1_GENERIC_EVIDENCE",
         "runtime_baseline": "Windows Local V8",
         "input": ["EVENT.csv", "RAW.csv"],
         "read_only": True,
@@ -94,5 +94,7 @@ def public_contract() -> dict[str, Any]:
             "causal_chain",
         ],
         "logic_summary": logic_summary(),
+        "evidence_readiness_version": "GENERIC_DUAL_LOG_EVIDENCE_V2",
+        "direct_trigger_definition": "FIRST_DOWNSTREAM_PROTECTION_ACTUATION_NOT_TRIP_REQUEST",
         "direct_upload_soft_limit_bytes": 4_000_000,
     }
