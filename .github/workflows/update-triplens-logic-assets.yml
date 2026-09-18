@@ -106,9 +106,51 @@ jobs:
           python -m unittest discover -s tests -p test_current_catalog.py -v
           python -m unittest discover -s services/agent-api/tests -p test_bridge.py -v
       - name: Build existing Next.js application with logic detail route
+        shell: bash
         run: |
-          npm ci --prefix apps/web
+          if test -f apps/web/package-lock.json; then
+            npm ci --prefix apps/web
+          else
+            npm install --prefix apps/web
+          fi
           npm run build --prefix apps/web
+      - name: Verify actual Next.js navigation and embedded diagram
+        shell: bash
+        run: |
+          npm run start --prefix apps/web -- --port 3000 > "$RUNNER_TEMP/logic-next.log" 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          python - <<'PY'
+          import os,re,time,urllib.request
+          from playwright.sync_api import sync_playwright
+          for attempt in range(60):
+              try:
+                  urllib.request.urlopen('http://127.0.0.1:3000',timeout=2).close();break
+              except Exception: time.sleep(1)
+          else: raise SystemExit('Next.js server did not become ready')
+          with sync_playwright() as p:
+              browser=p.chromium.launch(headless=True)
+              page=browser.new_page(viewport={'width':1440,'height':1000})
+              page.goto('http://127.0.0.1:3000')
+              page.get_by_role('button',name=re.compile('Event Logic Master')).click()
+              page.locator('dialog[open]').wait_for()
+              frame=page.frame_locator('dialog iframe')
+              frame.locator('body[data-ready="true"]').wait_for()
+              frame.locator('#search').fill('vppHPDrumLevelM')
+              frame.locator('#results button').first.click()
+              assert frame.locator('#related-rules button').count()==4
+              frame.locator('#related-rules button[data-rule="AL-HP-LEVEL-HH"]').click()
+              assert frame.locator('#page-select').input_value()=='IG-003'
+              page.screenshot(path=os.path.join(os.environ['RUNNER_TEMP'],'logic-next-dialog.png'),full_page=True)
+              page.get_by_role('button',name=re.compile('분석 화면으로 돌아가기')).click()
+              assert page.locator('dialog[open]').count()==0
+              page.goto('http://127.0.0.1:3000/logic?tag=vppHPDrumLevelM')
+              frame=page.frame_locator('iframe')
+              frame.locator('body[data-ready="true"]').wait_for()
+              assert frame.locator('#related-rules button').count()==4
+              browser.close()
+          print('NEXT_LOGIC_DIALOG_AND_TAG_DEEPLINK_PASS')
+          PY
       - name: Verify generated files are consistent
         run: python scripts/update_triplens_logic.py --check
       - name: Save generated files in the selected branch
@@ -117,7 +159,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -- UPDATE_TRIPLENS_LOGIC.ps1 UPDATE_TRIPLENS_LOGIC.sh scripts/logic_assets scripts/update_triplens_logic.py scripts/install_logic_web.py tests/test_logic_assets.py tests/test_logic_pipeline.py tests/test_logic_update_command.py tests/test_logic_viewer.py tests/test_logic_web_install.py tests/test_current_catalog.py docs/LOGIC_ASSETS.md docs/superpowers/specs/2026-09-18-logic-assets-design.md docs/superpowers/plans/2026-09-18-logic-assets.md data/current_v8 logic_diagrams generated/logic apps/web/app/logic apps/web/components/LogicLibrary.js apps/web/components/TripLensWorkspace.js apps/web/lib/contracts.js apps/web/lib/current-logic-summary.json apps/web/public/logic-assets services/agent-api/bridge.py services/agent-api/triplens/current_catalog.py services/agent-api/triplens/current_v8
+          git add -- UPDATE_TRIPLENS_LOGIC.ps1 UPDATE_TRIPLENS_LOGIC.sh scripts/logic_assets scripts/update_triplens_logic.py scripts/install_logic_web.py tests/test_logic_assets.py tests/test_logic_pipeline.py tests/test_logic_update_command.py tests/test_logic_viewer.py tests/test_logic_web_install.py tests/test_current_catalog.py docs/LOGIC_ASSETS.md docs/superpowers/specs/2026-09-18-logic-assets-design.md docs/superpowers/plans/2026-09-18-logic-assets.md data/current_v8 logic_diagrams generated/logic apps/web/app/logic apps/web/components/LogicLibrary.js apps/web/components/TripLensWorkspace.js apps/web/lib/contracts.js apps/web/lib/current-logic-summary.json apps/web/public/logic-assets apps/web/package-lock.json services/agent-api/bridge.py services/agent-api/triplens/current_catalog.py services/agent-api/triplens/current_v8
           git reset -- ':(glob)**/__pycache__/**' ':(glob)**/*.pyc' || true
           if ! git diff --cached --quiet; then
             git commit -m 'Publish synchronized TripLens masters, draw.io and web logic assets'
@@ -134,6 +176,8 @@ jobs:
             logic_diagrams/
             ${{ runner.temp }}/logic-desktop.png
             ${{ runner.temp }}/logic-mobile.png
+            ${{ runner.temp }}/logic-next-dialog.png
+            ${{ runner.temp }}/logic-next.log
           if-no-files-found: warn
       - name: Summary
         if: always()
