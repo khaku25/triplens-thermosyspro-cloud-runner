@@ -171,7 +171,10 @@ def run_gemini_analysis(
 
     from google import genai
 
-    client = genai.Client()
+    api_key = os.environ["GEMINI_API_KEY"].strip()
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is empty")
+    client = genai.Client(api_key=api_key)
     session = AgentToolSession(store)
     model_name = model or os.getenv("TRIPLENS_GEMINI_MODEL", DEFAULT_MODEL)
     bootstrap = store.build_agent_bootstrap(run_id=run_id, data_digest=data_digest)
