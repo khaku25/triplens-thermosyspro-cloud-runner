@@ -32,13 +32,14 @@ jobs:
               ["EV-GT-002",2,"GT-E2E","INC-GT-E2E","30.000","","CRITICAL","PROTECTION","GTG","GT.TRIP.REQUEST","ACTIVE","1","BOOL","Resolved GT Trip request active","ECMS","false"],
               ["EV-GT-003",3,"GT-E2E","INC-GT-E2E","30.000","","CRITICAL","PROTECTION","STG","ST.TRIP.REQUEST","ACTIVE","1","BOOL","GT Trip intertrip ST request active","ECMS","false"],
               ["EV-GT-004",4,"GT-E2E","INC-GT-E2E","30.020","","CRITICAL","PROTECTION","86GT","86GT.TRIP.RECEIVED","ACTIVE","1","BOOL","86GT trip signal received","ECMS","false"],
-              ["EV-GT-005",5,"GT-E2E","INC-GT-E2E","30.055","","CRITICAL","PROTECTION","GTG","GT.TRIP.LATCH","ACTIVE","1","BOOL","GT Trip latch active","ECMS","false"],
-              ["EV-GT-006",6,"GT-E2E","INC-GT-E2E","30.055","","CRITICAL","PROTECTION","STG","ST.TRIP.LATCH","ACTIVE","1","BOOL","ST Trip latch active from GT intertrip","ECMS","false"],
-              ["EV-GT-007",7,"GT-E2E","INC-GT-E2E","30.055","","CRITICAL","PROTECTION","52GT","ECMS.52GT.TRIP_CMD","ACTIVE","1","BOOL","52GT Trip command active","ECMS","false"],
-              ["EV-GT-008",8,"GT-E2E","INC-GT-E2E","30.080","","CRITICAL","PROTECTION","52GT","ECMS.52GT.CLOSED","OPEN","0","BOOL","52GT breaker open feedback","ECMS","false"],
-              ["EV-GT-009",9,"GT-E2E","INC-GT-E2E","30.100","","CRITICAL","PROTECTION","52ST","ECMS.52ST.CLOSED","OPEN","0","BOOL","52ST breaker open feedback","ECMS","false"],
-              ["EV-GT-010",10,"GT-E2E","INC-GT-E2E","31.000","","MEDIUM","ALARM","GT EXHAUST","GT.EXHAUST.FLOW.L","ACTIVE","1","BOOL","GT exhaust flow low after trip","DCS1","false"],
-              ["EV-GT-011",11,"GT-E2E","INC-GT-E2E","32.000","","MEDIUM","ALARM","GT EXHAUST","GT.EXHAUST.TEMP.L","ACTIVE","1","BOOL","GT exhaust temperature low after trip","DCS1","false"],
+              ["EV-GT-005",5,"GT-E2E","INC-GT-E2E","30.055","","CRITICAL","PROTECTION","86GT","86GT.OPERATE","ACTIVE","1","BOOL","86GT lockout operated","ECMS","false"],
+              ["EV-GT-006",6,"GT-E2E","INC-GT-E2E","30.055","","CRITICAL","PROTECTION","GTG","GT.TRIP.LATCH","ACTIVE","1","BOOL","GT Trip latch active","ECMS","false"],
+              ["EV-GT-007",7,"GT-E2E","INC-GT-E2E","30.055","","CRITICAL","PROTECTION","STG","ST.TRIP.LATCH","ACTIVE","1","BOOL","ST Trip latch active from GT intertrip","ECMS","false"],
+              ["EV-GT-008",8,"GT-E2E","INC-GT-E2E","30.055","","CRITICAL","PROTECTION","52GT","ECMS.52GT.TRIP_CMD","ACTIVE","1","BOOL","52GT Trip command active","ECMS","false"],
+              ["EV-GT-009",9,"GT-E2E","INC-GT-E2E","30.080","","CRITICAL","PROTECTION","52GT","ECMS.52GT.CLOSED","OPEN","0","BOOL","52GT breaker open feedback","ECMS","false"],
+              ["EV-GT-010",10,"GT-E2E","INC-GT-E2E","30.100","","CRITICAL","PROTECTION","52ST","ECMS.52ST.CLOSED","OPEN","0","BOOL","52ST breaker open feedback","ECMS","false"],
+              ["EV-GT-011",11,"GT-E2E","INC-GT-E2E","31.000","","MEDIUM","ALARM","GT EXHAUST","GT.EXHAUST.FLOW.L","ACTIVE","1","BOOL","GT exhaust flow low after trip","DCS1","false"],
+              ["EV-GT-012",12,"GT-E2E","INC-GT-E2E","32.000","","MEDIUM","ALARM","GT EXHAUST","GT.EXHAUST.TEMP.L","ACTIVE","1","BOOL","GT exhaust temperature low after trip","DCS1","false"],
           ]
           with Path("EVENT.csv").open("w", encoding="utf-8-sig", newline="") as f:
               w = csv.writer(f)
@@ -122,6 +123,27 @@ jobs:
           missing = [key for key in required if key not in analysis]
           if missing:
               raise SystemExit(f"missing analysis keys: {missing}")
+
+          readiness = data.get("evidence_readiness", {})
+          if readiness.get("status") != "PASS":
+              raise SystemExit(f"generic evidence readiness did not PASS: {readiness.get('status')}")
+          if readiness.get("readiness_version") != "GENERIC_DUAL_LOG_EVIDENCE_V2":
+              raise SystemExit(f"unexpected readiness version: {readiness.get('readiness_version')}")
+          if "LP_BFP" in json.dumps(readiness, ensure_ascii=False) or "LP BFP" in json.dumps(readiness, ensure_ascii=False):
+              raise SystemExit("scenario-neutral readiness leaked LP BFP-specific requirements")
+
+          trigger = analysis.get("direct_trigger") or {}
+          trigger_blob = " ".join([
+              str(trigger.get("claim", "")),
+              *[str(tag) for tag in trigger.get("related_tags", [])],
+          ]).upper()
+          trigger_ids = set(trigger.get("evidence_ids") or [])
+          if "REQUEST" in trigger_blob or trigger_ids.intersection({"EV-GT-002", "EV-GT-003"}):
+              raise SystemExit(f"Trip Request was incorrectly selected as Direct Trigger: {trigger}")
+          if trigger_ids.intersection({"EV-GT-009", "EV-GT-010"}):
+              raise SystemExit(f"breaker-open feedback was incorrectly selected as Direct Trigger: {trigger}")
+          if not trigger_ids.intersection({"EV-GT-005", "EV-GT-006", "EV-GT-008"}):
+              raise SystemExit(f"Direct Trigger is not a downstream protection actuation: {trigger}")
 
       - name: Upload GT Direct Trip E2E evidence
         uses: actions/upload-artifact@v4
