@@ -57,6 +57,20 @@ class LiveIntegrationTests(unittest.TestCase):
         self.assertNotIn('scenario_id',boot)
         self.assertNotIn('86GT.OPERATE',json.dumps(boot))
 
+
+    def test_trip_request_context_uses_dynamic_registered_inputs_not_fixed_matrix_language(self):
+        context=self.store.get_logic_context(['vppSTTripRequest'])
+        self.assertTrue(context['items'])
+        item=next(row for row in context['items'] if row['logic_id']=='PROT-ST-REQUEST')
+        rendered=json.dumps(item,ensure_ascii=False).lower()
+        self.assertNotIn('9-cause',rendered)
+        self.assertNotIn('9 causes',rendered)
+        self.assertNotIn('matrix',rendered)
+        self.assertEqual(item['condition'],'OR(registered upstream inputs)')
+        self.assertEqual(item['analysis_semantics'],'DYNAMIC_REGISTERED_UPSTREAM_INPUTS')
+        self.assertEqual(item['input_count'],len(item['upstream_tags']))
+        self.assertGreater(item['input_count'],0)
+
     def test_logic_lookup_accepts_explicit_equipment_tag_key(self):
         context=self.store.get_logic_context(['GT::TRIP_LATCH'])
         self.assertTrue(context.get('items'))
