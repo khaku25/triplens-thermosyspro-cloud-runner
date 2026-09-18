@@ -94,3 +94,28 @@ Scenario Lab may write real control/fault inputs, but these fields must never be
 Only the resulting EVENT + RAW evidence is admissible to the Hybrid Agent.
 
 Current GitHub valve `FaultEnableNative` / `FaultValueNative` nodes are source-confirmed writable controls but are **not Run #41 live-proven**. They require a separate live write/echo/effect validation.
+
+
+## Tag identity / hallucination audit
+
+The authoritative source identity for runtime evidence is the exact OPC UA BrowseName / RAW source field, not a human-friendly display alias.
+
+Current audited classes:
+
+- 683 Run #41 `vpp*` fields are native numeric OPC UA BrowseNames observed by the Dual Log collector.
+- 10 RAW readability fields are deterministic CSV aliases/derived fields and are explicitly **not** OPC UA nodes.
+- 24 current valve `FaultEnableNative` / `FaultValueNative` inputs are source-defined writable OPC UA controls in the current GitHub contract, but were not present in the Run #41 RAW artifact.
+- TripLens-local operational labels and display aliases may be used for readability, but they must never be treated as proof that an OPC UA node with that label exists.
+- Derived alarm/output IDs are logic outputs, not source-node identities.
+
+No fuzzy or semantic substitution is allowed when resolving a Logic Master input. An input must resolve to an exact RAW/source identity.
+
+The Drive Tag Master uses separate fields for:
+
+- authoritative source identity,
+- exact source canonical IDs where a GitHub contract defines one,
+- TripLens-local display aliases,
+- deterministic CSV aliases,
+- derived operational outputs.
+
+A local display alias is therefore not considered a hallucinated source tag as long as it is explicitly marked as local/display-only and is never used as existence evidence.
