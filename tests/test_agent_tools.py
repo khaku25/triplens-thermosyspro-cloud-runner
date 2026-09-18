@@ -7,7 +7,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 
-from triplens_agent_tools import EvidenceStore, AgentToolSession, DEFAULT_LIMITS  # noqa: E402
+from triplens_agent_tools import EvidenceStore, AgentToolSession, DEFAULT_LIMITS, load_logic_rows  # noqa: E402
 
 EVENT_FIELDS = [
     'event_id','event_sequence','session_id','incident_id','model_time_s','wall_time_utc',
@@ -73,6 +73,21 @@ class AgentToolsTest(unittest.TestCase):
         self.assertAlmostEqual(out['summary']['first'], 100.0)
         self.assertLess(out['summary']['last'], out['summary']['first'])
         self.assertLess(out['summary']['delta'], 0)
+
+    def test_logic_rows_can_load_from_trip_lens_sqlite(self):
+        import sqlite3
+        db_path = self.dir/'logic.sqlite'
+        db = sqlite3.connect(db_path)
+        db.executescript('''
+        CREATE TABLE logic_rule(logic_id TEXT PRIMARY KEY,equipment TEXT,alarm_text_ko TEXT,enabled_default INTEGER);
+        CREATE TABLE logic_tag_link(logic_id TEXT,tag_id TEXT);
+        INSERT INTO logic_rule VALUES('L-DB','LP BFP','Speed lost',1);
+        INSERT INTO logic_tag_link VALUES('L-DB','TAG_A');
+        ''')
+        db.commit(); db.close()
+        rows = load_logic_rows(db_path)
+        self.assertEqual(rows[0]['logic_id'],'L-DB')
+        self.assertEqual(rows[0]['linked_tag_ids'],'TAG_A')
 
     def test_logic_context_is_exact_and_fail_closed(self):
         known = self.store.get_logic_context(['TAG_A'])
