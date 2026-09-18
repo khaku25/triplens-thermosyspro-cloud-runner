@@ -3,6 +3,7 @@ Python never creates a causal claim or accepts AI self-confirmation.
 """
 from __future__ import annotations
 import math
+import re
 VERSION='GROUNDED_ANALYSIS_V3'
 STATUSES={'CONFIRMED','CANDIDATE','OBSERVED','UNKNOWN'}
 LIST_FIELDS=('critical_events','propagation','causal_chain','counter_evidence')
@@ -40,6 +41,8 @@ def normalize_claim(value,stage,store=None):
     for e in as_list(src.get('evidence')):
         if isinstance(e,dict):ids+=strings(e.get('evidence_id') or e.get('event_id'))
     ids=list(dict.fromkeys(ids));tags=strings(src.get('related_tags') or src.get('tags') or src.get('tag'))
+    tags=list(dict.fromkeys(tags+[t.rstrip('.') for t in re.findall(r'(?<![A-Za-z0-9_])vpp[A-Za-z0-9_.\[\]]+',text(src))]))
+    declared_tags=list(tags)
     when=number(src.get('model_time_s'))
     if when is None:when=number(src.get('recorded_time',src.get('aligned_time_s')))
     wall=str(src.get('wall_time_utc') or '');legacy=src.get('recorded_time')
@@ -59,12 +62,17 @@ def normalize_claim(value,stage,store=None):
     if store:
         invalid=[t for t in tags if t not in actual_tags]
         if invalid:notes.append('인용 근거에 없는 태그: '+', '.join(invalid))
-        tags=list(dict.fromkeys(r.get('source_node') or r.get('tag') for r in refs if r.get('source_node') or r.get('tag')))
+        tags=list(dict.fromkeys(declared_tags+[r.get('source_node') or r.get('tag') for r in refs if r.get('source_node') or r.get('tag')]))
     times=sorted({r['model_time_s'] for r in refs if number(r.get('model_time_s')) is not None})
     if interval and times:
         if not all(any(abs(t-x)<1e-6 for x in times) for t in interval):
             notes.append('주장한 시간구간과 인용 표본의 시각 불일치');interval=None
-        else:when=None
+        else:
+            when=None
+            for tag in declared_tags:
+                raw_times={number(r.get('model_time_s')) for r in refs if r.get('source_kind')=='RAW' and tag in (r.get('source_node'),r.get('tag'))}
+                if raw_times and not all(any(x is not None and abs(t-x)<1e-6 for x in raw_times) for t in interval):
+                    notes.append('태그별 관측 구간의 경계 표본 인용 누락: '+tag)
     if times:
         if when is None and not interval and len(times)==1:when=times[0]
         elif when is not None and not any(abs(when-t)<1e-6 for t in times):notes.append('AI 시각과 인용 근거 시각 불일치');when=times[0]

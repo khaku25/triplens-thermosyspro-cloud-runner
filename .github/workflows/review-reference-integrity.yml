@@ -1,0 +1,122 @@
+name: Verify Citation and Review References
+on:
+  push:
+    branches: [fix/review-citations-row-identity-20260918]
+    paths: ['.github/workflows/review-reference-integrity.yml']
+  pull_request:
+    paths:
+      - 'services/agent-api/**'
+      - 'apps/web/lib/analysisClient.mjs'
+      - 'tests/test_report_row_identity.mjs'
+      - 'tests/run_citation_review_fix.py'
+      - 'tests/review_captured_reference_fix.py'
+      - 'tests/browser_review_reference_fix.py'
+      - '.github/workflows/review-reference-integrity.yml'
+  workflow_dispatch:
+    inputs:
+      confirm_paid_review:
+        description: Type RUN for one actual analyzer session and one reviewer
+        type: string
+        default: ''
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: review-reference-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      RUN_LIVE: ${{ (github.event_name == 'push' && contains(github.event.head_commit.message, '[live-review-once]')) || (github.event_name == 'workflow_dispatch' && inputs.confirm_paid_review == 'RUN') }}
+      RUN_REVIEWER: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[reviewer-only-once]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install verified runtime and browser dependencies
+        run: |
+          python - <<'PY'
+          import pathlib,subprocess,sys,tomllib
+          spec=tomllib.loads(pathlib.Path('services/agent-api/pyproject.toml').read_text())
+          subprocess.check_call([sys.executable,'-m','pip','install',*spec['project']['dependencies'],'playwright==1.57.0'])
+          PY
+          python -m playwright install --with-deps chromium
+      - name: Reference regressions and existing contracts
+        run: |
+          mkdir -p outputs/review-reference-fix
+          python -m unittest discover -s services/agent-api/tests -p 'test_*.py' -v
+          node --test tests/test_analysis_client.mjs tests/test_report_row_identity.mjs tests/test_report_semantic_placement.mjs
+          node --test tests/test_ai_output_contract.mjs tests/test_event_tag_resolver.mjs tests/test_report_export.mjs
+          python tests/test_gemini_sdk_transport.py
+          python scripts/update_triplens_logic.py --check
+      - name: Build original application with unchanged logic viewer
+        run: |
+          npm ci --prefix apps/web
+          npm run build --prefix apps/web
+      - name: Preserve exact code provenance
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,subprocess
+          paths=['services/agent-api/gemini_agent.py','services/agent-api/triplens/analysis_contract.py','services/agent-api/triplens/citation_support.py','services/agent-api/triplens/engineering_reviewer.py','services/agent-api/triplens/review_evidence.py','services/agent-api/triplens/hybrid_agent_prompt.md','apps/web/lib/analysisClient.mjs']
+          data={'commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'files':{p:hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest() for p in paths}}
+          pathlib.Path('outputs/review-reference-fix/source_provenance.json').write_text(json.dumps(data,indent=2))
+          PY
+          tar --exclude='__pycache__' --exclude='node_modules' --exclude='.next' -czf outputs/review-reference-fix/source.tar.gz services/agent-api apps/web tests/run_citation_review_fix.py tests/review_captured_reference_fix.py tests/browser_review_reference_fix.py
+      - name: Existing desktop and mobile UI regression
+        shell: bash
+        run: |
+          mkdir -p outputs/integration-review
+          npm run start --prefix apps/web -- --hostname 127.0.0.1 --port 3000 > outputs/review-reference-fix/next.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for n in $(seq 1 45); do if curl -fsS http://127.0.0.1:3000/ -o /dev/null; then break; fi; sleep 1; done
+          TRIPLENS_UI_URL=http://127.0.0.1:3000/ python tests/browser_v8_review.py
+      - name: Download original incident for the explicitly requested live check
+        if: env.RUN_LIVE == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api repos/khaku25/triplens-thermosyspro-cloud-runner/actions/artifacts/10404407335/zip > outputs/run41.zip
+      - name: One actual Gemini analysis and one reference-validated review
+        if: env.RUN_LIVE == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TRIPLENS_GEMINI_MODEL: gemini-3.8-flash
+          TRIPLENS_REVIEWER_MODEL: gemini-3.8-flash
+        run: python tests/run_citation_review_fix.py --archive outputs/run41.zip
+      - name: Re-review captured analysis once with complete original EVENT references
+        if: env.RUN_REVIEWER == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TRIPLENS_REVIEWER_MODEL: gemini-3.8-flash
+        run: |
+          gh api repos/khaku25/triplens-thermosyspro-cloud-runner/actions/artifacts/10544810862/zip > outputs/captured-reference-run.zip
+          python tests/review_captured_reference_fix.py --capture outputs/captured-reference-run.zip --sha256 df5ef9835547677ef09d4906066db6f529fff6d556aca64d08ff29f9ae6e7aa6
+      - name: Actual captured response through desktop mobile and eight-column CSV
+        if: env.RUN_LIVE == 'true' || env.RUN_REVIEWER == 'true'
+        shell: bash
+        run: |
+          npm run start --prefix apps/web -- --hostname 127.0.0.1 --port 3001 > outputs/review-reference-fix/next-actual.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for n in $(seq 1 45); do if curl -fsS http://127.0.0.1:3001/ -o /dev/null; then break; fi; sleep 1; done
+          TRIPLENS_UI_URL=http://127.0.0.1:3001/ python tests/browser_review_reference_fix.py
+      - name: Preserve successes and failures without rewriting the original result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-reference-fix-${{ github.run_id }}
+          path: |
+            outputs/review-reference-fix/
+            outputs/integration-review/
+          retention-days: 14
+      - name: Boundary summary
+        if: always()
+        run: |
+          echo 'Source/reference tests are distinct from engineering cause approval. Actual provider calls only occur in explicitly opted-in runs. No plant rerun or Vercel deployment.' >> "$GITHUB_STEP_SUMMARY"
