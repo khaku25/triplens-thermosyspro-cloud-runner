@@ -110,7 +110,17 @@ async def analyze(event: UploadFile = File(...), raw: UploadFile = File(...)):
         digest = sha256_files(event_path, raw_path)
         store = build_store(event_path, raw_path)
         readiness = evidence_readiness(event_path, raw_path)
-        analysis = run_gemini_analysis(store, run_id=run_id, data_digest=digest)
+        try:
+            analysis = run_gemini_analysis(store, run_id=run_id, data_digest=digest)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "stage": "gemini_agent",
+                    "error_type": type(exc).__name__,
+                    "message": str(exc)[:1200],
+                },
+            ) from exc
         return {
             "run_id": run_id,
             "data_digest": digest,
