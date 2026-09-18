@@ -1,0 +1,208 @@
+name: Update TripLens Logic Assets
+
+on:
+  push:
+    branches: [integration/logic-review-rc-20260918]
+  pull_request:
+    paths:
+      - 'scripts/logic_assets/**'
+      - 'scripts/update_triplens_logic.py'
+      - 'scripts/install_logic_web.py'
+      - 'tests/test_logic_*.py'
+      - 'tests/test_current_catalog.py'
+      - 'data/current_v8/**'
+      - 'logic_diagrams/**'
+      - 'apps/web/**'
+      - 'services/agent-api/**'
+      - '.github/workflows/update-triplens-logic-assets.yml'
+  workflow_dispatch:
+    inputs:
+      refresh_drive:
+        description: Download latest authorized 06/07 source snapshots
+        type: boolean
+        default: false
+      sync_drive:
+        description: Upload derived 08/09/10 using separately authorized Drive credentials
+        type: boolean
+        default: false
+      publish:
+        description: Save tested assets on selected branch only
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: logic-assets-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  logic-assets:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Integrate current main without reverting evidence or report functionality
+        if: github.event_name == 'push' && github.ref_name == 'integration/logic-review-rc-20260918'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          base=$(git rev-parse origin/main)
+          echo "RC_BASE_SHA=$base" >> "$GITHUB_ENV"
+          if ! git merge --no-commit --no-ff "$base"; then
+            RC_BASE_SHA="$base" python - <<'PY'
+          import os, subprocess
+          from pathlib import Path
+          conflicts=set(subprocess.check_output(['git','diff','--name-only','--diff-filter=U'],text=True).splitlines())
+          reviewed={'apps/web/components/TripLensWorkspace.js','services/agent-api/bridge.py'}
+          print('MERGE_CONFLICTS',sorted(conflicts))
+          if not conflicts or not conflicts <= reviewed:
+              raise SystemExit('Unexpected merge conflicts; stop without publishing')
+          for name in sorted(conflicts):
+              data=subprocess.check_output(['git','show',os.environ['RC_BASE_SHA']+':'+name])
+              Path(name).write_bytes(data)
+              subprocess.check_call(['git','add','--',name])
+          PY
+          fi
+          python scripts/install_logic_web.py
+          git add -- apps/web/components/TripLensWorkspace.js apps/web/lib/contracts.js services/agent-api/bridge.py
+          test -z "$(git diff --name-only --diff-filter=U)"
+          git diff --cached --check
+          git diff --exit-code "$base" -- modelica scripts/native_ecms_opcua_client.py ECMSVPP.m
+      - name: Verify idempotent web integration
+        run: python scripts/install_logic_web.py
+      - name: Generate and validate a consistent source/diagram/API release
+        env:
+          REFRESH_DRIVE: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_drive }}
+          SYNC_DRIVE: ${{ github.event_name == 'workflow_dispatch' && inputs.sync_drive }}
+          TRIPLENS_DRIVE_ACCESS_TOKEN: ${{ secrets.TRIPLENS_DRIVE_ACCESS_TOKEN }}
+        shell: bash
+        run: |
+          args=()
+          if test "$REFRESH_DRIVE" = true; then args+=(--from-drive); fi
+          if test "$SYNC_DRIVE" = true; then args+=(--sync-drive); fi
+          python scripts/update_triplens_logic.py "${args[@]}"
+          python scripts/update_triplens_logic.py --check
+      - name: Install browser and API test dependencies
+        run: |
+          python -m pip install playwright==1.57.0
+          python -m playwright install --with-deps chromium
+          python - <<'PY'
+          import pathlib,subprocess,sys,tomllib
+          spec=tomllib.loads(pathlib.Path('services/agent-api/pyproject.toml').read_text())
+          subprocess.check_call([sys.executable,'-m','pip','install',*spec['project']['dependencies']])
+          PY
+      - name: Source diagram layout and integrated API regression tests
+        env:
+          TRIPLENS_DESKTOP_SCREENSHOT: ${{ runner.temp }}/logic-desktop.png
+          TRIPLENS_MOBILE_SCREENSHOT: ${{ runner.temp }}/logic-mobile.png
+        run: |
+          python -m unittest discover -s tests -p 'test_logic_*.py' -v
+          python -m unittest discover -s tests -p test_current_catalog.py -v
+          python -m unittest discover -s services/agent-api/tests -p 'test_*.py' -v
+      - name: Existing analysis report placement and Gemini serialization regressions
+        run: |
+          node --test tests/test_analysis_client.mjs tests/test_report_semantic_placement.mjs
+          node --test tests/test_ai_output_contract.mjs tests/test_event_tag_resolver.mjs tests/test_report_export.mjs
+          python tests/test_gemini_sdk_transport.py
+      - name: Build integrated Next.js application
+        run: |
+          npm ci --prefix apps/web
+          npm run build --prefix apps/web
+      - name: Real browser tag to diagram navigation and original report UI
+        shell: bash
+        run: |
+          mkdir -p outputs/integration-review
+          npm run start --prefix apps/web -- --hostname 127.0.0.1 --port 3000 > "$RUNNER_TEMP/logic-next.log" 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          python - <<'PY'
+          import os,re,time,urllib.request
+          from playwright.sync_api import sync_playwright
+          for attempt in range(60):
+              try:
+                  urllib.request.urlopen('http://127.0.0.1:3000',timeout=2).close();break
+              except Exception: time.sleep(1)
+          else: raise SystemExit('Next.js server did not become ready')
+          with sync_playwright() as p:
+              browser=p.chromium.launch(headless=True)
+              page=browser.new_page(viewport={'width':1440,'height':1000})
+              errors=[]
+              page.on('pageerror',lambda error: errors.append(str(error)))
+              page.goto('http://127.0.0.1:3000')
+              page.get_by_role('button',name=re.compile('Logic Master')).first.click()
+              page.locator('dialog[open]').wait_for()
+              frame=page.frame_locator('dialog iframe')
+              frame.locator('body[data-ready="true"]').wait_for()
+              frame.locator('#search').fill('vppHPDrumLevelM')
+              frame.locator('#results button').first.click()
+              assert frame.locator('#related-rules button').count()==4
+              frame.locator('#related-rules button[data-rule="AL-HP-LEVEL-HH"]').click()
+              assert frame.locator('#page-select').input_value()=='IG-003'
+              page.screenshot(path=os.path.join(os.environ['RUNNER_TEMP'],'logic-next-dialog.png'),full_page=True)
+              page.get_by_role('button',name=re.compile('분석 화면으로 돌아가기')).click()
+              assert page.locator('dialog[open]').count()==0
+              page.goto('http://127.0.0.1:3000/logic?tag=vppHPDrumLevelM')
+              frame=page.frame_locator('iframe')
+              frame.locator('body[data-ready="true"]').wait_for()
+              assert frame.locator('#related-rules button').count()==4
+              assert not errors, errors
+              browser.close()
+          print('RC_LOGIC_DIALOG_AND_TAG_DEEPLINK_PASS')
+          PY
+          python tests/browser_v8_review.py
+      - name: Final consistency check
+        run: |
+          python scripts/update_triplens_logic.py --check
+          git diff --check
+      - name: Save verified integration on the selected branch only
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- data/current_v8 logic_diagrams generated/logic apps/web/components/TripLensWorkspace.js apps/web/lib/contracts.js apps/web/lib/current-logic-summary.json apps/web/public/logic-assets services/agent-api/bridge.py services/agent-api/triplens/current_v8
+          git reset -- ':(glob)**/__pycache__/**' ':(glob)**/*.pyc' || true
+          if test -f .git/MERGE_HEAD || ! git diff --cached --quiet; then
+            git commit -m 'Integrate tested draw.io library with current grounded evidence and report review'
+          fi
+          git push origin HEAD:"${GITHUB_REF_NAME}"
+          echo "VERIFIED_RELEASE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          git rev-parse HEAD > outputs/integration-review/verified-release-sha.txt
+      - name: Preserve evidence and release artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: triplens-integrated-logic-${{ github.run_id }}
+          path: |
+            generated/logic/
+            data/current_v8/masters/
+            logic_diagrams/
+            outputs/integration-review/
+            ${{ runner.temp }}/logic-desktop.png
+            ${{ runner.temp }}/logic-mobile.png
+            ${{ runner.temp }}/logic-next-dialog.png
+            ${{ runner.temp }}/logic-next.log
+          if-no-files-found: warn
+      - name: Summary
+        if: always()
+        run: |
+          echo '## TripLens integrated Logic/Report RC' >> "$GITHUB_STEP_SUMMARY"
+          echo "Base: ${RC_BASE_SHA:-existing-checkout}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Verified release: ${VERIFIED_RELEASE_SHA:-not-published}" >> "$GITHUB_STEP_SUMMARY"
+          echo 'No physical model or protection runtime edits. Vercel deployment and live Gemini accuracy remain separately verifiable.' >> "$GITHUB_STEP_SUMMARY"
