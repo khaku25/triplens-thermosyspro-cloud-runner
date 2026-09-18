@@ -1,368 +1,46 @@
 'use client';
-
-import { useEffect, useMemo, useState } from 'react';
-import { LogicLibraryDialog, LogicLinks, openLogicLibrary } from './LogicLibrary';
-import {
-  DEFAULT_LOGIC_SUMMARY,
-  DEMO_ANALYSIS,
-  EMPTY_ANALYSIS,
-  STATUS_LABELS,
-  WORKSPACE_TABS,
-} from '../lib/contracts';
-
-const API_BASE = (process.env.NEXT_PUBLIC_TRIPLENS_API_BASE || 'https://triplens-agent-api-preview.vercel.app').replace(/\/$/, '');
-const DIRECT_UPLOAD_LIMIT = 4_000_000;
-
-function splitCsvLine(line) {
-  const cells = [];
-  let cell = '';
-  let quoted = false;
-  for (let i = 0; i < line.length; i += 1) {
-    const ch = line[i];
-    if (ch === '"') {
-      if (quoted && line[i + 1] === '"') {
-        cell += '"';
-        i += 1;
-      } else {
-        quoted = !quoted;
-      }
-    } else if (ch === ',' && !quoted) {
-      cells.push(cell);
-      cell = '';
-    } else {
-      cell += ch;
-    }
-  }
-  cells.push(cell);
-  return cells;
-}
-
-async function summarizeEventFile(file) {
-  if (!file) return { rows: 0, dcs: 0, ecms: 0, trip: 0 };
-  const text = await file.text();
-  const lines = text.split(/\r?\n/).filter(Boolean);
-  if (lines.length < 2) return { rows: 0, dcs: 0, ecms: 0, trip: 0 };
-  const header = splitCsvLine(lines[0]);
-  const sourceIndex = header.indexOf('source');
-  const eventClassIndex = header.indexOf('event_class');
-  const tagIndex = header.indexOf('tag');
-  let dcs = 0;
-  let ecms = 0;
-  let trip = 0;
-  for (const line of lines.slice(1)) {
-    const row = splitCsvLine(line);
-    const source = String(row[sourceIndex] || '').toUpperCase();
-    const eventClass = String(row[eventClassIndex] || '').toUpperCase();
-    const tag = String(row[tagIndex] || '').toUpperCase();
-    if (source.includes('DCS')) dcs += 1;
-    if (source.includes('ECMS') || source.includes('OPENMODELICA')) ecms += 1;
-    if (eventClass.includes('PROTECTION') || tag.includes('TRIP')) trip += 1;
-  }
-  return { rows: lines.length - 1, dcs, ecms, trip };
-}
-
-function ClaimCard({ title, item }) {
-  const status = item?.status || 'UNKNOWN';
-  return (
-    <section className="claim-card">
-      <div className="claim-head">
-        <span>{title}</span>
-        <strong>{STATUS_LABELS[status] || status}</strong>
-      </div>
-      <div className="claim-text">{item?.claim || '분석 결과 대기'}</div>
-      <div className="claim-meta">
-        <span>근거: {(item?.evidence_ids || []).join(', ') || '—'}</span>
-        <span>태그: <LogicLinks tags={item?.related_tags || []} /></span>
-        {item?.recorded_time ? <span>시각: {item.recorded_time}s</span> : null}
-      </div>
-    </section>
-  );
-}
-
-function CauseView({ analysis }) {
-  return (
-    <div className="panel-stack">
-      <div className="section-heading">
-        <div>
-          <div className="eyebrow">HYBRID AGENT RESULT</div>
-          <h2>원인 분석</h2>
-        </div>
-        <div className={analysis.verification_gate === 'PASS' ? 'gate pass' : 'gate hold'}>
-          Verification Gate · {analysis.verification_gate || 'HOLD'}
-        </div>
-      </div>
-      <ClaimCard title="Primary Cause · 선행 원인" item={analysis.primary_cause} />
-      <ClaimCard title="Direct Trigger · 직접 Trip 원인" item={analysis.direct_trigger} />
-      <section className="report-table">
-        <h3>Propagation · 파급 과정</h3>
-        {(analysis.propagation || []).length ? analysis.propagation.map((item, i) => (
-          <div className="table-row" key={`prop-${i}`}>
-            <span>{i + 1}</span>
-            <span>{STATUS_LABELS[item.status] || item.status}</span>
-            <span>{item.claim}</span>
-            <span>{(item.evidence_ids || []).join(', ')}</span>
-          </div>
-        )) : <div className="empty-line">파급 과정 분석 대기</div>}
-      </section>
-      <section className="report-table">
-        <h3>Causal Chain</h3>
-        {(analysis.causal_chain || []).length ? analysis.causal_chain.map((item, i) => (
-          <div className="timeline-line" key={`chain-${i}`}><b>{String(i + 1).padStart(2, '0')}</b><span>{typeof item === 'string' ? item : item.claim || item.description || JSON.stringify(item)}</span></div>
-        )) : <div className="empty-line">인과관계 구성 대기</div>}
-      </section>
-    </div>
-  );
-}
-
-function TimelineView({ analysis, summary }) {
-  return (
-    <div className="panel-stack">
-      <div className="section-heading">
-        <div>
-          <div className="eyebrow">EVENT + RAW</div>
-          <h2>사고 진행 과정</h2>
-        </div>
-        <span className="muted">{summary.rows} EVENT rows</span>
-      </div>
-      <div className="metric-strip">
-        <div><b>{summary.dcs}</b><span>DCS EVENT</span></div>
-        <div><b>{summary.ecms}</b><span>ECMS EVENT</span></div>
-        <div><b>{summary.trip}</b><span>TRIP / PROTECTION</span></div>
-        <div><b>{(analysis.critical_events || []).length}</b><span>Critical Events</span></div>
-      </div>
-      <section className="report-table">
-        <h3>Critical Events</h3>
-        {(analysis.critical_events || []).length ? analysis.critical_events.map((item, i) => (
-          <div className="table-row critical" key={`ce-${i}`}>
-            <span>{item.recorded_time || '—'}</span>
-            <span>{STATUS_LABELS[item.status] || item.status}</span>
-            <span>{item.claim}</span>
-            <span>{(item.evidence_ids || []).join(', ') || '—'}</span>
-          </div>
-        )) : <div className="empty-line">Dual Log 입력 후 Gemini가 사고적으로 중요한 Event를 선택합니다.</div>}
-      </section>
-      <div className="note">전체 SOE는 유지하며 Critical Events는 강조용 부분집합입니다.</div>
-    </div>
-  );
-}
-
-function ChecksView() {
-  return (
-    <div className="panel-stack">
-      <div className="section-heading"><div><div className="eyebrow">READ-ONLY CHECKLIST</div><h2>즉시 확인·대응</h2></div></div>
-      <div className="warning-box">조작 지시가 아니라 EVENT/RAW 근거를 기준으로 한 우선 확인 항목입니다.</div>
-      {['Trip / Latch 선후관계', 'Breaker 상태', '속도·유량 공정 응답', 'Logic Master 등록 여부', '반대근거 존재 여부'].map((x, i) => (
-        <div className="check-row" key={x}><span>{String(i + 1).padStart(2, '0')}</span><strong>{x}</strong><em>분석 후 상태 표시</em></div>
-      ))}
-    </div>
-  );
-}
-
-function RecoveryView({ analysis }) {
-  const hold = analysis.verification_gate !== 'PASS';
-  return (
-    <div className="panel-stack">
-      <div className="section-heading"><div><div className="eyebrow">HUMAN APPROVAL REQUIRED</div><h2>복구 판단</h2></div></div>
-      <div className={hold ? 'recovery-card hold' : 'recovery-card pass'}>
-        <span>검증 상태</span><b>{hold ? 'HOLD · 검증 미완료' : 'PASS · 검증 통과'}</b>
-        <p>TripLens는 재기동 명령을 생성하지 않습니다. 담당자가 증거와 미확인 항목을 검토해 최종 승인합니다.</p>
-      </div>
-      <div className="check-row"><span>01</span><strong>Evidence 연결</strong><em>{hold ? '검토 필요' : '확인'}</em></div>
-      <div className="check-row"><span>02</span><strong>Logic Master</strong><em>{hold ? '검토 필요' : '확인'}</em></div>
-      <div className="check-row"><span>03</span><strong>Counter Evidence</strong><em>{(analysis.counter_evidence || []).length ? '존재' : '미검출/검토 필요'}</em></div>
-      <div className="check-row"><span>04</span><strong>Human Final Approval</strong><em>REQUIRED</em></div>
-    </div>
-  );
-}
-
-function EvidenceView({ analysis }) {
-  const evidence = useMemo(() => {
-    const rows = [];
-    for (const item of [...(analysis.critical_events || []), analysis.primary_cause, analysis.direct_trigger, ...(analysis.propagation || [])]) {
-      if (!item) continue;
-      for (const id of item.evidence_ids || []) {
-        rows.push({ id, claim: item.claim || '', status: item.status || 'UNKNOWN', tags: (item.related_tags || []).join(', ') });
-      }
-    }
-    return rows;
-  }, [analysis]);
-  return (
-    <div className="panel-stack">
-      <div className="section-heading"><div><div className="eyebrow">EVIDENCE EXPLORER</div><h2>Event 근거</h2></div></div>
-      <section className="report-table">
-        <div className="table-head"><span>근거 ID</span><span>상태</span><span>연결 Claim</span><span>관련 태그</span></div>
-        {evidence.length ? evidence.map((row, i) => (
-          <div className="table-row" key={`${row.id}-${i}`}><span>{row.id}</span><span>{row.status}</span><span>{row.claim}</span><span><LogicLinks tags={row.tags} /></span></div>
-        )) : <div className="empty-line">Evidence ID가 아직 없습니다.</div>}
-      </section>
-    </div>
-  );
-}
-
-export default function TripLensWorkspace({ mode = 'blind' }) {
-  const [activeTab, setActiveTab] = useState('timeline');
-  const [eventFile, setEventFile] = useState(null);
-  const [rawFile, setRawFile] = useState(null);
-  const [summary, setSummary] = useState({ rows: 0, dcs: 0, ecms: 0, trip: 0 });
-  const [analysis, setAnalysis] = useState(mode === 'demo' ? DEMO_ANALYSIS : EMPTY_ANALYSIS);
-  const [logic, setLogic] = useState(DEFAULT_LOGIC_SUMMARY);
-  const [drawer, setDrawer] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [apiMessage, setApiMessage] = useState(API_BASE ? 'API 연결 대기' : 'API URL 미설정 · UI Preview');
-  const [reportOpen, setReportOpen] = useState(false);
-
-  useEffect(() => {
-    if (!API_BASE) return;
-    fetch(`${API_BASE}/contract`)
-      .then((r) => r.ok ? r.json() : Promise.reject(new Error('contract unavailable')))
-      .then((data) => {
-        if (data.logic_summary) setLogic(data.logic_summary);
-        setApiMessage('Agent API 연결됨');
-      })
-      .catch(() => setApiMessage('Agent API 연결 확인 필요'));
-  }, []);
-
-  async function onEventFile(file) {
-    setEventFile(file || null);
-    if (file) setSummary(await summarizeEventFile(file));
-    else setSummary({ rows: 0, dcs: 0, ecms: 0, trip: 0 });
-  }
-
-  async function runAnalysis() {
-    if (!eventFile || !rawFile) return;
-    if (!API_BASE) {
-      setApiMessage('NEXT_PUBLIC_TRIPLENS_API_BASE 설정 후 분석 가능');
-      return;
-    }
-    if (eventFile.size + rawFile.size > DIRECT_UPLOAD_LIMIT) {
-      setApiMessage('직접 업로드 한도 초과 · Vercel Blob 경로 필요');
-      return;
-    }
-    setBusy(true);
-    setApiMessage('Gemini Hybrid Agent 분석 중');
-    try {
-      const body = new FormData();
-      body.append('event', eventFile);
-      body.append('raw', rawFile);
-      const response = await fetch(`${API_BASE}/analyze`, { method: 'POST', body });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || data.message || 'analysis failed');
-      setAnalysis(data.analysis || EMPTY_ANALYSIS);
-      setApiMessage(`Run ${data.run_id || 'completed'} · ${data.analysis?.verification_gate || 'HOLD'}`);
-      setActiveTab('cause');
-    } catch (error) {
-      setApiMessage(error instanceof Error ? error.message : '분석 실패');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const combinedSize = (eventFile?.size || 0) + (rawFile?.size || 0);
-  const inputReady = Boolean(eventFile && rawFile);
-
-  let view = <TimelineView analysis={analysis} summary={summary} />;
-  if (activeTab === 'cause') view = <CauseView analysis={analysis} />;
-  if (activeTab === 'checks') view = <ChecksView />;
-  if (activeTab === 'recovery') view = <RecoveryView analysis={analysis} />;
-  if (activeTab === 'evidence') view = <EvidenceView analysis={analysis} />;
-
-  return (
-    <main className="app-shell">
-      <header className="topbar">
-        <div className="brand">
-          <div className="brand-mark">TL</div>
-          <div><h1>TripLens</h1><span>DUAL-INPUT ACCIDENT ANALYSIS</span></div>
-        </div>
-        <div className="status-rail">
-          <div><span>입력 상태</span><b>{inputReady || mode === 'demo' ? 'Dual Log 준비' : 'Dual Log 대기'}</b></div>
-          <div><span>DCS EVENT</span><b>{summary.dcs}</b></div>
-          <div><span>ECMS EVENT</span><b>{summary.ecms}</b></div>
-          <div><span>TRIP</span><b>{summary.trip}</b></div>
-          <div className="dual-badge">DUAL LOG = EVENT + RAW</div>
-        </div>
-      </header>
-
-      {mode === 'demo' ? <div className="demo-banner">DEMO ONLY · SYNTHETIC · 운영 데이터가 아닙니다.</div> : null}
-
-      <div className="workspace">
-        <aside className="sidebar">
-          <div className="side-title">ANALYSIS WORKSPACE</div>
-          <nav>
-            {WORKSPACE_TABS.map((tab) => (
-              <button key={tab.id} className={activeTab === tab.id ? 'nav-item active' : 'nav-item'} onClick={() => setActiveTab(tab.id)}>
-                <span className="nav-no">{tab.no}</span><span><b>{tab.label}</b><em>{tab.sub}</em></span>
-              </button>
-            ))}
-          </nav>
-          <div className="side-links">
-            <button onClick={() => openLogicLibrary()}><b>LM</b><span>Event Logic Master<em>Live {logic.live_rules} · ALARM {logic.alarm} · PROT {logic.protection}</em></span></button>
-            <a href="https://www.notion.so/" target="_blank" rel="noreferrer"><b>N</b><span>Notion 현황판<em>개발 · 검증 기록</em></span></a>
-            <a href="https://triplens-m-alarm-console.junsic25.chatgpt.site/" target="_blank" rel="noreferrer"><b>AC</b><span>알림발생기<em>Dual Log 생성 보조</em></span></a>
-          </div>
-          <div className="boundary">
-            <b>입력 경계</b>
-            <span>EVENT = 화면 사건</span>
-            <span>RAW = 전체 Historian</span>
-            <span>정답·주입 metadata 금지</span>
-          </div>
-          <a className="demo-link" href={mode === 'demo' ? '/' : '/demo'}>{mode === 'demo' ? '운영 블라인드 화면으로' : '분리된 시연 화면'}</a>
-        </aside>
-
-        <section className="main-area">
-          <section className="intake">
-            <div>
-              <div className="eyebrow">DUAL LOG INTAKE</div>
-              <h2>EVENT.csv + RAW.csv</h2>
-              <p>EVENT에서 사고 시작점을 찾고 RAW Historian에서 필요한 태그만 조회합니다. 전체 Historian을 Gemini prompt에 넣지 않습니다.</p>
-            </div>
-            <div className="file-grid">
-              <label className={eventFile ? 'file-card ready' : 'file-card'}>
-                <span>EVENT.csv</span><b>{eventFile?.name || '사건 로그 · 선택 대기'}</b><em>{eventFile ? `${(eventFile.size / 1024).toFixed(1)} KB` : 'Alarm · Operator · Protection'}</em>
-                <input type="file" accept=".csv,text/csv" onChange={(e) => onEventFile(e.target.files?.[0])} />
-              </label>
-              <label className={rawFile ? 'file-card ready' : 'file-card'}>
-                <span>RAW.csv</span><b>{rawFile?.name || '전체 Historian · 선택 대기'}</b><em>{rawFile ? `${(rawFile.size / 1024).toFixed(1)} KB` : 'Analog · Digital · Command'}</em>
-                <input type="file" accept=".csv,text/csv" onChange={(e) => setRawFile(e.target.files?.[0] || null)} />
-              </label>
-            </div>
-            <div className="intake-actions">
-              <span>{apiMessage}</span>
-              <span>{combinedSize ? `합계 ${(combinedSize / 1024).toFixed(1)} KB` : ''}</span>
-              <button disabled={!inputReady || busy || mode === 'demo'} onClick={runAnalysis}>{busy ? '분석 중…' : '이 Dual Log 분석하기'}</button>
-              <button className="secondary" onClick={() => setReportOpen((v) => !v)}>고장보고서 초안 보기</button>
-            </div>
-          </section>
-
-          <section className="analysis-surface">{view}</section>
-
-          {reportOpen ? (
-            <section className="report-preview">
-              <div className="section-heading"><div><div className="eyebrow">FAILURE REPORT DRAFT</div><h2>설비 고장 분석보고서 (초안)</h2></div><div className="gate hold">검증 {analysis.verification_gate || 'HOLD'}</div></div>
-              <div className="report-meta"><span>Analysis Engine: Gemini</span><span>Data: EVENT + RAW</span><span>Human Finalization Required</span></div>
-              <ClaimCard title="선행 원인 · Primary Cause" item={analysis.primary_cause} />
-              <ClaimCard title="직접 Trip 원인 · Direct Trigger" item={analysis.direct_trigger} />
-              <div className="note">웹 분석 화면과 보고서의 표현은 다를 수 있으나 Evidence ID와 Engineering Status는 동일 객체를 사용합니다.</div>
-            </section>
-          ) : null}
-        </section>
-      </div>
-
-      {drawer ? (
-        <div className="drawer-backdrop" onClick={() => setDrawer(false)}>
-          <aside className="logic-drawer" onClick={(e) => e.stopPropagation()}>
-            <button className="drawer-close" onClick={() => setDrawer(false)}>닫기 ×</button>
-            <div className="eyebrow">CURRENT V8</div>
-            <h2>Event Logic Master</h2>
-            <div className="logic-total"><b>{logic.live_rules}</b><span>Live Alarm / Protection rules</span></div>
-            <div className="logic-row"><span>ALARM</span><b>{logic.alarm}</b></div>
-            <div className="logic-row"><span>PROTECTION</span><b>{logic.protection}</b></div>
-            <div className="logic-row"><span>Active Logic Core</span><b>{logic.active_logic_core}</b></div>
-            <p className="muted">GPT.site의 고정 94 표시는 사용하지 않습니다. 현재 GitHub runtime registry와 Logic Core를 동적으로 표시합니다.</p>
-            <div className="warning-box">미등록 관측 태그 → 로직 조건식 추론 금지</div>
-          </aside>
-        </div>
-      ) : null}
-    <LogicLibraryDialog />
-    </main>
-  );
+import {useEffect,useMemo,useRef,useState} from 'react';
+import {LogicLibraryDialog, LogicLinks, openLogicLibrary} from './LogicLibrary';
+import {WORKSPACE_TABS} from '../lib/contracts';
+import {CONTRACT_VERSION,STATUS_TEXT,normalizeDisplayAnalysis,claimText,modelTime,parseCSV,summarizeEvents,buildDraftRows,draftCSV,REPORT_COLUMNS,displayError,loadSession,saveSession} from '../lib/analysisClient.mjs';
+import '../app/integration.css';
+const API_BASE=(process.env.NEXT_PUBLIC_TRIPLENS_API_BASE||'https://triplens-agent-api-preview.vercel.app').replace(/\/$/,'');
+const PIPELINE=['EVENT + RAW','Validation / Time Alignment','Evidence Policy','Evidence Store','Gemini Tool Analysis','Verification Gate','고장보고서 초안 CSV'];
+async function request(path,body){const r=await fetch(`${API_BASE}${path}`,body?{method:'POST',body}:undefined);let data;try{data=await r.json();}catch{throw new Error(`서버 응답을 읽지 못했습니다. HTTP ${r.status}`);}if(!r.ok)throw new Error(displayError(data.detail||data));return data;}
+function Badge({status}){return <strong className="status-badge" data-status={status}>{STATUS_TEXT[status]||'미확인'} ({status||'UNKNOWN'})</strong>;}
+function EvidenceLinks({ids,onOpen}){return ids?.length?<span className="evidence-links">{ids.map(id=><button key={id} onClick={()=>onOpen({kind:'evidence',value:id})}>{id}</button>)}</span>:<span>근거 미연결</span>;}
+function ClaimCard({title,item,onOpen}){return <section className="claim-card"><div className="claim-head"><span>{title}</span><Badge status={item.status}/></div><div className="claim-text">{item.claim}</div><div className="claim-meta"><span>모델 시각: {modelTime(item.model_time_s)}</span><span>AI 신뢰도: {item.ai_confidence==null?'미제공':`${Math.round(item.ai_confidence*100)}%`}</span><span>Logic 등록: {item.logic_master_status}</span></div><div className="claim-meta"><EvidenceLinks ids={item.evidence_ids} onOpen={onOpen}/>{item.related_tags.map(t=><button className="tag-link" key={t} onClick={()=>onOpen({kind:'tag',value:t})}>{t}</button>)}</div>{item.verification_notes?.length?<div className="note">{item.verification_notes.join(' / ')}</div>:null}</section>;}
+function ClaimTable({title,items,onOpen}){return <section className="report-table"><h3>{title}</h3>{items.length?<div className="scroll-table"><table><thead><tr><th>모델 시각</th><th>내용</th><th>상태</th><th>근거</th></tr></thead><tbody>{items.map((c,i)=><tr key={i}><td>{modelTime(c.model_time_s)}</td><td>{c.claim}</td><td><Badge status={c.status}/></td><td><EvidenceLinks ids={c.evidence_ids} onOpen={onOpen}/></td></tr>)}</tbody></table></div>:<p className="empty-line">조회된 분석 항목이 없습니다.</p>}</section>;}
+function EventTable({events,onOpen}){return <div className="scroll-table"><table><thead><tr><th>모델 시각</th><th>설비 / 원본 태그</th><th>메시지</th><th>원천</th><th>근거</th></tr></thead><tbody>{events.map((e,i)=><tr key={e.event_id||i}><td>{modelTime(e.model_time_s)}</td><td>{e.equipment} / {e.tag}<small>{e.source_node||'미등록 관측 태그'}</small></td><td>{e.message}</td><td>{e.source}</td><td><EvidenceLinks ids={[e.evidence_id||e.event_id].filter(Boolean)} onOpen={onOpen}/></td></tr>)}</tbody></table></div>;}
+function TraceView({analysis}){return <details className="trace-view"><summary>실제 Tool 조회 기록 · {analysis.agent_execution?.tool_calls_used??0}/8회</summary><p>Python이 실행한 조회 기록입니다. AI 내부 추론이 아닙니다.</p>{analysis.tool_trace.map((t,i)=><div className="trace-row" key={i}><b>{i+1}. {t.name} · {t.status}</b><code>{JSON.stringify(t.arguments)}</code><span>연결 근거 {t.evidence_count??0}건 · {t.duration_ms??0} ms</span></div>)}</details>;}
+export default function TripLensWorkspace({mode='blind'}){
+  const [activeTab,setActiveTab]=useState('timeline');const [eventFile,setEventFile]=useState(null);const [rawFile,setRawFile]=useState(null);
+  const [eventData,setEventData]=useState(null);const [rawData,setRawData]=useState(null);const [result,setResult]=useState(null);const [inspected,setInspected]=useState(null);
+  const [contract,setContract]=useState(null);const [connection,setConnection]=useState('Agent API 확인 중');const [statusText,setStatusText]=useState('');
+  const [busy,setBusy]=useState(false);const [restored,setRestored]=useState(false);const [drawer,setDrawer]=useState(false);const [detail,setDetail]=useState(null);
+  const [reportOpen,setReportOpen]=useState(false);const [reportRows,setReportRows]=useState([]);const [evidenceQuery,setEvidenceQuery]=useState('');
+  const [storageNote,setStorageNote]=useState('파일과 결과는 이 브라우저에 보관합니다.');
+  const version=useRef(0);const lastResult=useRef(null);
+  const analysis=useMemo(()=>normalizeDisplayAnalysis(result?.analysis||{}),[result]);
+  const summary=useMemo(()=>summarizeEvents(eventData?.records||[]),[eventData]);
+  const events=useMemo(()=>{const mapped=new Map((result?.events||inspected?.events||[]).map(e=>[e.event_id,e]));return (eventData?.records||[]).map(e=>({...e,...(mapped.get(e.event_id)||{})})).sort((a,b)=>Number(a.model_time_s)-Number(b.model_time_s));},[eventData,result,inspected]);
+  const catalog=useMemo(()=>{const map=new Map(events.map(e=>[e.evidence_id||e.event_id,{...e,evidence_id:e.evidence_id||e.event_id,source_kind:'EVENT'}]));for(const e of result?.evidence_catalog||[])map.set(e.evidence_id,e);return [...map.values()];},[events,result]);
+  useEffect(()=>{let active=true;request('/contract').then(c=>{if(active){setContract(c);setConnection('Agent API 연결됨');}}).catch(e=>{if(active)setConnection(e.message);});return()=>{active=false;};},[]);
+  useEffect(()=>{let active=true;(async()=>{try{const saved=await loadSession();if(!active||saved?.mode!==mode)return;if(saved.eventFile){setEventFile(saved.eventFile);setEventData(parseCSV(await saved.eventFile.text()));}if(saved.rawFile){setRawFile(saved.rawFile);setRawData(parseCSV(await saved.rawFile.text()));}if(saved.result?.analysis?.output_contract_version===CONTRACT_VERSION){setResult(saved.result);lastResult.current=saved.result;setReportRows(saved.reportRows||buildDraftRows(saved.result));setStatusText('브라우저에 보관된 분석을 복원했습니다.');}else if(saved.result)setStatusText('이전 형식 결과는 숨겼습니다. 파일을 다시 고르지 않고 재분석하세요.');setActiveTab(saved.activeTab||'timeline');}catch{if(active)setStorageNote('브라우저 보관을 사용할 수 없습니다. 현재 탭에서는 파일과 결과를 유지합니다.');}finally{if(active)setRestored(true);}})();return()=>{active=false;};},[mode]);
+  useEffect(()=>{if(!restored)return;const timer=setTimeout(()=>saveSession({mode,eventFile,rawFile,result,reportRows,activeTab}).catch(()=>setStorageNote('저장 공간 부족: 새로고침 시 입력을 다시 선택해야 할 수 있습니다.')),250);return()=>clearTimeout(timer);},[restored,mode,eventFile,rawFile,result,reportRows,activeTab]);
+  async function selectFile(kind,file){version.current++;setResult(null);lastResult.current=null;setInspected(null);setDetail(null);setReportRows([]);setStatusText('입력이 변경되었습니다. 이전 분석을 적용하지 않습니다.');if(kind==='event'){setEventFile(file||null);setEventData(null);}else{setRawFile(file||null);setRawData(null);}if(!file)return;try{const parsed=parseCSV(await file.text());if(kind==='event')setEventData(parsed);else setRawData(parsed);}catch(e){setStatusText(e.message);}}
+  function openDetail(d){setDetail(d);}
+  async function analyze(){if(!eventFile||!rawFile||!eventData||!rawData||busy)return;if(eventFile.size+rawFile.size>4_000_000){setStatusText('현재 직접 업로드는 합계 4 MB까지 지원합니다.');return;}const revision=version.current;const form=()=>{const f=new FormData();f.append('event',eventFile,eventFile.name||'EVENT.csv');f.append('raw',rawFile,rawFile.name||'RAW.csv');return f;};setBusy(true);setStatusText('입력·시간축·태그 연결 검사 중…');try{const prepared=await request('/bootstrap',form());if(revision!==version.current)return;setInspected(prepared);setContract(prepared.contract);if(prepared.evidence_readiness?.status!=='PASS')throw new Error('EVENT/RAW의 시간구간과 표본을 확인하세요. 아직 분석 준비가 되지 않았습니다.');if(lastResult.current?.analysis_key===prepared.analysis_key){setResult(lastResult.current);setStatusText(`기존 분석 재사용 · ${lastResult.current.run_id}`);setActiveTab('cause');return;}setStatusText('Gemini가 등록 Logic과 RAW 근거를 조회 중…');const data=await request('/analyze',form());if(revision!==version.current)return;data.analysis=normalizeDisplayAnalysis(data.analysis);setResult(data);lastResult.current=data;setReportRows(buildDraftRows({...data,events:events.length?events:data.events}));setStatusText(`분석 응답 수신 · ${data.run_id} · 최종 확정 아님`);setActiveTab('cause');}catch(e){setStatusText(e.message);}finally{setBusy(false);}}
+  function clear(){version.current++;setEventFile(null);setRawFile(null);setEventData(null);setRawData(null);setResult(null);setInspected(null);lastResult.current=null;setReportRows([]);setDetail(null);setStatusText('입력과 보관된 분석을 지웠습니다.');}
+  function exportCSV(){const blob=new Blob([draftCSV(reportRows)],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`TripLens_고장보고서_초안_${result?.run_id||'review'}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  const ready=Boolean(eventFile&&rawFile&&eventData&&rawData);const logic=contract?.logic_summary;const meta=result||inspected;
+  const detailRows=detail?catalog.filter(e=>detail.kind==='evidence'?e.evidence_id===detail.value:[e.tag,e.source_node,e.canonical_tag].includes(detail.value)):[];
+  let view;
+  if(detail)view=<div className="panel-stack"><button className="back-button" onClick={()=>setDetail(null)}>대시보드로 돌아가기</button><h2>{detail.kind==='evidence'?'근거 상세':'태그 상세'}</h2><code className="wrap-code">{detail.value}</code>{detailRows.length?detailRows.map((e,i)=><section className="claim-card evidence-detail" key={i}><h3>{e.source_kind} · {e.evidence_id}</h3><p>모델 시각: {modelTime(e.model_time_s)}</p><p>감사 시각: {e.wall_time_utc||'미기록'}</p><p>원본 태그: {e.original_tag||e.tag}</p><p>연결된 Source: {e.source_node||'미등록 관측 태그 · 로직 조건식 추론 금지'}</p><p>값 / 상태: {String(e.value??'미기록')} / {e.state||'—'}</p><p>{e.message||e.display_name||''}</p><p>Mapping: {e.mapping_status||'미등록 관측 태그'}</p><p>등록 Logic: {(e.logic_ids||[]).join(', ')||'미확인'}</p><p>로직 상세: <LogicLinks tags={[e.source_node||e.tag].filter(Boolean)} /></p><p>등록 확인은 이 사고의 원인 확정이 아닙니다.</p></section>):<div className="warning-box">이 ID와 연결된 원본 근거를 찾지 못했습니다. 원인 근거로 사용할 수 없습니다.</div>}</div>;
+  else if(activeTab==='cause')view=<div className="panel-stack"><div className="section-heading"><h2>원인 분석</h2><span className={`gate ${analysis.verification_gate==='PASS'?'pass':'hold'}`}>Verification Gate · {analysis.verification_gate}</span></div><p className="note">AI 가설·관측·등록 로직 검사를 구분합니다. PASS도 최종 공학적 확정이나 재기동 승인이 아닙니다.</p><ClaimCard title="Primary Cause · 선행 원인 후보" item={analysis.primary_cause} onOpen={openDetail}/><ClaimCard title="Direct Trigger · 직접 보호동작 후보" item={analysis.direct_trigger} onOpen={openDetail}/><ClaimTable title="Propagation · 파급 과정" items={analysis.propagation} onOpen={openDetail}/><section className="report-table"><h3>Causal Chain · 시간순 검토</h3>{analysis.causal_chain.map((c,i)=><div className="timeline-line" key={i}><b>{i+1}</b><div><small>{modelTime(c.model_time_s)} · {STATUS_TEXT[c.status]}</small><p>{c.claim}</p><EvidenceLinks ids={c.evidence_ids} onOpen={openDetail}/></div></div>)}</section><ClaimTable title="반대 근거 / 가설 검토" items={analysis.counter_evidence} onOpen={openDetail}/><TraceView analysis={analysis}/></div>;
+  else if(activeTab==='timeline')view=<div className="panel-stack"><div className="section-heading"><h2>사고 진행 과정</h2><span>전체 EVENT {events.length}건</span></div><ClaimTable title="Critical Events · Gemini 선정" items={analysis.critical_events} onOpen={openDetail}/><section className="report-table"><h3>전체 EVENT · 원본 사건 기록</h3><EventTable events={events} onOpen={openDetail}/></section></div>;
+  else if(activeTab==='checks')view=<div className="panel-stack"><h2>즉시 확인·대응</h2><p className="warning-box">설비 조작 지시가 아닌 근거 검토 항목입니다.</p>{[...analysis.additional_evidence_required,...analysis.review_recommendations].map((t,i)=><div className="check-row" key={i}><span>{i+1}</span><p>{t}</p><em>담당자 검토</em></div>)}{!result&&<p>분석 후 실제 미확인 항목을 표시합니다.</p>}</div>;
+  else if(activeTab==='recovery')view=<div className="panel-stack"><h2>복구 검토 상태</h2><div className="warning-box">복구 완료 여부는 이 분석만으로 판단하지 않습니다. 설비 운전 판단은 담당자 승인 대상입니다.</div><p>보고서 근거 검증: {analysis.verification_gate}</p>{analysis.verification_notes.map((t,i)=><p className="note" key={i}>{t}</p>)}<p>복구 상태: UNKNOWN · 실제 복구 기록 추가 확인 필요</p></div>;
+  else view=<div className="panel-stack"><h2>Event / RAW 근거</h2><input className="filter-input" aria-label="근거 검색" placeholder="근거 ID 또는 태그 검색" value={evidenceQuery} onChange={e=>setEvidenceQuery(e.target.value)}/><div className="scroll-table"><table><thead><tr><th>근거 ID</th><th>종류</th><th>모델 시각</th><th>원본 / Source 태그</th><th>값</th></tr></thead><tbody>{catalog.filter(e=>JSON.stringify([e.evidence_id,e.tag,e.source_node]).toLowerCase().includes(evidenceQuery.toLowerCase())).map(e=><tr key={e.evidence_id}><td><EvidenceLinks ids={[e.evidence_id]} onOpen={openDetail}/></td><td>{e.source_kind}</td><td>{modelTime(e.model_time_s)}</td><td><button className="tag-link" onClick={()=>openDetail({kind:'tag',value:e.source_node||e.tag})}>{e.source_node||e.tag}</button><small>{e.original_tag||e.tag}</small></td><td>{String(e.value??'—')}</td></tr>)}</tbody></table></div><p className="note">RAW는 실제 조회되어 응답에 연결된 표본을 표시합니다. 원본 RAW 전체를 AI가 확인했다고 뜻하지 않습니다.</p></div>;
+  return <main className="app-shell"><header className="topbar"><div className="brand"><div className="brand-mark">TL</div><div><h1>TripLens</h1><span>READ-ONLY · CURRENT V8</span></div></div><div className="status-rail"><div><span>입력</span><b>{ready?'Dual Log 선택됨':'입력 대기'}</b></div><div><span>DCS EVENT</span><b>{summary.dcs}</b></div><div><span>ECMS EVENT</span><b>{summary.ecms}</b></div><div><span>시뮬 / 기타</span><b>{summary.simulation+summary.other}</b></div><div><span>보호 EVENT</span><b>{summary.protection}</b></div></div></header>{mode==='demo'&&<div className="demo-banner">DEMO 화면 · 합성 예시를 실측·공식 검증 결과로 사용하지 않습니다.</div>}<div className="workspace"><aside className="sidebar"><div className="side-title">ANALYSIS WORKSPACE</div><nav>{WORKSPACE_TABS.map(t=><button className={`nav-item ${activeTab===t.id?'active':''}`} key={t.id} onClick={()=>{setActiveTab(t.id);setDetail(null);}}><span className="nav-no">{t.no}</span><span><b>{t.label}</b><em>{t.sub}</em></span></button>)}</nav><div className="side-links"><button onClick={()=>openLogicLibrary()}><b>LM</b><span>Logic Master<em>{logic?`Current ${logic.live_rules} · ALARM ${logic.alarm} · PROT ${logic.protection}`:'서버 원장 조회 대기'}</em></span></button></div><div className="boundary"><b>READ-ONLY</b><span>AI 신뢰도 ≠ 원인 확정</span><span>최종 보고서는 담당자 검토</span></div><a className="demo-link" href={mode==='demo'?'/':'/demo'}>{mode==='demo'?'분석 화면으로':'분리된 시연 화면'}</a></aside><section className="main-area"><section className="intake"><div><div className="eyebrow">DUAL LOG INTAKE</div><h2>EVENT.csv + RAW.csv</h2><p>사건 기록과 실제 RAW 표본을 등록 Logic으로 연결합니다. 원본 파일은 수정하지 않습니다.</p></div><div className="file-grid">{[['event',eventFile,eventData],['raw',rawFile,rawData]].map(([kind,file,data])=><label className={`file-card ${file?'ready':''}`} key={kind}><span>{kind.toUpperCase()}.csv</span><b>{file?.name||'선택 대기'}</b><em>{file?`${(file.size/1024).toFixed(1)} KB · ${data?.records.length??'검사 중'}행`:''}{kind==='raw'&&data?` · ${meta?.validation?.raw_tag_count??data.fields.filter(f=>!['record_sequence','session_id','incident_id','model_time_s','wall_time_utc','collector_quality','quality','time'].includes(f)).length} tags`:''}</em><input disabled={busy||!restored} type="file" accept=".csv,text/csv" aria-label={`${kind.toUpperCase()} 파일`} onChange={e=>selectFile(kind,e.target.files?.[0])}/></label>)}</div><div className="pipeline" aria-label="분석 처리 흐름">{PIPELINE.map((t,i)=><span key={t}>{i+1}. {t}</span>)}</div><div className="intake-actions"><span role="status">{statusText||connection}</span><button disabled={!ready||busy} onClick={analyze}>{busy?'검사·분석 중…':'이 Dual Log 분석하기'}</button><button disabled={!result} className="secondary" onClick={()=>{setReportOpen(!reportOpen);setDetail(null);}}>고장보고서 초안 보기</button><button disabled={busy} className="secondary" onClick={clear}>입력·분석 지우기</button></div><div className="run-meta"><span>{storageNote}</span><span>시간 정렬: {meta?.validation?.time_alignment||'미검사'} · Evidence Policy: {meta?.validation?.status||'미검사'}</span>{result&&<><span>Run ID: {result.run_id}</span><span>Data digest: {result.data_digest}</span><span>Logic version: {result.contract?.logic_master_version}</span><span>Prompt version: {result.contract?.prompt_version}</span></>}</div></section><section className="analysis-surface">{view}</section>{reportOpen&&result&&<section className="report-preview"><div className="section-heading"><h2>설비 고장 분석보고서 · 초안</h2><button className="export-button" onClick={exportCSV}>고장보고서 초안 CSV</button></div><p className="note">행을 수정해도 EVENT·RAW 원본과 AI 분석 객체는 바뀌지 않습니다. 검증 {analysis.verification_gate} · 담당자 최종 승인 필요</p><div className="scroll-table"><table className="editable-report"><thead><tr>{REPORT_COLUMNS.map(c=><th key={c}>{c}</th>)}</tr></thead><tbody>{reportRows.map((r,i)=><tr key={i}>{['section','item','content','status','evidence_ids','tags','time','note'].map(k=><td key={k}>{k==='status'?<select aria-label={`보고서 ${i+1} 상태`} value={r[k]} onChange={e=>setReportRows(rs=>rs.map((x,j)=>i===j?{...x,[k]:e.target.value,note:'담당자 편집 · 검토 필요'}:x))}>{['UNKNOWN','OBSERVED','CANDIDATE'].map(s=><option key={s} value={s}>{s}</option>)}</select>:<textarea aria-label={`보고서 ${i+1} ${k}`} value={r[k]} onChange={e=>setReportRows(rs=>rs.map((x,j)=>i===j?{...x,[k]:e.target.value}:x))}/>}</td>)}</tr>)}</tbody></table></div></section>}</section></div>{drawer&&<div className="drawer-backdrop" onClick={()=>setDrawer(false)}><aside className="logic-drawer" onClick={e=>e.stopPropagation()}><button className="drawer-close" onClick={()=>setDrawer(false)}>닫기</button><h2>Current Logic Master</h2><p>등록 원장: {logic?.live_rules??'미확인'} rules</p><p>Live Source Tags: {contract?.live_tag_allowlist_count??'미확인'}</p><p>등록 확인은 사고 원인 확정과 다릅니다.</p><p>현재 연결 버전: {contract?.integration_version||'미확인'}</p><button className="back-button" onClick={()=>{setDrawer(false);setDetail(null);}}>대시보드로 돌아가기</button></aside></div>}<LogicLibraryDialog /></main>;
 }
