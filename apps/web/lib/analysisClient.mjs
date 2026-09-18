@@ -34,20 +34,35 @@ export function parseCSV(text){
 }
 export function summarizeEvents(records=[]){const r={rows:records.length,dcs:0,ecms:0,simulation:0,other:0,protection:0};for(const e of records){const s=String(e.source||'').toUpperCase();if(s.includes('DCS'))r.dcs++;else if(s.includes('ECMS'))r.ecms++;else if(s.includes('OPENMODELICA')||s==='SIM')r.simulation++;else r.other++;if(String(e.event_class).toUpperCase()==='PROTECTION')r.protection++;}return r;}
 export const REPORT_COLUMNS=['구분','항목','내용','상태','근거 ID','관련 태그','기록 시각','비고'];
+export const REPORT_SECTIONS=['개요','사고 발생 전 운전 현황','장애 현상','시간대별 조치사항','발생 원인','조치 결과','추정 원인 및 미확인 사항','재발방지 대책 — 검토 권고사항','증거자료'];
 export function buildDraftRows(envelope){
- const a=normalizeDisplayAnalysis(envelope?.analysis||{});const rows=[];
+ const a=normalizeDisplayAnalysis(envelope?.analysis||{});const rows=[];const events=[...(envelope?.events||[])].sort((x,y)=>(numeric(x.model_time_s)??Infinity)-(numeric(y.model_time_s)??Infinity));
  const add=(section,item,c,note='')=>rows.push({section,item,content:claimText(c)||'추가 확인 필요',status:c?.status||'UNKNOWN',evidence_ids:list(c?.evidence_ids).join('; '),tags:list(c?.related_tags).join('; '),time:c?.time_interval_s?claimTime(c):numeric(c?.model_time_s)===null?'':modelTime(c.model_time_s),note});
- const first=(envelope?.events||[])[0];
- add('개요','발생 시각',first?{claim:modelTime(first.model_time_s),status:'OBSERVED',evidence_ids:[first.evidence_id||first.event_id],related_tags:[first.source_node||first.tag],model_time_s:first.model_time_s}:{});
- add('운전 현황','사고 전 운전 상태',{},'RAW 근거를 검토하여 담당자가 작성');
- add('장애 현상','최초 기록 Event',first?{claim:first.message||first.tag,status:'OBSERVED',evidence_ids:[first.evidence_id||first.event_id],model_time_s:first.model_time_s}:{});
- const actions=(envelope?.events||[]).filter(e=>e.event_class==='OPERATOR_ACTION');
- if(actions.length)actions.forEach((e,i)=>add('시간대별 조치사항',`기록 ${i+1}`,{claim:e.message,status:'OBSERVED',evidence_ids:[e.evidence_id||e.event_id],related_tags:[e.source_node||e.tag],model_time_s:e.model_time_s}));else add('시간대별 조치사항','확인된 조치',{},'미기록을 조치 없음으로 단정하지 않음');
- const addGroup=(key,section)=>{if(a[key].length)a[key].forEach((c,i)=>add(section,`${i+1}`,c));else add(section,'검토 상태',{},'조회 근거 또는 분석 항목 추가 확인 필요');};
- addGroup('critical_events','Critical Events');add('Primary Cause','선행 원인',a.primary_cause,'AI 후보 / 최종 확정 아님');add('Direct Trigger','직접 보호동작',a.direct_trigger,'등록 확인과 공학적 원인 확정은 구분');
- addGroup('propagation','Propagation');addGroup('causal_chain','Causal Chain');add('조치 결과','복구 상태',{},'담당자 확인 필요');addGroup('counter_evidence','반대 근거');
- a.additional_evidence_required.forEach((v,i)=>add('추가 확인 필요',`${i+1}`,{claim:v,status:'UNKNOWN'}));if(!a.additional_evidence_required.length)add('추가 확인 필요','담당자 검토',{},'검증 통과도 자동 운전 승인 아님');
- (a.review_recommendations.length?a.review_recommendations:['재발방지 대책은 운전·정비 담당자 검토 후 작성']).forEach((v,i)=>add('재발방지 대책',`검토 권고 ${i+1}`,{claim:v,status:'CANDIDATE'},'운전원 승인 필요 / 설비 조작 명령 아님'));return rows;
+ const first=events[0];
+ add('개요','발생 시각',first?{claim:modelTime(first.model_time_s),status:'OBSERVED',evidence_ids:[first.evidence_id||first.event_id],related_tags:[first.source_node||first.tag],model_time_s:first.model_time_s}:{},'최초 기록 시각 기준');
+ add('사고 발생 전 운전 현황','사고 전 운전 상태',{},'사고 전 RAW 운전상태를 담당자가 검토하여 작성');
+ if(a.critical_events.length)a.critical_events.forEach((c,i)=>add('장애 현상',`Critical Event ${i+1}`,c));
+ else if(first)add('장애 현상','최초 기록 Event',{claim:first.message||first.tag,status:'OBSERVED',evidence_ids:[first.evidence_id||first.event_id],related_tags:[first.source_node||first.tag],model_time_s:first.model_time_s});
+ else add('장애 현상','검토 상태',{},'EVENT 근거 없음');
+ if(events.length)events.forEach((e,i)=>add('시간대별 조치사항',`SOE ${i+1}`,{claim:e.message||`${e.equipment||''} ${e.tag||''}`.trim(),status:'OBSERVED',evidence_ids:[e.evidence_id||e.event_id].filter(Boolean),related_tags:[e.source_node||e.tag].filter(Boolean),model_time_s:e.model_time_s},e.event_class||e.source||''));
+ else add('시간대별 조치사항','검토 상태',{},'시간순 EVENT 기록 없음');
+ add('발생 원인','선행 원인',a.primary_cause,'AI 후보 / 최종 확정 아님');
+ add('발생 원인','직접 Trip 원인',a.direct_trigger,'등록 Logic 확인과 공학적 원인 확정은 구분');
+ if(a.propagation.length)a.propagation.forEach((c,i)=>add('발생 원인',`파급 과정 ${i+1}`,c));
+ else add('발생 원인','파급 과정',{},'파급 근거 추가 확인 필요');
+ if(a.causal_chain.length)a.causal_chain.forEach((c,i)=>add('발생 원인',`인과관계 요약 ${i+1}`,c,'시간순 근거와 함께 검토'));
+ else add('발생 원인','인과관계 요약',{},'인과관계 추가 확인 필요');
+ add('조치 결과','복구 상태',{},'실제 복구·재기동 기록은 담당자 확인 필요');
+ if(a.counter_evidence.length)a.counter_evidence.forEach((c,i)=>add('추정 원인 및 미확인 사항',`반대 근거 ${i+1}`,c));
+ else add('추정 원인 및 미확인 사항','반대 근거',{},'반대 근거 없음으로 단정하지 않음');
+ if(a.additional_evidence_required.length)a.additional_evidence_required.forEach((v,i)=>add('추정 원인 및 미확인 사항',`추가 확인 ${i+1}`,{claim:v,status:'UNKNOWN'}));
+ else add('추정 원인 및 미확인 사항','추가 확인',{},'담당자 최종 검토 필요');
+ const recommendations=a.review_recommendations.length?a.review_recommendations:['재발방지 대책은 운전·정비 담당자 검토 후 작성'];
+ recommendations.forEach((v,i)=>add('재발방지 대책 — 검토 권고사항',`검토 권고 ${i+1}`,{claim:v,status:'CANDIDATE'},'담당자 승인 필요 / 설비 조작 명령 아님'));
+ const evidence=envelope?.evidence_catalog?.length?envelope.evidence_catalog:events.map(e=>({...e,evidence_id:e.evidence_id||e.event_id,source_kind:'EVENT'}));
+ if(evidence.length)evidence.forEach((e,i)=>add('증거자료',`Evidence ${i+1}`,{claim:e.message||`${e.source_kind||'EVIDENCE'} · ${e.source_node||e.tag||''}`.trim(),status:'OBSERVED',evidence_ids:[e.evidence_id||e.event_id].filter(Boolean),related_tags:[e.source_node||e.tag].filter(Boolean),model_time_s:e.model_time_s},e.source_kind||e.source||''));
+ else add('증거자료','검토 상태',{},'연결된 Evidence 없음');
+ return rows;
 }
 export function draftCSV(rows){const safe=v=>{let s=String(v??'');if(/^[\s]*[=+@-]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';};return '\uFEFF'+[REPORT_COLUMNS,...rows.map(r=>[r.section,r.item,r.content,r.status,r.evidence_ids,r.tags,r.time,r.note])].map(r=>r.map(safe).join(',')).join('\r\n');}
 export function displayError(error){if(typeof error==='string')return error;return error?.message||error?.detail?.message||'요청이 완료되지 않았습니다.';}

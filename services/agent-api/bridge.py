@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 from triplens.evidence_context import GroundedEvidenceStore as EvidenceStore, VERSION
+from triplens.current_catalog import load_catalog
 
 SERVICE_ROOT=Path(__file__).resolve().parent
 PACKAGE_ROOT=SERVICE_ROOT/'triplens'
@@ -24,28 +25,14 @@ def sha256_files(*paths: Path)->str:
     return digest.hexdigest()
 
 def current_v8_manifest()->dict[str,Any]:
-    if not LIVE_MANIFEST.exists(): raise RuntimeError('Current V8 manifest missing')
-    return json.loads(LIVE_MANIFEST.read_text(encoding='utf-8-sig'))
+    return load_catalog(CURRENT_V8_ROOT)[0]
 
 def live_tag_allowlist()->set[str]:
-    with LIVE_TAG_ALLOWLIST.open(encoding='utf-8-sig',newline='') as f:
-        tags={r['raw_tag_id'].strip() for r in csv.DictReader(f)}-{''}
-    if len(tags)!=603: raise RuntimeError('Current V8 live tag count mismatch')
-    return tags
+    return load_catalog(CURRENT_V8_ROOT)[1]
 
 def runtime_logic_rows()->list[dict[str,Any]]:
-    allowed=live_tag_allowlist(); rows=[]
-    with LIVE_LOGIC.open(encoding='utf-8-sig',newline='') as f:
-        for row in csv.DictReader(f):
-            if row.get('status','').upper()!='ACTIVE': continue
-            linked=[t.strip() for t in row.get('linked_tag_ids','').replace(',',';').split(';') if t.strip()]
-            missing=[t for t in linked if t.startswith('vpp') and t not in allowed]
-            if missing: raise RuntimeError(f"Current V8 logic references non-live OPC UA tags: {row.get('logic_id')}: {missing}")
-            lt=row.get('logic_type','').upper()
-            row.update(event_class='ALARM' if lt=='ALARM' else 'PROTECTION' if lt in PROTECTION_LOGIC_TYPES else 'OPERATOR_ACTION' if lt=='COMMAND_INTERFACE' else 'SYSTEM',canonical_tag=row.get('event_tag',''),verification_status='LIVE_OPCUA_VALIDATED')
-            rows.append(row)
-    if len(rows)!=53: raise RuntimeError('Current V8 logic rule count mismatch')
-    return rows
+    # Hash-check the generated Current V8 catalog while preserving each rule's semantic validation status.
+    return load_catalog(CURRENT_V8_ROOT)[2]
 
 def logic_summary()->dict[str,Any]:
     rows=runtime_logic_rows()

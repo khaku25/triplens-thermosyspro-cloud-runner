@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {normalizeDisplayAnalysis,parseCSV,summarizeEvents,buildDraftRows,draftCSV,modelTime,REPORT_COLUMNS} from '../apps/web/lib/analysisClient.mjs';
+import {normalizeDisplayAnalysis,parseCSV,summarizeEvents,buildDraftRows,draftCSV,modelTime,REPORT_COLUMNS,REPORT_SECTIONS} from '../apps/web/lib/analysisClient.mjs';
 
 test('provider string and alias propagation never render as blank rows',()=>{
  const a=normalizeDisplayAnalysis({propagation:['GT 출력 감소',{description:'52GT 개방',evidence_id:'E3',tag:'vpp52GTClosed',model_time_s:48.52}]});
@@ -21,17 +21,17 @@ test('simulation events do not masquerade as ECMS events',()=>{
 test('draft uses fixed eight columns, missing facts UNKNOWN, and is safely editable',()=>{
  const envelope={events:[{event_id:'E1',tag:'TRIP_LATCH',model_time_s:48.44,message:'GT LATCH'}],analysis:{verification_gate:'HOLD',primary_cause:{claim:'원인 후보',status:'CANDIDATE',evidence_ids:['R1']}}};
  const rows=buildDraftRows(envelope);const sections=new Set(rows.map(r=>r.section));
- for(const section of ['개요','운전 현황','장애 현상','시간대별 조치사항','Primary Cause','Direct Trigger','조치 결과','반대 근거','추가 확인 필요','재발방지 대책'])assert.ok(sections.has(section));
+ for(const section of REPORT_SECTIONS)assert.ok(sections.has(section));
  rows[0].content='=DANGEROUS()';const csv=draftCSV(rows);assert.ok(csv.startsWith('\uFEFF'));assert.ok(csv.includes("'=DANGEROUS()"));const parsed=parseCSV(csv);assert.deepEqual(parsed.fields,REPORT_COLUMNS);assert.ok(parsed.records.every(r=>Object.keys(r).length===8));assert.equal(envelope.events[0].message,'GT LATCH');
 });
 test('lists greater than five remain fully expandable',()=>{
  const source={critical_events:Array.from({length:15},(_,i)=>({claim:`사건 ${i}`,evidence_ids:[`E${i}`]}))};assert.equal(normalizeDisplayAnalysis(source).critical_events.length,15);
 });
-test('mandatory analysis sections remain present even with empty AI lists',()=>{
- const sections=new Set(buildDraftRows({analysis:{}}).map(r=>r.section));for(const section of ['Critical Events','Propagation','Causal Chain'])assert.ok(sections.has(section),section);
+test('mandatory nine-section report remains present even with empty AI lists',()=>{
+ const sections=[...new Set(buildDraftRows({analysis:{}}).map(r=>r.section))];assert.deepEqual(sections,REPORT_SECTIONS);
 });
 test('sampling intervals are visible, idempotent and not false exact timestamps',()=>{
  const source={primary_cause:{claim:'외부 입력 상승 후보',status:'CANDIDATE',evidence_ids:['RAW:1:tag','RAW:2:tag'],time_interval_s:[47.92,48.92],model_time_s:null}};
  const a=normalizeDisplayAnalysis(source);assert.match(a.primary_cause.claim,/47\.920 ~ 48\.920/);assert.equal(a.primary_cause.model_time_s,null);assert.equal(normalizeDisplayAnalysis(a).primary_cause.claim,a.primary_cause.claim);
- const row=buildDraftRows({analysis:a}).find(r=>r.section==='Primary Cause');assert.match(row.time,/표본 구간/);
+ const row=buildDraftRows({analysis:a}).find(r=>r.section==='발생 원인'&&r.item==='선행 원인');assert.match(row.time,/표본 구간/);
 });

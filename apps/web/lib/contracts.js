@@ -1,3 +1,5 @@
+import CURRENT_LOGIC_SUMMARY from './current-logic-summary.json';
+
 export const WORKSPACE_TABS = [
   { id: 'timeline', no: '01', label: '사고 진행 과정', sub: 'EVENT + RAW 결합' },
   { id: 'cause', no: '02', label: '원인 분석', sub: 'Primary · Direct · Propagation' },
@@ -13,16 +15,7 @@ export const STATUS_LABELS = {
   UNKNOWN: '— 미확인 (UNKNOWN)',
 };
 
-export const DEFAULT_LOGIC_SUMMARY = {
-  live_rules: 53,
-  alarm: 28,
-  protection: 17,
-  commands: 6,
-  physical_response: 2,
-  active_logic_core: 53,
-  live_tags: 603,
-  source: 'Current V8 Live OPC UA Verified · Actions #54',
-};
+export const DEFAULT_LOGIC_SUMMARY = CURRENT_LOGIC_SUMMARY;
 
 export const EMPTY_ANALYSIS = {
   critical_events: [],
