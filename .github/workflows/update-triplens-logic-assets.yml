@@ -18,11 +18,11 @@ on:
   workflow_dispatch:
     inputs:
       refresh_drive:
-        description: Download the latest 06 and 07 from the existing Google Drive file IDs
+        description: Download latest 06 and 07 from their existing Google Drive file IDs
         type: boolean
         default: true
       sync_drive:
-        description: Also upload generated 08/09/10 (requires authorized Drive access token secret)
+        description: Upload generated 08/09/10 (requires authorized Drive access token secret)
         type: boolean
         default: false
       publish:
@@ -53,31 +53,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Bootstrap reviewed source snapshot once
-        shell: bash
-        run: |
-          if test -f scripts/logic_assets/pipeline.py; then exit 0; fi
-          python - <<'PY'
-          import hashlib,io,pathlib,urllib.request,zipfile
-          url='https://drive.google.com/uc?export=download&id=1C-qDNqNocGycSN2s7n2oTSIXdjNTGGv5'
-          expected='688081344d70556b95352a96f1efe04575c627f498668961a01ec4b60d499ab7'
-          with urllib.request.urlopen(url,timeout=90) as r: data=r.read(5_000_001)
-          if len(data)>5_000_000 or hashlib.sha256(data).hexdigest()!=expected:
-              raise SystemExit('Source bundle hash mismatch or Drive download unavailable; nothing extracted')
-          allowed=('scripts/logic_assets/','tests/test_logic_','tests/test_current_catalog.py','docs/superpowers/','apps/web/components/LogicLibrary.js','apps/web/app/logic/','services/agent-api/triplens/current_catalog.py','data/current_v8/masters/','data/current_v8/live_opcua_census.csv','data/current_v8/live_census_provenance.json','scripts/update_triplens_logic.py','scripts/install_logic_web.py','UPDATE_TRIPLENS_LOGIC.','docs/LOGIC_ASSETS.md')
-          with zipfile.ZipFile(io.BytesIO(data)) as z:
-              if sum(i.file_size for i in z.infolist())>10_000_000: raise SystemExit('Expanded source bundle too large')
-              for i in z.infolist():
-                  path=pathlib.PurePosixPath(i.filename)
-                  if path.is_absolute() or '..' in path.parts or '\\' in i.filename or not i.filename.startswith(allowed): raise SystemExit('Unsafe source bundle path')
-                  dest=pathlib.Path(i.filename);dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(z.read(i))
-          print('Reviewed source and authoring snapshots bootstrapped; original plant source untouched')
-          PY
-      - name: Integrate existing workspace and hash-checked API catalog
+      - name: Verify web integration is installed
         run: python scripts/install_logic_web.py
       - name: Generate one consistent release
         env:
-          REFRESH_DRIVE: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_drive }}
+          REFRESH_DRIVE: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.refresh_drive) }}
           SYNC_DRIVE: ${{ github.event_name == 'workflow_dispatch' && inputs.sync_drive }}
           TRIPLENS_DRIVE_ACCESS_TOKEN: ${{ secrets.TRIPLENS_DRIVE_ACCESS_TOKEN }}
         shell: bash
@@ -106,13 +86,8 @@ jobs:
           python -m unittest discover -s tests -p test_current_catalog.py -v
           python -m unittest discover -s services/agent-api/tests -p test_bridge.py -v
       - name: Build existing Next.js application with logic detail route
-        shell: bash
         run: |
-          if test -f apps/web/package-lock.json; then
-            npm ci --prefix apps/web
-          else
-            npm install --prefix apps/web
-          fi
+          npm ci --prefix apps/web
           npm run build --prefix apps/web
       - name: Verify actual Next.js navigation and embedded diagram
         shell: bash
@@ -159,10 +134,10 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -- UPDATE_TRIPLENS_LOGIC.ps1 UPDATE_TRIPLENS_LOGIC.sh scripts/logic_assets scripts/update_triplens_logic.py scripts/install_logic_web.py tests/test_logic_assets.py tests/test_logic_pipeline.py tests/test_logic_update_command.py tests/test_logic_viewer.py tests/test_logic_web_install.py tests/test_current_catalog.py docs/LOGIC_ASSETS.md docs/superpowers/specs/2026-09-18-logic-assets-design.md docs/superpowers/plans/2026-09-18-logic-assets.md data/current_v8 logic_diagrams generated/logic apps/web/app/logic apps/web/components/LogicLibrary.js apps/web/components/TripLensWorkspace.js apps/web/lib/contracts.js apps/web/lib/current-logic-summary.json apps/web/public/logic-assets apps/web/package-lock.json services/agent-api/bridge.py services/agent-api/triplens/current_catalog.py services/agent-api/triplens/current_v8
+          git add -- data/current_v8 logic_diagrams generated/logic apps/web/lib/current-logic-summary.json apps/web/public/logic-assets services/agent-api/triplens/current_v8
           git reset -- ':(glob)**/__pycache__/**' ':(glob)**/*.pyc' || true
           if ! git diff --cached --quiet; then
-            git commit -m 'Publish synchronized TripLens masters, draw.io and web logic assets'
+            git commit -m 'Update synchronized TripLens masters, draw.io and web logic assets'
             git push origin HEAD:"${GITHUB_REF_NAME}"
           fi
       - name: Preserve evidence and generated deliverables
@@ -184,8 +159,8 @@ jobs:
         shell: bash
         run: |
           echo '## TripLens Logic Asset Update' >> "$GITHUB_STEP_SUMMARY"
-          echo 'This workflow changes metadata, diagrams and read-only web/API assets, not Modelica or OPC UA protection runtime.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'Drive uploads require separately authorized credentials. Git commit success is not a claim that a Vercel deployment is READY.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Metadata, diagrams and read-only web/API assets only. No Modelica or OPC UA protection runtime changes.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Drive uploads require separately authorized credentials. A saved commit does not prove a Vercel deployment is READY.' >> "$GITHUB_STEP_SUMMARY"
           if test -f generated/logic/asset_manifest.json; then
             echo '```json' >> "$GITHUB_STEP_SUMMARY"
             cat generated/logic/asset_manifest.json >> "$GITHUB_STEP_SUMMARY"
