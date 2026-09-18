@@ -7,6 +7,7 @@ on:
       - 'data/triplens_A-L_alarm_logic_master_absolute_v2.csv'
       - 'data/thermo_vpp_full_tag_list.csv'
       - 'data/ecms_tag_catalog.csv'
+      - 'data/current_v8/**'
       - 'config/dcs_alarm_rules.csv'
       - 'config/alarm_registry_v1.csv'
       - 'config/signal_map.json'
@@ -27,6 +28,7 @@ on:
     branches: [main]
     paths:
       - 'config/alarm_registry_v1.csv'
+      - 'data/current_v8/**'
       - 'logic_db/**'
       - 'webapp/**'
       - 'apps/web/**'

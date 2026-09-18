@@ -36,18 +36,42 @@ def write_csv(path, fields, rows):
 
 
 class BridgeTest(unittest.TestCase):
-    def test_public_contract_tracks_current_runtime_registry(self):
+    def test_public_contract_tracks_live_current_v8_sot(self):
         contract = bridge.public_contract()
         self.assertEqual(contract["python_role"], "EVIDENCE_PROVIDER_AND_VERIFIER")
         self.assertEqual(contract["decision_authority"], "GEMINI_AGENT")
-        self.assertEqual(contract["logic_summary"]["live_rules"], 67)
-        self.assertEqual(contract["logic_summary"]["alarm"], 54)
-        self.assertEqual(contract["logic_summary"]["protection"], 13)
-        self.assertEqual(contract["version"], "VERCEL_MIGRATION_P1_GENERIC_EVIDENCE")
-        self.assertTrue((SERVICE / "triplens" / "agent_tools.py").exists())
-        self.assertTrue((SERVICE / "triplens" / "alarm_registry_v1.csv").exists())
+        self.assertEqual(contract["logic_summary"]["live_rules"], 53)
+        self.assertEqual(contract["logic_summary"]["alarm"], 28)
+        self.assertEqual(contract["logic_summary"]["protection"], 17)
+        self.assertEqual(contract["logic_summary"]["commands"], 6)
+        self.assertEqual(contract["logic_summary"]["physical_response"], 2)
+        self.assertEqual(contract["live_tag_allowlist_count"], 603)
+        self.assertEqual(contract["current_v8_counts"]["live_tags"], 603)
+        self.assertEqual(contract["current_v8_counts"]["logic_rules"], 53)
+        self.assertEqual(contract["version"], "CURRENT_V8_LIVE_SOT_V1")
         self.assertEqual(contract["evidence_readiness_version"], "GENERIC_DUAL_LOG_EVIDENCE_V2")
-        self.assertEqual(contract["direct_trigger_definition"], "FIRST_DOWNSTREAM_PROTECTION_ACTUATION_NOT_TRIP_REQUEST")
+        self.assertEqual(
+            contract["direct_trigger_definition"],
+            "FIRST_DOWNSTREAM_PROTECTION_ACTUATION_NOT_TRIP_REQUEST",
+        )
+        self.assertTrue((SERVICE / "triplens" / "current_v8" / "live_logic_runtime.csv").exists())
+        self.assertTrue((SERVICE / "triplens" / "current_v8" / "live_tag_allowlist.csv").exists())
+        self.assertTrue((SERVICE / "triplens" / "current_v8" / "live_validation_manifest.json").exists())
+
+    def test_runtime_logic_is_fail_closed_against_live_allowlist(self):
+        rows = bridge.runtime_logic_rows()
+        self.assertEqual(len(rows), 53)
+        allow = bridge.live_tag_allowlist()
+        self.assertEqual(len(allow), 603)
+        for row in rows:
+            linked = [
+                part.strip()
+                for part in str(row.get("linked_tag_ids", "")).replace(",", ";").split(";")
+                if part.strip()
+            ]
+            for tag in linked:
+                if tag.startswith("vpp"):
+                    self.assertIn(tag, allow)
 
     def test_store_exposes_six_bounded_tools(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -76,6 +100,14 @@ class BridgeTest(unittest.TestCase):
                 "get_tag_series","get_logic_context","get_equipment_state",
             ])
             self.assertEqual(store.tool_manifest()["max_tool_calls_per_analysis"], 8)
+
+            known = store.get_logic_context(["vppLPFWPTripCommandNative"])
+            self.assertEqual(known["status"], "VERIFIED")
+            self.assertTrue(known["items"])
+            unknown = store.get_logic_context(["vppDefinitelyNotARealCurrentTag"])
+            self.assertEqual(unknown["status"], "PARTIAL_OR_UNREGISTERED")
+            self.assertEqual(unknown["items"], [])
+            self.assertEqual(unknown["unregistered_tags"], ["vppDefinitelyNotARealCurrentTag"])
 
 
 if __name__ == "__main__":
