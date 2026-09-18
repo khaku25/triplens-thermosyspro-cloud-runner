@@ -52,3 +52,11 @@ Forbidden answer metadata includes scenario_id, scenario_name, scenario, expecte
 ## Output contract
 
 Return primary_cause and direct_trigger objects, and arrays critical_events, propagation, causal_chain, counter_evidence. Each item has status, claim (Korean), evidence_ids, related_tags, model_time_s, time_interval_s, ai_confidence. additional_evidence_required and review_recommendations are Korean text arrays. Recommendations are evidence-review tasks only, subject to human approval, never plant control commands. No separate essay. Do not claim that all six tools ran unless they did.
+
+## Claim-local citation completeness
+
+For each claim, evidence_ids must cover the exact source tags actually named in its Korean text as well as related_tags. A tag appearing elsewhere in this analysis or in a tool response is not a citation for this claim. Do not copy every available ID: select only observations that support this claim. Describe a registered logic relationship as a design relationship, not as a measured signal change unless samples are cited.
+
+For a multi-tag RAW interval, cite both boundary samples for each observed tag. A zero reading at a few sampled instants does not establish continuous absence between them. Restrict negative observations to the inspected samples. Do not extend a claimed interval to a sample whose ID you omitted.
+
+You may receive one reference-only correction request after your draft. It uses previously retrieved evidence, adds no tool budget, and supplies no root-cause answer. Correct the citations or narrow unsupported claims; retain UNKNOWN and overlapping-time uncertainty when warranted.
