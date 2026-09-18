@@ -96,7 +96,26 @@ class NativeOPCUAContractTests(unittest.TestCase):
         )
         self.assertIn("model BreakerInertialPumpDrive", package)
         self.assertIn("model SpringLoadedCheckValve", package)
+        self.assertIn("TRIPLENS_CHECK_VALVE_HVOL_TRANSPORT_V2", package)
+        self.assertIn(
+            "Q > flowTransition then C1.h - C1.h_vol",
+            package,
+        )
         self.assertIn("opening = noEvent(max(0, min(1, openingState)))", package)
+
+        canonical = (ROOT / "modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo").read_text(
+            encoding="utf-8"
+        )
+        for value in ("194669.0", "630000.0", "561000.0"):
+            self.assertIn(f"h_vol(start = {value})", canonical)
+        self.assertIn(
+            "vppHPFWPRunning = vppHPFWPMotorEnergized and vppHPFWPSpeedProven;",
+            canonical,
+        )
+        self.assertIn(
+            "vppIPFWPRunning = vppIPFWPMotorEnergized and vppIPFWPSpeedProven;",
+            canonical,
+        )
 
     def test_tag_contract_has_all_30_scenario_tags(self) -> None:
         path = ROOT / "data/opcua_lp_bfp_nodes_v1.csv"

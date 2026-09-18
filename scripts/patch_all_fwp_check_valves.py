@@ -26,10 +26,14 @@ DECLARATIONS = f'''
   // {MARKER}
   TripLens_PumpPhysics.SpringLoadedCheckValve vppHPFWPCheckValve(
     closeFlow=20,
-    closedResistance=1e5);
+    closedResistance=1e5,
+    C1(h_vol(start=630000.0)),
+    C2(h_vol(start=630000.0)));
   TripLens_PumpPhysics.SpringLoadedCheckValve vppIPFWPCheckValve(
     closeFlow=5,
-    closedResistance=1e5);
+    closedResistance=1e5,
+    C1(h_vol(start=561000.0)),
+    C2(h_vol(start=561000.0)));
 
   output Boolean vppHPFWPCheckValveOpen;
   output Real vppHPFWPCheckValveOpening(min=0, max=1);
