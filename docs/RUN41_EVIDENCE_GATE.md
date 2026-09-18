@@ -94,3 +94,39 @@ Scenario Lab may write real control/fault inputs, but these fields must never be
 Only the resulting EVENT + RAW evidence is admissible to the Hybrid Agent.
 
 Current GitHub valve `FaultEnableNative` / `FaultValueNative` nodes are source-confirmed writable controls but are **not Run #41 live-proven**. They require a separate live write/echo/effect validation.
+
+
+## Subsequent run cross-check
+
+Historical workflow runs are immutable evidence. The current evidence gate classifies later runs when they are reviewed; it does not retroactively change their artifact bytes.
+
+### Run #42
+
+- Workflow run id: `35045900202`
+- Head commit: `e6b755ea01b976cb4cbb14abecec9bd0ea972b60`
+- Aggregate result: **0 PASS / 12 FAIL**
+- Static contract, Modelica build, and OPC UA startup steps completed.
+- Every scenario then failed to reach the scenario proof because the runner timed out waiting for the runtime snapshot/arming condition around model time ~4 s.
+- The live snapshot still showed an advancing OpenModelica runtime and 684 historian tags, so this is classified as **NO_NEW_BEHAVIORAL_EVIDENCE**, not as evidence that the Run #41 protection behavior was false.
+
+Run #42 must not be used to promote or demote individual logic rows beyond the Run #41 evidence classes.
+
+### Run #43
+
+- Workflow run id: `35053015510`
+- Head commit: `4bfde2094e4c3d6c8b3c9dd96d13c14e64a82e3d`
+- Runtime scenarios executed: **0**
+- All 12 scenario results were missing because the static evidence contract failed before build/runtime execution.
+- Exact failure: `vppVlvHPFWCVTarget fault regularization: expected one semantic match, found 0`.
+
+Run #43 is classified as **NO_RUNTIME_EVIDENCE**. It demonstrates fail-closed static contract behavior only.
+
+### Evidence precedence
+
+For the current RC documentation:
+
+1. Run #41 remains the behavioral evidence baseline.
+2. Run #42 contributes startup/synchronization failure evidence only.
+3. Run #43 contributes static-contract failure evidence only.
+4. Neither #42 nor #43 upgrades current GitHub valve `FaultEnableNative` / `FaultValueNative` nodes to live-proven status.
+5. A future successful live run may supersede a Run #41 per-rule status only when its EVENT/RAW artifact and provenance are explicitly recorded.
