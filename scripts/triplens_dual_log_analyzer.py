@@ -158,17 +158,22 @@ def analyze_dual_logs(event_csv: Path, raw_csv: Path) -> dict[str, Any]:
     if chain_complete and response_verified:
         status = "PASS"
         conclusion = (
-            "EVENT에서 운전자 LP BFP TRIP PB 조작 시점을 식별했고, RAW에서 "
-            "TRIP_CMD→TRIP_LATCH→VCB TRIP CMD→Breaker Open과 Speed/Flow 감소를 검증했습니다."
+            "EVENT/RAW 증거 묶음이 Agent 분석에 충분한 상태입니다. "
+            "Python은 원인·Trigger·Propagation을 확정하지 않습니다."
         )
     else:
         status = "COLLECTING"
         conclusion = (
-            "EVENT 시작점은 식별했습니다. RAW 보호동작 chain 또는 공정 응답의 추가 표본을 기다립니다."
+            "Agent 분석용 EVENT/RAW 증거를 추가 수집 중입니다. "
+            "Python은 인과 결론을 생성하지 않습니다."
         )
     return {
         "status": status,
+        "status_scope": "EVIDENCE_READINESS_ONLY",
         "mode": "DUAL_INPUT_EVENT_PLUS_RAW",
+        "analysis_role": "EVIDENCE_PROVIDER_ONLY",
+        "decision_authority": "GEMINI_AGENT",
+        "decision_fields_generated_by_python": [],
         "incident_id": incident_id,
         "event_input_read": True,
         "raw_input_read": True,
@@ -186,6 +191,23 @@ def analyze_dual_logs(event_csv: Path, raw_csv: Path) -> dict[str, Any]:
         "chain": chain_evidence,
         "chain_complete": chain_complete,
         "process_response_verified": response_verified,
+        "candidate_evidence": {
+            "onset_candidate": {
+                "model_time_s": finite(onset.get("model_time_s", "")),
+                "tag": onset.get("tag", ""),
+                "message": onset.get("message", ""),
+            },
+            "protection_chain_candidates": chain_evidence,
+            "process_response_candidates": process_changes,
+        },
+        "agent_policy": {
+            "max_tool_calls_per_analysis": 8,
+            "reserved_decisions": [
+                "critical_events", "primary_cause", "direct_trigger", "propagation", "causal_chain",
+            ],
+            "python_may_filter_and_rank_candidates": True,
+            "python_may_finalize_causal_decisions": False,
+        },
         "conclusion": conclusion,
         "forbidden_metadata_columns": [],
     }
