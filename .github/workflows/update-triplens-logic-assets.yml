@@ -122,7 +122,7 @@ jobs:
               browser=p.chromium.launch(headless=True)
               page=browser.new_page(viewport={'width':1440,'height':1000})
               page.goto('http://127.0.0.1:3000')
-              page.get_by_role('button',name=re.compile('Event Logic Master')).click()
+              page.get_by_role('button',name=re.compile('Logic Master')).click()
               page.locator('dialog[open]').wait_for()
               frame=page.frame_locator('dialog iframe')
               frame.locator('body[data-ready="true"]').wait_for()
