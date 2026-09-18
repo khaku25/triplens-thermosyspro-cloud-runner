@@ -143,9 +143,17 @@ class GroundedEvidenceStore(EvidenceStore):
         for row in all_matches[:cap]:
             item={k:row.get(k,'') for k in ('logic_id','logic_type','logic_name','tag_id','event_tag','source_node','condition','linked_tag_ids','output_nodes_or_tags')}
             linked=parts(row.get('linked_tag_ids'));outputs=set(parts(row.get('output_nodes_or_tags')))
-            item['upstream_tags']=[t for t in linked if t not in outputs and t in self.live_tags]
-            item['raw_available_tags']=[t for t in linked if t in self.raw_tag_inventory]
-            item['missing_raw_tags']=[t for t in linked if t in self.live_tags and t not in self.raw_tag_inventory];items.append(item)
+            upstream=[t for t in linked if t not in outputs and t in self.live_tags]
+            item['upstream_tags']=upstream
+            item['raw_available_tags']=[t for t in upstream if t in self.raw_tag_inventory]
+            item['missing_raw_tags']=[t for t in upstream if t not in self.raw_tag_inventory]
+            if str(row.get('logic_type','')).upper()=='TRIP_REQUEST':
+                group=str(row.get('group','')).strip() or 'Protection'
+                item['logic_name']=f"{group} trip request registered-input logic"
+                item['condition']='OR(registered upstream inputs)'
+                item['input_count']=len(upstream)
+                item['analysis_semantics']='DYNAMIC_REGISTERED_UPSTREAM_INPUTS'
+            items.append(item)
         return {'items':items,'unregistered_tags':unregistered,'resolved_tags':resolved,'infer_unregistered_logic':False,'status':'VERIFIED' if tags and not unregistered else 'PARTIAL_OR_UNREGISTERED','verification_scope':'REGISTRATION_ONLY_NOT_INCIDENT_CAUSAL_PROOF','truncated':len(all_matches)>cap,'total_matches':len(all_matches)}
 
     def get_equipment_state(self,equipment,at_time_s,*,tags=None):
