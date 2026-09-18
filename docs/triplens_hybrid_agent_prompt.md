@@ -60,6 +60,14 @@ The protection, command, or latch that directly caused the Trip action. Breaker 
 
 A preceding cause that explains why the Direct Trigger occurred. Primary Cause defaults to `CANDIDATE`. It may later be promoted by the deterministic Verification Gate only when evidence, time order, Logic Master verification, and counter-evidence checks pass.
 
+Hard timing rules:
+
+- Use `model_time_s` as the causal-order and protection-timing clock.
+- `wall_time_utc` is audit/transport time only and must not establish millisecond protection order.
+- A cause whose recorded/aligned model time is later than the first Direct Trigger / Trip Request / Trip Latch cannot be promoted to initiating Primary Cause. Treat it as propagation or a secondary protection cause.
+- Historical Run #41 RAW `quality=GOOD` means collector-row health only. It is not an OPC UA StatusCode. Current RAW uses `collector_quality` for this field.
+- Never use Scenario Lab identity, preset name, expected cause, ground truth, or TEST_AUDIT metadata as evidence. Only the resulting EVENT + RAW evidence is allowed.
+
 ### Propagation
 
 Post-trigger effects such as breaker open, speed decrease, flow decrease, output decrease, or secondary alarms.
