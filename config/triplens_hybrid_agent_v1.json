@@ -1,118 +1,26 @@
 {
-  "version": "1.1",
+  "version": "1.2",
   "mode": "HYBRID_AGENT_EVIDENCE_TOOLS_V1",
+  "integration_version": "V8_EVIDENCE_INTEGRATION_V3",
+  "output_contract_version": "GROUNDED_ANALYSIS_V3",
   "roles": {
-    "python": [
-      "parse_event_raw",
-      "filter_evidence_policy",
-      "time_alignment",
-      "exact_tag_mapping",
-      "bounded_search",
-      "candidate_generation",
-      "verification_gate"
-    ],
-    "gemini_agent": [
-      "select_critical_events",
-      "compare_evidence",
-      "identify_primary_cause",
-      "identify_direct_trigger",
-      "classify_propagation",
-      "construct_causal_chain",
-      "seek_counter_evidence"
-    ]
+    "python": ["parse_event_raw", "filter_evidence_policy", "time_alignment", "exact_tag_mapping", "bounded_search", "numeric_observations", "reference_verification"],
+    "gemini_agent": ["select_critical_events", "compare_evidence", "identify_primary_cause", "identify_direct_trigger", "classify_propagation", "construct_causal_chain", "seek_counter_evidence"]
   },
-  "reserved_agent_decisions": [
-    "critical_events",
-    "primary_cause",
-    "direct_trigger",
-    "propagation",
-    "causal_chain"
-  ],
+  "reserved_agent_decisions": ["critical_events", "primary_cause", "direct_trigger", "propagation", "causal_chain"],
   "bootstrap": {
-    "include": [
-      "run_id",
-      "data_digest",
-      "incident_id",
-      "event_row_count",
-      "raw_row_count",
-      "tool_manifest"
-    ],
-    "exclude_bulk_data": [
-      "event_rows",
-      "raw_rows",
-      "full_historian"
-    ],
-    "forbidden_answer_metadata": [
-      "scenario_id",
-      "root_cause",
-      "expected_root_cause",
-      "fault_injection",
-      "fault_preset"
-    ]
+    "include": ["run_id", "data_digest", "event_row_count", "raw_row_count", "tool_manifest", "raw_tag_inventory", "initial_events", "upstream_available_tags", "validation", "evidence_readiness"],
+    "exclude_bulk_data": ["raw_rows", "full_historian"],
+    "forbidden_answer_metadata": ["scenario_id", "scenario", "scenario_name", "root_cause", "expected_root_cause", "expected_cause", "ground_truth", "answer_label", "fault_injection", "fault_preset", "test_audit"]
   },
-  "tool_budget": {
-    "max_tool_calls_per_analysis": 8,
-    "search_events_max_rows": 20,
-    "event_window_max_rows": 30,
-    "event_window_seconds_each_side": 10,
-    "raw_window_max_rows": 50,
-    "raw_window_max_tags": 8,
-    "raw_window_max_span_seconds": 20,
-    "tag_series_max_points": 50,
-    "logic_context_max_rows": 12,
-    "equipment_state_max_events": 10
-  },
-  "recommended_agent_sequence": [
-    "search_events",
-    "get_event_window",
-    "get_tag_series",
-    "get_logic_context",
-    "get_equipment_state_or_get_raw_window_if_needed",
-    "search_counter_evidence",
-    "emit_structured_analysis"
-  ],
+  "tool_budget": {"max_tool_calls_per_analysis": 8, "search_events_max_rows": 20, "event_window_max_rows": 30, "event_window_seconds_each_side": 10, "raw_window_max_rows": 50, "raw_window_max_tags": 8, "raw_window_max_span_seconds": 20, "tag_series_max_points": 50, "logic_context_max_rows": 12, "equipment_state_max_events": 10},
+  "recommended_agent_sequence": ["inspect_mapped_events", "lookup_registered_upstream_logic", "query_actual_raw_samples", "test_counter_evidence", "emit_structured_analysis"],
   "status_policy": {
-    "primary_cause_default": "CANDIDATE",
-    "unsupported_claim": "UNKNOWN",
-    "direct_trigger_requires_evidence_id": true,
-    "propagation_requires_observation": true,
-    "unknown_remains_unknown": true,
-    "direct_trigger_semantics": {
-      "definition": "first observed protection/control actuation that directly initiates trip or isolation",
-      "trip_request_is_intermediate_when_downstream_actuation_exists": true,
-      "preferred_actuation_order": [
-        "relay_or_lockout_operate",
-        "trip_latch",
-        "breaker_or_vcb_trip_command",
-        "explicit_final_isolation_actuation"
-      ],
-      "breaker_open_feedback_default": "PROPAGATION_OR_CONFIRMATION",
-      "operator_trip_command_default": "PRIMARY_CAUSE_OR_INITIATING_EVENT_CANDIDATE"
-    }
+    "primary_cause_default": "CANDIDATE", "direct_trigger_default": "CANDIDATE", "unsupported_claim": "UNKNOWN", "ai_may_emit_confirmed": false,
+    "direct_trigger_requires_evidence_id": true, "propagation_requires_observation": true, "unknown_remains_unknown": true,
+    "direct_trigger_semantics": {"definition": "observed actuation supported by actual incident evidence and registered equipment logic", "trip_request_is_intermediate_when_downstream_actuation_exists": true, "universal_relay_priority": false, "invented_relay_forbidden": true, "parallel_gt_st_is_not_automatic_intertrip_proof": true}
   },
-  "verification_gate": {
-    "python_post_validation": true,
-    "hold_blocks_final_confirmation": true,
-    "ai_confidence_is_not_engineering_confirmation": true,
-    "unregistered_logic_inference": false
-  },
-  "reuse_key": [
-    "event_digest",
-    "raw_digest",
-    "logic_master_version",
-    "tool_contract_version",
-    "prompt_version",
-    "scenario_selection"
-  ],
-  "evidence_readiness": {
-    "version": "GENERIC_DUAL_LOG_EVIDENCE_V2",
-    "scenario_neutral": true,
-    "requires": [
-      "event_chronology",
-      "raw_timeseries"
-    ],
-    "forbids_equipment_specific_required_tags": true,
-    "python_may_classify_observation_roles": true,
-    "python_may_finalize_causal_decisions": false
-  }
+  "evidence_readiness": {"version": "GENERIC_DUAL_LOG_EVIDENCE_V2", "strict_validation_version": "V8_EVIDENCE_INTEGRATION_V3", "scenario_neutral": true, "requires": ["finite_model_times", "compatible_session_and_incident", "event_chronology", "two_distinct_raw_times", "time_range_overlap"], "python_may_finalize_causal_decisions": false},
+  "verification_gate": {"scope": "REFERENCE_AND_CHRONOLOGY_CHECKS_NOT_ENGINEERING_CAUSAL_PROOF", "hold_blocks_final_confirmation": true, "pass_is_not_human_approval": true, "ai_confidence_is_not_engineering_confirmation": true, "unregistered_logic_inference": false, "uncertain_raw_onset_uses_sample_interval": true},
+  "reuse_key": ["event_digest", "raw_digest", "logic_master_version", "tool_contract_version", "prompt_version", "output_contract_version", "model", "scenario_selection"]
 }
