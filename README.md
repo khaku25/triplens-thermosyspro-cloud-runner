@@ -6,6 +6,8 @@ GitHub Actions에서 ThermoSysPro/OpenModelica 물리 원천을 생성하는 저
 보호 로직을 실제 OPC UA 입력으로 실행하고, LP BFP 시나리오의 `EVENT.csv`,
 `RAW.csv`, 결합 분석 및 검증 JSON을 독립 artifact로 게시합니다.
 
+> Run #41 evidence gate: the 12-scenario all-trip matrix produced **10 PASS / 2 FAIL** (HP BFP, LP BFP). See [docs/RUN41_EVIDENCE_GATE.md](docs/RUN41_EVIDENCE_GATE.md) and [config/run41_logic_validation.csv](config/run41_logic_validation.csv). Do not describe Run #41 as an all-pass validation. `model_time_s` is the causal clock; legacy RAW `quality=GOOD` was collector-row health, not OPC UA StatusCode.
+
 V8은 현재 V8.5.3 RC1 검증 단계입니다. LP BFP 단기 시나리오는 GitHub Actions에서
 실제 OPC UA 입력과 EVENT/RAW 출력까지 통과했지만, 이는 장시간 안정성이
 입증됐다는 뜻은 아닙니다. V7 안정 기준은 `archive/pre-v8-main-20260915`
