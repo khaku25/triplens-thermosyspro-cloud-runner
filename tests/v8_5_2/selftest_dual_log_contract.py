@@ -17,7 +17,7 @@ EVENT_FIELDS = (
 )
 RAW_META = (
     "record_sequence", "session_id", "incident_id", "model_time_s",
-    "wall_time_utc", "quality",
+    "wall_time_utc", "collector_quality",
 )
 RAW_TAGS = (
     "vppLPFWPTripPushbuttonNative", "vppLPFWPTripCommandNative",
@@ -133,7 +133,7 @@ def main() -> int:
             raw_rows.append({
                 "record_sequence": sequence, "session_id": "S1", "incident_id": incident,
                 "model_time_s": model_time,
-                "wall_time_utc": f"2026-09-14T00:13:{sequence:02d}.000+00:00", "quality": "GOOD",
+                "wall_time_utc": f"2026-09-14T00:13:{sequence:02d}.000+00:00", "collector_quality": "GOOD",
                 "vppLPFWPTripPushbuttonNative": 1 if sequence in {2, 3, 4} else 0,
                 "vppLPFWPTripCommandNative": trip_cmd,
                 "vppLPFWPTripLatchNative": latch,

@@ -154,17 +154,27 @@ EVENT_COLUMNS = (
     "wall_time_utc", "priority", "event_class", "equipment", "tag", "state",
     "value", "unit", "message", "source", "acknowledged",
 )
+# RAW metadata contract:
+# - model_time_s is the canonical causal/timing clock.
+# - wall_time_utc is transport/audit time only.
+# - collector_quality describes collector-row health only; it is NOT an OPC UA StatusCode.
 RAW_META_COLUMNS = (
     "record_sequence", "session_id", "incident_id", "model_time_s",
-    "wall_time_utc", "quality",
+    "wall_time_utc", "collector_quality",
 )
+LEGACY_RAW_META_COLUMNS = {"quality"}
 RAW_DERIVED_COLUMNS = (
     "LP_BFP_TRIP_PB", "LP_BFP_RESET_PB", "LP_BFP_TRIP_CMD",
     "LP_BFP_TRIP_LATCH", "VCB_A02_TRIP_CMD", "VCB_A02_OPEN_CMD",
     "VCB_A02_CLOSE_CMD", "VCB_A02_CLOSED", "LP_BFP_SPEED_RPM",
     "LP_FW_FLOW_TH",
 )
-FORBIDDEN_AI_COLUMNS = {"scenario_id", "root_cause", "fault_injection", "fault_preset"}
+FORBIDDEN_AI_COLUMNS = {
+    "scenario_id", "scenario", "scenario_name",
+    "root_cause", "expected_root_cause", "expected_cause",
+    "ground_truth", "answer_label",
+    "fault_injection", "fault_preset",
+}
 VISIBLE_EVENT_CLASSES = {"ALARM", "OPERATOR_ACTION", "PROTECTION", "ACK", "SYSTEM"}
 
 
@@ -351,17 +361,26 @@ def ensure_raw_csv(path: Path, tag_columns: list[str]) -> list[str]:
     if any(name in FORBIDDEN_AI_COLUMNS for name in existing):
         raise ValueError("RAW.csv contains forbidden answer/fault metadata columns")
     union = list(RAW_META_COLUMNS)
-    union.extend(name for name in existing if name not in RAW_META_COLUMNS)
+    union.extend(
+        name for name in existing
+        if name not in RAW_META_COLUMNS and name not in LEGACY_RAW_META_COLUMNS
+    )
     union.extend(name for name in tag_columns if name not in union)
     if existing == union:
         return union
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     shutil.copy2(path, path.with_name(f"{path.name}.before-dual-log-v7-{stamp}.bak"))
     temporary = path.with_name(f"{path.name}.{os.getpid()}.schema.tmp")
+    migrated_rows = []
+    for row in rows:
+        migrated = {name: row.get(name, "") for name in union}
+        if not migrated.get("collector_quality") and "quality" in row:
+            migrated["collector_quality"] = row.get("quality", "")
+        migrated_rows.append(migrated)
     with temporary.open("w", encoding="utf-8-sig", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=union)
         writer.writeheader()
-        writer.writerows({name: row.get(name, "") for name in union} for row in rows)
+        writer.writerows(migrated_rows)
     os.replace(temporary, path)
     return union
 
@@ -1218,7 +1237,7 @@ class AlarmEngine:
                 "kind": kind,
                 "unit": unit,
                 "changed": changed,
-                "quality": "GOOD",
+                "collector_quality": "GOOD",
             })
             group_counts[group] = group_counts.get(group, 0) + 1
         self.historian_rows = rows
@@ -1293,7 +1312,7 @@ class AlarmEngine:
             "incident_id": self.current_incident_id,
             "model_time_s": round(self.last_model_time, 9),
             "wall_time_utc": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
-            "quality": "GOOD",
+            "collector_quality": "GOOD",
         }
         row.update(raw)
         trip_command = float(raw[SIGNALS["VCB_TRIP_CMD"]])

@@ -629,7 +629,7 @@ startMonitor();
         for row=1:numel(indices)
             item=historianRows(indices(row));
             data(row,:)={item.name,historianCategory(item),tableScalar(item.value), ...
-                item.unit,item.quality,pick(item.changed,"Y","")};
+                item.unit,firstFieldText(item,{"collector_quality","quality"},""),pick(item.changed,"Y","")};
         end
         historianTable.Data=sanitizeTableData(data);
         try

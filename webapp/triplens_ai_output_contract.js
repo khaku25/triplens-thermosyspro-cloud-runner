@@ -80,9 +80,15 @@
     const logicMasterStatus = upper(src.logic_master_status || src.logic_master || src.logic_status, 'NOT_VERIFIED');
     const counterEvidence = array(src.counter_evidence).map((item) => (typeof item === 'object' ? { ...item } : item));
     const verificationGate = upper(context.verificationGate || context.verification_gate, 'HOLD');
+    const recordedTime = String(src.recorded_time ?? src.aligned_time ?? src.aligned_time_s ?? src.time ?? src.timestamp ?? '');
+    const recordedSeconds = Number(recordedTime);
+    const cutoffSeconds = Number(context.initiatingCutoffTime);
+    const hasCutoff = Number.isFinite(cutoffSeconds);
+    const beforeOrAtCutoff = !hasCutoff || (Number.isFinite(recordedSeconds) && recordedSeconds <= cutoffSeconds + 1e-9);
+    const deterministicTimeOrderValid = src.time_order_valid === true && beforeOrAtCutoff;
 
     if (normalizedStage === 'PRIMARY_CAUSE' && status !== 'UNKNOWN') {
-      const canConfirm = verificationGate === 'PASS' && ids.length > 0 && src.time_order_valid === true &&
+      const canConfirm = verificationGate === 'PASS' && ids.length > 0 && deterministicTimeOrderValid &&
         logicMasterStatus === 'VERIFIED' && counterEvidence.length === 0;
       if (status === 'CONFIRMED' && !canConfirm) status = 'CANDIDATE';
       if (status === 'OBSERVED') status = 'CANDIDATE';
@@ -101,10 +107,12 @@
       description: claim,
       evidence_ids: ids,
       related_tags: tags,
-      recorded_time: String(src.recorded_time ?? src.aligned_time ?? src.aligned_time_s ?? src.time ?? src.timestamp ?? ''),
+      recorded_time: recordedTime,
       ai_confidence: aiConfidence,
       logic_master_status: logicMasterStatus,
-      time_order_valid: src.time_order_valid === true ? true : src.time_order_valid === false ? false : null,
+      time_order_valid: normalizedStage === 'PRIMARY_CAUSE'
+        ? (src.time_order_valid === true ? deterministicTimeOrderValid : src.time_order_valid === false ? false : null)
+        : (src.time_order_valid === true ? true : src.time_order_valid === false ? false : null),
       counter_evidence: counterEvidence,
       review_required: src.review_required === true || status === 'CANDIDATE' || status === 'UNKNOWN',
       source: src.source || src.source_system || '',
@@ -131,8 +139,12 @@
     const context = { verificationGate };
 
     const criticalEvents = array(source.critical_events).map((item) => normalizeClaim(item, 'CRITICAL_EVENT', context));
-    const primaryCause = normalizeClaim(source.primary_cause, 'PRIMARY_CAUSE', context);
     const directTrigger = normalizeClaim(source.direct_trigger, 'DIRECT_TRIGGER', context);
+    const triggerSeconds = Number(directTrigger.recorded_time);
+    const primaryContext = Number.isFinite(triggerSeconds)
+      ? { ...context, initiatingCutoffTime: triggerSeconds }
+      : context;
+    const primaryCause = normalizeClaim(source.primary_cause, 'PRIMARY_CAUSE', primaryContext);
     const propagation = array(source.propagation).map((item) => normalizeClaim(item, 'PROPAGATION', context));
     const causalChain = array(source.causal_chain).map((item) => {
       if (item && typeof item === 'object') return { ...item };

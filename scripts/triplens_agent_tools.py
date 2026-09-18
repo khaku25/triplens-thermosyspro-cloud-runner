@@ -16,9 +16,20 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
-FORBIDDEN = {"scenario_id", "root_cause", "fault_injection", "fault_preset", "expected_root_cause"}
+FORBIDDEN = {
+    "scenario_id", "scenario", "scenario_name",
+    "root_cause", "expected_root_cause", "expected_cause",
+    "ground_truth", "answer_label",
+    "fault_injection", "fault_preset",
+}
 VISIBLE_EVENT_CLASSES = {"ALARM", "OPERATOR_ACTION", "PROTECTION", "ACK", "SYSTEM"}
-RAW_META_COLUMNS = {"record_sequence", "session_id", "incident_id", "model_time_s", "wall_time_utc", "quality"}
+# Current RAW uses collector_quality. Legacy Run #41 files used quality; both are metadata,
+# neither is an OPC UA StatusCode. All causal ordering uses model_time_s.
+RAW_META_COLUMNS = {
+    "record_sequence", "session_id", "incident_id", "model_time_s", "wall_time_utc",
+    "collector_quality", "quality",
+}
+CAUSAL_TIME_FIELD = "model_time_s"
 
 DEFAULT_LIMITS = {
     "max_tool_calls": 8,

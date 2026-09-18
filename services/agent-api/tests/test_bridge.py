@@ -19,7 +19,7 @@ EVENT_FIELDS = [
     "priority","event_class","equipment","tag","state","value","unit","message","source","acknowledged",
 ]
 RAW_FIELDS = [
-    "record_sequence","session_id","incident_id","model_time_s","wall_time_utc","quality",
+    "record_sequence","session_id","incident_id","model_time_s","wall_time_utc","collector_quality",
     "vppLPFWPTripCommandNative","vppLPFWPTripLatchNative","vppVCBA02TripCommandNative",
     "vppECMSVCBA02Closed","vppLPFWPSpeedRPM","vppLPFWPMassFlowTH","vppLPDrumLevelM",
 ]
@@ -52,7 +52,7 @@ class BridgeTest(unittest.TestCase):
                 "tag":"SPEED_PROVEN_LOST","state":"ACTIVE","value":0,"unit":"BOOL",
                 "message":"LP BFP SPEED PROVEN LOST","source":"DCS","acknowledged":False,
             }])
-            base={"session_id":"S","incident_id":"I","wall_time_utc":"","quality":"GOOD"}
+            base={"session_id":"S","incident_id":"I","wall_time_utc":"","collector_quality":"GOOD"}
             write_csv(raw, RAW_FIELDS, [
                 {**base,"record_sequence":1,"model_time_s":0,"vppLPFWPTripCommandNative":0,
                  "vppLPFWPTripLatchNative":0,"vppVCBA02TripCommandNative":0,"vppECMSVCBA02Closed":1,
