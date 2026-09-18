@@ -1,0 +1,95 @@
+{
+  "version": "1.0",
+  "mode": "HYBRID_AGENT_EVIDENCE_TOOLS_V1",
+  "roles": {
+    "python": [
+      "parse_event_raw",
+      "filter_evidence_policy",
+      "time_alignment",
+      "exact_tag_mapping",
+      "bounded_search",
+      "candidate_generation",
+      "verification_gate"
+    ],
+    "gemini_agent": [
+      "select_critical_events",
+      "compare_evidence",
+      "identify_primary_cause",
+      "identify_direct_trigger",
+      "classify_propagation",
+      "construct_causal_chain",
+      "seek_counter_evidence"
+    ]
+  },
+  "reserved_agent_decisions": [
+    "critical_events",
+    "primary_cause",
+    "direct_trigger",
+    "propagation",
+    "causal_chain"
+  ],
+  "bootstrap": {
+    "include": [
+      "run_id",
+      "data_digest",
+      "incident_id",
+      "event_row_count",
+      "raw_row_count",
+      "tool_manifest"
+    ],
+    "exclude_bulk_data": [
+      "event_rows",
+      "raw_rows",
+      "full_historian"
+    ],
+    "forbidden_answer_metadata": [
+      "scenario_id",
+      "root_cause",
+      "expected_root_cause",
+      "fault_injection",
+      "fault_preset"
+    ]
+  },
+  "tool_budget": {
+    "max_tool_calls_per_analysis": 8,
+    "search_events_max_rows": 20,
+    "event_window_max_rows": 30,
+    "event_window_seconds_each_side": 10,
+    "raw_window_max_rows": 50,
+    "raw_window_max_tags": 8,
+    "raw_window_max_span_seconds": 20,
+    "tag_series_max_points": 50,
+    "logic_context_max_rows": 12,
+    "equipment_state_max_events": 10
+  },
+  "recommended_agent_sequence": [
+    "search_events",
+    "get_event_window",
+    "get_tag_series",
+    "get_logic_context",
+    "get_equipment_state_or_get_raw_window_if_needed",
+    "search_counter_evidence",
+    "emit_structured_analysis"
+  ],
+  "status_policy": {
+    "primary_cause_default": "CANDIDATE",
+    "unsupported_claim": "UNKNOWN",
+    "direct_trigger_requires_evidence_id": true,
+    "propagation_requires_observation": true,
+    "unknown_remains_unknown": true
+  },
+  "verification_gate": {
+    "python_post_validation": true,
+    "hold_blocks_final_confirmation": true,
+    "ai_confidence_is_not_engineering_confirmation": true,
+    "unregistered_logic_inference": false
+  },
+  "reuse_key": [
+    "event_digest",
+    "raw_digest",
+    "logic_master_version",
+    "tool_contract_version",
+    "prompt_version",
+    "scenario_selection"
+  ]
+}
