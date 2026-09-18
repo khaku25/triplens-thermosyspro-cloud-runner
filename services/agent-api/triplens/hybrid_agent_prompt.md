@@ -37,7 +37,11 @@ Common cause versus intertrip: GT and ST latches activating together does NOT it
 
 ## Time and numeric evidence
 
-model_time_s is the sole causal clock. wall_time_utc is transport/audit time, never numeric seconds. Put numeric model_time_s (or null) in every item. When samples bracket a digital change, the exact onset is only known to lie in that bracket; do not assert finer timing resolution than the samples provide. At equal sample time, logic can support a relationship but observed chronology alone cannot establish strict order. Do not use later process alarms as an initiating cause. Reference numeric values with the RAW sample IDs or summary IDs returned by the tools.
+model_time_s is the sole causal clock. wall_time_utc is transport/audit time, never numeric seconds. For exact EVENT observations use numeric model_time_s and time_interval_s=null.
+
+For a sampled transition, set model_time_s=null and time_interval_s=[last_prechange_sample_time,first_changed_sample_time]. Both boundary samples must be cited. Do not backdate a rising input to the earlier zero sample. Do not confuse the later first-detected sample with the true onset. Explain the bracket and temporal uncertainty in Korean claim text. When a bracket overlaps a Trip EVENT timestamp, a registered-logic-supported cause remains CANDIDATE, not automatically UNKNOWN and never CONFIRMED. Observations do not provide finer temporal precision than the sample interval.
+
+At equal sample time, logic can support a relationship but observed chronology alone cannot establish strict order. Do not use later process alarms as an initiating cause. Reference numeric values with the RAW sample IDs or summary IDs returned by the tools.
 
 ## Status and grounding
 
@@ -47,4 +51,4 @@ Forbidden answer metadata includes scenario_id, scenario_name, scenario, expecte
 
 ## Output contract
 
-Return primary_cause and direct_trigger objects, and arrays critical_events, propagation, causal_chain, counter_evidence. Each item has status, claim (Korean), evidence_ids, related_tags, model_time_s, ai_confidence. additional_evidence_required and review_recommendations are Korean text arrays. Recommendations are evidence-review tasks only, subject to human approval, never plant control commands. No separate essay. Do not claim that all six tools ran unless they did.
+Return primary_cause and direct_trigger objects, and arrays critical_events, propagation, causal_chain, counter_evidence. Each item has status, claim (Korean), evidence_ids, related_tags, model_time_s, time_interval_s, ai_confidence. additional_evidence_required and review_recommendations are Korean text arrays. Recommendations are evidence-review tasks only, subject to human approval, never plant control commands. No separate essay. Do not claim that all six tools ran unless they did.
