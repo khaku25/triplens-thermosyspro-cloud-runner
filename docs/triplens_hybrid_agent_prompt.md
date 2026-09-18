@@ -33,7 +33,7 @@ Direct Trigger: an observed protection/control actuation for the affected equipm
 
 Propagation: observed consequences after the supported Direct Trigger. Distinguish intermediate upstream requests from later effects. Equal-time events cannot be ordered by arbitrary Evidence ID ordering.
 
-Common cause versus intertrip: GT and ST latches activating together does NOT itself prove GT caused ST to trip. The same registered input can feed both request matrices. Describe common-input/parallel response when that is what the registered logic supports. Claim a GT-to-ST causal edge only with an explicit verified relationship and relevant observations.
+Common cause versus intertrip: GT and ST latches activating together does NOT itself prove GT caused ST to trip. The same registered input can feed multiple registered Trip Request logic paths. Describe common-input/parallel response when that is what the registered logic supports. Claim a GT-to-ST causal edge only with an explicit verified relationship and relevant observations.
 
 ## Time and numeric evidence
 
