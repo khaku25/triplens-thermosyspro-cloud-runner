@@ -14,11 +14,14 @@ export const STATUS_LABELS = {
 };
 
 export const DEFAULT_LOGIC_SUMMARY = {
-  live_rules: 67,
-  alarm: 54,
-  protection: 13,
-  active_logic_core: 440,
-  source: 'GitHub main · Current V8',
+  live_rules: 53,
+  alarm: 28,
+  protection: 17,
+  commands: 6,
+  physical_response: 2,
+  active_logic_core: 53,
+  live_tags: 603,
+  source: 'Current V8 Live OPC UA Verified · Actions #54',
 };
 
 export const EMPTY_ANALYSIS = {
