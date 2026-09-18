@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import csv
 import math
+import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -76,6 +77,26 @@ def _downsample(items: list[Any], limit: int) -> list[Any]:
         return [items[0]]
     indexes = [round(i * (len(items) - 1) / (limit - 1)) for i in range(limit)]
     return [items[i] for i in indexes]
+
+
+def load_logic_rows(sqlite_path: Path) -> list[dict[str, Any]]:
+    """Load active Logic Master rows with exact linked tag IDs from TripLens SQLite."""
+    db = sqlite3.connect(Path(sqlite_path))
+    db.row_factory = sqlite3.Row
+    try:
+        rows = db.execute(
+            """
+            SELECT l.*,
+                   (SELECT group_concat(DISTINCT x.tag_id)
+                      FROM logic_tag_link x WHERE x.logic_id=l.logic_id) AS linked_tag_ids
+              FROM logic_rule l
+             WHERE COALESCE(l.enabled_default,1)=1
+             ORDER BY l.logic_id
+            """
+        ).fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        db.close()
 
 
 def _event_public(row: dict[str, str]) -> dict[str, Any]:
