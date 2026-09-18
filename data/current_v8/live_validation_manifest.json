@@ -1,0 +1,31 @@
+{
+  "baseline": "Current V8 Live OPC UA Verified",
+  "validation_run": {
+    "number": 54,
+    "id": 35309650110,
+    "url": "https://github.com/khaku25/triplens-thermosyspro-cloud-runner/actions/runs/35309650110"
+  },
+  "counts": {
+    "live_tags": 603,
+    "logic_rules": 53,
+    "logic_inputs_live": 44,
+    "vpp_outputs_live": 28,
+    "derived_alarm_outputs": 28,
+    "writable_inputs_live": 66,
+    "write_persistence_pass": 56,
+    "physics_readback_pass": 96
+  },
+  "policy": {
+    "source_identity": "exact live OPC UA BrowseName",
+    "logic_context": "exact registered Current V8 rules only",
+    "scenario_metadata_to_agent": "forbidden"
+  },
+  "files": {
+    "live_tag_allowlist.csv": {
+      "sha256": "ba5610fdc32ff22c9171bcaf016066bccea6682a5ec5dfcfbd34c0fd3c3a6f3e"
+    },
+    "live_logic_runtime.csv": {
+      "sha256": "1059388a61a740b0ee298eae410d5c11261d8e495ffc5b32a96b9a2687fa9913"
+    }
+  }
+}
