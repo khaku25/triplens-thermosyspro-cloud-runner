@@ -46,7 +46,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
-          fetch-depth: 1
+          fetch-depth: 0
+      - name: Integrate latest main before deployment verification
+        if: github.event_name == 'push' && github.ref_name == 'logic-drawio-one-update'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git merge --no-edit origin/main
+          echo "INTEGRATION_TEST_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -57,7 +67,7 @@ jobs:
         run: python scripts/install_logic_web.py
       - name: Generate one consistent release
         env:
-          REFRESH_DRIVE: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.refresh_drive) }}
+          REFRESH_DRIVE: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_drive }}
           SYNC_DRIVE: ${{ github.event_name == 'workflow_dispatch' && inputs.sync_drive }}
           TRIPLENS_DRIVE_ACCESS_TOKEN: ${{ secrets.TRIPLENS_DRIVE_ACCESS_TOKEN }}
         shell: bash
@@ -84,7 +94,12 @@ jobs:
         run: |
           python -m unittest discover -s tests -p 'test_logic_*.py' -v
           python -m unittest discover -s tests -p test_current_catalog.py -v
-          python -m unittest discover -s services/agent-api/tests -p test_bridge.py -v
+          python -m unittest discover -s services/agent-api/tests -p 'test_*.py' -v
+      - name: Existing evidence UI and offline Gemini regression tests
+        run: |
+          node --test tests/test_analysis_client.mjs
+          node --test tests/test_ai_output_contract.mjs tests/test_event_tag_resolver.mjs tests/test_report_export.mjs
+          if test -f tests/test_gemini_sdk_transport.py; then python tests/test_gemini_sdk_transport.py; fi
       - name: Build existing Next.js application with logic detail route
         run: |
           npm ci --prefix apps/web
@@ -126,20 +141,23 @@ jobs:
               browser.close()
           print('NEXT_LOGIC_DIALOG_AND_TAG_DEEPLINK_PASS')
           PY
+          python tests/browser_v8_review.py
       - name: Verify generated files are consistent
         run: python scripts/update_triplens_logic.py --check
-      - name: Save generated files in the selected branch
+      - name: Save verified generated files and integrated main in selected branch
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
         shell: bash
         run: |
+          set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -- data/current_v8 logic_diagrams generated/logic apps/web/lib/current-logic-summary.json apps/web/public/logic-assets services/agent-api/triplens/current_v8
           git reset -- ':(glob)**/__pycache__/**' ':(glob)**/*.pyc' || true
           if ! git diff --cached --quiet; then
             git commit -m 'Update synchronized TripLens masters, draw.io and web logic assets'
-            git push origin HEAD:"${GITHUB_REF_NAME}"
           fi
+          git push origin HEAD:"${GITHUB_REF_NAME}"
+          echo "VERIFIED_RELEASE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
       - name: Preserve evidence and generated deliverables
         if: always()
         uses: actions/upload-artifact@v4
@@ -149,6 +167,7 @@ jobs:
             generated/logic/
             data/current_v8/masters/
             logic_diagrams/
+            outputs/integration-review/
             ${{ runner.temp }}/logic-desktop.png
             ${{ runner.temp }}/logic-mobile.png
             ${{ runner.temp }}/logic-next-dialog.png
@@ -161,6 +180,7 @@ jobs:
           echo '## TripLens Logic Asset Update' >> "$GITHUB_STEP_SUMMARY"
           echo 'Metadata, diagrams and read-only web/API assets only. No Modelica or OPC UA protection runtime changes.' >> "$GITHUB_STEP_SUMMARY"
           echo 'Drive uploads require separately authorized credentials. A saved commit does not prove a Vercel deployment is READY.' >> "$GITHUB_STEP_SUMMARY"
+          echo "Verified release commit: ${VERIFIED_RELEASE_SHA:-not-published}" >> "$GITHUB_STEP_SUMMARY"
           if test -f generated/logic/asset_manifest.json; then
             echo '```json' >> "$GITHUB_STEP_SUMMARY"
             cat generated/logic/asset_manifest.json >> "$GITHUB_STEP_SUMMARY"
