@@ -12,6 +12,11 @@ on:
       - 'config/signal_map.json'
       - 'logic_db/**'
       - 'webapp/**'
+      - 'scripts/triplens_agent_tools.py'
+      - 'scripts/triplens_dual_log_analyzer.py'
+      - 'config/triplens_hybrid_agent_v1.json'
+      - 'tests/test_agent_tools.py'
+      - 'tests/test_dual_log_agent_role.py'
       - 'tests/test_event_tag_master_coverage.py'
       - 'tests/test_event_tag_resolver.mjs'
       - 'tests/test_report_export.mjs'
@@ -22,6 +27,11 @@ on:
       - 'config/alarm_registry_v1.csv'
       - 'logic_db/**'
       - 'webapp/**'
+      - 'scripts/triplens_agent_tools.py'
+      - 'scripts/triplens_dual_log_analyzer.py'
+      - 'config/triplens_hybrid_agent_v1.json'
+      - 'tests/test_agent_tools.py'
+      - 'tests/test_dual_log_agent_role.py'
       - 'tests/test_event_tag_master_coverage.py'
       - 'tests/test_event_tag_resolver.mjs'
       - 'tests/test_report_export.mjs'
@@ -78,6 +88,11 @@ jobs:
 
       - name: Web EVENT resolver regression tests
         run: node --test tests/test_event_tag_resolver.mjs
+
+      - name: Hybrid Agent evidence-tool regression tests
+        run: |
+          python3 tests/test_agent_tools.py
+          python3 tests/test_dual_log_agent_role.py
 
       - name: Report PDF and PINPOINT export regression tests
         run: node --test tests/test_report_export.mjs
