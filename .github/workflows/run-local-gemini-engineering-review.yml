@@ -1,0 +1,47 @@
+name: Run Local Gemini Engineering Review
+on:
+  push:
+    branches: [feature/semantic-engineering-review]
+    paths:
+      - 'services/agent-api/**'
+      - 'apps/web/lib/analysisClient.mjs'
+      - 'tests/build_report_rows.mjs'
+      - 'tests/run_local_semantic_review.py'
+      - '.github/workflows/run-local-gemini-engineering-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  engineering-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Agent API dependencies
+        run: python -m pip install -e services/agent-api
+      - name: Fetch untouched archived V8 Run41 artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p outputs/semantic-engineering-review
+          gh api repos/khaku25/triplens-thermosyspro-cloud-runner/actions/artifacts/10404407335/zip > outputs/run41.zip
+      - name: Run current analyzer and independent engineering reviewer
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TRIPLENS_GEMINI_MODEL: gemini-3.8-flash
+          TRIPLENS_REVIEWER_MODEL: gemini-3.8-flash
+        run: python tests/run_local_semantic_review.py --archive outputs/run41.zip
+      - name: Preserve analysis, report placement and reviewer findings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semantic-engineering-review-${{ github.run_id }}
+          path: outputs/semantic-engineering-review/
+          retention-days: 14
