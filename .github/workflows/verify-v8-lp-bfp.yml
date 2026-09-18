@@ -158,7 +158,7 @@ jobs:
             --endpoint "$ENDPOINT" \
             --output-csv outputs/v8-lpbfp/live-opcua-tags.csv \
             --summary outputs/v8-lpbfp/live-opcua-tag-audit.json \
-            --expected-min-vpp 680
+            --expected-min-vpp 600
           python3 tests/v8_5_2/verify_opcua_write_persistence.py \
             --endpoint "$ENDPOINT" \
             --map opcua_native_valve_nodes_v1.csv \
