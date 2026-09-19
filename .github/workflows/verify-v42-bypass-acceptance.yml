@@ -1,0 +1,104 @@
+name: Verify ThermoSysPro 4.2 bypass operation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "modelica/TripLensUserModels_Bypass.mo"
+      - "modelica/TripLens_V42_Bypass_Acceptance.mo"
+      - "modelica/build_v42_bypass_acceptance.mos"
+      - "modelica/verify_v42_bypass_acceptance.py"
+      - ".github/workflows/verify-v42-bypass-acceptance.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-bypass:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      THERMOSYSPRO_COMMIT: a896ab75ce22162369e7fa4ce79927eeca44ad4a
+      OPENMODELICA_IMAGE: openmodelica/openmodelica:v1.27.0-minimal
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and identify exact ThermoSysPro 4.2 source
+        run: |
+          mkdir -p vendor/download vendor/ThermoSysPro build/omhome \
+            build/v42-bypass-acceptance
+          curl -fL --retry 3 --retry-delay 5 \
+            "https://gitlab.pam-retd.fr/thermosysproandco/ThermoSysPro/-/archive/${THERMOSYSPRO_COMMIT}/ThermoSysPro-${THERMOSYSPRO_COMMIT}.zip" \
+            -o vendor/thermosyspro-4.2.zip
+          unzip -q vendor/thermosyspro-4.2.zip -d vendor/download
+          source_root="$(find vendor/download -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          test -n "$source_root"
+          cp -a "$source_root"/. vendor/ThermoSysPro/
+          grep -E 'ThermoSysPro Version 4\.2|version *= *"4\.2"' \
+            vendor/ThermoSysPro/ThermoSysPro/package.mo \
+            | tee build/v42-bypass-acceptance/version-evidence.txt
+          grep -q 'ThermoSysPro Version 4\.2' \
+            build/v42-bypass-acceptance/version-evidence.txt
+          grep -q 'version *= *"4\.2"' \
+            build/v42-bypass-acceptance/version-evidence.txt
+
+      - name: Install Modelica 4.0.0
+        run: |
+          timeout --signal=TERM --kill-after=30s 5m \
+            docker run --rm \
+              -v "$PWD/build/omhome:/root" \
+              -v "$PWD:/workspace" \
+              -w /workspace \
+              "$OPENMODELICA_IMAGE" \
+              omc /workspace/modelica/install_modelica_4_0.mos \
+            | tee build/v42-bypass-acceptance/install.log
+
+      - name: Translate lightweight HP and LP bypass acceptance model
+        run: |
+          timeout --signal=TERM --kill-after=30s 5m \
+            docker run --rm \
+              -v "$PWD/build/omhome:/root" \
+              -v "$PWD:/workspace" \
+              -w /workspace \
+              "$OPENMODELICA_IMAGE" \
+              omc /workspace/modelica/build_v42_bypass_acceptance.mos \
+            | tee build/v42-bypass-acceptance/translation.log
+          test -x build/v42-bypass-acceptance/TripLens_V42_Bypass_Acceptance
+
+      - name: Open HP and LP bypasses and simulate 0.5 seconds
+        run: |
+          timeout --signal=TERM --kill-after=10s 2m \
+            docker run --rm \
+              -v "$PWD/build/omhome:/root" \
+              -v "$PWD:/workspace" \
+              -w /workspace/build/v42-bypass-acceptance \
+              "$OPENMODELICA_IMAGE" \
+              ./TripLens_V42_Bypass_Acceptance \
+                -startTime=0 \
+                -stopTime=0.5 \
+                -stepSize=0.005 \
+                -tolerance=1e-6 \
+                -s=dassl \
+                -lv=LOG_STDOUT,LOG_ASSERT,LOG_STATS \
+            | tee build/v42-bypass-acceptance/simulation.log
+
+      - name: Verify stroke times, flow direction, and 4.2 valve agreement
+        run: |
+          python3 modelica/verify_v42_bypass_acceptance.py \
+            build/v42-bypass-acceptance/TripLens_V42_Bypass_Acceptance_res.csv \
+            | tee build/v42-bypass-acceptance/acceptance-evidence.json
+
+      - name: Upload acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: thermosyspro-4.2-bypass-acceptance-${{ github.run_number }}
+          path: |
+            build/v42-bypass-acceptance/version-evidence.txt
+            build/v42-bypass-acceptance/install.log
+            build/v42-bypass-acceptance/translation.log
+            build/v42-bypass-acceptance/simulation.log
+            build/v42-bypass-acceptance/acceptance-evidence.json
+            build/v42-bypass-acceptance/TripLens_V42_Bypass_Acceptance_res.csv
+          if-no-files-found: warn
+          retention-days: 30
