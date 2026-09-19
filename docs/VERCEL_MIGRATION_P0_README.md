@@ -19,7 +19,10 @@ Current live source data remain 603 source nodes and 53 Logic Master rows. An up
 | `services/agent-api/gemini_agent.py` | Stateless Gemini Interactions loop, enforced output schema, tool results and execution trace |
 | `services/agent-api/triplens/analysis_contract.py` | Shape, retrieved-reference and chronology checks; no causal claim generation |
 | `apps/web/lib/analysisClient.mjs` | Defensive display normalization, CSV parsing/export and browser-local persistence |
-| `apps/web/components/TripLensWorkspace.js` | Five-tab workspace, original EVENT timeline, evidence detail, review checklist and editable draft |
+| `apps/web/components/TripLensWorkspace.js` | Five-tab workspace, evidence→logic detail, editable report V2 and export actions |
+| `apps/web/components/IntegrationTestbench.js` | Static device Tag→Rule→draw.io and report-export testbench; no Agent/Gemini call |
+| `apps/web/lib/integrationTestbench.mjs` | Deterministic device cases, exact index checks and report V2 adapter |
+| `apps/web/lib/reportExporter.cjs` | Shared report V2 HTML/PDF and PINPOINT/8-column CSV engine |
 
 ## Six tools, unchanged decision ownership
 
@@ -43,7 +46,9 @@ The API rejects malformed/duplicate identifiers, nonfinite model times, incompat
 
 ## Web behavior
 
-Original EVENT rows remain available independent of AI-selected Critical Events. Evidence IDs and tags open real detail panels with an explicit dashboard return button. Browser IndexedDB preserves selected files, result and edited report across navigation/reload when storage is available. Matching backend analysis identity reuses the result without another Gemini call. The draft CSV has the required eight Korean columns, a UTF-8 BOM and spreadsheet formula escaping. Missing sections are shown as UNKNOWN review rows rather than silently omitted.
+Original EVENT rows remain available independent of AI-selected Critical Events. Evidence detail exposes exact `source_node` and every registered `logic_id` as links to the shared draw.io viewer. Browser IndexedDB preserves selected files, result and edited report across navigation/reload when storage is available. Matching backend analysis identity reuses the result without another Gemini call. Report V2 PDF and the draft CSV use the current editable eight-column rows; PINPOINT retains its fixed evidence schema. Missing sections are shown as UNKNOWN review rows rather than silently omitted.
+
+`/testbench` verifies ten representative device connections and the report export engine from packaged static assets only. Full details and the one-promotion deployment gate are in [`INTEGRATION_TESTBENCH_REPORT_V2.md`](INTEGRATION_TESTBENCH_REPORT_V2.md).
 
 ## Deployment
 

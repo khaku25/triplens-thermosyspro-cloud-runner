@@ -57,3 +57,18 @@ test('verification HOLD keeps report output as draft and never presents final-co
   assert.doesNotMatch(html,/Root Cause Confirmed/);
   assert.doesNotMatch(html,/>최종 확정</);
 });
+
+test('PDF v2 preserves the current editable report rows exactly', () => {
+  const edited = {
+    ...report,
+    report_rows: [
+      { section:'개요', item:'장애 요약', content:'운전 담당자가 수정한 최종 초안 문구', status:'OBSERVED', evidence_ids:'EV-1', tags:'ST.TRIP.LATCH', time:'48.440 s', note:'담당자 편집' },
+      { section:'발생 원인', item:'직접 Trip 원인', content:'편집된 직접 Trip 원인', status:'CANDIDATE', evidence_ids:'EV-1', tags:'ST.TRIP.LATCH', time:'48.440 s', note:'최종 승인 전' },
+    ],
+  };
+  const html = exporter.buildReportHtml(edited);
+  assert.match(html,/운전 담당자가 수정한 최종 초안 문구/);
+  assert.match(html,/편집된 직접 Trip 원인/);
+  assert.match(html,/담당자 편집/);
+  assert.doesNotMatch(html,/Dual Log evidence preserved/);
+});
