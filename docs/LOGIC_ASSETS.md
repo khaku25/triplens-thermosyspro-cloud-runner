@@ -63,6 +63,8 @@ Linux/macOS:
 분석 결과의 태그를 누르면 동일 상세 창에서 해당 태그의 관련 로직으로 이동합니다.
 창을 닫으면 업로드 파일/분석 결과를 유지한 기존 화면으로 돌아옵니다.
 별도 페이지는 `/logic`, 직접 연결은 `/logic?tag=vppHPDrumLevelM` 또는 `/logic?rule=AL-HP-LEVEL-HH`입니다.
+근거 상세에서는 Evidence Catalog의 `source_node`와 `logic_ids`를 각각 태그 도면/Rule 도면 버튼으로 표시합니다.
+운영 분석 전에 `/testbench`에서 GT·ST·52GT·52ST·HP/IP/LP FWP·HP/IP/LP Drum의 exact 연결을 독립적으로 확인할 수 있습니다.
 도면 입력/출력을 누르면 태그 상세로, 로직 블록을 누르면 Rule 상세로 이동합니다.
 등록되지 않은 식별자는 임의로 비슷한 태그에 매칭하지 않습니다.
 
@@ -125,3 +127,4 @@ python scripts/update_triplens_logic.py --check
 
 브라우저 테스트에는 Playwright 1.57.0과 Chromium이 필요합니다.
 생성기/엑셀 reader/도면 exporter에는 Python 3.10 이상 표준 라이브러리만 필요합니다.
+Testbench, 근거 상세 매핑과 GitHub→Vercel 단일 승격 절차는 [`INTEGRATION_TESTBENCH_REPORT_V2.md`](INTEGRATION_TESTBENCH_REPORT_V2.md)를 따릅니다.

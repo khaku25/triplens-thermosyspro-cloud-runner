@@ -15,6 +15,10 @@ V8은 현재 V8.5.3 RC1 검증 단계입니다. LP BFP 단기 시나리오는 Gi
 검증 범위와 승격 조건은
 [`docs/V8_5_3_RC1_VALIDATION.md`](docs/V8_5_3_RC1_VALIDATION.md)를 기준으로 합니다.
 
+TripLens 웹의 근거→Tag/Logic 도면 연결, `/testbench`, 보고서 V2/PDF/PINPOINT 및
+GitHub CI 통과 후 동일 Vercel Preview artifact를 한 번만 운영 승격하는 절차는
+[`docs/INTEGRATION_TESTBENCH_REPORT_V2.md`](docs/INTEGRATION_TESTBENCH_REPORT_V2.md)를 기준으로 합니다.
+
 저장소에 함께 있는 MATLAB ECMS VPP와 Python 변환기는 웹 변환부 이관 및
 예제 검증을 위한 실행 가능한 기준 구현입니다. Action 실행 경로와는 분리되어
 있으며, RAW를 변경하지 않고 네 관측 계층으로 변환합니다.

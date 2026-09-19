@@ -8,6 +8,8 @@ on:
       - 'services/agent-api/**'
       - 'apps/web/lib/analysisClient.mjs'
       - 'tests/test_report_row_identity.mjs'
+      - 'tests/test_integration_testbench.mjs'
+      - 'tests/test_report_export.mjs'
       - 'tests/run_citation_review_fix.py'
       - 'tests/review_captured_reference_fix.py'
       - 'tests/browser_review_reference_fix.py'
@@ -52,7 +54,7 @@ jobs:
           mkdir -p outputs/review-reference-fix
           python -m unittest discover -s services/agent-api/tests -p 'test_*.py' -v
           node --test tests/test_analysis_client.mjs tests/test_report_row_identity.mjs tests/test_report_semantic_placement.mjs
-          node --test tests/test_ai_output_contract.mjs tests/test_event_tag_resolver.mjs tests/test_report_export.mjs
+          node --test tests/test_ai_output_contract.mjs tests/test_event_tag_resolver.mjs tests/test_report_export.mjs tests/test_integration_testbench.mjs
           python tests/test_gemini_sdk_transport.py
           python scripts/update_triplens_logic.py --check
       - name: Build original application with unchanged logic viewer
