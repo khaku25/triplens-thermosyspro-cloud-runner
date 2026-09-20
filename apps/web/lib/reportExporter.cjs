@@ -37,6 +37,19 @@
     '증거자료',
   ];
 
+  const WORKSPACE_REPORT_SECTIONS = [
+    '개요',
+    '사고 발생 전 운전 현황',
+    '장애 현상',
+    '시간대별 사건·자동동작(SOE)',
+    '발생 원인',
+    '운전원·정비 조치사항',
+    '조치 결과 및 복구 판정',
+    '추정 원인 및 미확인 사항',
+    '재발방지 대책 — 검토 권고사항',
+    '증거자료',
+  ];
+
   const KNOWN_SECTIONS = [
     ['incident_summary', 'Incident Summary'],
     ['critical_events', 'Critical Events'],
@@ -68,6 +81,12 @@
   function csvCell(value) {
     const text = String(value ?? '');
     return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  }
+
+  function formulaSafeCsvCell(value) {
+    let text = String(value ?? '');
+    if (/^[\s]*[=+@-]/.test(text)) text = "'" + text;
+    return csvCell(text);
   }
 
   function asText(value) {
@@ -192,7 +211,9 @@
   function buildReportHtml(report) {
     const analysis = normalizedAnalysis(report);
     const metadata = report.metadata || {};
-    const title = analysis.verification_gate === 'PASS' ? '설비 고장 분석보고서 (검토본)' : '설비 고장 분석보고서 (초안)';
+    const reviewed = report.document_state ? report.document_state === 'REVIEWED' : analysis.verification_gate === 'PASS';
+    const documentLabel = reviewed ? '고장보고서 검토본' : '고장보고서 초안';
+    const title = reviewed ? '설비 고장 분석보고서 (검토본)' : '설비 고장 분석보고서 (초안)';
     const metaRows = [
       ['Run ID', report.run_id || metadata.run_id || ''],
       ['EVENT', metadata.event_file || report.event_file || 'EVENT.csv'],
@@ -211,7 +232,7 @@
       ['발생 시각', report.incident_time || metadata.incident_time || claimField(firstCritical, 'recorded_time', '')],
       ['대상 설비', report.equipment || metadata.equipment || ''],
       ['장애 요약', report.incident_summary || ''],
-      ['분석 상태', analysis.finality.output_label],
+      ['분석 상태', documentLabel],
     ].map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(asText(v))}</td></tr>`).join('');
 
     const criticalRows = analysis.critical_events.map((item) => `<tr><td>${esc(item.recorded_time)}</td><td>${esc(item.claim)}</td><td>${esc(statusLabel(item.status))}</td><td>${esc(joinList(item.evidence_ids))}</td></tr>`).join('');
@@ -223,7 +244,9 @@
     const evidenceRows = pinpointRows(report).map((row) => `<tr><td>${esc(row.event_id || '')}</td><td>${esc(row.source_system || '')}</td><td>${esc(row.event_tag || '')}</td><td>${esc(row.canonical_tag || '')}</td><td>${esc(row.aligned_time || row.original_time || '')}</td><td>${esc(row.disposition || row.state || '')}</td></tr>`).join('');
 
     const editedRows = Array.isArray(report.report_rows) ? report.report_rows : [];
-    const editedBody = editedRows.length ? FAILURE_REPORT_SECTIONS.map((section, index) => {
+    const workspaceRows = editedRows.some((row) => ['시간대별 사건·자동동작(SOE)','운전원·정비 조치사항','조치 결과 및 복구 판정'].includes(String(row?.section ?? row?.['구분'] ?? '')));
+    const editedSections = workspaceRows ? WORKSPACE_REPORT_SECTIONS : FAILURE_REPORT_SECTIONS;
+    const editedBody = editedRows.length ? editedSections.map((section, index) => {
       const rows = editedRows.filter((row) => String(row.section ?? row['구분'] ?? '') === section);
       const body = rows.length ? rows.map((row) => `<tr><td>${esc(row.item ?? row['항목'] ?? '')}</td><td>${esc(row.content ?? row['내용'] ?? '')}</td><td>${esc(row.status ?? row['상태'] ?? '')}</td><td>${esc(row.evidence_ids ?? row['근거 ID'] ?? '')}</td><td>${esc(row.tags ?? row['관련 태그'] ?? '')}</td><td>${esc(row.time ?? row['기록 시각'] ?? '')}</td><td>${esc(row.note ?? row['비고'] ?? '')}</td></tr>`).join('') : '<tr><td colspan="7">자료 없음</td></tr>';
       return `<section class="section"><h2>${index + 1}. ${esc(section)}</h2><table><thead><tr><th>항목</th><th>내용</th><th>상태</th><th>근거 ID</th><th>관련 태그</th><th>기록 시각</th><th>비고</th></tr></thead><tbody>${body}</tbody></table></section>`;
@@ -316,7 +339,7 @@ ${editedBody || generatedBody}
 
   function buildFailureReportCsv(report) {
     const rows = failureReportRows(report);
-    return [FAILURE_REPORT_COLUMNS.join(','), ...rows.map((row) => FAILURE_REPORT_COLUMNS.map((column) => csvCell(row[column])).join(','))].join('\r\n') + '\r\n';
+    return [FAILURE_REPORT_COLUMNS.join(','), ...rows.map((row) => FAILURE_REPORT_COLUMNS.map((column) => formulaSafeCsvCell(row[column])).join(','))].join('\r\n') + '\r\n';
   }
 
   function downloadText(filename, text, mimeType) {

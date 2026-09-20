@@ -72,3 +72,35 @@ test('PDF v2 preserves the current editable report rows exactly', () => {
   assert.match(html,/담당자 편집/);
   assert.doesNotMatch(html,/Dual Log evidence preserved/);
 });
+
+test('real workspace rows render all ten sections while legacy rows retain nine-section numbering', () => {
+  const workspaceSections = [
+    '개요','사고 발생 전 운전 현황','장애 현상','시간대별 사건·자동동작(SOE)','발생 원인',
+    '운전원·정비 조치사항','조치 결과 및 복구 판정','추정 원인 및 미확인 사항',
+    '재발방지 대책 — 검토 권고사항','증거자료',
+  ];
+  const workspaceHtml=exporter.buildReportHtml({...report,report_rows:workspaceSections.map(section=>({section,item:'검토',content:'내용'}))});
+  assert.match(workspaceHtml,/6\. 운전원·정비 조치사항/);
+  assert.match(workspaceHtml,/10\. 증거자료/);
+
+  const legacyHtml=exporter.buildReportHtml({...report,report_rows:[{section:'개요',item:'검토',content:'내용'}]});
+  assert.match(legacyHtml,/9\. 증거자료/);
+  assert.doesNotMatch(legacyHtml,/10\. 증거자료/);
+});
+
+test('legacy failure-report CSV neutralizes spreadsheet formulas without changing eight columns', () => {
+  const csv=exporter.buildFailureReportCsv({...report,incident_summary:'=HYPERLINK("https://example.invalid")'});
+  assert.match(csv,/'=HYPERLINK/);
+  assert.doesNotMatch(csv,/개요,장애 요약,=HYPERLINK/);
+  const summaryLine=csv.split('\r\n').find(line=>line.includes('HYPERLINK'));
+  assert.equal(summaryLine.match(/,/g).length,7);
+});
+
+test('workspace document state, not cause PASS alone, controls draft versus reviewed title', () => {
+  const reportRows=[{section:'운전원·정비 조치사항',item:'실제 수행 조치',content:'점검 완료'}];
+  const draft=exporter.buildReportHtml({...report,verification_gate:'PASS',document_state:'DRAFT',report_rows:reportRows});
+  assert.match(draft,/설비 고장 분석보고서 \(초안\)/);
+  assert.doesNotMatch(draft,/설비 고장 분석보고서 \(검토본\)/);
+  const reviewed=exporter.buildReportHtml({...report,verification_gate:'PASS',document_state:'REVIEWED',report_rows:reportRows});
+  assert.match(reviewed,/설비 고장 분석보고서 \(검토본\)/);
+});
