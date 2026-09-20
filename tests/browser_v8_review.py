@@ -54,10 +54,10 @@ def main():
             page.goto(os.getenv('TRIPLENS_UI_URL','http://localhost:3000/'))
             expect(page.get_by_label('EVENT 파일')).to_be_enabled()
             expect(page.get_by_text('Dual Log 대기',exact=True).last).to_be_visible()
-            expect(page.get_by_text('EVENT.csv와 RAW.csv를 선택해 주세요.',exact=True)).to_be_visible()
+            expect(page.get_by_text('EVENT.csv와 RAW.csv를 선택해 주세요.',exact=True).last).to_be_visible()
             assert page.get_by_text('52GT 차단기 개방 관측',exact=True).count()==0
             page.get_by_label('EVENT 파일').set_input_files(str(event));page.get_by_label('RAW 파일').set_input_files(str(raw))
-            expect(page.get_by_text('분석 입력 준비 완료',exact=True)).to_be_visible()
+            expect(page.get_by_text('분석 입력 준비 완료',exact=True).last).to_be_visible()
             button=page.get_by_role('button',name='이 Dual Log 분석하기',exact=True)
             expect(button).to_be_enabled();button.click()
             expect(page.get_by_text('52GT 차단기 개방 관측',exact=True)).to_be_visible(timeout=30000)
@@ -120,7 +120,7 @@ def main():
             page.screenshot(path=str(OUT/f'{name}-report.png'),full_page=True)
             assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1'), 'page-wide horizontal overflow'
             page.get_by_label('EVENT 파일').set_input_files(str(event))
-            expect(page.get_by_text('분석 입력 준비 완료',exact=True)).to_be_visible()
+            expect(page.get_by_text('분석 입력 준비 완료',exact=True).last).to_be_visible()
             assert page.get_by_text('52GT 차단기 개방 관측',exact=True).count()==0
             button=page.get_by_role('button',name='이 Dual Log 분석하기',exact=True)
             expect(button).to_be_enabled();button.click()
