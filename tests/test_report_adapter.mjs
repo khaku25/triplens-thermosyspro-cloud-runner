@@ -94,7 +94,7 @@ test('complete PARTIAL and NOT_RECOVERED records do not report restart condition
   ];
   for(const value of values){
     const restart=recoveryReportRows(value).find(row=>row.item==='재기동 조건');
-    assert.equal(restart.content,'해당 없음 (필수 입력 아님)');
+    assert.equal(restart.content,'해당 없음');
     assert.doesNotMatch(restart.content,/입력 대기/);
   }
 });

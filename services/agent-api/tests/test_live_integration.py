@@ -50,6 +50,33 @@ class LiveIntegrationTests(unittest.TestCase):
         self.assertEqual(gt['tag'],'TRIP_LATCH')
         self.assertEqual(gt.get('mapping_status'),'EQUIPMENT_TAG_EXACT')
 
+    def test_trip_latch_aliases_resolve_to_registered_gt_and_st_logic(self):
+        aliases=[
+            ('GT','GT.TRIP.LATCH','vppGTTripLatch','GT.TRIP.LATCH'),
+            ('GT','GT_TRIP_LATCH','vppGTTripLatch','GT.TRIP.LATCH'),
+            ('GT','vppGTTripLatch','vppGTTripLatch','GT.TRIP.LATCH'),
+            ('ST','vppSTTripLatchPublished','vppSTTripLatchPublished','ST.TRIP.LATCH'),
+        ]
+        for equipment,tag,source,canonical in aliases:
+            described=self.store.describe_event({
+                'event_id':f'ALIAS-{tag}', 'event_sequence':'99', 'model_time_s':'48.44',
+                'event_class':'PROTECTION', 'equipment':equipment, 'tag':tag,
+                'state':'', 'value':'TRUE', 'message':'Trip latch active', 'source':'DCS',
+            })
+            self.assertEqual(described['source_node'],source,tag)
+            self.assertEqual(described['canonical_tag'],canonical,tag)
+            self.assertEqual(described['state'],'ACTIVE',tag)
+            self.assertIn('PROT-',described['logic_ids'][0],tag)
+
+    def test_trip_command_remains_distinct_from_trip_latch(self):
+        described=self.store.describe_event({
+            'event_id':'COMMAND', 'event_sequence':'100', 'model_time_s':'48.40',
+            'event_class':'COMMAND', 'equipment':'GT', 'tag':'GT_TRIP_COMMAND',
+            'state':'ACTIVE', 'value':'1', 'message':'GT trip command', 'source':'DCS',
+        })
+        self.assertNotEqual(described.get('canonical_tag'),'GT.TRIP.LATCH')
+        self.assertNotEqual(described.get('source_node'),'vppGTTripLatch')
+
     def test_bootstrap_exposes_actual_raw_inventory_not_values_or_answers(self):
         boot=self.store.build_agent_bootstrap(run_id='R',data_digest='D')
         self.assertIn('vppExternalTripCommandNative',boot.get('raw_tag_inventory',[]))

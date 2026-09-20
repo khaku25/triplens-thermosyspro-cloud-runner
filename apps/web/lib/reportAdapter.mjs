@@ -74,12 +74,12 @@ export function recoveryReportRows(value){
   const pending=workflow==='INPUT_PENDING';
   const evidenceIds=recovery.evidence_ids.join('; ');
   const actor=[recovery.operator&&`수행자: ${recovery.operator}`,recovery.approver&&`기록상 승인자: ${recovery.approver}`].filter(Boolean).join(' · ');
-  const restartConditions=recovery.restart_conditions||(recovery.status==='RECOVERED'?'재기동 조건 입력 대기':'해당 없음 (필수 입력 아님)');
+  const restartConditions=recovery.restart_conditions||(recovery.status==='RECOVERED'?'기록 없음':'해당 없음');
   return [
-    row(ACTION_SECTION,'실제 수행 조치',recovery.actions||'복구·조치 기록 입력 대기',workflow,evidenceIds,recovery.recovered_at,recovery.operator&&`수행자: ${recovery.operator}`,'RECOVERY-actions'),
-    row(RESULT_SECTION,'복구 상태',pending?'복구 판정 입력 대기':recoveryStatusLabel(recovery),pending?'INPUT_PENDING':recovery.status,evidenceIds,recovery.recovered_at,'','RECOVERY-status'),
+    row(ACTION_SECTION,'실제 수행 조치',recovery.actions||'기록 없음',workflow,evidenceIds,recovery.recovered_at,recovery.operator&&`수행자: ${recovery.operator}`,'RECOVERY-actions'),
+    row(RESULT_SECTION,'복구 상태',pending?'기록 없음':recoveryStatusLabel(recovery),pending?'INPUT_PENDING':recovery.status,evidenceIds,recovery.recovered_at,'','RECOVERY-status'),
     row(RESULT_SECTION,'재기동 조건',restartConditions,workflow,evidenceIds,recovery.recovered_at,'','RECOVERY-restart'),
-    row(RESULT_SECTION,'담당자·승인자',actor||'담당자·승인자 입력 대기',workflow,'',recovery.approved_at,recovery.approved_at?`승인 기록: ${recovery.approved_at}`:'','RECOVERY-approval'),
+    row(RESULT_SECTION,'담당자·승인자',actor||'기록 없음',workflow,'',recovery.approved_at,recovery.approved_at?`승인 기록: ${recovery.approved_at}`:'','RECOVERY-approval'),
   ];
 }
 

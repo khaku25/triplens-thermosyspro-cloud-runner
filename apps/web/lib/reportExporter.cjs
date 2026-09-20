@@ -62,11 +62,11 @@
     ['gemini_analysis', 'Gemini Analysis'],
   ];
 
-  const STATUS_LABELS = contract?.STATUS_LABELS || {
-    CONFIRMED: '■ 확인 (CONFIRMED)',
-    CANDIDATE: '△ 후보 (CANDIDATE)',
-    OBSERVED: '○ 관측 (OBSERVED)',
-    UNKNOWN: '— 미확인 (UNKNOWN)',
+  const STATUS_LABELS = {
+    CONFIRMED: '확인',
+    CANDIDATE: '분석 항목',
+    OBSERVED: '관측',
+    UNKNOWN: '확인 필요',
   };
 
   function esc(value) {
@@ -107,7 +107,7 @@
 
   function statusLabel(status) {
     const key = String(status || 'UNKNOWN').toUpperCase();
-    return contract?.statusLabel ? contract.statusLabel(key) : (STATUS_LABELS[key] || STATUS_LABELS.UNKNOWN);
+    return STATUS_LABELS[key] || STATUS_LABELS.UNKNOWN;
   }
 
   function normalizeSections(report) {
@@ -149,7 +149,7 @@
   }
 
   function causeRow(label, english, claim) {
-    return `<tr><th>${esc(label)}<br><span class="en">${esc(english)}</span></th><td>${esc(claimField(claim, 'claim', ''))}</td><td>${esc(statusLabel(claimField(claim, 'status', 'UNKNOWN')))}</td><td>${esc(joinList(claimField(claim, 'evidence_ids', [])))}</td><td>${esc(joinList(claimField(claim, 'related_tags', [])))}</td><td>${esc(claimField(claim, 'recorded_time', ''))}</td><td>${esc(claimField(claim, 'logic_master_status', ''))}</td><td>${claimField(claim, 'ai_confidence', null) == null ? '' : esc(claimField(claim, 'ai_confidence'))}</td></tr>`;
+    return `<tr><th>${esc(label)}<br><span class="en">${esc(english)}</span></th><td>${esc(claimField(claim, 'claim', ''))}</td><td>${esc(statusLabel(claimField(claim, 'status', 'UNKNOWN')))}</td><td>${esc(joinList(claimField(claim, 'evidence_ids', [])))}</td><td>${esc(joinList(claimField(claim, 'related_tags', [])))}</td><td>${esc(claimField(claim, 'recorded_time', ''))}</td><td>${esc(claimField(claim, 'logic_master_status', ''))}</td></tr>`;
   }
 
   function chronology(report) {
@@ -212,14 +212,13 @@
     const analysis = normalizedAnalysis(report);
     const metadata = report.metadata || {};
     const reviewed = report.document_state ? report.document_state === 'REVIEWED' : analysis.verification_gate === 'PASS';
-    const documentLabel = reviewed ? '고장보고서 검토본' : '고장보고서 초안';
-    const title = reviewed ? '설비 고장 분석보고서 (검토본)' : '설비 고장 분석보고서 (초안)';
+    const documentLabel = reviewed ? '검토 완료' : '분석 완료';
+    const title = '설비 고장 분석보고서';
     const metaRows = [
       ['Run ID', report.run_id || metadata.run_id || ''],
       ['EVENT', metadata.event_file || report.event_file || 'EVENT.csv'],
       ['RAW', metadata.raw_file || report.raw_file || 'RAW.csv'],
       ['Data Digest', metadata.data_digest || report.data_digest || ''],
-      ['Verification Gate', `${analysis.verification_gate} · ${analysis.finality.verification_label}`],
       ['Analysis Engine', metadata.analysis_engine || report.analysis_engine || 'Gemini'],
     ].map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('');
 
@@ -241,14 +240,14 @@
     const counterEvidence = analysis.counter_evidence.length ? analysis.counter_evidence.map((item) => `<li>${esc(asText(item))}</li>`).join('') : '<li>없음 / 추가 확인 필요</li>';
     const additional = analysis.additional_evidence_required.length ? analysis.additional_evidence_required.map((item) => `<li>${esc(asText(item))}</li>`).join('') : '<li>추가 확인 항목 없음</li>';
     const recommendationRows = analysis.review_recommendations.length ? analysis.review_recommendations.map((item, index) => `<tr><td>${index + 1}</td><td>${esc(item.claim || asText(item))}</td><td>${esc(statusLabel(item.status || 'CANDIDATE'))}</td><td>${esc(joinList(item.evidence_ids || []))}</td><td>${esc(item.note || '담당자 승인 필요')}</td></tr>`).join('') : '<tr><td colspan="5">검토 권고사항 없음</td></tr>';
-    const evidenceRows = pinpointRows(report).map((row) => `<tr><td>${esc(row.event_id || '')}</td><td>${esc(row.source_system || '')}</td><td>${esc(row.event_tag || '')}</td><td>${esc(row.canonical_tag || '')}</td><td>${esc(row.aligned_time || row.original_time || '')}</td><td>${esc(row.disposition || row.state || '')}</td></tr>`).join('');
+    const evidenceRows = pinpointRows(report).map((row) => `<tr><td>${esc(row.event_id || '')}</td><td>${esc(row.source_system || '')}</td><td>${esc(row.event_tag || '')}</td><td>${esc(row.canonical_tag || '')}</td><td>${esc(row.aligned_time || row.original_time || '')}</td><td>${esc(row.disposition ? statusLabel(row.disposition) : (row.state || ''))}</td></tr>`).join('');
 
     const editedRows = Array.isArray(report.report_rows) ? report.report_rows : [];
     const workspaceRows = editedRows.some((row) => ['시간대별 사건·자동동작(SOE)','운전원·정비 조치사항','조치 결과 및 복구 판정'].includes(String(row?.section ?? row?.['구분'] ?? '')));
     const editedSections = workspaceRows ? WORKSPACE_REPORT_SECTIONS : FAILURE_REPORT_SECTIONS;
     const editedBody = editedRows.length ? editedSections.map((section, index) => {
       const rows = editedRows.filter((row) => String(row.section ?? row['구분'] ?? '') === section);
-      const body = rows.length ? rows.map((row) => `<tr><td>${esc(row.item ?? row['항목'] ?? '')}</td><td>${esc(row.content ?? row['내용'] ?? '')}</td><td>${esc(row.status ?? row['상태'] ?? '')}</td><td>${esc(row.evidence_ids ?? row['근거 ID'] ?? '')}</td><td>${esc(row.tags ?? row['관련 태그'] ?? '')}</td><td>${esc(row.time ?? row['기록 시각'] ?? '')}</td><td>${esc(row.note ?? row['비고'] ?? '')}</td></tr>`).join('') : '<tr><td colspan="7">자료 없음</td></tr>';
+      const body = rows.length ? rows.map((row) => `<tr><td>${esc(row.item ?? row['항목'] ?? '')}</td><td>${esc(row.content ?? row['내용'] ?? '')}</td><td>${esc(statusLabel(row.status ?? row['상태'] ?? ''))}</td><td>${esc(row.evidence_ids ?? row['근거 ID'] ?? '')}</td><td>${esc(row.tags ?? row['관련 태그'] ?? '')}</td><td>${esc(row.time ?? row['기록 시각'] ?? '')}</td><td>${esc(row.note ?? row['비고'] ?? '')}</td></tr>`).join('') : '<tr><td colspan="7">자료 없음</td></tr>';
       return `<section class="section"><h2>${index + 1}. ${esc(section)}</h2><table><thead><tr><th>항목</th><th>내용</th><th>상태</th><th>근거 ID</th><th>관련 태그</th><th>기록 시각</th><th>비고</th></tr></thead><tbody>${body}</tbody></table></section>`;
     }).join('') : '';
 
@@ -257,10 +256,10 @@
 <section class="section"><h2>2. 사고 발생 전 운전 현황</h2><table><tbody>${operating}</tbody></table></section>
 <section class="section"><h2>3. 장애 현상</h2><table><thead><tr><th>기록 시각</th><th>주요 사건 (Critical Events)</th><th>상태</th><th>근거 ID</th></tr></thead><tbody>${criticalRows || '<tr><td colspan="4">자료 없음</td></tr>'}</tbody></table></section>
 <section class="section"><h2>4. 시간대별 조치사항</h2><table><thead><tr><th>순번</th><th>시각</th><th>구분</th><th>현상/동작</th><th>상태</th><th>근거 ID</th><th>관련 태그</th></tr></thead><tbody>${chronologyRows(report) || '<tr><td colspan="7">자료 없음</td></tr>'}</tbody></table><div class="note">※ 시간순 EVENT/RAW는 임의 5개 제한 없이 전체 배열을 유지합니다. 출력 시 페이지가 넘치면 “시간대별 조치사항 (계속)”으로 이어집니다.</div></section>
-<section class="section"><h2>5. 발생 원인</h2><table><thead><tr><th>항목</th><th>내용</th><th>상태</th><th>근거 ID</th><th>관련 태그</th><th>기록 시각</th><th>Logic Master</th><th>AI Confidence</th></tr></thead><tbody>${causeRow('선행 원인','Primary Cause',analysis.primary_cause)}${causeRow('직접 Trip 원인','Direct Trigger',analysis.direct_trigger)}${propagationRows}</tbody></table>${causalSummary ? `<p><strong>인과관계 요약:</strong> ${esc(causalSummary)}</p>` : ''}<div class="note">※ AI Confidence는 공학적 원인 확정과 별도입니다.</div></section>
-<section class="section"><h2>6. 조치 결과</h2><table><tbody><tr><th>복구 상태</th><td>${esc(asText(report.recovery_check || 'UNKNOWN'))}</td></tr><tr><th>Verification Gate</th><td>${esc(analysis.verification_gate)} · ${esc(analysis.finality.verification_label)}</td></tr><tr><th>문서 상태</th><td>${esc(analysis.finality.output_label)}</td></tr></tbody></table></section>
+<section class="section"><h2>5. 발생 원인</h2><table><thead><tr><th>항목</th><th>내용</th><th>상태</th><th>근거 ID</th><th>관련 태그</th><th>기록 시각</th><th>Logic Master</th></tr></thead><tbody>${causeRow('선행 원인','Primary Cause',analysis.primary_cause)}${causeRow('직접 Trip 원인','Direct Trigger',analysis.direct_trigger)}${propagationRows}</tbody></table>${causalSummary ? `<p><strong>인과관계 요약:</strong> ${esc(causalSummary)}</p>` : ''}</section>
+<section class="section"><h2>6. 조치 결과</h2><table><tbody><tr><th>복구 상태</th><td>${esc(asText(report.recovery_check || '기록 없음'))}</td></tr><tr><th>분석 상태</th><td>${esc(documentLabel)}</td></tr></tbody></table></section>
 <section class="section"><h2>7. 추정 원인 및 미확인 사항</h2><table><tbody><tr><th>반대 근거</th><td><ul>${counterEvidence}</ul></td></tr><tr><th>추가 확인 필요</th><td><ul>${additional}</ul></td></tr></tbody></table></section>
-<section class="section"><h2>8. 재발방지 대책 — 검토 권고사항</h2><table><thead><tr><th>순번</th><th>권고사항</th><th>상태</th><th>근거 ID</th><th>비고</th></tr></thead><tbody>${recommendationRows}</tbody></table><div class="note">※ 자동 분석 단계의 권고사항은 CANDIDATE이며 담당자 승인 후 재발방지 대책으로 확정합니다.</div></section>
+<section class="section"><h2>8. 재발방지 대책 — 검토 권고사항</h2><table><thead><tr><th>순번</th><th>권고사항</th><th>상태</th><th>근거 ID</th><th>비고</th></tr></thead><tbody>${recommendationRows}</tbody></table></section>
 <section class="section"><h2>9. 증거자료</h2><table><thead><tr><th>근거 ID</th><th>원천</th><th>원본 태그</th><th>정규 태그</th><th>기록 시각</th><th>상태</th></tr></thead><tbody>${evidenceRows || '<tr><td colspan="6">자료 없음</td></tr>'}</tbody></table></section>`;
 
     return `<!doctype html>
@@ -275,7 +274,7 @@ table{width:100%;border-collapse:collapse;table-layout:auto;break-inside:auto}th
 </style></head><body><main class="report">
 <header class="doc-head"><div class="doc-title">${esc(title)}</div><div class="doc-meta"><table><tbody>${metaRows}</tbody></table></div></header>
 ${editedBody || generatedBody}
-<footer class="footer">TripLens는 설비를 제어하지 않는 READ-ONLY 사고분석 계층입니다. 본 문서는 EVENT + RAW 근거에서 생성된 초안/검토본이며 최종 확정은 담당자가 수행합니다.</footer>
+<footer class="footer">TripLens READ-ONLY 사고분석 · EVENT + RAW 근거 기반 보고서</footer>
 </main></body></html>`;
   }
 
@@ -353,11 +352,11 @@ ${editedBody || generatedBody}
   }
 
   function downloadPinpointCsv(report, filename) {
-    downloadText(filename || 'PINPOINT.csv', '\ufeff' + buildPinpointCsv(report), 'text/csv;charset=utf-8');
+    downloadText(filename || '상세분석데이터.csv', '\ufeff' + buildPinpointCsv(report), 'text/csv;charset=utf-8');
   }
 
   function downloadFailureReportCsv(report, filename) {
-    downloadText(filename || '고장보고서_초안.csv', '\ufeff' + buildFailureReportCsv(report), 'text/csv;charset=utf-8');
+    downloadText(filename || '고장분석보고서.csv', '\ufeff' + buildFailureReportCsv(report), 'text/csv;charset=utf-8');
   }
 
   return {

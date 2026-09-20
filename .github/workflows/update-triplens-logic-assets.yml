@@ -144,7 +144,7 @@ jobs:
               errors=[]
               page.on('pageerror',lambda error: errors.append(str(error)))
               page.goto('http://127.0.0.1:3000')
-              page.get_by_role('button',name=re.compile('Logic Master')).first.click()
+              page.get_by_role('button',name='Logic / TAG Master').first.click()
               page.locator('dialog[open]').wait_for()
               frame=page.frame_locator('dialog iframe')
               frame.locator('body[data-ready="true"]').wait_for()

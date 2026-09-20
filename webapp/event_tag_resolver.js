@@ -14,6 +14,7 @@
     const byLookupKey = new Map();
     const bySourceNode = new Map();
     const byTagId = new Map();
+    const byAlias = new Map();
     for (const row of rows || []) {
       const ruleId = clean(row.rule_id);
       const key = clean(row.event_lookup_key) || `${clean(row.equipment)}::${clean(row.event_tag)}`;
@@ -26,8 +27,12 @@
         const current = bySourceNode.get(sourceNode) || [];
         current.push(row); bySourceNode.set(sourceNode, current);
       }
+      const aliases = [tagId, sourceNode];
+      if (tagId === "GT.TRIP.LATCH" || sourceNode === "vppGTTripLatch") aliases.push("GT.TRIP.LATCH", "GT_TRIP_LATCH", "vppGTTripLatch");
+      if (tagId === "ST.TRIP.LATCH" || sourceNode === "vppSTTripLatchPublished") aliases.push("ST.TRIP.LATCH", "ST_TRIP_LATCH", "vppSTTripLatchPublished");
+      for (const alias of aliases.filter(Boolean)) byAlias.set(alias.toUpperCase(), row);
     }
-    return { byRule, byLookupKey, bySourceNode, byTagId };
+    return { byRule, byLookupKey, bySourceNode, byTagId, byAlias };
   }
 
   function resolveEventTag(event, index) {
@@ -40,6 +45,10 @@
     if (ruleId && index.byRule.has(ruleId)) {
       return { row: index.byRule.get(ruleId), method: "EVENT_RULE_ID" };
     }
+
+    const eventTag = clean(event.tag || event.event_tag);
+    const aliasRow = index.byAlias?.get(eventTag.toUpperCase());
+    if (aliasRow) return { row: aliasRow, method: "REGISTERED_TAG_ALIAS" };
 
     const sourceNode = clean(event.source_node || event.model_mapping);
     if (sourceNode) {

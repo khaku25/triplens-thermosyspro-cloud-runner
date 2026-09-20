@@ -86,13 +86,13 @@ export function buildDraftRows(envelope,recoveryRows=[]){
  else add('장애 현상','검토 상태',{},'EVENT 근거 없음');
  if(events.length)events.forEach((e,i)=>add('시간대별 사건·자동동작(SOE)',`SOE ${i+1}`,{claim:e.message||`${e.equipment||''} ${e.tag||''}`.trim(),status:'OBSERVED',evidence_ids:[e.evidence_id||e.event_id].filter(Boolean),related_tags:[preferredSourceTag(e)].filter(Boolean),model_time_s:e.model_time_s},e.event_class||e.source||''));
  else add('시간대별 사건·자동동작(SOE)','검토 상태',{},'시간순 EVENT 기록 없음');
- add('발생 원인','선행 원인',a.primary_cause,'AI 후보 / 최종 확정 아님');
- add('발생 원인','직접 Trip 원인',a.direct_trigger,'등록 Logic 확인과 공학적 원인 확정은 구분');
+ add('발생 원인','선행 원인',a.primary_cause);
+ add('발생 원인','직접 Trip 원인',a.direct_trigger);
  if(a.propagation.length)a.propagation.forEach((c,i)=>add('발생 원인',`파급 과정 ${i+1}`,c));
  else add('발생 원인','파급 과정',{},'파급 근거 추가 확인 필요');
  if(a.causal_chain.length)a.causal_chain.forEach((c,i)=>add('발생 원인',`인과관계 요약 ${i+1}`,c,'시간순 근거와 함께 검토'));
  else add('발생 원인','인과관계 요약',{},'인과관계 추가 확인 필요');
- if(!addRecovery('운전원·정비 조치사항'))add('운전원·정비 조치사항','조치 기록',{claim:'복구·조치 기록 입력 대기',status:'INPUT_PENDING'});
+ if(!addRecovery('운전원·정비 조치사항'))add('운전원·정비 조치사항','조치 기록',{claim:'기록 없음',status:'INPUT_PENDING'});
  if(!addRecovery('조치 결과 및 복구 판정'))add('조치 결과 및 복구 판정','복구 상태',{},'실제 복구·재기동 기록은 담당자 확인 필요');
  if(a.counter_evidence.length)a.counter_evidence.forEach((c,i)=>add('추정 원인 및 미확인 사항',`반대 근거 ${i+1}`,c));
  else add('추정 원인 및 미확인 사항','반대 근거',{},'반대 근거 없음으로 단정하지 않음');
@@ -111,3 +111,4 @@ const DB_NAME='triplens-v8-review';
 async function db(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,1);r.onupgradeneeded=()=>r.result.createObjectStore('session');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
 export async function loadSession(){const d=await db();try{return await new Promise((resolve,reject)=>{const t=d.transaction('session');const r=t.objectStore('session').get('active');r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error);});}finally{d.close();}}
 export async function saveSession(value){const d=await db();try{await new Promise((resolve,reject)=>{const t=d.transaction('session','readwrite');t.objectStore('session').put(value,'active');t.oncomplete=resolve;t.onerror=()=>reject(t.error);});}finally{d.close();}}
+export async function clearSession(){const d=await db();try{await new Promise((resolve,reject)=>{const t=d.transaction('session','readwrite');t.objectStore('session').delete('active');t.oncomplete=resolve;t.onerror=()=>reject(t.error);});}finally{d.close();}}

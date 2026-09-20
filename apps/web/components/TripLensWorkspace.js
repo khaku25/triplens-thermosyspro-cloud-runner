@@ -1,84 +1,358 @@
 'use client';
+
 import {useEffect,useMemo,useRef,useState} from 'react';
-import { LogicLibraryDialog, openLogicLibrary } from './LogicLibrary';
+import {LogicLibraryDialog,openLogicLibrary} from './LogicLibrary';
 import RecoveryForm from './RecoveryForm';
 import {WORKSPACE_TABS} from '../lib/contracts';
-import {CONTRACT_VERSION,STATUS_TEXT,normalizeDisplayAnalysis,claimText,modelTime,parseCSV,summarizeEvents,buildDraftRows,draftCSV,REPORT_COLUMNS,displayError,loadSession,saveSession} from '../lib/analysisClient.mjs';
+import {
+  normalizeDisplayAnalysis,
+  claimText,
+  modelTime,
+  parseCSV,
+  summarizeEvents,
+  buildDraftRows,
+  draftCSV,
+  REPORT_COLUMNS,
+  displayError,
+  clearSession,
+} from '../lib/analysisClient.mjs';
 import {buildEvidenceLogicTargets} from '../lib/integrationTestbench.mjs';
 import {mergeEvents,mergeEvidenceCatalog} from '../lib/reportIntegrity.mjs';
-import {EMPTY_RECOVERY,normalizeRecovery,recoveryStatusLabel,workflowLabel} from '../lib/recoveryModel.mjs';
-import {applyRecoveryRows,buildWorkspaceExportReport,restoreWorkspaceReportRows,WORKSPACE_REPORT_VERSION} from '../lib/reportAdapter.mjs';
+import {EMPTY_RECOVERY,normalizeRecovery,recoveryStatusLabel} from '../lib/recoveryModel.mjs';
+import {applyRecoveryRows,buildWorkspaceExportReport} from '../lib/reportAdapter.mjs';
+import {
+  analysisDisplayData,
+  conciseClaim,
+  friendlyTag,
+  inputStatus,
+  summarizeEvidence,
+} from '../lib/workspacePresentation.mjs';
 import reportExporter from '../lib/reportExporter.cjs';
 import '../app/integration.css';
+
 const API_BASE=(process.env.NEXT_PUBLIC_TRIPLENS_API_BASE||'https://triplens-agent-api-preview.vercel.app').replace(/\/$/,'');
-const PIPELINE=['EVENT + RAW','Validation / Time Alignment','Evidence Policy','Evidence Store','Gemini Tool Analysis','Verification Gate','고장보고서 V2 · PDF · CSV'];
-const HUMAN_STATUS_TEXT={INPUT_PENDING:'입력 대기',APPROVAL_PENDING:'승인 대기',APPROVED:'승인 완료'};
 const CLAIM_STATUS_CHOICES=['UNKNOWN','OBSERVED','CANDIDATE'];
 const REPORT_KEYS=['section','item','content','status','evidence_ids','tags','time','note'];
-function reportStatusLabel(status){return HUMAN_STATUS_TEXT[status]||STATUS_TEXT[status]||recoveryStatusLabel(status);}
-async function request(path,body){const r=await fetch(`${API_BASE}${path}`,body?{method:'POST',body}:undefined);let data;try{data=await r.json();}catch{throw new Error(`서버 응답을 읽지 못했습니다. HTTP ${r.status}`);}if(!r.ok)throw new Error(displayError(data.detail||data));return data;}
-function Badge({status}){return <strong className="status-badge" data-status={status}>{STATUS_TEXT[status]||'미확인'} ({status||'UNKNOWN'})</strong>;}
-function EvidenceLinks({ids,onOpen}){return ids?.length?<span className="evidence-links">{ids.map(id=><button key={id} onClick={()=>onOpen({kind:'evidence',value:id})}>{id}</button>)}</span>:<span>근거 미연결</span>;}
-function ClaimCard({title,item,onOpen}){return <section className="claim-card"><div className="claim-head"><span>{title}</span><Badge status={item.status}/></div><div className="claim-text">{item.claim}</div><div className="claim-meta"><span>모델 시각: {modelTime(item.model_time_s)}</span><span>AI 신뢰도: {item.ai_confidence==null?'미제공':`${Math.round(item.ai_confidence*100)}%`}</span><span>Logic 등록: {item.logic_master_status}</span></div><div className="claim-meta"><EvidenceLinks ids={item.evidence_ids} onOpen={onOpen}/>{item.related_tags.map(t=><button className="tag-link" key={t} onClick={()=>onOpen({kind:'tag',value:t})}>{t}</button>)}</div>{item.verification_notes?.length?<div className="note">{item.verification_notes.join(' / ')}</div>:null}</section>;}
-function ClaimTable({title,items,onOpen}){return <section className="report-table"><h3>{title}</h3>{items.length?<div className="scroll-table"><table><thead><tr><th>모델 시각</th><th>내용</th><th>상태</th><th>근거</th></tr></thead><tbody>{items.map((c,i)=><tr key={i}><td>{modelTime(c.model_time_s)}</td><td>{c.claim}</td><td><Badge status={c.status}/></td><td><EvidenceLinks ids={c.evidence_ids} onOpen={onOpen}/></td></tr>)}</tbody></table></div>:<p className="empty-line">조회된 분석 항목이 없습니다.</p>}</section>;}
-function EventTable({events,onOpen}){return <div className="scroll-table"><table><thead><tr><th>모델 시각</th><th>설비 / 원본 태그</th><th>메시지</th><th>원천</th><th>근거</th></tr></thead><tbody>{events.map((e,i)=><tr key={e.event_id||i}><td>{modelTime(e.model_time_s)}</td><td>{e.equipment} / {e.tag}<small>{e.source_node||'미등록 관측 태그'}</small></td><td>{e.message}</td><td>{e.source}</td><td><EvidenceLinks ids={[e.evidence_id||e.event_id].filter(Boolean)} onOpen={onOpen}/></td></tr>)}</tbody></table></div>;}
-function TraceView({analysis}){return <details className="trace-view"><summary>실제 Tool 조회 기록 · {analysis.agent_execution?.tool_calls_used??0}/8회</summary><p>Python이 실행한 조회 기록입니다. AI 내부 추론이 아닙니다.</p>{analysis.tool_trace.map((t,i)=><div className="trace-row" key={i}><b>{i+1}. {t.name} · {t.status}</b><code>{JSON.stringify(t.arguments)}</code><span>연결 근거 {t.evidence_count??0}건 · {t.duration_ms??0} ms</span></div>)}</details>;}
+const RAW_META_FIELDS=new Set(['record_sequence','session_id','incident_id','model_time_s','wall_time_utc','collector_quality','quality','time']);
+const REPORT_STATUS_TEXT={
+  CONFIRMED:'확인',
+  CANDIDATE:'분석 항목',
+  OBSERVED:'관측',
+  UNKNOWN:'확인 필요',
+  INPUT_PENDING:'기록 없음',
+  APPROVAL_PENDING:'기록됨',
+  APPROVED:'승인 완료',
+};
+
+async function request(path,body){
+  const response=await fetch(`${API_BASE}${path}`,body?{method:'POST',body}:undefined);
+  let data;
+  try{data=await response.json();}
+  catch{throw new Error(`서버 응답을 읽지 못했습니다. HTTP ${response.status}`);}
+  if(!response.ok)throw new Error(displayError(data.detail||data));
+  return data;
+}
+
+function rawTagCount(data){
+  return data?.fields?.filter(field=>!RAW_META_FIELDS.has(field)).length||0;
+}
+
+function reportStatusLabel(status){
+  return REPORT_STATUS_TEXT[status]||recoveryStatusLabel(status);
+}
+
+function EvidenceLinks({ids,onOpen,named=false}){
+  const values=[...new Set((ids||[]).filter(Boolean))];
+  if(!values.length)return <span className="muted">연결된 근거 없음</span>;
+  return <span className="evidence-links">{values.map((id,index)=><button key={id} onClick={()=>onOpen({kind:'evidence',value:id})}>{named?`근거 ${index+1}`:id}</button>)}</span>;
+}
+
+function ClaimEvidence({item,onOpen}){
+  const tags=summarizeEvidence(item?.related_tags||[],5);
+  const ids=[...new Set((item?.evidence_ids||[]).filter(Boolean))];
+  if(!tags.visible.length&&!ids.length)return null;
+  return <div className="claim-evidence">
+    {tags.visible.length?<div className="evidence-pills" aria-label="핵심 근거 태그">{tags.visible.map(tag=><button key={tag} onClick={()=>onOpen({kind:'tag',value:tag})}>{friendlyTag(tag)}</button>)}</div>:null}
+    <details>
+      <summary>상세 근거 보기{ids.length?` · ${ids.length}건`:''}</summary>
+      <div className="detail-evidence-list">
+        <EvidenceLinks ids={ids} onOpen={onOpen}/>
+        {[...tags.visible,...tags.hidden].map(tag=><button className="tag-link" key={tag} onClick={()=>onOpen({kind:'tag',value:tag})}>{friendlyTag(tag)}</button>)}
+      </div>
+    </details>
+  </div>;
+}
+
+function ClaimCard({title,item,onOpen}){
+  const text=conciseClaim(claimText(item));
+  return <section className="claim-card cause-card">
+    <div className="claim-head"><h3>{title}</h3>{item?.model_time_s!=null?<time>{modelTime(item.model_time_s)}</time>:null}</div>
+    <div className="claim-text">{text.summary||'분석 결과가 없습니다.'}</div>
+    {text.detail?<details className="claim-detail"><summary>전체 설명 보기</summary><p>{text.detail}</p></details>:null}
+    <ClaimEvidence item={item} onOpen={onOpen}/>
+  </section>;
+}
+
+function AnalysisList({items,onOpen}){
+  if(!items?.length)return <p className="empty-line">표시할 분석 결과가 없습니다.</p>;
+  return <div className="analysis-list">{items.map((item,index)=>{
+    const text=conciseClaim(claimText(item),150);
+    return <article key={`${item?.claim||'item'}-${index}`}>
+      <div><b>{index+1}</b><p>{text.summary}</p>{item?.model_time_s!=null?<time>{modelTime(item.model_time_s)}</time>:null}</div>
+      <ClaimEvidence item={item} onOpen={onOpen}/>
+      {text.detail?<details><summary>전체 설명 보기</summary><p>{text.detail}</p></details>:null}
+    </article>;
+  })}</div>;
+}
+
+function EventTable({events,onOpen}){
+  return <div className="scroll-table"><table><thead><tr><th>모델 시각</th><th>설비</th><th>사건</th><th>원천</th><th>근거</th></tr></thead><tbody>{events.map((event,index)=><tr key={event.event_id||index}><td>{modelTime(event.model_time_s)}</td><td>{event.equipment||'—'}</td><td>{event.message||friendlyTag(event.tag)}</td><td>{event.source||'—'}</td><td><EvidenceLinks ids={[event.evidence_id||event.event_id]} onOpen={onOpen} named/></td></tr>)}</tbody></table></div>;
+}
+
+function WaitingPanel({status}){
+  return <div className="waiting-panel"><div className="waiting-mark">TL</div><h2>{status.title}</h2>{status.detail?<p>{status.detail}</p>:null}</div>;
+}
+
 export default function TripLensWorkspace({mode='blind'}){
-  const [activeTab,setActiveTab]=useState('timeline');const [eventFile,setEventFile]=useState(null);const [rawFile,setRawFile]=useState(null);
-  const [eventData,setEventData]=useState(null);const [rawData,setRawData]=useState(null);const [result,setResult]=useState(null);const [inspected,setInspected]=useState(null);
-  const [contract,setContract]=useState(null);const [connection,setConnection]=useState('Agent API 확인 중');const [statusText,setStatusText]=useState('');
-  const [busy,setBusy]=useState(false);const [restored,setRestored]=useState(false);const [drawer,setDrawer]=useState(false);const [detail,setDetail]=useState(null);
-  const [reportOpen,setReportOpen]=useState(false);const [reportRows,setReportRows]=useState([]);const [evidenceQuery,setEvidenceQuery]=useState('');
+  const [activeTab,setActiveTab]=useState('timeline');
+  const [eventFile,setEventFile]=useState(null);
+  const [rawFile,setRawFile]=useState(null);
+  const [eventData,setEventData]=useState(null);
+  const [rawData,setRawData]=useState(null);
+  const [result,setResult]=useState(null);
+  const [contract,setContract]=useState(null);
+  const [statusText,setStatusText]=useState('');
+  const [busy,setBusy]=useState(false);
+  const [detail,setDetail]=useState(null);
+  const [reportOpen,setReportOpen]=useState(false);
+  const [reportRows,setReportRows]=useState([]);
+  const [evidenceQuery,setEvidenceQuery]=useState('');
   const [recovery,setRecovery]=useState(()=>normalizeRecovery(EMPTY_RECOVERY));
-  const [storageNote,setStorageNote]=useState('파일과 결과는 이 브라우저에 보관합니다.');
-  const version=useRef(0);const lastResult=useRef(null);
+  const version=useRef(0);
+
   const analysis=useMemo(()=>normalizeDisplayAnalysis(result?.analysis||{}),[result]);
-  const summary=useMemo(()=>summarizeEvents(eventData?.records||[]),[eventData]);
-  const events=useMemo(()=>mergeEvents(eventData?.records||[],result?.events||inspected?.events||[]),[eventData,result,inspected]);
-  const catalog=useMemo(()=>mergeEvidenceCatalog(events,result?.evidence_catalog||[]),[events,result]);
+  const currentData=useMemo(()=>analysisDisplayData({result}),[result]);
+  const events=useMemo(()=>result?mergeEvents(eventData?.records||[],currentData.events):[],[result,eventData,currentData]);
+  const catalog=useMemo(()=>result?mergeEvidenceCatalog(events,currentData.catalog):[],[result,events,currentData]);
+  const summary=useMemo(()=>summarizeEvents(events),[events]);
   const displayReportRows=useMemo(()=>applyRecoveryRows(reportRows,recovery),[reportRows,recovery]);
-  const exportReport=useMemo(()=>buildWorkspaceExportReport({result,analysis,events,catalog,reportRows:displayReportRows,recovery,eventFileName:eventFile?.name,rawFileName:rawFile?.name}),[result,analysis,events,catalog,displayReportRows,recovery,eventFile,rawFile]);
+  const exportReport=useMemo(()=>buildWorkspaceExportReport({
+    result,analysis,events,catalog,reportRows:displayReportRows,recovery,
+    eventFileName:eventFile?.name,rawFileName:rawFile?.name,
+  }),[result,analysis,events,catalog,displayReportRows,recovery,eventFile,rawFile]);
   const missingEvidence=[...new Set([...exportReport.reference_integrity.missing,...exportReport.recovery_validation.missing_evidence])];
   const exportBlocked=missingEvidence.length>0;
-  useEffect(()=>{let active=true;request('/contract').then(c=>{if(active){setContract(c);setConnection('Agent API 연결됨');}}).catch(e=>{if(active)setConnection(e.message);});return()=>{active=false;};},[]);
-  useEffect(()=>{let active=true;(async()=>{try{
-    const saved=await loadSession();if(!active||saved?.mode!==mode)return;
-    const savedEvents=saved.eventFile?parseCSV(await saved.eventFile.text()):null;
-    const savedRaw=saved.rawFile?parseCSV(await saved.rawFile.text()):null;
-    if(!active)return;
-    setRecovery(normalizeRecovery(saved.recovery||EMPTY_RECOVERY));
-    if(saved.eventFile){setEventFile(saved.eventFile);setEventData(savedEvents);}
-    if(saved.rawFile){setRawFile(saved.rawFile);setRawData(savedRaw);}
-    if(saved.result?.analysis?.output_contract_version===CONTRACT_VERSION){
-      setResult(saved.result);lastResult.current=saved.result;
-      setReportRows(restoreWorkspaceReportRows({...saved,uploadedEvents:savedEvents?.records||[]}));
-      setStatusText('브라우저에 보관된 분석을 복원했습니다.');
-    }else if(saved.result)setStatusText('이전 형식 결과는 숨겼습니다. 파일을 다시 고르지 않고 재분석하세요.');
-    setActiveTab(saved.activeTab||'timeline');
-  }catch{if(active)setStorageNote('브라우저 보관을 사용할 수 없습니다. 현재 탭에서는 파일과 결과를 유지합니다.');}finally{if(active)setRestored(true);}})();return()=>{active=false;};},[mode]);
-  useEffect(()=>{if(!restored)return;const timer=setTimeout(()=>saveSession({mode,eventFile,rawFile,result,reportRows,reportVersion:WORKSPACE_REPORT_VERSION,recovery:normalizeRecovery(recovery),activeTab}).catch(()=>setStorageNote('저장 공간 부족: 새로고침 시 입력을 다시 선택해야 할 수 있습니다.')),250);return()=>clearTimeout(timer);},[restored,mode,eventFile,rawFile,result,reportRows,recovery,activeTab]);
-  async function selectFile(kind,file){version.current++;setResult(null);lastResult.current=null;setInspected(null);setDetail(null);setReportRows([]);setRecovery(normalizeRecovery(EMPTY_RECOVERY));setReportOpen(false);setStatusText('입력이 변경되었습니다. 이전 분석을 적용하지 않습니다.');if(kind==='event'){setEventFile(file||null);setEventData(null);}else{setRawFile(file||null);setRawData(null);}if(!file)return;try{const parsed=parseCSV(await file.text());if(kind==='event')setEventData(parsed);else setRawData(parsed);}catch(e){setStatusText(e.message);}}
-  function openDetail(d){setDetail(d);}
-  async function analyze(){if(!eventFile||!rawFile||!eventData||!rawData||busy)return;if(eventFile.size+rawFile.size>4_000_000){setStatusText('현재 직접 업로드는 합계 4 MB까지 지원합니다.');return;}const revision=version.current;const form=()=>{const f=new FormData();f.append('event',eventFile,eventFile.name||'EVENT.csv');f.append('raw',rawFile,rawFile.name||'RAW.csv');return f;};setBusy(true);setStatusText('입력·시간축·태그 연결 검사 중…');try{const prepared=await request('/bootstrap',form());if(revision!==version.current)return;setInspected(prepared);setContract(prepared.contract);if(prepared.evidence_readiness?.status!=='PASS')throw new Error('EVENT/RAW의 시간구간과 표본을 확인하세요. 아직 분석 준비가 되지 않았습니다.');if(lastResult.current?.analysis_key===prepared.analysis_key){setResult(lastResult.current);setReportRows(rows=>restoreWorkspaceReportRows({result:lastResult.current,uploadedEvents:eventData.records,reportRows:rows,recovery,reportVersion:WORKSPACE_REPORT_VERSION}));setStatusText('기존 분석 재사용 · 최종 확정 아님');setActiveTab('cause');return;}setStatusText('Gemini가 등록 Logic과 RAW 근거를 조회 중…');const data=await request('/analyze',form());if(revision!==version.current)return;data.analysis=normalizeDisplayAnalysis(data.analysis);const mergedEvents=mergeEvents(eventData.records,data.events||[]);const mergedCatalog=mergeEvidenceCatalog(mergedEvents,data.evidence_catalog||[]);setResult(data);lastResult.current=data;setReportRows(buildDraftRows({...data,events:mergedEvents,evidence_catalog:mergedCatalog}));setStatusText('분석 응답 수신 · 최종 확정 아님');setActiveTab('cause');}catch(e){setStatusText(e.message);}finally{setBusy(false);}}
-  function clear(){version.current++;setEventFile(null);setRawFile(null);setEventData(null);setRawData(null);setResult(null);setInspected(null);lastResult.current=null;setReportRows([]);setRecovery(normalizeRecovery(EMPTY_RECOVERY));setReportOpen(false);setDetail(null);setStatusText('입력과 보관된 분석을 지웠습니다.');}
-  function exportCSV(){if(exportBlocked)return;const blob=new Blob([draftCSV(exportReport.report_rows)],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`TripLens_고장보고서_초안_${result?.run_id||'review'}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  const ready=Boolean(eventFile&&rawFile&&eventData&&rawData);
+  const status=inputStatus({ready,busy,complete:Boolean(result),eventRows:eventData?.records.length||0,rawTagCount:rawTagCount(rawData)});
+  const logic=contract?.logic_summary;
+
+  useEffect(()=>{
+    clearSession().catch(()=>{});
+    let active=true;
+    request('/contract').then(value=>{if(active)setContract(value);}).catch(()=>{});
+    return()=>{active=false;};
+  },[]);
+
+  function resetAnalysisState(){
+    setResult(null);
+    setDetail(null);
+    setReportRows([]);
+    setRecovery(normalizeRecovery(EMPTY_RECOVERY));
+    setReportOpen(false);
+    setEvidenceQuery('');
+    setActiveTab('timeline');
+    setStatusText('');
+    clearSession().catch(()=>{});
+  }
+
+  async function selectFile(kind,file){
+    version.current+=1;
+    resetAnalysisState();
+    if(kind==='event'){
+      setEventFile(file||null);
+      setEventData(null);
+    }else{
+      setRawFile(file||null);
+      setRawData(null);
+    }
+    if(!file)return;
+    try{
+      const parsed=parseCSV(await file.text());
+      if(kind==='event')setEventData(parsed);
+      else setRawData(parsed);
+    }catch(error){setStatusText(error.message);}
+  }
+
+  async function analyze(){
+    if(!ready||busy||result)return;
+    if(eventFile.size+rawFile.size>4_000_000){
+      setStatusText('두 파일의 합계는 4 MB 이하여야 합니다.');
+      return;
+    }
+    const revision=version.current;
+    const form=()=>{
+      const body=new FormData();
+      body.append('event',eventFile,eventFile.name||'EVENT.csv');
+      body.append('raw',rawFile,rawFile.name||'RAW.csv');
+      return body;
+    };
+    setBusy(true);
+    setStatusText('');
+    try{
+      const prepared=await request('/bootstrap',form());
+      if(revision!==version.current)return;
+      setContract(prepared.contract);
+      if(prepared.evidence_readiness?.status!=='PASS')throw new Error('EVENT.csv와 RAW.csv의 시간 범위와 형식을 확인해 주세요.');
+      const data=await request('/analyze',form());
+      if(revision!==version.current)return;
+      data.analysis=normalizeDisplayAnalysis(data.analysis);
+      const mergedEvents=mergeEvents(eventData.records,data.events||[]);
+      const mergedCatalog=mergeEvidenceCatalog(mergedEvents,data.evidence_catalog||[]);
+      setResult(data);
+      setReportRows(buildDraftRows({...data,events:mergedEvents,evidence_catalog:mergedCatalog}));
+      setActiveTab('cause');
+    }catch(error){
+      setStatusText(displayError(error));
+    }finally{
+      if(revision===version.current)setBusy(false);
+    }
+  }
+
+  function clear(){
+    version.current+=1;
+    setEventFile(null);
+    setRawFile(null);
+    setEventData(null);
+    setRawData(null);
+    resetAnalysisState();
+  }
+
+  function exportCSV(){
+    if(exportBlocked)return;
+    const blob=new Blob([draftCSV(exportReport.report_rows)],{type:'text/csv;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const anchor=document.createElement('a');
+    anchor.href=url;
+    anchor.download=`TripLens_고장분석보고서_${result?.run_id||'analysis'}.csv`;
+    anchor.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+
   function exportPDF(){if(!exportBlocked)reportExporter.printReport(exportReport);}
-  function exportPinpoint(){if(!exportBlocked)reportExporter.downloadPinpointCsv(exportReport,`TripLens_PINPOINT_${result?.run_id||'review'}.csv`);}
-  function editReportRow(row,key,value){setReportRows(rows=>rows.map(existing=>existing.row_id===row.row_id?{...existing,[key]:value,...(key==='status'?{note:'담당자 편집 · 검토 필요'}:{})}:existing));}
-  const ready=Boolean(eventFile&&rawFile&&eventData&&rawData);const logic=contract?.logic_summary;const meta=result||inspected;
-  const detailRows=detail?catalog.filter(e=>detail.kind==='evidence'?e.evidence_id===detail.value:[e.tag,e.source_node,e.canonical_tag].includes(detail.value)):[];
+  function exportDetailedCSV(){if(!exportBlocked)reportExporter.downloadPinpointCsv(exportReport,`TripLens_상세분석데이터_${result?.run_id||'analysis'}.csv`);}
+
+  function editReportRow(row,key,value){
+    setReportRows(rows=>rows.map(existing=>existing.row_id===row.row_id?{...existing,[key]:value}:existing));
+  }
+
+  const detailRows=detail?catalog.filter(entry=>detail.kind==='evidence'
+    ?entry.evidence_id===detail.value
+    :[entry.tag,entry.source_node,entry.canonical_tag].includes(detail.value)):[];
+
   let view;
-  if(detail)view=<div className="panel-stack"><button className="back-button" onClick={()=>setDetail(null)}>대시보드로 돌아가기</button><h2>{detail.kind==='evidence'?'근거 상세':'태그 상세'}</h2><code className="wrap-code">{detail.value}</code>{detail.kind==='tag'&&<button type="button" className="back-button" onClick={()=>openLogicLibrary({tag:detail.value})}>태그 기준 도면 · {detail.value}</button>}{detailRows.length?detailRows.map((e,i)=>{const targets=buildEvidenceLogicTargets(e);return <section className="claim-card evidence-detail" key={i}><h3>{e.source_kind} · {e.evidence_id}</h3><p>모델 시각: {modelTime(e.model_time_s)}</p><p>감사 시각: {e.wall_time_utc||'미기록'}</p><p>원본 태그: {e.original_tag||e.tag}</p><p>연결된 Source: {e.source_node||'미등록 관측 태그 · 로직 조건식 추론 금지'}</p><p>값 / 상태: {String(e.value??'미기록')} / {e.state||'—'}</p><p>{e.message||e.display_name||''}</p><p>Mapping: {e.mapping_status||'미등록 관측 태그'}</p><p>등록 Logic: {(e.logic_ids||[]).join(', ')||'미확인'}</p><div className="logic-targets" aria-label="근거와 연결된 로직 도면">{targets.tags.map(tag=><button type="button" key={`tag-${tag}`} onClick={()=>openLogicLibrary({tag})}>태그 기준 도면 · {tag}</button>)}{targets.rules.map(rule=><button type="button" key={`rule-${rule}`} onClick={()=>openLogicLibrary({rule})}>운전조건·룰 기준 도면 · {rule}</button>)}</div><p>등록 확인은 이 사고의 원인 확정이 아닙니다.</p></section>}):<div className="warning-box">이 ID와 연결된 원본 근거를 찾지 못했습니다. 원인 근거로 사용할 수 없습니다.</div>}</div>;
-  else if(activeTab==='cause')view=<div className="panel-stack"><div className="section-heading"><h2>원인 분석</h2><span className={`gate ${analysis.verification_gate==='PASS'?'pass':'hold'}`}>Verification Gate · {analysis.verification_gate}</span></div><p className="note">AI 가설·관측·등록 로직 검사를 구분합니다. PASS도 최종 공학적 확정이나 재기동 승인이 아닙니다.</p><p className="note">원인 탐색: Current Logic Master upstream 동적 추적 · 고정 Cause Matrix 사용 안 함</p><ClaimCard title="Primary Cause · 선행 원인 후보" item={analysis.primary_cause} onOpen={openDetail}/><ClaimCard title="Direct Trigger · 직접 보호동작 후보" item={analysis.direct_trigger} onOpen={openDetail}/><details className="analysis-details"><summary>Propagation · 파급 과정</summary><ClaimTable title="Propagation · 파급 과정" items={analysis.propagation} onOpen={openDetail}/></details><details className="analysis-details"><summary>Causal Chain · 시간순 검토</summary><section className="report-table"><h3>Causal Chain · 시간순 검토</h3>{analysis.causal_chain.map((c,i)=><div className="timeline-line" key={i}><b>{i+1}</b><div><small>{modelTime(c.model_time_s)} · {STATUS_TEXT[c.status]}</small><p>{c.claim}</p><EvidenceLinks ids={c.evidence_ids} onOpen={openDetail}/></div></div>)}</section></details><details className="analysis-details"><summary>반대 근거 / 가설 검토</summary><ClaimTable title="반대 근거 / 가설 검토" items={analysis.counter_evidence} onOpen={openDetail}/></details><details className="analysis-details"><summary>추가 확인 {analysis.additional_evidence_required.length}건</summary>{analysis.additional_evidence_required.map((text,index)=><p className="note" key={index}>{text}</p>)}</details><TraceView analysis={analysis}/></div>;
-  else if(activeTab==='timeline')view=<div className="panel-stack"><div className="section-heading"><h2>사고 진행 과정</h2><span>전체 EVENT {events.length}건</span></div><ClaimTable title="Critical Events · Gemini 선정" items={analysis.critical_events} onOpen={openDetail}/><details className="analysis-details"><summary>전체 SOE 보기 · 전체 EVENT {events.length}건</summary><section className="report-table"><h3>전체 EVENT · 원본 사건 기록</h3><EventTable events={events} onOpen={openDetail}/></section></details></div>;
-  else if(activeTab==='checks')view=<div className="panel-stack"><h2>즉시 확인·대응</h2><p className="warning-box">설비 조작 지시가 아닌 근거 검토 항목입니다.</p>{[...analysis.additional_evidence_required,...analysis.review_recommendations].map((t,i)=><div className="check-row" key={i}><span>{i+1}</span><p>{t}</p><em>담당자 검토</em></div>)}{!result&&<p>분석 후 실제 미확인 항목을 표시합니다.</p>}</div>;
-  else if(activeTab==='recovery')view=<div className="panel-stack"><h2>복구 검토 상태</h2><RecoveryForm value={recovery} onChange={setRecovery} catalog={catalog}/></div>;
-  else view=<div className="panel-stack"><h2>Event / RAW 근거</h2><input className="filter-input" aria-label="근거 검색" placeholder="근거 ID 또는 태그 검색" value={evidenceQuery} onChange={e=>setEvidenceQuery(e.target.value)}/><div className="scroll-table"><table><thead><tr><th>근거 ID</th><th>종류</th><th>모델 시각</th><th>원본 / Source 태그</th><th>값</th></tr></thead><tbody>{catalog.filter(e=>JSON.stringify([e.evidence_id,e.tag,e.source_node]).toLowerCase().includes(evidenceQuery.toLowerCase())).map(e=><tr key={e.evidence_id}><td><EvidenceLinks ids={[e.evidence_id]} onOpen={openDetail}/></td><td>{e.source_kind}</td><td>{modelTime(e.model_time_s)}</td><td><button className="tag-link" onClick={()=>openDetail({kind:'tag',value:e.source_node||e.tag})}>{e.source_node||e.tag}</button><small>{e.original_tag||e.tag}</small></td><td>{String(e.value??'—')}</td></tr>)}</tbody></table></div><p className="note">RAW는 실제 조회되어 응답에 연결된 표본을 표시합니다. 원본 RAW 전체를 AI가 확인했다고 뜻하지 않습니다.</p></div>;
-  return <main className="app-shell"><header className="topbar"><div className="brand"><div className="brand-mark">TL</div><div><h1>TripLens</h1><span>READ-ONLY · CURRENT V8</span></div></div><div className="status-rail"><div><span>입력</span><b>{ready?'Dual Log 선택됨':'입력 대기'}</b></div><div><span>DCS EVENT</span><b>{summary.dcs}</b></div><div><span>ECMS EVENT</span><b>{summary.ecms}</b></div><div><span>시뮬 / 기타</span><b>{summary.simulation+summary.other}</b></div><div><span>보호 EVENT</span><b>{summary.protection}</b></div></div></header>{mode==='demo'&&<div className="demo-banner">DEMO 화면 · 합성 예시를 실측·공식 검증 결과로 사용하지 않습니다.</div>}<div className="workspace"><aside className="sidebar"><div className="side-title">ANALYSIS WORKSPACE</div><nav>{WORKSPACE_TABS.map(t=><button className={`nav-item ${activeTab===t.id?'active':''}`} key={t.id} onClick={()=>{setActiveTab(t.id);setDetail(null);}}><span className="nav-no">{t.no}</span><span><b>{t.label}</b><em>{t.sub}</em></span></button>)}</nav><div className="side-links"><button onClick={()=>openLogicLibrary()}><b>LM</b><span>Logic Master<em>{logic?`Current ${logic.live_rules} · ALARM ${logic.alarm} · PROT ${logic.protection}`:'서버 원장 조회 대기'}</em></span></button></div><div className="boundary"><b>READ-ONLY</b><span>AI 신뢰도 ≠ 원인 확정</span><span>최종 보고서는 담당자 검토</span></div><a className="demo-link" href="/testbench">연동 단위기기 테스트</a><a className="demo-link" href={mode==='demo'?'/':'/demo'}>{mode==='demo'?'분석 화면으로':'분리된 시연 화면'}</a></aside><section className="main-area"><section className="intake"><div><div className="eyebrow">DUAL LOG INTAKE</div><h2>EVENT.csv + RAW.csv</h2><p>사건 기록과 실제 RAW 표본을 등록 Logic으로 연결합니다. 원본 파일은 수정하지 않습니다.</p></div><div className="file-grid">{[['event',eventFile,eventData],['raw',rawFile,rawData]].map(([kind,file,data])=><label className={`file-card ${file?'ready':''}`} key={kind}><span>{kind.toUpperCase()}.csv</span><b>{file?.name||'선택 대기'}</b><em>{file?`${(file.size/1024).toFixed(1)} KB · ${data?.records.length??'검사 중'}행`:''}{kind==='raw'&&data?` · ${meta?.validation?.raw_tag_count??data.fields.filter(f=>!['record_sequence','session_id','incident_id','model_time_s','wall_time_utc','collector_quality','quality','time'].includes(f)).length} tags`:''}</em><input disabled={busy||!restored} type="file" accept=".csv,text/csv" aria-label={`${kind.toUpperCase()} 파일`} onChange={e=>selectFile(kind,e.target.files?.[0])}/></label>)}</div>{!result&&<div className="pipeline" aria-label="분석 처리 흐름">{PIPELINE.map((t,i)=><span key={t}>{i+1}. {t}</span>)}</div>}<div className="intake-actions"><span role="status">{statusText||connection}</span><button disabled={!ready||busy} onClick={analyze}>{busy?'검사·분석 중…':'이 Dual Log 분석하기'}</button><button disabled={!result} className="secondary" onClick={()=>{setReportOpen(!reportOpen);setDetail(null);}}>고장보고서 초안 보기</button><button disabled={busy} className="secondary" onClick={clear}>입력·분석 지우기</button></div><details className="audit-details"><summary>감사·버전 정보</summary><div className="run-meta"><span>{storageNote}</span><span>시간 정렬: {meta?.validation?.time_alignment||'미검사'} · Evidence Policy: {meta?.validation?.status||'미검사'}</span>{result&&<><span>Run ID: {result.run_id}</span><span>Data digest: {result.data_digest}</span><span>Logic version: {result.contract?.logic_master_version}</span><span>Prompt version: {result.contract?.prompt_version}</span></>}</div></details></section>{result&&<section className="workspace-state-cards" aria-label="분석 진행 상태"><div role="group" aria-label="입력 근거"><span>입력 근거</span><strong>{meta?.evidence_readiness?.status||"HOLD"}</strong><small>입력 근거 준비 상태 · 원인 확정 아님</small></div><div role="group" aria-label="원인 검증"><span>원인 검증</span><strong>{analysis.verification_gate}</strong><small>등록 로직·근거 검증 · 재기동 승인 아님</small></div><div role="group" aria-label="복구 기록"><span>복구 기록</span><strong>{workflowLabel(exportReport.recovery_workflow)}</strong><small>사람이 입력한 복구·승인 기록</small></div><div role="group" aria-label="문서"><span>문서</span><strong>{exportReport.document_state==="REVIEWED"?"검토 완료":"초안"}</strong><small>원인 검증과 복구 기록 승인 모두 필요</small></div></section>}{result&&exportBlocked&&<p className="warning-box" role="alert">근거 무결성 오류 · 내보내기를 중단했습니다. 연결할 수 없는 Evidence ID: {missingEvidence.join(", ")}</p>}<section className="analysis-surface">{view}</section>{reportOpen&&result&&<section className="report-preview"><div className="section-heading report-actions"><h2>설비 고장 분석보고서 · 초안</h2><button className="export-button" disabled={exportBlocked} onClick={exportPDF}>보고서 V2 PDF</button><button className="export-button" disabled={exportBlocked} onClick={exportPinpoint}>PINPOINT.csv</button><button className="export-button" disabled={exportBlocked} onClick={exportCSV}>고장보고서 초안 CSV</button></div><p className="note">편집한 행과 복구 탭의 권위 있는 기록을 PDF/CSV로 내보냅니다. EVENT·RAW 원본과 AI 분석 객체는 바뀌지 않습니다. 검증 {analysis.verification_gate} · 담당자 최종 승인 필요</p><div className="scroll-table"><table className="editable-report"><thead><tr>{REPORT_COLUMNS.map(c=><th key={c}>{c}</th>)}</tr></thead><tbody>{displayReportRows.map((row,index)=>{
-  const recoveryRow=row.row_id?.startsWith('RECOVERY-');
-  return <tr key={row.row_id||index} data-row-id={row.row_id}>{REPORT_KEYS.map((key,column)=><td key={key} data-label={REPORT_COLUMNS[column]}>
-    {key==='status'?(recoveryRow||!CLAIM_STATUS_CHOICES.includes(row.status)?<span className="report-status" data-status={row.status}>{reportStatusLabel(row.status)}</span>:<select aria-label={`보고서 ${index+1} 상태`} value={row.status} onChange={event=>editReportRow(row,key,event.target.value)}>{CLAIM_STATUS_CHOICES.map(status=><option key={status} value={status}>{STATUS_TEXT[status]}</option>)}</select>):recoveryRow?<div className="report-readonly">{row[key]||'—'}{key==='content'&&<button className="tag-link" onClick={()=>{setActiveTab('recovery');setDetail(null);requestAnimationFrame(()=>document.querySelector('.recovery-form')?.scrollIntoView({block:'start'}));}}>복구 탭에서 편집</button>}</div>:<textarea aria-label={`보고서 ${index+1} ${key}`} value={row[key]||''} onChange={event=>editReportRow(row,key,event.target.value)}/>}
-  </td>)}</tr>;
-})}</tbody></table></div></section>}</section></div>{drawer&&<div className="drawer-backdrop" onClick={()=>setDrawer(false)}><aside className="logic-drawer" onClick={e=>e.stopPropagation()}><button className="drawer-close" onClick={()=>setDrawer(false)}>닫기</button><h2>Current Logic Master</h2><p>등록 원장: {logic?.live_rules??'미확인'} rules</p><p>Live Source Tags: {contract?.live_tag_allowlist_count??'미확인'}</p><p>등록 확인은 사고 원인 확정과 다릅니다.</p><p>원인 탐색: Current Logic Master upstream 동적 추적</p><p>고정 Cause Matrix: 사용 안 함</p><p>현재 연결 버전: {contract?.integration_version||'미확인'}</p><button className="back-button" onClick={()=>{setDrawer(false);setDetail(null);}}>대시보드로 돌아가기</button></aside></div>}<LogicLibraryDialog analysisMode />
-    </main>;
+  if(!result){
+    view=<WaitingPanel status={status}/>;
+  }else if(detail){
+    view=<div className="panel-stack evidence-page">
+      <button className="back-button" onClick={()=>setDetail(null)}>이전 화면</button>
+      <div className="section-heading"><h2>{detail.kind==='evidence'?'근거 상세':'태그 상세 정보'}</h2></div>
+      {detailRows.length?detailRows.map((entry,index)=>{
+        const targets=buildEvidenceLogicTargets(entry);
+        return <section className="claim-card evidence-detail" key={entry.evidence_id||index}>
+          <h3>{entry.display_name||entry.message||friendlyTag(entry.source_node||entry.tag)}</h3>
+          <dl>
+            <div><dt>모델 시각</dt><dd>{modelTime(entry.model_time_s)}</dd></div>
+            {entry.wall_time_utc?<div><dt>기록 시각</dt><dd>{entry.wall_time_utc}</dd></div>:null}
+            <div><dt>태그</dt><dd>{entry.canonical_tag||entry.source_node||entry.tag||'—'}</dd></div>
+            <div><dt>값 / 상태</dt><dd>{String(entry.value??'—')} {entry.state?`/ ${entry.state}`:''}</dd></div>
+          </dl>
+          {entry.message?<p>{entry.message}</p>:null}
+          {targets.tags.length||targets.rules.length?<div className="logic-targets" aria-label="로직 연결">{targets.tags.map(tag=><button type="button" key={`tag-${tag}`} onClick={()=>openLogicLibrary({tag})}>태그 상세 · {friendlyTag(tag)}</button>)}{targets.rules.map(rule=><button type="button" key={`rule-${rule}`} onClick={()=>openLogicLibrary({rule})}>로직 연결 · {rule}</button>)}</div>:null}
+        </section>;
+      }):<div className="empty-state">연결된 상세 근거가 없습니다.</div>}
+    </div>;
+  }else if(activeTab==='cause'){
+    view=<div className="panel-stack cause-layout">
+      <div className="section-heading"><div><span className="section-kicker">INCIDENT ANALYSIS</span><h2>원인 분석</h2></div></div>
+      <div className="cause-grid">
+        <ClaimCard title="Primary Cause" item={analysis.primary_cause} onOpen={setDetail}/>
+        <ClaimCard title="Direct Trigger" item={analysis.direct_trigger} onOpen={setDetail}/>
+      </div>
+      <section className="analysis-section">
+        <div className="analysis-section-head"><div><span>03</span><h3>Propagation</h3></div><p>사고의 파급 과정</p></div>
+        <AnalysisList items={analysis.propagation} onOpen={setDetail}/>
+      </section>
+      <section className="analysis-section causal-section">
+        <div className="analysis-section-head"><div><span>04</span><h3>Causal Chain</h3></div><p>시간순 인과관계</p></div>
+        <details><summary>상세 시간순서 보기</summary><AnalysisList items={analysis.causal_chain} onOpen={setDetail}/></details>
+      </section>
+    </div>;
+  }else if(activeTab==='timeline'){
+    view=<div className="panel-stack">
+      <div className="section-heading"><h2>사고 진행 과정</h2><span>EVENT {events.length}건</span></div>
+      <section className="analysis-section"><h3>주요 사건</h3><AnalysisList items={analysis.critical_events} onOpen={setDetail}/></section>
+      <details className="analysis-details"><summary>전체 사건 기록 보기 · {events.length}건</summary><EventTable events={events} onOpen={setDetail}/></details>
+    </div>;
+  }else if(activeTab==='checks'){
+    const checks=[...analysis.additional_evidence_required,...analysis.review_recommendations];
+    view=<div className="panel-stack"><div className="section-heading"><h2>즉시 확인·대응</h2></div>{checks.length?checks.map((text,index)=><div className="check-row" key={index}><span>{String(index+1).padStart(2,'0')}</span><p>{text}</p></div>):<div className="empty-state">추가 확인 항목이 없습니다.</div>}</div>;
+  }else if(activeTab==='recovery'){
+    view=<div className="panel-stack"><div className="section-heading"><h2>복구 기록</h2></div><RecoveryForm value={recovery} onChange={setRecovery} catalog={catalog}/></div>;
+  }else{
+    const filtered=catalog.filter(entry=>JSON.stringify([entry.evidence_id,entry.tag,entry.source_node,entry.canonical_tag]).toLowerCase().includes(evidenceQuery.toLowerCase()));
+    view=<div className="panel-stack"><div className="section-heading"><h2>Event / RAW 근거</h2><span>{filtered.length}건</span></div><input className="filter-input" aria-label="근거 검색" placeholder="근거 또는 태그 검색" value={evidenceQuery} onChange={event=>setEvidenceQuery(event.target.value)}/><div className="scroll-table"><table><thead><tr><th>근거</th><th>종류</th><th>모델 시각</th><th>신호</th><th>값</th></tr></thead><tbody>{filtered.map((entry,index)=><tr key={entry.evidence_id||index}><td><EvidenceLinks ids={[entry.evidence_id]} onOpen={setDetail} named/></td><td>{entry.source_kind||entry.source||'—'}</td><td>{modelTime(entry.model_time_s)}</td><td><button className="tag-link" onClick={()=>setDetail({kind:'tag',value:entry.source_node||entry.tag})}>{friendlyTag(entry.source_node||entry.canonical_tag||entry.tag)}</button></td><td>{String(entry.value??'—')}</td></tr>)}</tbody></table></div></div>;
+  }
+
+  return <main className="app-shell">
+    <header className="topbar">
+      <div className="brand"><div className="brand-mark">TL</div><div><h1>TripLens</h1><span>DUAL-INPUT ACCIDENT ANALYSIS</span></div></div>
+      <div className="status-rail">
+        <div><span>입력 상태</span><b>{result?'분석 완료':ready?'분석 준비':'Dual Log 대기'}</b></div>
+        <div><span>DCS EVENT</span><b>{summary.dcs}</b></div>
+        <div><span>ECMS EVENT</span><b>{summary.ecms}</b></div>
+        <div><span>TRIP</span><b>{summary.protection}</b></div>
+      </div>
+    </header>
+    {mode==='demo'?<div className="demo-banner">시연용 분석 화면</div>:null}
+    <div className="workspace">
+      <aside className="sidebar">
+        <div className="side-title">ANALYSIS WORKSPACE</div>
+        <nav>{WORKSPACE_TABS.map(tab=><button disabled={!result} className={`nav-item ${activeTab===tab.id?'active':''}`} key={tab.id} onClick={()=>{setActiveTab(tab.id);setDetail(null);}}><span className="nav-no">{tab.no}</span><span><b>{tab.label}</b><em>{tab.sub}</em></span></button>)}</nav>
+        <div className="side-links"><button onClick={()=>openLogicLibrary()}><b>LM</b><span>Logic / TAG Master<em>{logic?`${logic.live_rules} Logic · ${logic.protection} Protection`:'태그 검색 · 로직 연결'}</em></span></button></div>
+        <div className="boundary"><b>READ-ONLY</b><span>분석 및 보고서 전용</span></div>
+      </aside>
+      <section className="main-area">
+        <section className="intake">
+          <div className="intake-copy"><div className="eyebrow">DUAL LOG INTAKE</div><h2>EVENT.csv + RAW.csv</h2><p>사건 기록과 공정 데이터를 함께 분석합니다.</p></div>
+          <div className="file-grid">{[
+            ['event',eventFile,eventData],
+            ['raw',rawFile,rawData],
+          ].map(([kind,file,data])=><label className={`file-card ${file?'ready':''}`} key={kind}><span>{kind.toUpperCase()}.csv</span><b>{file?.name||'파일 선택'}</b><em>{file?`${(file.size/1024).toFixed(1)} KB · ${data?.records.length??'확인 중'}${kind==='event'?'건':'행'}${kind==='raw'&&data?` · ${rawTagCount(data)}개 태그`:''}`:''}</em><input disabled={busy} type="file" accept=".csv,text/csv" aria-label={`${kind.toUpperCase()} 파일`} onClick={event=>{event.currentTarget.value='';}} onChange={event=>selectFile(kind,event.target.files?.[0])}/></label>)}</div>
+          <div className="analysis-status" aria-live="polite"><b>{status.title}</b>{status.detail?<span>{status.detail}</span>:null}{statusText?<em role="alert">{statusText}</em>:null}</div>
+          <div className="intake-actions">
+            <button disabled={!ready||busy||Boolean(result)} onClick={analyze}>{busy?'분석 중…':result?'분석 완료':'이 Dual Log 분석하기'}</button>
+            <button disabled={!result} className="secondary" onClick={()=>{setReportOpen(!reportOpen);setDetail(null);}}>고장분석 보고서 보기</button>
+            <button disabled={busy} className="secondary" onClick={clear}>입력·분석 지우기</button>
+          </div>
+        </section>
+
+        {result&&exportBlocked?<p className="warning-box" role="alert">일부 근거 연결을 확인한 후 내보낼 수 있습니다: {missingEvidence.length}건</p>:null}
+        <section className="analysis-surface">{view}</section>
+
+        {reportOpen&&result?<section className="report-preview">
+          <div className="section-heading report-actions">
+            <h2>설비 고장 분석보고서</h2>
+            <button className="export-button" disabled={exportBlocked} onClick={exportPDF}>보고서 PDF 저장</button>
+            <details className="export-menu"><summary>내보내기</summary><div><button className="export-button" disabled={exportBlocked} onClick={exportCSV}>보고서 CSV</button><button className="export-button" disabled={exportBlocked} onClick={exportDetailedCSV}>상세 분석 데이터 CSV</button></div></details>
+          </div>
+          <p className="report-help">보고서 내용을 확인하고 필요한 항목을 편집할 수 있습니다.</p>
+          <div className="scroll-table"><table className="editable-report"><thead><tr>{REPORT_COLUMNS.map(column=><th key={column}>{column}</th>)}</tr></thead><tbody>{displayReportRows.map((row,index)=>{
+            const recoveryRow=row.row_id?.startsWith('RECOVERY-');
+            return <tr key={row.row_id||index} data-row-id={row.row_id}>{REPORT_KEYS.map((key,column)=><td key={key} data-label={REPORT_COLUMNS[column]}>{key==='status'?(recoveryRow||!CLAIM_STATUS_CHOICES.includes(row.status)?<span className="report-status" data-status={row.status}>{reportStatusLabel(row.status)}</span>:<select aria-label={`보고서 ${index+1} 상태`} value={row.status} onChange={event=>editReportRow(row,key,event.target.value)}>{CLAIM_STATUS_CHOICES.map(statusValue=><option key={statusValue} value={statusValue}>{REPORT_STATUS_TEXT[statusValue]}</option>)}</select>):recoveryRow?<div className="report-readonly">{row[key]||'—'}{key==='content'?<button className="tag-link" onClick={()=>{setActiveTab('recovery');setDetail(null);requestAnimationFrame(()=>document.querySelector('.recovery-form')?.scrollIntoView({block:'start'}));}}>복구 기록에서 편집</button>:null}</div>:<textarea aria-label={`보고서 ${index+1} ${key}`} value={row[key]||''} onChange={event=>editReportRow(row,key,event.target.value)}/>}</td>)}</tr>;
+          })}</tbody></table></div>
+        </section>:null}
+      </section>
+    </div>
+    <LogicLibraryDialog analysisMode/>
+  </main>;
 }

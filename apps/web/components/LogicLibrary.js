@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import LogicViewerFrame from './LogicViewerFrame';
 
 export function openLogicLibrary(detail = {}) {
   window.dispatchEvent(new CustomEvent('triplens:open-logic', { detail }));
@@ -38,7 +39,7 @@ export function LogicLibraryDialog({analysisMode = false}) {
     <dialog ref={ref} aria-label={title} onCancel={close}
       onClick={event => { if (event.target === ref.current) close(); }}
       style={{ width: 'min(1600px, 98vw)', height: '94dvh', maxWidth: '98vw', maxHeight: '96dvh', padding: 0, border: '1px solid #b5c8d5', borderRadius: 12 }}>
-      <div style={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', height: '100%', minWidth: 0 }}>
+      <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', height: '100%', minWidth: 0 }}>
         <header style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: '#17364d', color: 'white', minHeight: 48 }}>
           <strong>{analysisMode ? `TripLens · ${title}` : 'TripLens · 로직 상세보기'}</strong>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
@@ -47,12 +48,7 @@ export function LogicLibraryDialog({analysisMode = false}) {
             <button type="button" onClick={close} style={{ background: 'transparent', color: 'white', border: '1px solid #b5c8d5', borderRadius: 6, padding: '7px 12px', cursor: 'pointer' }}>닫기</button>
           </div>
         </header>
-        <section aria-label="등록 로직과 원인 판단의 구분" style={{ padding: '6px 16px', background: '#f1f5f8', color: '#17364d', fontSize: 13, overflowWrap: 'anywhere' }}>
-          <p style={{ margin: '2px 0' }}>원인 탐색: Current Logic Master upstream 동적 추적</p>
-          <p style={{ margin: '2px 0' }}>고정 Cause Matrix: 사용 안 함</p>
-          <p style={{ margin: '2px 0' }}>등록 확인은 사고 원인 확정과 다릅니다.</p>
-        </section>
-        {selection ? <iframe key={selection.revision} title={analysisMode ? title : '태그와 draw.io 로직 도면'} src={src} style={{ width: '100%', height: '100%', minHeight: 0, border: 0, display: 'block' }} /> : null}
+        {selection ? <LogicViewerFrame key={selection.revision} title={analysisMode ? title : '태그와 로직 도면'} src={src} tag={selection.tag} rule={selection.rule} style={{ width: '100%', height: '100%', minHeight: 0, border: 0, display: 'block' }} /> : null}
       </div>
     </dialog>
   );
