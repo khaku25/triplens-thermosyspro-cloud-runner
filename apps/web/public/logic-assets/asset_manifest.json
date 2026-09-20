@@ -11,19 +11,19 @@
   },
   "files": {
     "08_TAG_LOGIC_LINK_MASTER_VALIDATION.xlsx": "f8a94f0615890703478ed3afca28a1d4422ef4a2cf76a500ac0dc6de97ca28b0",
-    "09_LOGIC_DEFINITION_MASTER_CURRENT_V8.xlsx": "e87361b2ad7e100f880601fd3cf9aa617d71155bd4bd31e193c6a6a1524bc14d",
+    "09_LOGIC_DEFINITION_MASTER_CURRENT_V8.xlsx": "e106c4091dd8824e7777df6c1521c58a96ca1083183492941644a62ba4933fb2",
     "10_OPERATIONAL_LOGIC_GROUP_CURRENT_V8.xlsx": "246201fd585f0b054159263cc124d13e3c0b7019c6839bbdefa06d0968bb7e45",
-    "TripLens_Logic_Master_Current_V8.drawio": "75fb0ddb92364b5d8d007a179ebab1a6f9b8be10f2ae142e720d6018bb6794b9",
-    "blocks.csv": "8aa6a1687eee0515ea1765f70f7e45f5c89ce785357628c917cef861e486d008",
+    "TripLens_Logic_Master_Current_V8.drawio": "00e99fed5c2264cdaeb0d8e728bcdf0fc7924f39ea132cc55be2153fdc8217c2",
+    "blocks.csv": "ce19ae6a31cbea6c2807fdc7bb6622a267f3a13968f4a219ea38ef75658474d8",
     "definitions.csv": "cf29c0654592098ebadeb8512b0bb325c2492e576bbf6e8a4cdbb9405174345e",
-    "edges.csv": "2c06061ac0ccaa5c1d6919e08a969b20328ca4b1d87e62c2d344402b1b829010",
+    "edges.csv": "9b69368ca7a6086b9d402e337d0a1290c0a5d1046f843c98c85077dbf8979d85",
     "groups.csv": "f721c5519c151ab97efd515b032a62c79cd215d4252f729623c074e136e63913",
     "links.csv": "d6521353d58355a4267b76dfa9db4caef3359708673a22f2fb3bd5a1b05c4963",
-    "logic_diagram_index.json": "6e8d5016edc8224b2cfa23b8e9ceb81497a71b3524513d9959666dbbfade195c",
+    "logic_diagram_index.json": "898a92780504bd92ddc4a3a157ca3647230c672c0c73dd91cbeeaf25872b160f",
     "ports.csv": "cd6214cd369d05e33e8dce63fca6efa51cd97e5ccb00f7975a1d837f2cebba0a",
-    "viewer.html": "71086d1bbf2103e7c15f10da0f7f9ee0531f698b9a0aa1cc23598b0b6d949866"
+    "viewer.html": "d20f622e97d93f3a2abfddc18802c95f56ee9997bb04735a182933b21b94dead"
   },
-  "schema_version": 1,
+  "schema_version": 2,
   "semantic_sha256": "3f5398d2a9efc176d365a313ba7a3c7c9156135a9fc9ae6d8eef7d885ee87c12",
   "verification_scope": "Identity and diagram consistency; no plant execution"
 }

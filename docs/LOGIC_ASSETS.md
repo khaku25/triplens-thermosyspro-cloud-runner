@@ -70,6 +70,18 @@ Linux/macOS:
 
 ## draw.io에서 수정 가능한 범위
 
+통합 도면/색인/asset manifest는 schema 2입니다. 각 분기는 **INPUT → CONDITION → OPERATION → OUTPUT**
+네 열로 표시합니다. 기본 x/너비는 각각 40/320, 410/320, 780/320, 1150/360px이며,
+분기 높이는 최소 250px이고 출력 수에 따라 확장합니다. 지연, 복귀/히스테리시스, 동작 검증 상태,
+출력 분류는 동작 아래 **ADDITIONAL INFO**에만 표시하며 신호선에 연결하지 않습니다.
+중앙 블록 ID는 `condition:{rule_id}`, `operation:{rule_id}`, `additional:{rule_id}`입니다.
+페이지 및 기존 입력/출력 ID와 원장 semantic hash는 바뀌지 않습니다.
+
+schema 1의 `logic:` 레이아웃은 한 번 schema 2로 이전합니다. 이전 좌표가 새 열 제목/분기와 겹치지 않도록
+이때 전체 기본 좌표를 다시 배치합니다. 이전 후 schema 2로 저장한 위치·크기·선 좌표는 다음 갱신에 유지됩니다.
+선언된 schema와 중앙 ID가 다르거나 schema 1/2 중앙 ID가 섞인 파일, 지원하지 않는 schema는 차단합니다.
+뷰어는 XML과 색인 모두 schema 2인 경우에만 열립니다.
+
 같은 페이지 ID와 cell ID가 유지되는 경우 위치(x/y), 크기(width/height), 선 꺾임 좌표,
 안전한 기본 색/테두리/폰트 크기를 다음 생성 때 유지합니다.
 내용(태그/조건/입출력)은 06/07이 우선합니다. draw.io의 문구를 고쳐도 로직 원장이 역으로 바뀌지 않습니다.
@@ -94,7 +106,7 @@ Linux/macOS:
 
 53개 Rule의 기존 `validation_status`는 유지합니다. Live 태그 존재성 검증과 보호동작/물리 검증을 혼동하지 않습니다.
 `event-driven`, `runtime-defined`, `external runtime interface`는 타이머 초 값으로 만들지 않습니다.
-Hysteresis는 Rule 복귀 속성으로 기록하며 별도의 하류 실행 블록을 추측해 붙이지 않습니다.
+Hysteresis와 지연은 ADDITIONAL INFO에 원장 속성으로 기록하며 별도의 하류 실행 블록을 추측해 붙이지 않습니다.
 
 ## 저장·배포 경계
 

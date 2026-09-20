@@ -86,12 +86,11 @@ def main(argv=None):
     proof=verify_census(census,proof_path)
     layout=args.layout or root/'logic_diagrams'/DRAWIO_NAME
     if args.layout and not layout.is_file():raise ValueError('Requested draw.io layout file is missing')
-    if layout.exists() and 'logic:' not in layout.read_text(encoding='utf-8'):
-        # Compressed draw.io is supported by the decoder; inspect decompressed IDs.
-        from scripts.logic_assets.drawio import decode_document
+    if layout.exists():
+        # Validate the declared schema against decompressed stable central IDs.
+        from scripts.logic_assets.drawio import decode_document,validate_layout_schema
         document=decode_document(layout.read_text(encoding='utf-8'))
-        if not any((e.get('id') or '').startswith('logic:') for e in document.iter()):
-            raise ValueError('This is an older numeric-ID preview, not a stable-ID layout file. Keep it as an archive; generate the new repository once before saving layout edits.')
+        validate_layout_schema(document)
     with tempfile.TemporaryDirectory(prefix='triplens-master-import-') as tmp:
         source=Path(tmp) if args.from_drive else master
         if args.from_drive:download_masters(source,token)

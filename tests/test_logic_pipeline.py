@@ -13,7 +13,10 @@ except ImportError:
     pipeline=None
 from scripts.logic_assets import make_repository
 from scripts.logic_assets.xmlio import read_table,write_xlsx
-from test_logic_assets import fixture
+try:
+    from .test_logic_assets import fixture
+except ImportError:  # unittest discovery imports this as a top-level module.
+    from test_logic_assets import fixture
 ROOT=Path(__file__).resolve().parents[1]
 
 class PipelineTest(unittest.TestCase):
@@ -60,6 +63,22 @@ class PipelineTest(unittest.TestCase):
         ports=read_table(self.root/'generated/logic/09_LOGIC_DEFINITION_MASTER_CURRENT_V8.xlsx','02_Ports','rule_id')
         self.assertEqual(len(ports),4)
         self.assertNotIn('MISSING',{p['kind'] for p in ports})
+
+    def test_schema_two_manifest_and_block_tables_follow_signal_path(self):
+        repo = self.repo()
+        pipeline.publish_project(repo, self.root)
+        manifest = json.loads((self.root/'generated/logic/asset_manifest.json').read_text())
+        self.assertEqual(manifest['schema_version'], 2)
+        blocks = repo['derived']['blocks']
+        self.assertEqual({b['block_type'] for b in blocks}, {'CONDITION', 'OPERATION', 'ADDITIONAL_INFO'})
+        self.assertEqual({b['block_id'] for b in blocks}, {'condition:AL-LEVEL-H', 'operation:AL-LEVEL-H', 'additional:AL-LEVEL-H'})
+        self.assertEqual([(e['from_id'], e['to_id']) for e in repo['derived']['edges']],
+                         [('PORT:IN-01', 'condition:AL-LEVEL-H'), ('condition:AL-LEVEL-H', 'operation:AL-LEVEL-H'),
+                          ('operation:AL-LEVEL-H', 'PORT:OUT-01')])
+        for block in blocks:
+            if block['block_type'] != 'ADDITIONAL_INFO':
+                self.assertEqual(block['delay'], '')
+                self.assertEqual(block['reset_hysteresis'], '')
 
     def test_check_mode_does_not_write(self):
         pipeline.publish_project(self.repo(),self.root)

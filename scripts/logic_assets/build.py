@@ -6,7 +6,6 @@ from pathlib import Path
 import shutil
 import tempfile
 
-from .model import numeric_delay
 from .xmlio import write_csv, write_xlsx
 
 DRAWIO_NAME='TripLens_Logic_Master_Current_V8.drawio'
@@ -26,19 +25,18 @@ def derive_views(model,index):
                 pid=('IN' if relation=='INPUT' else 'OUT')+f'-{n:02}'
                 ports.append(dict(rule_id=rid,port_id=pid,relation=relation,node_or_tag=tag,
                     kind='RAW_NODE' if tag in model['tags'] else 'DERIVED_TAG'))
-        blocks.append(dict(rule_id=rid,block_id='logic:'+rid,block_type=r['logic_type'],
-                           condition_or_label=r['condition'],delay=r['delay'],reset_hysteresis=r['reset_hysteresis']))
-        last='logic:'+rid
-        delay=numeric_delay(r['delay'])
-        if delay is not None and delay>0:
-            last='delay:'+rid
-            blocks.append(dict(rule_id=rid,block_id=last,block_type='TON' if r['logic_type']=='ALARM' else 'DEFINED_DELAY',
-                              condition_or_label='',delay=r['delay'],reset_hysteresis=''))
-            edges.append(dict(rule_id=rid,from_id='logic:'+rid,to_id=last,edge_role='DEFINED_DELAY'))
+        for kind,label in [('condition',r['condition']),('operation',r['logic_name']+'\n'+r['logic_type']),
+                           ('additional','ADDITIONAL INFO')]:
+            additional=kind=='additional'
+            blocks.append(dict(rule_id=rid,block_id=kind+':'+rid,block_type='ADDITIONAL_INFO' if additional else kind.upper(),
+                condition_or_label=label,delay=r['delay'] if additional else '',
+                reset_hysteresis=r['reset_hysteresis'] if additional else '',
+                validation_status=r['validation_status'] if additional else '',output_class=r['output_class'] if additional else ''))
         for n,_ in enumerate(r['inputs'],1):
-            edges.append(dict(rule_id=rid,from_id=f'PORT:IN-{n:02}',to_id='logic:'+rid,edge_role='INPUT'))
+            edges.append(dict(rule_id=rid,from_id=f'PORT:IN-{n:02}',to_id='condition:'+rid,edge_role='INPUT'))
+        edges.append(dict(rule_id=rid,from_id='condition:'+rid,to_id='operation:'+rid,edge_role='CONDITION'))
         for n,_ in enumerate(r['outputs'],1):
-            edges.append(dict(rule_id=rid,from_id=last,to_id=f'PORT:OUT-{n:02}',edge_role='OUTPUT'))
+            edges.append(dict(rule_id=rid,from_id='operation:'+rid,to_id=f'PORT:OUT-{n:02}',edge_role='OUTPUT'))
         definitions.append({k:r[k] for k in ('rule_id','group','logic_name','logic_type','input_nodes','condition',
             'delay','reset_hysteresis','output_nodes_or_tags','output_class','input_group_id','validation_status','source_basis')})
     for gid,rs in model['groups'].items():
@@ -78,7 +76,7 @@ def publish_repository(repository,target):
             html=viewer.read_text(encoding='utf-8').replace('__TRIPLENS_PAYLOAD__',payload)
             (staging/'viewer.html').write_text(html,encoding='utf-8')
         hashes={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(staging.iterdir()) if p.is_file()}
-        dump('asset_manifest.json',dict(schema_version=1,semantic_sha256=repository['index']['semantic_sha256'],files=hashes,
+        dump('asset_manifest.json',dict(schema_version=2,semantic_sha256=repository['index']['semantic_sha256'],files=hashes,
              counts=repository['index']['counts'],verification_scope='Identity and diagram consistency; no plant execution'))
         if backup.exists():
             shutil.rmtree(backup)
