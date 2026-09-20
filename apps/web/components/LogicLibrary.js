@@ -16,7 +16,7 @@ export function LogicLinks({ tags }) {
     </span>
   ));
 }
-export function LogicLibraryDialog() {
+export function LogicLibraryDialog({analysisMode = false}) {
   const ref = useRef(null);
   const [selection, setSelection] = useState(null);
   useEffect(() => {
@@ -33,13 +33,14 @@ export function LogicLibraryDialog() {
   if (selection?.rule) query.set('rule', selection.rule);
   else if (selection?.tag) query.set('tag', selection.tag);
   const src = `/logic-assets/viewer.html${query.toString() ? '#' + query : ''}`;
+  const title = analysisMode ? (selection?.rule ? '운전조건·룰 기준 도면' : selection?.tag ? '태그 기준 도면' : '태그·운전조건·룰 기준 도면') : '태그·로직 상세보기';
   return (
-    <dialog ref={ref} aria-label="태그·로직 상세보기" onCancel={close}
+    <dialog ref={ref} aria-label={title} onCancel={close}
       onClick={event => { if (event.target === ref.current) close(); }}
       style={{ width: 'min(1600px, 98vw)', height: '94dvh', maxWidth: '98vw', maxHeight: '96dvh', padding: 0, border: '1px solid #b5c8d5', borderRadius: 12 }}>
       <div style={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', height: '100%', minWidth: 0 }}>
         <header style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: '#17364d', color: 'white', minHeight: 48 }}>
-          <strong>TripLens · 로직 상세보기</strong>
+          <strong>{analysisMode ? `TripLens · ${title}` : 'TripLens · 로직 상세보기'}</strong>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
             <a href={`/logic${query.toString() ? '?' + query : ''}`} target="_blank" rel="noreferrer" style={{ color: 'white' }}>별도 화면</a>
             <button type="button" onClick={close} style={{ background: 'white', color: '#17364d', border: 0, borderRadius: 6, padding: '7px 12px', cursor: 'pointer' }}>분석 화면으로 돌아가기 ×</button>
@@ -51,7 +52,7 @@ export function LogicLibraryDialog() {
           <p style={{ margin: '2px 0' }}>고정 Cause Matrix: 사용 안 함</p>
           <p style={{ margin: '2px 0' }}>등록 확인은 사고 원인 확정과 다릅니다.</p>
         </section>
-        {selection ? <iframe key={selection.revision} title="태그와 draw.io 로직 도면" src={src} style={{ width: '100%', height: '100%', minHeight: 0, border: 0, display: 'block' }} /> : null}
+        {selection ? <iframe key={selection.revision} title={analysisMode ? title : '태그와 draw.io 로직 도면'} src={src} style={{ width: '100%', height: '100%', minHeight: 0, border: 0, display: 'block' }} /> : null}
       </div>
     </dialog>
   );

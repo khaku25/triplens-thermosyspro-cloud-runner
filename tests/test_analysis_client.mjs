@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {normalizeDisplayAnalysis,parseCSV,summarizeEvents,buildDraftRows,draftCSV,modelTime,REPORT_COLUMNS,REPORT_SECTIONS} from '../apps/web/lib/analysisClient.mjs';
+import {mergeEvents,mergeEvidenceCatalog,validateReportReferences} from '../apps/web/lib/reportIntegrity.mjs';
+import {applyRecoveryRows} from '../apps/web/lib/reportAdapter.mjs';
 
 test('provider string and alias propagation never render as blank rows',()=>{
  const a=normalizeDisplayAnalysis({propagation:['GT 출력 감소',{description:'52GT 개방',evidence_id:'E3',tag:'vpp52GTClosed',model_time_s:48.52}]});
@@ -48,4 +50,21 @@ test('sampling intervals are visible, idempotent and not false exact timestamps'
  const source={primary_cause:{claim:'외부 입력 상승 후보',status:'CANDIDATE',evidence_ids:['RAW:1:tag','RAW:2:tag'],time_interval_s:[47.92,48.92],model_time_s:null}};
  const a=normalizeDisplayAnalysis(source);assert.match(a.primary_cause.claim,/47\.920 ~ 48\.920/);assert.equal(a.primary_cause.model_time_s,null);assert.equal(normalizeDisplayAnalysis(a).primary_cause.claim,a.primary_cause.claim);
  const row=buildDraftRows({analysis:a}).find(r=>r.section==='발생 원인'&&r.item==='선행 원인');assert.ok(row);assert.match(row.time,/표본 구간/);
+});
+test('workspace report composition keeps enriched EVENT tags and human workflow separate from AI claims',()=>{
+ const uploaded=Array.from({length:21},(_,i)=>({event_id:`E${i+1}`,tag:'TRIP_LATCH',model_time_s:i}));
+ const enriched=uploaded.map(e=>({...e,source_node:'vppGTTripLatch'}));
+ const events=mergeEvents(uploaded,enriched);
+ const rows=applyRecoveryRows(buildDraftRows({events,evidence_catalog:mergeEvidenceCatalog(events,enriched.slice(0,14)),analysis:{}}),{status:'RECOVERED',operator:'Lee',actions:'점검 완료',recovered_at:'2026-09-20T10:30',restart_conditions:'별도 운전 검토',approver:'Kim'});
+ const parsed=parseCSV(draftCSV(rows));
+ assert.equal(parsed.fields.length,8);
+ assert.equal(parsed.records.filter(r=>r.구분==='증거자료').length,21);
+ assert.ok(parsed.records.filter(r=>r.구분==='증거자료').every(r=>r['관련 태그']==='vppGTTripLatch'));
+ assert.deepEqual(validateReportReferences(rows),{valid:true,missing:[]});
+ assert.equal(parsed.records.find(r=>r.항목==='실제 수행 조치').상태,'APPROVAL_PENDING');
+ for(const status of ['INPUT_PENDING','APPROVAL_PENDING','APPROVED']){
+  const normalized=normalizeDisplayAnalysis({primary_cause:{claim:'후보',status,evidence_ids:['E1']}});
+  assert.equal(normalized.primary_cause.status,'OBSERVED');
+ }
+ assert.equal(uploaded[0].source_node,undefined);
 });
