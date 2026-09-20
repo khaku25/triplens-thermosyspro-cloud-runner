@@ -15,7 +15,7 @@ def once(source,old,new,label):
     return source.replace(old,new,1)
 
 def patch_workspace(source):
-    if '<LogicLibraryDialog />' in source and 'openLogicLibrary()' in source:
+    if re.search(r'<LogicLibraryDialog\b[^>]*/>', source) and 'openLogicLibrary()' in source:
         return source
     modern = "import {useEffect,useMemo,useRef,useState} from 'react';"
     if modern in source:

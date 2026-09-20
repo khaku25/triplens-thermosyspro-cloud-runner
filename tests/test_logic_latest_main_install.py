@@ -59,5 +59,12 @@ def public_contract():
         self.assertEqual(out[out.index('def logic_summary('):], source[source.index('def logic_summary('):])
         self.assertEqual(self.m.patch_bridge(out), out)
 
+    def test_operator_workspace_with_analysis_dialog_is_already_integrated(self):
+        source = """'use client';
+import {LogicLibraryDialog,openLogicLibrary} from './LogicLibrary';
+export default function App(){return <main><button onClick={()=>openLogicLibrary()}>Logic / TAG Master</button><LogicLibraryDialog analysisMode/></main>;}
+"""
+        self.assertEqual(self.m.patch_workspace(source), source)
+
 if __name__ == '__main__':
     unittest.main()
