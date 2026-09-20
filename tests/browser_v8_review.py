@@ -66,7 +66,7 @@ def main():
             expect(page.get_by_role('heading',name='Direct Trigger',exact=True)).to_be_visible()
             expect(page.get_by_role('heading',name='Propagation',exact=True)).to_be_visible()
             expect(page.get_by_role('heading',name='Causal Chain',exact=True)).to_be_visible()
-            expect(button).to_be_disabled()
+            expect(page.get_by_role('button',name='분석 완료',exact=True)).to_be_disabled()
             body_text=page.locator('body').inner_text()
             for hidden in ('Current Logic Master upstream','고정 Cause Matrix','Verification Gate','HOLD','CANDIDATE','초안','PINPOINT','Notion'):
                 assert hidden not in body_text,hidden
