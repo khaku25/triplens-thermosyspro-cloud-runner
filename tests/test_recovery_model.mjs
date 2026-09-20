@@ -72,3 +72,17 @@ test('evidence IDs normalize to a deduplicated string array and unresolved IDs f
   assert.deepEqual(normalizeRecovery({...completeRecovered,evidence_ids:'E1; E1, E2'}).evidence_ids,['E1','E2']);
   assert.deepEqual(validateRecovery({...completeRecovered,evidence_ids:['E1','NOPE']},catalog).missing_evidence,['NOPE']);
 });
+
+test('an unrecognized status remains invalid and can never become approved UNKNOWN', () => {
+  const invalid={
+    ...completeRecovered,
+    status:'TYPO',
+    decision_entered:true,
+    approver:'Kim',
+    approved_at:'2026-09-20T10:00:00Z',
+  };
+  assert.notEqual(normalizeRecovery(invalid).status,'UNKNOWN');
+  assert.deepEqual(validateRecovery(invalid,catalog).missing_fields,['status']);
+  assert.equal(validateRecovery(invalid,catalog).valid,false);
+  assert.equal(deriveRecoveryWorkflow(invalid),'INPUT_PENDING');
+});

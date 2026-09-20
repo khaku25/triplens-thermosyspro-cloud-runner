@@ -22,9 +22,9 @@ export function parseEvidenceIds(value){
 
 export function normalizeRecovery(value={}){
   const source=value&&typeof value==='object'?value:{};
-  const status=text(source.status).toUpperCase();
+  const status=text(source.status).toUpperCase()||'UNKNOWN';
   return {
-    status:RECOVERY_STATUSES.has(status)?status:'UNKNOWN',
+    status,
     decision_entered:source.decision_entered===true||source.decision_entered===1||source.decision_entered==='true',
     recovered_at:text(source.recovered_at),
     operator:text(source.operator),
@@ -37,15 +37,22 @@ export function normalizeRecovery(value={}){
 }
 
 function requiredFields(value){
+  if(!RECOVERY_STATUSES.has(value.status))return ['status'];
   if(value.status==='UNKNOWN')return ['decision_entered','operator','actions'];
   if(value.status==='RECOVERED')return ['recovered_at','operator','actions','restart_conditions'];
   if(value.status==='PARTIAL')return ['recovered_at','operator','actions'];
   return ['operator','actions'];
 }
 
+function fieldMissing(value,field){
+  if(field==='status')return !RECOVERY_STATUSES.has(value.status);
+  if(field==='decision_entered')return !value.decision_entered;
+  return !value[field];
+}
+
 export function validateRecovery(value,catalog=[]){
   const recovery=normalizeRecovery(value);
-  const missing_fields=requiredFields(recovery).filter(field=>field==='decision_entered'?!recovery.decision_entered:!recovery[field]);
+  const missing_fields=requiredFields(recovery).filter(field=>fieldMissing(recovery,field));
   const available=new Set((Array.isArray(catalog)?catalog:[]).map(item=>text(item?.evidence_id||item?.event_id)).filter(Boolean));
   const missing_evidence=recovery.evidence_ids.filter(id=>!available.has(id));
   return {valid:missing_fields.length===0&&missing_evidence.length===0,missing_fields,missing_evidence,recovery};
@@ -53,7 +60,7 @@ export function validateRecovery(value,catalog=[]){
 
 export function deriveRecoveryWorkflow(value){
   const recovery=normalizeRecovery(value);
-  if(requiredFields(recovery).some(field=>field==='decision_entered'?!recovery.decision_entered:!recovery[field]))return 'INPUT_PENDING';
+  if(requiredFields(recovery).some(field=>fieldMissing(recovery,field)))return 'INPUT_PENDING';
   if(recovery.approver&&recovery.approved_at)return 'APPROVED';
   return 'APPROVAL_PENDING';
 }

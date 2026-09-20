@@ -69,3 +69,15 @@ test('unresolved recovery evidence is included in the workspace integrity result
   assert.deepEqual(out.reference_integrity,{valid:false,missing:['NOPE']});
   assert.deepEqual(out.recovery_validation.missing_evidence,['NOPE']);
 });
+
+test('complete PARTIAL and NOT_RECOVERED records do not report restart conditions as missing', () => {
+  const values=[
+    {...recovery,status:'PARTIAL',restart_conditions:''},
+    {status:'NOT_RECOVERED',operator:'Lee',actions:'정비 인계',restart_conditions:'',evidence_ids:['E1']},
+  ];
+  for(const value of values){
+    const restart=recoveryReportRows(value).find(row=>row.item==='재기동 조건');
+    assert.equal(restart.content,'해당 없음 (필수 입력 아님)');
+    assert.doesNotMatch(restart.content,/입력 대기/);
+  }
+});
