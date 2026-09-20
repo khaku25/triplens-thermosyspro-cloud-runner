@@ -4,4 +4,5 @@ vendor/
 __pycache__/
 *.pyc
 .DS_Store
-
+apps/web/node_modules/
+apps/web/.next/
