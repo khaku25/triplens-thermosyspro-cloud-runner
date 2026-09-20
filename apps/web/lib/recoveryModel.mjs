@@ -22,7 +22,7 @@ export function parseEvidenceIds(value){
 
 export function normalizeRecovery(value={}){
   const source=value&&typeof value==='object'?value:{};
-  const status=text(source.status).toUpperCase()||'UNKNOWN';
+  const status=text(source.status).toUpperCase();
   return {
     status,
     decision_entered:source.decision_entered===true||source.decision_entered===1||source.decision_entered==='true',

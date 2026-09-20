@@ -31,6 +31,7 @@ const notRecovered = {
 };
 
 test('empty recovery is human input pending and is not presented as engineering UNKNOWN', () => {
+  assert.equal(normalizeRecovery(EMPTY_RECOVERY).status,'UNKNOWN');
   assert.equal(deriveRecoveryWorkflow(EMPTY_RECOVERY),'INPUT_PENDING');
   assert.equal(workflowLabel('INPUT_PENDING'),'복구 기록 입력 대기');
   assert.doesNotMatch(recoverySummary(EMPTY_RECOVERY),/UNKNOWN/);
@@ -64,6 +65,7 @@ test('explicit engineering UNKNOWN requires a recorded decision, operator, and u
   assert.deepEqual(incomplete.missing_fields,['actions']);
   const complete=validateRecovery({status:'UNKNOWN',decision_entered:true,operator:'Lee',actions:'계전기 기록 부재로 판단 불가'},catalog);
   assert.equal(complete.valid,true);
+  assert.equal(deriveRecoveryWorkflow({status:'UNKNOWN',decision_entered:true,operator:'Lee',actions:'계전기 기록 부재로 판단 불가',approver:'Kim',approved_at:'2026-09-20T10:00:00Z'}),'APPROVED');
   assert.equal(recoveryStatusLabel('UNKNOWN'),'복구 여부 공학적 미확인');
 });
 
@@ -85,4 +87,27 @@ test('an unrecognized status remains invalid and can never become approved UNKNO
   assert.deepEqual(validateRecovery(invalid,catalog).missing_fields,['status']);
   assert.equal(validateRecovery(invalid,catalog).valid,false);
   assert.equal(deriveRecoveryWorkflow(invalid),'INPUT_PENDING');
+});
+
+test('blank, null, and omitted statuses stay invalid and input-pending despite approval fields', () => {
+  const cases=[
+    {label:'empty',status:''},
+    {label:'whitespace',status:'   '},
+    {label:'null',status:null},
+    {label:'omitted'},
+  ];
+  for(const item of cases){
+    const value={
+      decision_entered:true,
+      operator:'Lee',
+      actions:'판단 기록',
+      approver:'Kim',
+      approved_at:'2026-09-20T10:00:00Z',
+      ...(Object.hasOwn(item,'status')?{status:item.status}:{}),
+    };
+    assert.equal(normalizeRecovery(value).status,'',item.label);
+    assert.deepEqual(validateRecovery(value,catalog).missing_fields,['status'],item.label);
+    assert.equal(validateRecovery(value,catalog).valid,false,item.label);
+    assert.equal(deriveRecoveryWorkflow(value),'INPUT_PENDING',item.label);
+  }
 });
