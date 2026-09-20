@@ -115,15 +115,37 @@ def main():
             expect(status).to_have_value('')
             expect(status.locator('option').first).to_have_text('선택 대기')
             status.select_option(label='복구 완료')
-            page.get_by_label('기록상 승인자', exact=True).fill('검토자 Kim')
+            approver = page.get_by_label('기록상 승인자', exact=True)
+            approver.press_sequentially('검토자 ')
+            expect(approver).to_have_value('검토자 ')
+            approver.press_sequentially('Kim')
             approve = page.get_by_role('button', name='승인 기록', exact=True)
             expect(approve).to_be_disabled()
             page.get_by_label('복구 시각', exact=True).fill('2026-09-20T10:30')
-            page.get_by_label('수행자', exact=True).fill('운전원 Lee')
-            page.get_by_label('실제 수행 조치', exact=True).fill('현장 점검 및 복구 기록')
-            page.get_by_label('재기동 조건', exact=True).fill('담당자 재기동 조건 확인')
+            operator = page.get_by_label('수행자', exact=True)
+            operator.press_sequentially('운전원 Lee')
+            expect(operator).to_have_value('운전원 Lee')
+            actions = page.get_by_label('실제 수행 조치', exact=True)
+            actions.press_sequentially('현장 점검 및 복구 기록')
+            actions.press('Enter')
+            expect(actions).to_have_value('현장 점검 및 복구 기록\n')
+            restart = page.get_by_label('재기동 조건', exact=True)
+            restart.press_sequentially('담당자 재기동 조건 확인')
+            restart.press('Enter')
+            expect(restart).to_have_value('담당자 재기동 조건 확인\n')
+            restart.press_sequentially('운전 승인 별도 확인')
             page.get_by_label('복구 근거 ID', exact=True).select_option(['E-21'])
+            # Editing another field must not trim an unfinished line in actions.
+            expect(actions).to_have_value('현장 점검 및 복구 기록\n')
+            actions.press_sequentially('담당자 현장 확인')
+            expect(actions).to_have_value('현장 점검 및 복구 기록\n담당자 현장 확인')
+            expect(restart).to_have_value('담당자 재기동 조건 확인\n운전 승인 별도 확인')
             expect(recovery_card).to_contain_text('승인 대기')
+            expect(approve).to_be_enabled()
+            approver.fill('   ')
+            expect(approve).to_be_disabled()
+            approver.fill('')
+            approver.press_sequentially('검토자 Kim')
             expect(approve).to_be_enabled()
             approve.click()
             expect(recovery_card).to_contain_text('승인 완료')
@@ -141,8 +163,12 @@ def main():
                 assert rows.first.evaluate('(row) => getComputedStyle(row).display') == 'grid'
                 assert page.locator('.editable-report').evaluate('(table) => getComputedStyle(table).minWidth') == '0px'
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), 'page-wide horizontal overflow'
-            page.get_by_label('실제 수행 조치', exact=True).fill('현장 점검 및 복구 기록 수정')
+            actions.press('End')
+            actions.press('Enter')
+            expect(actions).to_have_value('현장 점검 및 복구 기록\n담당자 현장 확인\n')
             expect(recovery_card).to_contain_text('승인 대기')
+            actions.press_sequentially('추가 점검 기록 수정')
+            expect(actions).to_have_value('현장 점검 및 복구 기록\n담당자 현장 확인\n추가 점검 기록 수정')
             expect(actions_row.locator('[data-label="상태"]')).to_contain_text('승인 대기')
 
             with page.expect_download() as download:
@@ -157,7 +183,8 @@ def main():
             exact_tags = ['vppGTTripLatch', 'vppSTTripLatchPublished', 'vpp52GTClosed', 'vpp52STClosed']
             for number in range(1, 22):
                 assert evidence[f'E-{number}']['관련 태그'] == exact_tags[(number - 1) % 4]
-            assert any(row['내용'] == '현장 점검 및 복구 기록 수정' and row['상태'] == 'APPROVAL_PENDING' for row in exported)
+            assert any(row['내용'] == '현장 점검 및 복구 기록\n담당자 현장 확인\n추가 점검 기록 수정' and row['상태'] == 'APPROVAL_PENDING' for row in exported)
+            assert any(row['항목'] == '재기동 조건' and row['내용'] == '담당자 재기동 조건 확인\n운전 승인 별도 확인' for row in exported)
             assert '운전원 Lee' in path.read_text() and '검토자 Kim' in path.read_text()
 
             # Generic edited references also block every export, without changing recovery.
@@ -174,7 +201,8 @@ def main():
 
             page.wait_for_timeout(600)
             page.reload()
-            expect(page.get_by_label('실제 수행 조치', exact=True)).to_have_value('현장 점검 및 복구 기록 수정')
+            expect(page.get_by_label('실제 수행 조치', exact=True)).to_have_value('현장 점검 및 복구 기록\n담당자 현장 확인\n추가 점검 기록 수정')
+            expect(page.get_by_label('재기동 조건', exact=True)).to_have_value('담당자 재기동 조건 확인\n운전 승인 별도 확인')
             expect(page.get_by_label('수행자', exact=True)).to_have_value('운전원 Lee')
             expect(page.get_by_label('복구 근거 ID', exact=True)).to_have_values(['E-21'])
             page.wait_for_timeout(600)
@@ -188,7 +216,7 @@ def main():
             # Imported/stale persisted IDs must not disappear silently or be trusted.
             patch_saved_recovery(page, ['MISSING-RECOVERY'])
             page.reload()
-            expect(page.get_by_label('실제 수행 조치', exact=True)).to_have_value('현장 점검 및 복구 기록 수정')
+            expect(page.get_by_label('실제 수행 조치', exact=True)).to_have_value('현장 점검 및 복구 기록\n담당자 현장 확인\n추가 점검 기록 수정')
             expect(page.get_by_role('button', name='승인 기록', exact=True)).to_be_disabled()
             page.get_by_role('button', name='고장보고서 초안 보기', exact=True).click()
             for button in exports:
