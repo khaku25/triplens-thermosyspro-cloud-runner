@@ -19,6 +19,26 @@ test('generic TRIP_LATCH is disambiguated by equipment', () => {
   assert.equal(gt.mapping_status, 'EQUIPMENT_TAG_EXACT');
 });
 
+test('explicit GT latch aliases resolve to the GT latch and never to trip command', () => {
+  for (const alias of ['GT.TRIP.LATCH','GT_TRIP_LATCH','vppGTTripLatch']) {
+    const result = resolver.describeResolvedEvent({tag:alias}, index);
+    assert.equal(result.canonical_tag, 'GT.TRIP.LATCH', alias);
+    assert.equal(result.source_node, 'vppGTTripLatch', alias);
+  }
+});
+
+test('ST published latch alias resolves to the ST latch', () => {
+  const result = resolver.describeResolvedEvent({tag:'vppSTTripLatchPublished'}, index);
+  assert.equal(result.canonical_tag, 'ST.TRIP.LATCH');
+  assert.equal(result.source_node, 'vppSTTripLatchPublished');
+});
+
+test('trip command is not treated as a trip latch alias', () => {
+  const result = resolver.describeResolvedEvent({equipment:'GT', tag:'GT_TRIP_COMMAND'}, index);
+  assert.equal(result.mapping_status, 'UNMAPPED_EVENT_TAG');
+  assert.equal(result.canonical_tag, undefined);
+});
+
 test('HP turbine FLOW_LOW_LOW resolves without guessing from tag name', () => {
   const result = resolver.describeResolvedEvent({equipment:'HP TURBINE', tag:'FLOW_LOW_LOW'}, index);
   assert.equal(result.canonical_tag, 'HRSG.HP.STEAM.FLOW.LL');

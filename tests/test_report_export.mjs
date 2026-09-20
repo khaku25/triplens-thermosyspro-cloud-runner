@@ -27,7 +27,8 @@ const report = {
 
 test('PDF report HTML follows the industrial v2 report structure', () => {
   const html = exporter.buildReportHtml(report);
-  for (const text of ['설비 고장 분석보고서 (초안)','1. 개요','3. 장애 현상','4. 시간대별 조치사항','5. 발생 원인','선행 원인','Primary Cause','직접 Trip 원인','Direct Trigger','파급 과정','Propagation','EVENT.csv','RAW.csv','검증 미완료']) assert.match(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  for (const text of ['설비 고장 분석보고서','1. 개요','3. 장애 현상','4. 시간대별 조치사항','5. 발생 원인','선행 원인','Primary Cause','직접 Trip 원인','Direct Trigger','파급 과정','Propagation','EVENT.csv','RAW.csv']) assert.match(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  for (const text of ['Verification Gate','AI Confidence','CANDIDATE','(초안)']) assert.doesNotMatch(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   assert.match(html,/overflow:visible!important/);
   assert.match(html,/max-height:none!important/);
   assert.doesNotMatch(html,/>Gemini Analysis</);
@@ -51,9 +52,10 @@ test('failure report CSV uses the fixed v2 columns and evidence-linked sections'
   assert.equal((csv.match(/Chronology /g)||[]).length,12);
 });
 
-test('verification HOLD keeps report output as draft and never presents final-confirmed wording', () => {
+test('internal verification state is not shown as unfinished report copy', () => {
   const html = exporter.buildReportHtml(report);
-  assert.match(html,/고장 분석보고서 \(초안\)|검증 미완료/);
+  assert.match(html,/설비 고장 분석보고서/);
+  assert.doesNotMatch(html,/초안|Verification Gate|HOLD|검증 미완료/);
   assert.doesNotMatch(html,/Root Cause Confirmed/);
   assert.doesNotMatch(html,/>최종 확정</);
 });
@@ -96,11 +98,12 @@ test('legacy failure-report CSV neutralizes spreadsheet formulas without changin
   assert.equal(summaryLine.match(/,/g).length,7);
 });
 
-test('workspace document state, not cause PASS alone, controls draft versus reviewed title', () => {
+test('workspace document state keeps the same finished report title', () => {
   const reportRows=[{section:'운전원·정비 조치사항',item:'실제 수행 조치',content:'점검 완료'}];
   const draft=exporter.buildReportHtml({...report,verification_gate:'PASS',document_state:'DRAFT',report_rows:reportRows});
-  assert.match(draft,/설비 고장 분석보고서 \(초안\)/);
-  assert.doesNotMatch(draft,/설비 고장 분석보고서 \(검토본\)/);
+  assert.match(draft,/설비 고장 분석보고서/);
+  assert.doesNotMatch(draft,/설비 고장 분석보고서 \(초안\)|설비 고장 분석보고서 \(검토본\)/);
   const reviewed=exporter.buildReportHtml({...report,verification_gate:'PASS',document_state:'REVIEWED',report_rows:reportRows});
-  assert.match(reviewed,/설비 고장 분석보고서 \(검토본\)/);
+  assert.match(reviewed,/설비 고장 분석보고서/);
+  assert.doesNotMatch(reviewed,/설비 고장 분석보고서 \(초안\)|설비 고장 분석보고서 \(검토본\)/);
 });

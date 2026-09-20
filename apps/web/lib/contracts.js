@@ -4,7 +4,7 @@ export const WORKSPACE_TABS = [
   { id: 'timeline', no: '01', label: '사고 진행 과정', sub: 'EVENT + RAW 결합' },
   { id: 'cause', no: '02', label: '원인 분석', sub: 'Primary · Direct · Propagation' },
   { id: 'checks', no: '03', label: '즉시 확인·대응', sub: 'Event 기반 우선 확인' },
-  { id: 'recovery', no: '04', label: '복구 판단', sub: '재기동 조건 검토 · 담당자 승인' },
+  { id: 'recovery', no: '04', label: '복구 기록', sub: '조치 내용 및 복구 상태' },
   { id: 'evidence', no: '05', label: 'Event 근거', sub: 'DCS · ECMS · RAW Evidence' },
 ];
 

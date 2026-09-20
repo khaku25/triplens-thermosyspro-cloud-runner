@@ -11,6 +11,14 @@ from pathlib import Path
 from .agent_tools import EvidenceStore,RAW_META_COLUMNS,FORBIDDEN,_event_public,_finite,_clamp_int
 META=RAW_META_COLUMNS|{'time'}
 VERSION='V8_EVIDENCE_INTEGRATION_V3'
+LATCH_ALIASES={
+    'GT.TRIP.LATCH':('GT::TRIP_LATCH','GT.TRIP.LATCH'),
+    'GT_TRIP_LATCH':('GT::TRIP_LATCH','GT.TRIP.LATCH'),
+    'VPPGTTRIPLATCH':('GT::TRIP_LATCH','GT.TRIP.LATCH'),
+    'ST.TRIP.LATCH':('ST::TRIP_LATCH','ST.TRIP.LATCH'),
+    'ST_TRIP_LATCH':('ST::TRIP_LATCH','ST.TRIP.LATCH'),
+    'VPPSTTRIPLATCHPUBLISHED':('ST::TRIP_LATCH','ST.TRIP.LATCH'),
+}
 
 def parts(value):return [x.strip() for x in re.split(r'[;,|]',str(value or '')) if x.strip()]
 def finite_time(value):
@@ -69,9 +77,30 @@ class GroundedEvidenceStore(EvidenceStore):
             self.validation['time_alignment']='OVERLAP' if min(max(et),max(rt))>=max(min(et),min(rt)) else 'NO_OVERLAP'
         else:self.validation['time_alignment']='INSUFFICIENT'
 
+    def _event_registration(self,row):
+        equipment=str(row.get('equipment','')).strip().upper()
+        tag=str(row.get('tag','')).strip()
+        exact_key=f"{equipment}::{tag}"
+        mapped=self.registry.get(exact_key)
+        canonical=''
+        method='EQUIPMENT_TAG_EXACT'
+        if mapped and tag.upper()=='TRIP_LATCH' and equipment in {'GT','ST'}:
+            canonical=f'{equipment}.TRIP.LATCH'
+        if not mapped:
+            alias=LATCH_ALIASES.get(tag.upper())
+            if alias:
+                exact_key,canonical=alias
+                mapped=self.registry.get(exact_key)
+                method='REGISTERED_TAG_ALIAS'
+        return exact_key,mapped,canonical,method
+
     def resolve_source(self,key):
         key=str(key or '').strip()
         if key in self.raw_tag_inventory or key in self.live_tags:return key
+        alias=LATCH_ALIASES.get(key.upper())
+        if alias:
+            row=self.registry.get(alias[0])
+            if row:return str(row.get('source_node',''))
         row=self.registry.get(key)
         return str(row.get('source_node','')) if row else ''
 
@@ -83,10 +112,14 @@ class GroundedEvidenceStore(EvidenceStore):
         return found
 
     def describe_event(self,row):
-        item=_event_public(row);key=f"{row.get('equipment','').strip()}::{row.get('tag','').strip()}";mapped=self.registry.get(key)
+        item=_event_public(row);key,mapped,canonical,method=self._event_registration(row)
         source=str(mapped.get('source_node','')) if mapped else ''
         if not source and row.get('tag') in self.live_tags:source=row['tag']
-        item.update(original_tag=row.get('tag',''),lookup_key=key,source_node=source,canonical_tag=source or '',display_name=row.get('message') or key,mapping_status='EQUIPMENT_TAG_EXACT' if mapped else 'EXACT_SOURCE' if source else 'UNREGISTERED_OBSERVATION',raw_available=source in self.raw_tag_inventory,source_kind='EVENT')
+        if source in {'vppGTTripLatch','vppSTTripLatchPublished'}:
+            canonical=canonical or ('GT.TRIP.LATCH' if source=='vppGTTripLatch' else 'ST.TRIP.LATCH')
+            if str(item.get('value','')).strip().upper() in {'1','1.0','TRUE','ACTIVE'}:
+                item['state']='ACTIVE'
+        item.update(original_tag=row.get('tag',''),lookup_key=key,source_node=source,canonical_tag=canonical or source or '',display_name=row.get('message') or key,mapping_status=method if mapped else 'EXACT_SOURCE' if source else 'UNREGISTERED_OBSERVATION',raw_available=source in self.raw_tag_inventory,source_kind='EVENT')
         item['logic_ids']=[r.get('logic_id','') for r in self.logic_matches([source]) if source]
         return item
 

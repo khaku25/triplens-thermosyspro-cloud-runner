@@ -24,7 +24,7 @@ test('draft uses fixed eight columns, ten human sections, pending human input, a
  const envelope={events:[{event_id:'E1',tag:'TRIP_LATCH',source_node:'vppGTTripLatch',model_time_s:48.44,message:'GT LATCH'}],analysis:{verification_gate:'HOLD',primary_cause:{claim:'원인 후보',status:'CANDIDATE',evidence_ids:['R1']}}};
  const rows=buildDraftRows(envelope);assert.deepEqual([...new Set(rows.map(r=>r.section))],REPORT_SECTIONS);
  const pending=rows.find(r=>r.section==='운전원·정비 조치사항');
- assert.equal(pending?.content,'복구·조치 기록 입력 대기');assert.equal(pending?.status,'INPUT_PENDING');assert.equal(pending?.evidence_ids,'');
+ assert.equal(pending?.content,'기록 없음');assert.equal(pending?.status,'INPUT_PENDING');assert.equal(pending?.evidence_ids,'');
  rows[0].content='=DANGEROUS()';const csv=draftCSV(rows);assert.ok(csv.startsWith('\uFEFF'));assert.ok(csv.includes("'=DANGEROUS()"));
  const parsed=parseCSV(csv);assert.deepEqual(parsed.fields,REPORT_COLUMNS);assert.ok(parsed.records.every(r=>Object.keys(r).length===8));assert.equal(envelope.events[0].message,'GT LATCH');
 });
