@@ -64,3 +64,14 @@ test('preferred source tag falls back through canonical and original tag fields'
   assert.equal(preferredSourceTag({tag:'GENERIC'}),'GENERIC');
   assert.equal(eventIdentity({event_id:'E-only'}),'E-only');
 });
+
+test('real report builder unions a partial retrieved catalog with every EVENT',()=>{
+  const events=mergeEvents(uploaded,enriched);
+  const rows=buildDraftRows({events,evidence_catalog:retrieved,analysis:{}});
+  const eventEvidence=rows.filter(row=>row.section==='증거자료'&&row.note==='EVENT');
+
+  assert.equal(eventEvidence.length,21);
+  assert.deepEqual(validateReportReferences(rows),{valid:true,missing:[]});
+  for(const id of ['E15','E16','E17','E18','E19','E20','E21'])
+    assert.ok(eventEvidence.some(row=>row.evidence_ids===id),id);
+});
