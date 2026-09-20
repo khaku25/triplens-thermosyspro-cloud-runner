@@ -119,6 +119,7 @@ def main():
             assert '담당자 검토 수정 내용' in (OUT/f'{name}-edited-report.csv').read_text(encoding='utf-8-sig')
             page.screenshot(path=str(OUT/f'{name}-report.png'),full_page=True)
             assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1'), 'page-wide horizontal overflow'
+            page.get_by_label('EVENT 파일').dispatch_event('click')
             page.get_by_label('EVENT 파일').set_input_files(str(event))
             expect(page.get_by_text('분석 입력 준비 완료',exact=True).last).to_be_visible()
             assert page.get_by_text('52GT 차단기 개방 관측',exact=True).count()==0
