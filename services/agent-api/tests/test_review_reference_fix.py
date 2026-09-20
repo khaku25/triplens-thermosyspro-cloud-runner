@@ -42,6 +42,19 @@ def package():
         'evidence_catalog':Store().rows, 'events':[], 'analysis':{},'logic_rows':[], 'validation':{}}
 
 class ReferenceFixTests(unittest.TestCase):
+    def test_unknown_section_blocks_before_model(self):
+        p=package()
+        p['report_rows']=[{'row_id':f'ROW-{i}','section':section,'item':'검토','content':'검토','status':'OBSERVED'}
+            for i,section in enumerate([
+                '개요','사고 발생 전 운전 현황','장애 현상','시간대별 사건·자동동작(SOE)','발생 원인',
+                '운전원·정비 조치사항','조치 결과 및 복구 판정','추정 원인 및 미확인 사항',
+                '재발방지 대책 — 검토 권고사항','증거자료'
+            ],1)]
+        invalid=copy.deepcopy(p);invalid['report_rows'][0]['section']='임의 섹션';blocked=Client([review_raw()])
+        with self.assertRaisesRegex(ValueError,'Unknown report section'):
+            reviewer.run_engineering_review(invalid,client=blocked)
+        self.assertFalse(blocked.requests)
+
     def test_reviewer_sees_final_analysis_not_initial_repair_draft(self):
         p=package();p['analysis']={'primary_cause':{'claim':'최종 후보'},'citation_repair':{'initial_draft':{'claim':'OLD_DRAFT_DO_NOT_REVIEW'}}}
         c=Client([review_raw()]);reviewer.run_engineering_review(p,client=c)

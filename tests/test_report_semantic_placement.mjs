@@ -21,7 +21,7 @@ const envelope={
   analysis
 };
 
-test('report draft uses exactly the nine industrial report sections',()=>{
+test('report draft uses exactly the ten industrial report sections',()=>{
   const rows=buildDraftRows(envelope);
   assert.deepEqual([...new Set(rows.map(r=>r.section))],REPORT_SECTIONS);
 });
@@ -41,7 +41,9 @@ test('causal fields are placed inside 발생 원인, not top-level AI labels',()
 test('critical events, chronology, uncertainty, recommendations and evidence are placed semantically',()=>{
   const rows=buildDraftRows(envelope);
   assert.ok(rows.some(r=>r.section==='장애 현상' && r.item.startsWith('Critical Event')));
-  assert.ok(rows.some(r=>r.section==='시간대별 조치사항' && r.item.startsWith('SOE')));
+  assert.ok(rows.some(r=>r.section==='시간대별 사건·자동동작(SOE)' && r.item.startsWith('SOE')));
+  assert.equal(rows.some(r=>r.section==='운전원·정비 조치사항' && r.item.startsWith('SOE')),false);
+  assert.ok(rows.some(r=>r.section==='운전원·정비 조치사항' && r.status==='INPUT_PENDING' && r.evidence_ids===''));
   assert.ok(rows.some(r=>r.section==='추정 원인 및 미확인 사항' && r.item.startsWith('반대 근거')));
   assert.ok(rows.some(r=>r.section==='추정 원인 및 미확인 사항' && r.item.startsWith('추가 확인')));
   assert.ok(rows.some(r=>r.section==='재발방지 대책 — 검토 권고사항'));

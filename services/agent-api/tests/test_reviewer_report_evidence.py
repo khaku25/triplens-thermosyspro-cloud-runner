@@ -8,6 +8,19 @@ sys.path.insert(0,str(Path(__file__).resolve().parent))
 from test_review_reference_fix import reviewer, package, Client, review_raw
 
 class ReportEvidenceTests(unittest.TestCase):
+    def test_ten_section_snapshot_is_accepted(self):
+        p=package()
+        p['report_rows']=[{'row_id':f'ROW-{i}','section':section,'item':'검토','content':'검토','status':'OBSERVED'}
+            for i,section in enumerate([
+                '개요','사고 발생 전 운전 현황','장애 현상','시간대별 사건·자동동작(SOE)','발생 원인',
+                '운전원·정비 조치사항','조치 결과 및 복구 판정','추정 원인 및 미확인 사항',
+                '재발방지 대책 — 검토 권고사항','증거자료'
+            ],1)]
+        client=Client([review_raw(row_id=None,current_section=None,evidence_ids=[])])
+        result=reviewer.run_engineering_review(p,client=client)
+        self.assertEqual(result['missing_required_sections'],[])
+        self.assertEqual(len(client.requests),1)
+
     def test_unqueried_original_event_can_support_report_but_not_claim_analyzer_read_it(self):
         p=package();p['report_rows'][0]['evidence_ids']='E21'
         p['events']=[{'evidence_id':'E21','event_id':'E21','source_kind':'EVENT',
