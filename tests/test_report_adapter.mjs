@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildDraftRows,REPORT_SECTIONS} from '../apps/web/lib/analysisClient.mjs';
+import {buildDraftRows,draftCSV,parseCSV,REPORT_SECTIONS} from '../apps/web/lib/analysisClient.mjs';
+import exporter from '../apps/web/lib/reportExporter.cjs';
 import {buildWorkspaceExportReport,recoveryReportRows,applyRecoveryRows} from '../apps/web/lib/reportAdapter.mjs';
 
 const events=[{event_id:'E1',evidence_id:'E1',model_time_s:48.44,message:'GT TRIP LATCH ACTIVE',source_node:'vppGTTripLatch',tag:'TRIP_LATCH',source:'DCS'}];
@@ -62,6 +63,22 @@ test('cause PASS cannot review a document until recovery is explicitly approved'
   assert.equal(out.document_state,'REVIEWED');
   assert.equal(out.verification_gate,'PASS');
   assert.equal(out.recovery_workflow,'APPROVED');
+});
+
+test('approved recovery appears consistently in PDF, report CSV and PINPOINT', () => {
+  const approved={...recovery,approved_at:'2026-09-20T10:00:00Z'};
+  const out=exportReport(approved);
+  const html=exporter.buildReportHtml(out);
+  const csv=draftCSV(out.report_rows);
+  const pinpoint=exporter.buildPinpointCsv(out);
+  for(const value of [approved.actions,approved.operator,approved.restart_conditions,approved.approver,approved.approved_at,approved.recovered_at,'E1']){
+    for(const output of [html,csv,pinpoint])assert.ok(output.includes(value),`missing ${value} from export`);
+  }
+  const recoveryRows=parseCSV(pinpoint).records.filter(row=>row.causal_stage==='RECOVERY');
+  assert.ok(recoveryRows.length>=4);
+  assert.ok(recoveryRows.every(row=>row.recovery_status==='RECOVERED'));
+  assert.ok(recoveryRows.some(row=>row.event_id==='E1'&&row.canonical_tag==='GT.TRIP.LATCH'));
+  assert.ok(recoveryRows.some(row=>row.disposition==='APPROVED'));
 });
 
 test('unresolved recovery evidence is included in the workspace integrity result', () => {
