@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {normalizeDisplayAnalysis,parseCSV,summarizeEvents,buildDraftRows,draftCSV,modelTime,REPORT_COLUMNS,REPORT_SECTIONS} from '../apps/web/lib/analysisClient.mjs';
+import {mergeEvents,mergeEvidenceCatalog,validateReportReferences} from '../apps/web/lib/reportIntegrity.mjs';
+import {applyRecoveryRows} from '../apps/web/lib/reportAdapter.mjs';
 
 test('provider string and alias propagation never render as blank rows',()=>{
  const a=normalizeDisplayAnalysis({propagation:['GT 출력 감소',{description:'52GT 개방',evidence_id:'E3',tag:'vpp52GTClosed',model_time_s:48.52}]});
@@ -18,11 +20,21 @@ test('CSV parser handles BOM, quoted multiline, comma, escaped quote and empty l
 test('simulation events do not masquerade as ECMS events',()=>{
  const s=summarizeEvents([{source:'OPENMODELICA_PHYSICS',event_class:'PROTECTION'},{source:'DCS1'},{source:'ECMS'},{source:'unknown'}]);assert.deepEqual(s,{rows:4,dcs:1,ecms:1,simulation:1,other:1,protection:1});
 });
-test('draft uses fixed eight columns, nine human sections, UNKNOWN placeholders, and is safely editable',()=>{
+test('draft uses fixed eight columns, ten human sections, pending human input, and is safely editable',()=>{
  const envelope={events:[{event_id:'E1',tag:'TRIP_LATCH',source_node:'vppGTTripLatch',model_time_s:48.44,message:'GT LATCH'}],analysis:{verification_gate:'HOLD',primary_cause:{claim:'원인 후보',status:'CANDIDATE',evidence_ids:['R1']}}};
  const rows=buildDraftRows(envelope);assert.deepEqual([...new Set(rows.map(r=>r.section))],REPORT_SECTIONS);
+ const pending=rows.find(r=>r.section==='운전원·정비 조치사항');
+ assert.equal(pending?.content,'복구·조치 기록 입력 대기');assert.equal(pending?.status,'INPUT_PENDING');assert.equal(pending?.evidence_ids,'');
  rows[0].content='=DANGEROUS()';const csv=draftCSV(rows);assert.ok(csv.startsWith('\uFEFF'));assert.ok(csv.includes("'=DANGEROUS()"));
  const parsed=parseCSV(csv);assert.deepEqual(parsed.fields,REPORT_COLUMNS);assert.ok(parsed.records.every(r=>Object.keys(r).length===8));assert.equal(envelope.events[0].message,'GT LATCH');
+});
+test('recovery rows enter the report only through the explicit optional argument',()=>{
+ const recovery={section:'운전원·정비 조치사항',item:'실제 수행 조치',content:'현장 점검 완료',status:'APPROVAL_PENDING',evidence_ids:'E1',tags:'vppGTTripLatch',time:'49.000 s',note:'Kim'};
+ const without=buildDraftRows({analysis:{},recoveryRows:[recovery]});
+ assert.equal(without.some(r=>r.content==='현장 점검 완료'),false);
+ const withRecovery=buildDraftRows({analysis:{}},[recovery]);
+ assert.ok(withRecovery.some(r=>r.section==='운전원·정비 조치사항'&&r.content==='현장 점검 완료'));
+ assert.equal(withRecovery.some(r=>r.content==='복구·조치 기록 입력 대기'),false);
 });
 test('lists greater than five remain fully expandable',()=>{
  const source={critical_events:Array.from({length:15},(_,i)=>({claim:`사건 ${i}`,evidence_ids:[`E${i}`]}))};assert.equal(normalizeDisplayAnalysis(source).critical_events.length,15);
@@ -38,4 +50,21 @@ test('sampling intervals are visible, idempotent and not false exact timestamps'
  const source={primary_cause:{claim:'외부 입력 상승 후보',status:'CANDIDATE',evidence_ids:['RAW:1:tag','RAW:2:tag'],time_interval_s:[47.92,48.92],model_time_s:null}};
  const a=normalizeDisplayAnalysis(source);assert.match(a.primary_cause.claim,/47\.920 ~ 48\.920/);assert.equal(a.primary_cause.model_time_s,null);assert.equal(normalizeDisplayAnalysis(a).primary_cause.claim,a.primary_cause.claim);
  const row=buildDraftRows({analysis:a}).find(r=>r.section==='발생 원인'&&r.item==='선행 원인');assert.ok(row);assert.match(row.time,/표본 구간/);
+});
+test('workspace report composition keeps enriched EVENT tags and human workflow separate from AI claims',()=>{
+ const uploaded=Array.from({length:21},(_,i)=>({event_id:`E${i+1}`,tag:'TRIP_LATCH',model_time_s:i}));
+ const enriched=uploaded.map(e=>({...e,source_node:'vppGTTripLatch'}));
+ const events=mergeEvents(uploaded,enriched);
+ const rows=applyRecoveryRows(buildDraftRows({events,evidence_catalog:mergeEvidenceCatalog(events,enriched.slice(0,14)),analysis:{}}),{status:'RECOVERED',operator:'Lee',actions:'점검 완료',recovered_at:'2026-09-20T10:30',restart_conditions:'별도 운전 검토',approver:'Kim'});
+ const parsed=parseCSV(draftCSV(rows));
+ assert.equal(parsed.fields.length,8);
+ assert.equal(parsed.records.filter(r=>r.구분==='증거자료').length,21);
+ assert.ok(parsed.records.filter(r=>r.구분==='증거자료').every(r=>r['관련 태그']==='vppGTTripLatch'));
+ assert.deepEqual(validateReportReferences(rows),{valid:true,missing:[]});
+ assert.equal(parsed.records.find(r=>r.항목==='실제 수행 조치').상태,'APPROVAL_PENDING');
+ for(const status of ['INPUT_PENDING','APPROVAL_PENDING','APPROVED']){
+  const normalized=normalizeDisplayAnalysis({primary_cause:{claim:'후보',status,evidence_ids:['E1']}});
+  assert.equal(normalized.primary_cause.status,'OBSERVED');
+ }
+ assert.equal(uploaded[0].source_node,undefined);
 });

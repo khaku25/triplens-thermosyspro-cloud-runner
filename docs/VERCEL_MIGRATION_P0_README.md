@@ -46,15 +46,23 @@ The API rejects malformed/duplicate identifiers, nonfinite model times, incompat
 
 ## Web behavior
 
-Original EVENT rows remain available independent of AI-selected Critical Events. Evidence detail exposes exact `source_node` and every registered `logic_id` as links to the shared draw.io viewer. Browser IndexedDB preserves selected files, result and edited report across navigation/reload when storage is available. Matching backend analysis identity reuses the result without another Gemini call. Report V2 PDF and the draft CSV use the current editable eight-column rows; PINPOINT retains its fixed evidence schema. Missing sections are shown as UNKNOWN review rows rather than silently omitted.
+Original EVENT rows remain available independent of AI-selected Critical Events. Evidence detail exposes exact `source_node` and every registered `logic_id` as links to the shared draw.io viewer. Browser IndexedDB preserves selected files, result, edited report and recovery record across navigation/reload when storage is available. Matching backend analysis identity reuses the result without another Gemini call.
 
-`/testbench` verifies ten representative device connections and the report export engine from packaged static assets only. Full details and the one-promotion deployment gate are in [`INTEGRATION_TESTBENCH_REPORT_V2.md`](INTEGRATION_TESTBENCH_REPORT_V2.md).
+The real workspace Report V2 has ten human-facing sections: overview; pre-incident operating state; incident symptoms; chronological events and automatic actions (SOE); cause; operator and maintenance actions; action result and recovery judgment; estimated cause and unknowns; recurrence-prevention review recommendations; and evidence. Automatic EVENT rows belong to SOE, never to the human-action section. Report V2 PDF and the draft CSV use the current editable eight-column rows; PINPOINT retains its fixed evidence schema.
+
+The report evidence catalog is the union of every merged EVENT and only the RAW/EVENT evidence actually returned by retrieval. A richer retrieved duplicate may augment an EVENT, but a partial retrieved catalog cannot remove the other EVENT rows. RAW inventory or upload presence is not a claim that Gemini read every RAW sample. Every non-empty report reference must resolve in the evidence section; unresolved references are shown explicitly and disable all three exports.
+
+Recovery is a separate human record with status, recovery time, operator, actions, restart conditions, evidence IDs and approver. Stored status values are `UNKNOWN`, `PARTIAL`, `RECOVERED`, and `NOT_RECOVERED`. The runtime workflow is `복구 기록 입력 대기` (`INPUT_PENDING`) whenever the record is absent or any status-required field is missing, `복구 기록 완료 · 승인 대기` (`APPROVAL_PENDING`) after required fields are complete but approval is not, and `복구 기록 승인 완료` (`APPROVED`) after approval. These workflow labels are not aliases for the engineering value `UNKNOWN`. Cause Verification Gate and recovery approval remain independent, and the document stays a draft until both are complete.
+
+`/testbench` verifies ten representative device connections and the report export engine from packaged static assets only. It remains on the frozen legacy adapter and nine-section fallback (`9. 증거자료`); the real workspace alone uses the ten-section adapter (`10. 증거자료`). Full details and the single-main-merge deployment gate are in [`INTEGRATION_TESTBENCH_REPORT_V2.md`](INTEGRATION_TESTBENCH_REPORT_V2.md).
 
 ## Deployment
 
 Frontend root: `apps/web`. Backend root: `services/agent-api`, self-contained; no repository-external imports are required. Backend `GEMINI_API_KEY` stays server-side. Frontend uses `NEXT_PUBLIC_TRIPLENS_API_BASE`; never prefix an API key with NEXT_PUBLIC.
 
 Endpoints: GET `/health`, GET `/contract`, POST `/bootstrap` (no Gemini call), POST `/analyze`. Direct upload limit remains 4,000,000 bytes. Large-file Blob support and production-grade authentication/rate limiting are separate hardening work, not claimed complete here.
+
+The current Vercel Git integration deploys only `main`; it does not create a PR Vercel Preview. The release sequence is therefore `PR CI → one main merge → two Vercel project statuses`. After every required PR check passes and the PR head is confirmed to contain current `origin/main`, merge once. For that exact merge SHA, require both `Vercel – triplens-web-preview` and `Vercel – triplens-agent-api-preview` to succeed before smoke-checking the web and API routes. A failed status or SHA mismatch is not repaired by pushing directly to `main`: roll back both affected projects and use a new fix branch and PR.
 
 ## Verification evidence and limits
 

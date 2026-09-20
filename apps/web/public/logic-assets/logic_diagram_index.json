@@ -9,7 +9,7 @@
     "rules": 53,
     "source_tags": 603
   },
-  "drawio_sha256": "75fb0ddb92364b5d8d007a179ebab1a6f9b8be10f2ae142e720d6018bb6794b9",
+  "drawio_sha256": "00e99fed5c2264cdaeb0d8e728bcdf0fc7924f39ea132cc55be2153fdc8217c2",
   "entities": {
     "GT.EXHAUST.FLOW.L": {
       "description_ko": "등록된 파생 알람 출력",
@@ -19102,7 +19102,7 @@
       "validation_status": "PASS"
     }
   },
-  "schema_version": 1,
+  "schema_version": 2,
   "semantic_sha256": "3f5398d2a9efc176d365a313ba7a3c7c9156135a9fc9ae6d8eef7d885ee87c12",
   "tags": {
     "vpp52GTClosed": {

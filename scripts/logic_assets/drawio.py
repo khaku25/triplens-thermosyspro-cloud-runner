@@ -13,11 +13,12 @@ from urllib.parse import unquote
 import xml.etree.ElementTree as ET
 import zlib
 
-from .model import digest, numeric_delay, text
+from .model import digest, text
 from .xmlio import parse_xml, MAX_XML
 
 COLORS = {'source':('#edf5ff','#4381b5'), 'derived':('#fff4dd','#ba861e'),
-          'logic':('#ffffff','#526778'), 'delay':('#f0ebfa','#8873b1'),
+          'condition':('#eaf6ee','#548766'), 'operation':('#ffffff','#526778'),
+          'additional':('#f0ebfa','#8873b1'), 'column_label':('#eaf0f5','#c1cfdb'),
           'title':('#15354f','#15354f'), 'group_label':('#eaf0f5','#c1cfdb'),
           'page_link':('#edf5ff','#4381b5')}
 VISUAL_KEYS={'fillColor','strokeColor','fontColor','fontSize','rounded','strokeWidth','dashed'}
@@ -81,11 +82,32 @@ def decode_document(xml: str) -> ET.Element:
     return root
 
 
+def validate_layout_schema(document: ET.Element) -> str:
+    """Accept only unmixed stable-ID schema 1 or 2 layout documents."""
+    schema=document.get('triplens_schema')
+    if schema not in {'1','2'}:
+        raise ValueError('Unsupported draw.io layout schema; expected 1 or 2')
+    ids={item.get('id','') for item in document.iter()}
+    legacy=any(key.startswith('logic:') for key in ids)
+    modern=any(key.startswith(('condition:','operation:','additional:')) for key in ids)
+    if (schema=='1' and modern) or (schema=='2' and legacy):
+        raise ValueError('Mixed or mismatched draw.io schema and central IDs')
+    prefix='logic:' if schema=='1' else 'operation:'
+    if not any(key.startswith(prefix) for key in ids):
+        raise ValueError('Numeric-ID preview or missing stable central IDs; not a supported layout')
+    return schema
+
+
 def read_layout(xml: str | None) -> dict:
     result={}
     if not xml:
         return result
-    for page in decode_document(xml).findall('diagram'):
+    document=decode_document(xml)
+    if validate_layout_schema(document)=='1':
+        # Reset all legacy positions once: old branches overlap the new headers
+        # and additional-information blocks. Stable entity/page IDs remain intact.
+        return result
+    for page in document.findall('diagram'):
         entries={}
         for item in page.find('mxGraphModel/root'):
             cell=item if item.tag=='mxCell' else item.find('mxCell')
@@ -124,7 +146,7 @@ class Page:
         self.ids.add(key)
         attrs={'id':key,'label':label,'kind':kind,'managed':'1',**{k:text(v) for k,v in metadata.items()}}
         obj=ET.SubElement(self.root,'object',attrs)
-        fill,stroke=COLORS.get(kind,COLORS['logic'])
+        fill,stroke=COLORS.get(kind,COLORS['operation'])
         style={'rounded':'1','whiteSpace':'wrap','html':'0','fontFamily':'Arial','fontSize':'14',
                'align':'left','verticalAlign':'middle','spacing':'12','fillColor':fill,'strokeColor':stroke,
                'fontColor':'#ffffff' if kind=='title' else '#16324f','strokeWidth':'1.5'}
@@ -165,7 +187,7 @@ class Page:
 def build_document(model: dict, layout_xml: str | None = None) -> str:
     layout=read_layout(layout_xml)
     root=ET.Element('mxfile',{'host':'app.diagrams.net','type':'device','compressed':'false',
-        'triplens_schema':'1','semantic_sha256':model['semantic_sha256'],
+        'triplens_schema':'2','semantic_sha256':model['semantic_sha256'],
         'verification_scope':'SOURCE_EXISTENCE_ONLY; BEHAVIOUR_STATUS_RETAINED'})
     groups=model['groups']
     screens=defaultdict(list)
@@ -198,10 +220,12 @@ def build_document(model: dict, layout_xml: str | None = None) -> str:
         y=130
         for gid,rules in subgroups:
             inputs=rules[0]['inputs']
-            height=max(len(inputs)*120+55,sum(max(196,len(r['outputs'])*114+24) for r in rules)+45)
+            height=max(len(inputs)*120,sum(max(250,len(r['outputs'])*114+24) for r in rules))+114
             page.vertex('group:'+gid,'group_label',f'{gid}  ·  공유 입력 {len(inputs)}개  /  분기 {len(rules)}개',
                         32,y,1480,42,group_id=gid)
-            sy=y+62
+            for name,x,width in [('INPUT',40,320),('CONDITION',410,320),('OPERATION',780,320),('OUTPUT',1150,360)]:
+                page.vertex('column:'+gid+':'+name.lower(),'column_label',name,x,y+54,width,36,group_id=gid)
+            sy=y+106
             source_ids=[]
             for i,tag in enumerate(inputs):
                 t=model['tags'].get(tag,{})
@@ -211,32 +235,25 @@ def build_document(model: dict, layout_xml: str | None = None) -> str:
                 if t.get('unit'):
                     label+='\n단위: '+t['unit']
                 sid=page.vertex('source:'+gid+':'+digest(tag)[:16],'source' if is_native else 'derived',
-                    label,40,sy+i*120,330,108,tag_id=tag,group_id=gid,is_native=str(is_native).lower())
+                    label,40,sy+i*120,320,108,tag_id=tag,group_id=gid,is_native=str(is_native).lower())
                 source_ids.append((sid,tag))
             by=sy
             for r in rules:
-                rid=r['rule_id']; branch_h=max(196,len(r['outputs'])*114+24)
-                block_y=by+max(0,(branch_h-164)/2)
-                value=rid+'\n'+lines(r['logic_name'],45)+'\n'+lines(r['condition'],45)
-                if r['reset_hysteresis'] and r['reset_hysteresis']!='-':
-                    value+='\n복귀/히스테리시스: '+r['reset_hysteresis']
-                delay=numeric_delay(r['delay'])
-                if delay is None and r['delay']:
-                    value+='\n시간 정의: '+r['delay']
-                value+='\n동작 검증(원장): '+(r['validation_status'] or 'NOT SPECIFIED')
-                block=page.vertex('logic:'+rid,'logic',value,480,block_y,380,164,
-                    rule_id=rid,logic_type=r['logic_type'],condition=r['condition'],delay=r['delay'],
-                    reset_hysteresis=r['reset_hysteresis'],input_nodes=' | '.join(r['inputs']),
-                    output_nodes_or_tags=' | '.join(r['outputs']),output_class=r['output_class'],
-                    validation_status=r['validation_status'],group_id=gid)
+                rid=r['rule_id']; branch_h=max(250,len(r['outputs'])*114+24)
+                condition=page.vertex('condition:'+rid,'condition',rid+'\n'+lines(r['condition'],38),
+                    410,by,320,108,rule_id=rid,condition=r['condition'],group_id=gid)
+                operation=page.vertex('operation:'+rid,'operation',rid+'\n'+lines(r['logic_name'],38)+'\n'+r['logic_type'],
+                    780,by,320,108,rule_id=rid,logic_type=r['logic_type'],group_id=gid)
+                info='ADDITIONAL INFO\n'+lines('지연: '+(r['delay'] or 'NOT SPECIFIED'),38)
+                info+='\n'+lines('복귀/히스테리시스: '+(r['reset_hysteresis'] or 'NOT SPECIFIED'),38)
+                info+='\n'+lines('동작 검증(원장): '+(r['validation_status'] or 'NOT SPECIFIED'),38)
+                info+='\n'+lines('출력 분류: '+(r['output_class'] or 'NOT SPECIFIED'),38)
+                page.vertex('additional:'+rid,'additional',info,780,by+120,320,110,
+                    rule_id=rid,delay=r['delay'],reset_hysteresis=r['reset_hysteresis'],
+                    validation_status=r['validation_status'],output_class=r['output_class'],group_id=gid)
                 for sid,tag in source_ids:
-                    page.edge(sid,block,'reset_input' if 'Reset' in tag else 'input')
-                last=block
-                if delay is not None and delay>0:
-                    label=('TON / 동작 지연' if r['logic_type']=='ALARM' else '원장 정의 지연')+'\n'+r['delay']
-                    last=page.vertex('delay:'+rid,'delay',label,930,block_y+37,150,90,rule_id=rid,
-                                    duration_seconds=str(delay),group_id=gid)
-                    page.edge(block,last,'defined_delay')
+                    page.edge(sid,condition,'reset_input' if 'Reset' in tag else 'input')
+                page.edge(condition,operation,'condition')
                 for j,tag in enumerate(r['outputs']):
                     is_native=tag in model['tags']; t=model['tags'].get(tag,{})
                     desc=t.get('description_ko') or ('등록된 파생 알람 · OPC UA Node 아님' if not is_native else '')
@@ -245,7 +262,7 @@ def build_document(model: dict, layout_xml: str | None = None) -> str:
                         label+='\n'+lines(desc,45)
                     out=page.vertex('output:'+rid+':'+digest(tag)[:16], 'source' if is_native else 'derived',
                         label,1150,by+j*114,360,102,tag_id=tag,rule_id=rid,is_native=str(is_native).lower(),group_id=gid)
-                    page.edge(last,out,'output')
+                    page.edge(operation,out,'output')
                 by+=branch_h
             y+=height+32
         page.finish()
@@ -280,7 +297,7 @@ def create_index(model: dict, xml: str) -> dict:
     counts={'source_tags':len(tags),'rules':len(rules),'input_groups':len(model['groups']),
             'equipment_pages':sum(p['scope']=='equipment' for p in pages.values()),'pages':len(pages),
             'native_inputs':len(native_inputs),'native_outputs':len(native_outputs),'derived_outputs':len(model['derived'])}
-    return {'schema_version':1,'semantic_sha256':model['semantic_sha256'],
+    return {'schema_version':2,'semantic_sha256':model['semantic_sha256'],
             'drawio_sha256':hashlib.sha256(xml.encode()).hexdigest(),'counts':counts,
             'pages':pages,'rules':rules,'tags':tags,'entities':entities,
             'policy':'DRAWING_OF_REGISTERED_RULES; NOT_EXECUTABLE_PROTECTION; LIVE_EXISTENCE_IS_NOT_BEHAVIOURAL_VALIDATION'}

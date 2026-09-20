@@ -2,6 +2,8 @@
 Requires Playwright + Chromium. Pure generator tests have no browser dependency.
 """
 import os
+import hashlib
+import json
 from pathlib import Path
 import shutil
 import tempfile
@@ -52,6 +54,19 @@ class ViewerTest(unittest.TestCase):
         self.assertIn('53',self.page.locator('#stats').inner_text())
         self.assertEqual(self.page.evaluate('performance.getEntriesByType("resource").filter(x=>/^https?:/.test(x.name) && !x.name.startsWith(location.origin)).length'),0)
 
+    def test_http_startup_fits_available_canvas(self):
+        for suffix in ('', '#rule=AL-HP-LEVEL-HH'):
+            with self.subTest(suffix=suffix):
+                self.page.goto(self.url+suffix)
+                self.page.wait_for_selector('[data-ready="true"]')
+                initial=self.page.locator('#zoom-label').inner_text()
+                diagram=self.page.locator('#diagram').bounding_box()
+                canvas=self.page.locator('#canvas').bounding_box()
+                self.assertGreater(diagram['width'],canvas['width']*.9)
+                self.assertLessEqual(diagram['width'],canvas['width'])
+                self.page.locator('#fit').click()
+                self.assertEqual(self.page.locator('#zoom-label').inner_text(),initial)
+
     def test_tag_to_four_rules_and_group_diagram(self):
         self.page.get_by_role('button',name='태그',exact=True).click()
         self.page.locator('#search').fill('vppHPDrumLevelM')
@@ -84,14 +99,64 @@ class ViewerTest(unittest.TestCase):
         self.page.wait_for_selector('[data-ready="true"]')
         self.page.locator('#individual-view').click()
         self.page.locator('#layout-mode').click()
-        node=self.page.locator('#diagram [data-cell-id="logic:AL-HP-LEVEL-HH"]')
+        node=self.page.locator('#diagram [data-cell-id="operation:AL-HP-LEVEL-HH"]')
+        self.assertEqual(node.count(),1)
         box=node.bounding_box(); self.assertIsNotNone(box)
         self.page.mouse.move(box['x']+20,box['y']+20)
         self.page.mouse.down(); self.page.mouse.move(box['x']+70,box['y']+40,steps=5); self.page.mouse.up()
         tree=ET.ElementTree(ET.fromstring(self.page.evaluate('TripLensLogic.exportXml()')))
-        obj=tree.find("./diagram[@id='rule:AL-HP-LEVEL-HH']/mxGraphModel/root/object[@id='logic:AL-HP-LEVEL-HH']")
-        self.assertNotEqual(float(obj.find('mxCell/mxGeometry').get('x')),480)
-        self.assertEqual(obj.get('condition'),'value > 1.25 m')
+        obj=tree.find("./diagram[@id='rule:AL-HP-LEVEL-HH']/mxGraphModel/root/object[@id='operation:AL-HP-LEVEL-HH']")
+        self.assertNotEqual(float(obj.find('mxCell/mxGeometry').get('x')),780)
+        condition=tree.find("./diagram[@id='rule:AL-HP-LEVEL-HH']/mxGraphModel/root/object[@id='condition:AL-HP-LEVEL-HH']")
+        self.assertEqual(condition.get('condition'),'value > 1.25 m')
+
+    def test_four_columns_additional_placement_and_accessible_controls(self):
+        self.page.evaluate("TripLensLogic.openRule('AL-HP-LEVEL-HH')")
+        self.page.locator('#individual-view').click()
+        boxes=[]
+        for prefix in ('source:', 'condition:', 'operation:', 'output:'):
+            node=self.page.locator(f'#diagram [data-cell-id^="{prefix}"]')
+            self.assertEqual(node.count(),1)
+            self.assertEqual(node.get_attribute('role'),'button')
+            boxes.append(node.bounding_box())
+        for left,right in zip(boxes,boxes[1:]):
+            self.assertLess(left['x']+left['width'],right['x'])
+        additional=self.page.locator('#diagram [data-cell-id="additional:AL-HP-LEVEL-HH"]')
+        self.assertGreater(additional.bounding_box()['y'],boxes[2]['y']+boxes[2]['height'])
+        for prefix in ('condition:', 'operation:', 'additional:'):
+            self.assertEqual(self.page.locator(f'#diagram .selected[data-cell-id^="{prefix}"]').count(),1)
+        for selector in ('[data-cell-id="title"]','[data-cell-id^="column:"]','[data-cell-id^="group:"]','[data-cell-id^="additional:"]'):
+            nodes=self.page.locator('#diagram '+selector)
+            self.assertGreater(nodes.count(),0)
+            for node in nodes.all():
+                self.assertIsNone(node.get_attribute('role'))
+                self.assertIsNone(node.get_attribute('tabindex'))
+        for word in ('CONDITION','OPERATION','ADDITIONAL INFO'):
+            self.assertIn(word,self.page.locator('.legend').inner_text())
+
+    def test_schema_mismatch_and_mixed_central_ids_fail_closed(self):
+        original=json.loads(self.page.locator('#repository-data').text_content())
+        template=(ROOT/'scripts/logic_assets/viewer.html').read_text()
+        for xml_schema,index_schema,mixed in [('1',2,False),('2',1,False),('1',1,False),('3',3,False),('2',2,True)]:
+            with self.subTest(xml_schema=xml_schema,index_schema=index_schema,mixed=mixed):
+                payload=json.loads(json.dumps(original))
+                root=ET.fromstring(payload['xml']);root.set('triplens_schema',xml_schema)
+                if mixed:
+                    obj=root.find(".//object[@id='operation:AL-HP-LEVEL-HH']")
+                    self.assertIsNotNone(obj)
+                    obj.set('id','logic:AL-HP-LEVEL-HH')
+                payload['xml']=ET.tostring(root,encoding='unicode')
+                payload['index']['schema_version']=index_schema
+                payload['index']['drawio_sha256']=hashlib.sha256(payload['xml'].encode()).hexdigest()
+                html=template.replace('__TRIPLENS_PAYLOAD__',json.dumps(payload).replace('<','\\u003c'))
+                page=self.browser.new_page()
+                try:
+                    page.set_content(html)
+                    page.wait_for_selector('#fatal',state='visible',timeout=3000)
+                    self.assertTrue(page.locator('#workspace').evaluate('(node)=>node.hidden'))
+                    self.assertIsNone(page.locator('body').get_attribute('data-ready'))
+                finally:
+                    page.close()
 
     def test_mobile_no_document_horizontal_overflow(self):
         self.page.set_viewport_size({'width':390,'height':844})
@@ -99,6 +164,8 @@ class ViewerTest(unittest.TestCase):
         self.page.screenshot(path=os.getenv('TRIPLENS_MOBILE_SCREENSHOT',str(self.output/'mobile.png')),full_page=True)
 
     def test_snapshot_desktop(self):
+        self.page.goto(self.url)
+        self.page.wait_for_selector('[data-ready="true"]')
         self.page.evaluate("TripLensLogic.openRule('AL-HP-LEVEL-HH')")
         self.page.wait_for_selector('[data-ready="true"]')
         self.page.screenshot(path=os.getenv('TRIPLENS_DESKTOP_SCREENSHOT',str(self.output/'desktop.png')),full_page=True)

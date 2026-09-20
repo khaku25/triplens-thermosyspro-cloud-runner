@@ -48,6 +48,47 @@ class AssetsTest(unittest.TestCase):
         self.assertFalse(repo['index']['entities']['HRSG.HP.LEVEL.H']['is_native'])
         self.assertEqual(repo['index']['tags']['vppTrip']['rule_ids'], [])
 
+    def test_schema_two_separates_signal_path_and_additional_information(self):
+        repo = self.build()
+        root = ET.fromstring(repo['xml'])
+        self.assertEqual(root.get('triplens_schema'), '2')
+        self.assertEqual(repo['index']['schema_version'], 2)
+        for page in root.findall('diagram'):
+            for rid in json.loads(page.get('rule_ids')):
+                graph = page.find('mxGraphModel/root')
+                for kind in ('condition', 'operation', 'additional'):
+                    self.assertEqual(len(graph.findall(f"object[@id='{kind}:{rid}'][@kind='{kind}']")), 1)
+                operation = graph.find(f"object[@id='operation:{rid}']")
+                additional = graph.find(f"object[@id='additional:{rid}']")
+                self.assertNotIn('0.02 m', operation.get('label'))
+                for value in ('0.5 s', '0.02 m', 'PARTIAL', 'DERIVED_ALARM'):
+                    self.assertIn(value, additional.get('label'))
+                edges = graph.findall("mxCell[@edge='1']")
+                self.assertEqual(len(edges), 3)
+                self.assertEqual({(e.get('source').split(':')[0], e.get('target').split(':')[0]) for e in edges},
+                                 {('source', 'condition'), ('condition', 'operation'), ('operation', 'output')})
+                columns = [('source', 40, 320), ('condition', 410, 320), ('operation', 780, 320), ('output', 1150, 360)]
+                for prefix, x, width in columns:
+                    obj = next(o for o in graph.findall('object') if o.get('id').startswith(prefix+':'))
+                    geometry = obj.find('mxCell/mxGeometry')
+                    self.assertEqual((float(geometry.get('x')), float(geometry.get('width'))), (x, width))
+                og = operation.find('mxCell/mxGeometry'); ag = additional.find('mxCell/mxGeometry')
+                self.assertGreater(float(ag.get('y')), float(og.get('y'))+float(og.get('height')))
+
+    def test_schema_one_central_geometry_migrates_once(self):
+        legacy = '<mxfile triplens_schema="1"><diagram id="IG-003"><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/><object id="logic:AL-LEVEL-H"><mxCell vertex="1" parent="1"><mxGeometry x="911" y="300" width="380" height="164" as="geometry"/></mxCell></object></root></mxGraphModel></diagram></mxfile>'
+        v1_logic_geometry = ET.fromstring(legacy).find('.//mxGeometry').attrib
+        migrated = ET.fromstring(self.build(layout_xml=legacy)['xml'])
+        operation = migrated.find("./diagram[@id='IG-003']/mxGraphModel/root/object[@id='operation:AL-LEVEL-H']/mxCell/mxGeometry")
+        self.assertIsNotNone(operation)
+        v2_operation_geometry = dict(operation.attrib)
+        self.assertNotEqual(v1_logic_geometry, v2_operation_geometry)
+        operation.set('x', '888')
+        v2_saved_operation_geometry = dict(operation.attrib)
+        regenerated = ET.fromstring(self.build(layout_xml=ET.tostring(migrated, encoding='unicode'))['xml'])
+        v2_regenerated_operation_geometry = regenerated.find("./diagram[@id='IG-003']/mxGraphModel/root/object[@id='operation:AL-LEVEL-H']/mxCell/mxGeometry").attrib
+        self.assertEqual(v2_saved_operation_geometry, v2_regenerated_operation_geometry)
+
     def test_exact_tag_and_rule_navigation(self):
         repo = self.build()
         self.assertEqual(repo['index']['tags']['vppLevel']['rule_ids'], ['AL-LEVEL-H'])
@@ -99,14 +140,38 @@ class AssetsTest(unittest.TestCase):
         graph = ET.fromstring(repo['xml']).find("./diagram[@id='IG-003']/mxGraphModel/root")
         self.assertEqual(len(graph.findall("object[@kind='source'][@tag_id='vppLevel']")), 1)
 
+    def test_branch_spacing_expands_for_multiple_outputs(self):
+        self.rules.extend([dict(self.rules[0],rule_id='AL-LEVEL-HH',output_nodes_or_tags='HRSG.HP.LEVEL.HH | HRSG.HP.LEVEL.X | HRSG.HP.LEVEL.Y'),
+                           dict(self.rules[0],rule_id='AL-LEVEL-L',output_nodes_or_tags='HRSG.HP.LEVEL.L')])
+        graph=ET.fromstring(self.build()['xml']).find("./diagram[@id='IG-003']/mxGraphModel/root")
+        positions=[float(graph.find(f"object[@id='operation:{rid}']/mxCell/mxGeometry").get('y'))
+                   for rid in ('AL-LEVEL-H','AL-LEVEL-HH','AL-LEVEL-L')]
+        self.assertEqual(positions[1]-positions[0],250)
+        self.assertEqual(positions[2]-positions[1],366)
+        for geometry in graph.findall("object[@rule_id='AL-LEVEL-HH']/mxCell/mxGeometry"):
+            self.assertLess(float(geometry.get('y'))+float(geometry.get('height')),positions[2])
+
+    def test_schema_two_preserves_all_managed_vertex_geometry(self):
+        root=ET.fromstring(self.build()['xml'])
+        graph=root.find("./diagram[@id='IG-003']/mxGraphModel/root")
+        saved={}
+        for obj in graph.findall('object'):
+            geometry=obj.find('mxCell/mxGeometry')
+            geometry.set('x',str(float(geometry.get('x'))+5))
+            geometry.set('y',str(float(geometry.get('y'))+7))
+            saved[obj.get('id')]=dict(geometry.attrib)
+        regenerated=ET.fromstring(self.build(layout_xml=ET.tostring(root,encoding='unicode'))['xml'])
+        graph=regenerated.find("./diagram[@id='IG-003']/mxGraphModel/root")
+        self.assertEqual({obj.get('id'):obj.find('mxCell/mxGeometry').attrib for obj in graph.findall('object')},saved)
+
     def test_threshold_update_preserves_geometry_and_updates_labels(self):
         old = self.build()
         xml = ET.fromstring(old['xml'])
-        cell = xml.find("./diagram[@id='IG-003']/mxGraphModel/root/object[@rule_id='AL-LEVEL-H'][@kind='logic']")
+        cell = xml.find("./diagram[@id='IG-003']/mxGraphModel/root/object[@rule_id='AL-LEVEL-H'][@kind='condition']")
         cell.find('mxCell/mxGeometry').set('x','911')
         self.rules[0]['condition']='value > 1.30 m'
         new=self.build(layout_xml=ET.tostring(xml,encoding='unicode'))
-        result=ET.fromstring(new['xml']).find("./diagram[@id='IG-003']/mxGraphModel/root/object[@rule_id='AL-LEVEL-H'][@kind='logic']")
+        result=ET.fromstring(new['xml']).find("./diagram[@id='IG-003']/mxGraphModel/root/object[@rule_id='AL-LEVEL-H'][@kind='condition']")
         self.assertEqual(result.find('mxCell/mxGeometry').get('x'),'911')
         self.assertIn('1.30 m',result.get('label'))
         self.assertNotEqual(old['index']['semantic_sha256'],new['index']['semantic_sha256'])
@@ -163,7 +228,7 @@ class AssetsTest(unittest.TestCase):
     def test_hysteresis_is_property_not_serial_fake_gate(self):
         root=ET.fromstring(self.build()['xml'])
         self.assertEqual(root.findall(".//object[@kind='hysteresis']"),[])
-        logic=root.find(".//object[@kind='logic']")
+        logic=root.find(".//object[@kind='additional']")
         self.assertEqual(logic.get('reset_hysteresis'),'0.02 m')
 
     def test_live_existence_does_not_promote_behaviour_status(self):
@@ -174,12 +239,12 @@ class AssetsTest(unittest.TestCase):
         self.rules[0]['condition']='<script>alert(1)</script> literal'
         repo=self.build()
         root=ET.fromstring(repo['xml'])
-        self.assertIn('<script>alert(1)</script>',root.find(".//object[@kind='logic']").get('condition'))
+        self.assertIn('<script>alert(1)</script>',root.find(".//object[@kind='condition']").get('condition'))
         self.assertNotIn('<script>alert(1)</script>', repo['xml'])
 
     def test_invalid_geometry_is_rejected(self):
         root=ET.fromstring(self.build()['xml'])
-        root.find(".//object[@kind='logic']/mxCell/mxGeometry").set('x','nan')
+        root.find(".//object[@kind='operation']/mxCell/mxGeometry").set('x','nan')
         with self.assertRaisesRegex(ValueError,'geometry|finite'):
             self.build(layout_xml=ET.tostring(root,encoding='unicode'))
 
