@@ -101,14 +101,14 @@ function ClaimCard({title,item,stage,onOpen}){
   const time=displayEventTime(item);
   return <section className="claim-card cause-card">
     <div className="claim-head"><h3>{title}</h3>{time.primary!=='시각 미확인'?<time>{time.primary}{time.secondary?<small>{time.secondary}</small>:null}</time>:null}</div>
-    <div className="claim-text">{summary||'분석 결과가 없습니다.'}</div>
+    <div className="claim-text">{summary||'분석 결과 없음'}</div>
     {detail?<details className="claim-detail"><summary>상세 분석 설명</summary><p>{detail}</p></details>:null}
     <ClaimEvidence item={item} onOpen={onOpen}/>
   </section>;
 }
 
 function AnalysisList({items,stage,onOpen,limit=5}){
-  if(!items?.length)return <p className="empty-line">표시할 분석 결과가 없습니다.</p>;
+  if(!items?.length)return <p className="empty-line">표시할 분석 결과 없음</p>;
   const visible=items.slice(0,limit);
   const hidden=items.slice(limit);
   const renderItem=(item,index)=>{
