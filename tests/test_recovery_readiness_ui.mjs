@@ -45,5 +45,5 @@ test('readiness UI remains read-only and exposes no plant control actions',()=>{
 
 test('navigation identifies recovery readiness and human record as one workspace',()=>{
   assert.match(contracts,/label: '복구 · 준비상태'/);
-  assert.match(contracts,/sub: '파생 준비상태 · 실제 조치 기록'/);
+  assert.match(contracts,/sub: 'GT·HRSG·ST 준비상태 · 복구 기록'/);
 });
