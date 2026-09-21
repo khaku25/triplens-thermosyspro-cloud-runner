@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const source=fs.readFileSync(new URL('../apps/web/components/TripLensWorkspace.js',import.meta.url),'utf8');
+const logicViewerSource=fs.readFileSync(new URL('../apps/web/components/LogicViewerFrame.js',import.meta.url),'utf8');
 
 test('cause screen uses operator-facing Korean hierarchy',()=>{
   for(const text of ['발생 원인','직접 보호동작','파급 과정','시간순 사고 경위'])assert.match(source,new RegExp(text));
@@ -32,4 +33,12 @@ test('report preview defaults to concise operator summary and keeps editing coll
 test('overflow analysis items and extra evidence tags stay available in disclosures',()=>{
   assert.match(source,/hidden-analysis-items/);
   assert.match(source,/추가 근거 태그/);
+});
+
+test('logic viewer replaces internal diagram copy with operator labels',()=>{
+  for(const text of ['태그·로직 연결도','태그 검색 · 설비별 분류 · 로직 연결 · 상세 정보','입력 태그','파생 출력','입·출력 연결']){
+    assert.match(logicViewerSource,new RegExp(text));
+  }
+  assert.match(logicViewerSource,/operatorDiagramText/);
+  assert.match(logicViewerSource,/querySelectorAll\('#diagram \[aria-label\]'\)/);
 });

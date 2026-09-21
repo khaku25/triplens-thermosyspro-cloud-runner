@@ -32,6 +32,28 @@ function setText(element, value) {
   if (element && element.textContent !== value) element.textContent = value;
 }
 
+function operatorDiagramText(value) {
+  return String(value || '')
+    .replace('원장 기반 로직도 · 조건 실행기가 아님', '태그·로직 연결도')
+    .replace(/(\d+) source tags/g, '$1개 태그')
+    .replace(/(\d+) rules/g, '$1개 로직')
+    .replace(/(\d+) input groups/g, '$1개 입력 그룹')
+    .replace('파란 태그 = OPC UA 원천  /  황색 태그 = 등록된 파생 출력', '태그 검색 · 설비별 분류 · 로직 연결 · 상세 정보')
+    .replace('ADDITIONAL INFO', '상세 정보')
+    .replace('SOURCE INPUT', '입력 태그')
+    .replace('SOURCE OUTPUT', '출력 태그')
+    .replace('DERIVED INPUT', '파생 입력')
+    .replace('DERIVED OUTPUT', '파생 출력')
+    .replace('등록된 파생 알람 · OPC UA Node 아님', '연결된 파생 알람 출력');
+}
+
+function setLegendText(element, value) {
+  if (!element || element.textContent.trim() === value) return;
+  const icon = element.querySelector('i');
+  if (icon) element.replaceChildren(icon, element.ownerDocument.createTextNode(value));
+  else setText(element, value);
+}
+
 function scrubViewer(document) {
   const headerCopy = document.querySelector('.top p');
   setText(headerCopy, '태그 검색 · 설비별 분류 · 로직 연결 · 상세 정보');
@@ -41,6 +63,14 @@ function scrubViewer(document) {
 
   const notice = document.querySelector('#notice');
   setText(notice, '등록된 태그, 설비 분류, 로직 연결 정보를 조회할 수 있습니다.');
+
+  const legendItems = document.querySelectorAll('.legend > span');
+  setLegendText(legendItems[0], '입력 태그');
+  setLegendText(legendItems[1], '파생 출력');
+  setLegendText(legendItems[2], '입·출력 연결');
+  setLegendText(document.querySelector('.legend .condition'), '조건');
+  setLegendText(document.querySelector('.legend .operation'), '동작');
+  setLegendText(document.querySelector('.legend .additional'), '상세 정보');
 
   document.querySelectorAll('.small-actions, .badge.status').forEach(element => {
     element.hidden = true;
@@ -56,19 +86,37 @@ function scrubViewer(document) {
       setText(element, '검색 결과가 없습니다.');
       return;
     }
+    if (text === 'OPC UA 원천 · 검증자료에 존재') {
+      setText(element, '입력 태그');
+      return;
+    }
+    if (text === '파생 출력 · OPC UA Node 아님') {
+      setText(element, '파생 출력');
+      return;
+    }
+    if (element.id === 'context-note' && text.includes('원장 정의 그대로 표시')) {
+      setText(element, text.replace(' · 원장 정의 그대로 표시', ''));
+      return;
+    }
     if (HIDDEN_PHRASES.some(phrase => text.includes(phrase))) element.hidden = true;
   });
 
   document.querySelectorAll('#diagram tspan').forEach(element => {
-    const text = element.textContent;
+    const text = operatorDiagramText(element.textContent);
     if (HIDDEN_PHRASES.some(phrase => text.includes(phrase))) {
       setText(element, '');
       return;
     }
-    setText(element, text
-      .replace('ADDITIONAL INFO', '상세 정보')
-      .replace('SOURCE INPUT', '입력 태그')
-      .replace('SOURCE OUTPUT', '출력 태그'));
+    setText(element, text);
+  });
+
+  document.querySelectorAll('#diagram [aria-label]').forEach(element => {
+    const visibleLabel = [...element.querySelectorAll('tspan')]
+      .map(item => item.textContent.trim())
+      .filter(Boolean)
+      .join(' · ');
+    const label = visibleLabel || operatorDiagramText(element.getAttribute('aria-label'));
+    if (element.getAttribute('aria-label') !== label) element.setAttribute('aria-label', label);
   });
 }
 

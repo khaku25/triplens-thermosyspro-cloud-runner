@@ -206,12 +206,11 @@ def build_document(model: dict, layout_xml: str | None = None) -> str:
                      [rule['rule_id']],'rule'))
     for page_id,name,subgroups,rule_ids,scope in defs:
         page=Page(root,page_id,name,rule_ids,layout,model['semantic_sha256'],scope)
-        page.vertex('title','title',f'TripLens  /  {name}\n원장 기반 로직도 · 조건 실행기가 아님',32,24,1480,78)
+        page.vertex('title','title',f'TripLens  /  {name}\n태그·로직 연결도',32,24,1480,78)
         if scope=='overview':
             page.vertex('overview-policy','group_label',
-                f"{len(model['tags'])} source tags  ·  {len(model['rules'])} rules  ·  {len(groups)} input groups\n"
-                '파란 태그 = OPC UA 원천  /  황색 태그 = 등록된 파생 출력\n'
-                '태그 존재 확인과 공학적 동작 검증은 별개입니다. UNKNOWN/PARTIAL은 그대로 표시합니다.',
+                f"{len(model['tags'])}개 태그  ·  {len(model['rules'])}개 로직  ·  {len(groups)}개 입력 그룹\n"
+                '태그 검색 · 설비별 분류 · 로직 연결 · 상세 정보',
                 32,126,1480,118)
             for i,(screen,_) in enumerate(sorted(screens.items())):
                 page.vertex('nav:'+digest(screen)[:12],'page_link',screen,32+(i%3)*500,280+(i//3)*120,470,88,
@@ -231,7 +230,7 @@ def build_document(model: dict, layout_xml: str | None = None) -> str:
                 t=model['tags'].get(tag,{})
                 is_native=tag in model['tags']
                 desc=t.get('description_ko') or t.get('description_en') or '등록된 파생 로직 출력'
-                label=('SOURCE INPUT' if is_native else 'DERIVED INPUT')+'\n'+lines(tag,42)+'\n'+lines(desc,42)
+                label=('입력 태그' if is_native else '파생 입력')+'\n'+lines(tag,42)+'\n'+lines(desc,42)
                 if t.get('unit'):
                     label+='\n단위: '+t['unit']
                 sid=page.vertex('source:'+gid+':'+digest(tag)[:16],'source' if is_native else 'derived',
@@ -244,10 +243,8 @@ def build_document(model: dict, layout_xml: str | None = None) -> str:
                     410,by,320,108,rule_id=rid,condition=r['condition'],group_id=gid)
                 operation=page.vertex('operation:'+rid,'operation',rid+'\n'+lines(r['logic_name'],38)+'\n'+r['logic_type'],
                     780,by,320,108,rule_id=rid,logic_type=r['logic_type'],group_id=gid)
-                info='ADDITIONAL INFO\n'+lines('지연: '+(r['delay'] or 'NOT SPECIFIED'),38)
-                info+='\n'+lines('복귀/히스테리시스: '+(r['reset_hysteresis'] or 'NOT SPECIFIED'),38)
-                info+='\n'+lines('동작 검증(원장): '+(r['validation_status'] or 'NOT SPECIFIED'),38)
-                info+='\n'+lines('출력 분류: '+(r['output_class'] or 'NOT SPECIFIED'),38)
+                info='상세 정보\n'+lines('지연: '+(r['delay'] or '미기재'),38)
+                info+='\n'+lines('복귀/히스테리시스: '+(r['reset_hysteresis'] or '미기재'),38)
                 page.vertex('additional:'+rid,'additional',info,780,by+120,320,110,
                     rule_id=rid,delay=r['delay'],reset_hysteresis=r['reset_hysteresis'],
                     validation_status=r['validation_status'],output_class=r['output_class'],group_id=gid)
@@ -256,8 +253,8 @@ def build_document(model: dict, layout_xml: str | None = None) -> str:
                 page.edge(condition,operation,'condition')
                 for j,tag in enumerate(r['outputs']):
                     is_native=tag in model['tags']; t=model['tags'].get(tag,{})
-                    desc=t.get('description_ko') or ('등록된 파생 알람 · OPC UA Node 아님' if not is_native else '')
-                    label=('SOURCE OUTPUT' if is_native else 'DERIVED OUTPUT')+'\n'+lines(tag,45)
+                    desc=t.get('description_ko') or ('연결된 파생 알람 출력' if not is_native else '')
+                    label=('출력 태그' if is_native else '파생 출력')+'\n'+lines(tag,45)
                     if desc:
                         label+='\n'+lines(desc,45)
                     out=page.vertex('output:'+rid+':'+digest(tag)[:16], 'source' if is_native else 'derived',
