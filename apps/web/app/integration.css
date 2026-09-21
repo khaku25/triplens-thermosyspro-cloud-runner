@@ -330,3 +330,42 @@ body:has(.app-shell){background:#d8dee3;color:#183348}
   .app-shell .claim-evidence{align-items:flex-start;flex-direction:column}
   .app-shell .detail-cue{margin-left:0}
 }
+
+
+/* Recovery readiness: deterministic Current V8 signal evaluation, display-only. */
+.app-shell .recovery-readiness{border:1px solid #c8d6e8;border-radius:16px;background:#f8fbff;box-shadow:0 8px 24px rgba(19,52,89,.07);overflow:hidden}
+.app-shell .readiness-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:20px 22px;border-bottom:1px solid #dbe6f3;background:linear-gradient(135deg,#f8fbff,#eef5fc)}
+.app-shell .readiness-kicker{display:block;margin-bottom:5px;font-size:11px;font-weight:800;letter-spacing:.09em;color:#55708e}
+.app-shell .readiness-head h3,.app-shell .empty-readiness h3{margin:0;font-size:22px;color:#163656}
+.app-shell .readiness-head p,.app-shell .empty-readiness p{margin:6px 0 0;color:#63778d;font-size:13px}
+.app-shell .readiness-final{min-width:170px;padding:12px 15px;border-radius:12px;border:1px solid #bccbda;background:white;text-align:right}
+.app-shell .readiness-final small{display:block;font-size:10px;font-weight:800;letter-spacing:.07em;color:#657b91}
+.app-shell .readiness-final strong{display:block;margin-top:4px;font-size:19px}
+.app-shell .readiness-final span{display:block;margin-top:3px;font-size:11px;color:#6b7d90}
+.app-shell .readiness-final[data-status="SATISFIED"] strong{color:#0c7a47}
+.app-shell .readiness-final[data-status="BLOCKED"] strong{color:#b4232f}
+.app-shell .readiness-final[data-status="DATA_MISSING"] strong{color:#8a6200}
+.app-shell .readiness-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:16px}
+.app-shell .readiness-group{border:1px solid #d7e1ed;border-radius:12px;background:#fff;overflow:hidden}
+.app-shell .readiness-group>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:#f3f7fb;border-bottom:1px solid #e1e9f2}
+.app-shell .readiness-group h4{margin:0;font-size:13px;letter-spacing:.04em;color:#2b4b68}
+.app-shell .readiness-state{display:inline-flex;align-items:center;justify-content:center;min-width:88px;padding:4px 8px;border-radius:7px;font-size:10px;font-weight:800;letter-spacing:.04em;border:1px solid transparent}
+.app-shell .readiness-state[data-status="SATISFIED"]{color:#09653d;background:#e8f6ee;border-color:#b8dfc8}
+.app-shell .readiness-state[data-status="BLOCKED"]{color:#9f1d28;background:#fdecee;border-color:#f3c5ca}
+.app-shell .readiness-state[data-status="DATA_MISSING"]{color:#755200;background:#fff4ce;border-color:#ead995}
+.app-shell .readiness-condition{border-bottom:1px solid #edf1f5}
+.app-shell .readiness-condition:last-child{border-bottom:0}
+.app-shell .readiness-condition summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;cursor:pointer;font-size:12px;color:#2d4053}
+.app-shell .readiness-condition summary::-webkit-details-marker{display:none}
+.app-shell .readiness-condition dl{margin:0;padding:0 12px 12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 12px}
+.app-shell .readiness-condition dl div{min-width:0}
+.app-shell .readiness-condition dt{font-size:10px;color:#7a8b9b}
+.app-shell .readiness-condition dd{margin:2px 0 0;font-size:11px;color:#2d4053;overflow-wrap:anywhere}
+.app-shell .readiness-foot{padding:13px 16px 15px;border-top:1px solid #dbe6f3;background:#fbfdff}
+.app-shell .readiness-blockers,.app-shell .readiness-missing{display:flex;gap:9px;align-items:flex-start;font-size:12px;margin-bottom:7px}
+.app-shell .readiness-blockers b{color:#a41f2b}.app-shell .readiness-missing b{color:#765600}
+.app-shell .readiness-foot p{margin:9px 0 0;padding-top:9px;border-top:1px dashed #d4dfeb;color:#738293;font-size:11px;line-height:1.55}
+.app-shell .recovery-record-heading{margin-top:6px}
+.app-shell .empty-readiness{padding:18px 20px}
+@media(max-width:900px){.app-shell .readiness-grid{grid-template-columns:1fr}.app-shell .readiness-head{flex-direction:column}.app-shell .readiness-final{width:100%;text-align:left}}
+@media(max-width:560px){.app-shell .readiness-grid{padding:10px;gap:10px}.app-shell .readiness-head{padding:16px}.app-shell .readiness-condition dl{grid-template-columns:1fr}.app-shell .readiness-state{min-width:76px;font-size:9px}}
