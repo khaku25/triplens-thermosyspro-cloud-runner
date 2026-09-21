@@ -222,6 +222,43 @@
     return text.length > limit ? `${text.slice(0, limit).trimEnd()}…` : text;
   }
 
+  function operatorPhrase(value, limit = 180) {
+    let text = String(value || '').trim();
+    if (!text) return '';
+    const gtStLatch = /((가스\s*터빈|GT).*트립\s*래치.*(증기\s*터빈|ST).*트립\s*래치|(증기\s*터빈|ST).*트립\s*래치.*(가스\s*터빈|GT).*트립\s*래치)/i.test(text);
+    if (gtStLatch && /(활성|동작|작동|ACTIVE|LATCH)/i.test(text)) return 'GT·ST Trip Latch 동시 동작';
+    if (/외부\s*(?:GT\s*)?(?:Trip|트립)\s*(?:Command|명령).*(?:입력|인가|관측)/i.test(text)) return '외부 Trip Command 입력';
+    text = text
+      .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*초에\s*/gi, '')
+      .replace(/^\s*\d+(?:\.\d+)?\s*초에\s*/, '')
+      .replace(/RAW\s*변화\s*시간구간이\s*Direct Trigger\s*시각과\s*겹칩니다\.?/gi, 'RAW 변화구간 · Direct Trigger 시각 중첩')
+      .replace(/선후관계는\s*표본만으로\s*확정할\s*수\s*없습니다\.?/g, '선후관계 미확정')
+      .replace(/선후관계를\s*확정할\s*수\s*없습니다\.?/g, '선후관계 미확정')
+      .replace(/확인(?:이)?\s*필요합니다\.?/g, '확인 필요')
+      .replace(/확인해야\s*합니다\.?/g, '확인 필요')
+      .replace(/검토해야\s*합니다\.?/g, '검토 필요')
+      .replace(/확정할\s*수\s*없습니다\.?/g, '미확정')
+      .replace(/판단할\s*수\s*없습니다\.?/g, '판단 불가')
+      .replace(/알\s*수\s*없습니다\.?/g, '미확인')
+      .replace(/활성화되었습니다\.?/g, '활성')
+      .replace(/동작되었습니다\.?/g, '동작')
+      .replace(/작동(?:하였|했)습니다\.?/g, '동작')
+      .replace(/관측되었습니다\.?/g, '관측')
+      .replace(/기록되었습니다\.?/g, '기록')
+      .replace(/입력되었습니다\.?/g, '입력')
+      .replace(/인가되었습니다\.?/g, '인가')
+      .replace(/없습니다\.?/g, '없음')
+      .replace(/있습니다\.?/g, '있음')
+      .replace(/입니다\.?$/g, '')
+      .replace(/합니다\.?$/g, '')
+      .replace(/\.\s+/g, ' · ')
+      .replace(/[.]$/, '')
+      .replace(/\s+/g, ' ')
+      .replace(/\s+([,])/g, '$1')
+      .trim();
+    return text.length > limit ? `${text.slice(0, limit).trimEnd()}…` : text;
+  }
+
   function operatorClaim(item, stage = '') {
     const tags = new Set(list(item?.related_tags || item?.relatedTags || item?.tags).map(String));
     const source = String(item?.claim || item?.message || item?.description || item?.summary || asText(item));
@@ -245,7 +282,7 @@
       ['vppLPTurbineSteamFlowTH', 'LP 터빈 증기유량 LOW', low],
     ].find(([tag,,confirmed]) => confirmed && tags.has(tag));
     if (mapped) return mapped[1];
-    return shortText(source
+    return operatorPhrase(source
       .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*초에\s*/gi, '')
       .replace(/\((?:vpp[A-Za-z0-9_.-]+)\)/g, '')
       .replace(/\b(?:태그\s+)?vpp[A-Za-z0-9_.-]+(?:가|이|는|은)?\b/g, '')
@@ -316,14 +353,18 @@
     const directSource = String(directRow?.content ?? directRow?.['내용'] ?? directOriginal);
     const primaryEdited = Boolean(primaryRow && (primaryRow.edited === true || primarySource !== String(primaryOriginal)));
     const directEdited = Boolean(directRow && (directRow.edited === true || directSource !== String(directOriginal)));
-    const primary = (primaryEdited ? shortText(primarySource) : operatorClaim(analysis.primary_cause, 'primary')) || '발생 원인 기록 없음';
-    const direct = (directEdited ? shortText(directSource) : operatorClaim(analysis.direct_trigger, 'direct')) || '직접 보호동작 기록 없음';
-    const summary = shortText(editedContent(report, '개요', '장애 요약', report.incident_summary || direct), 180);
+    const primary = (primaryEdited ? shortText(primarySource) : operatorPhrase(operatorClaim(analysis.primary_cause, 'primary'))) || '발생 원인 기록 없음';
+    const direct = (directEdited ? shortText(directSource) : operatorPhrase(operatorClaim(analysis.direct_trigger, 'direct'))) || '직접 보호동작 기록 없음';
+    const summaryOriginal = report.incident_summary || direct;
+    const summaryRow = editedRow(report, '개요', '장애 요약');
+    const summarySource = String(summaryRow?.content ?? summaryRow?.['내용'] ?? summaryOriginal);
+    const summaryEdited = Boolean(summaryRow && (summaryRow.edited === true || summarySource !== String(summaryOriginal)));
+    const summary = summaryEdited ? shortText(summarySource, 180) : operatorPhrase(summarySource, 180);
     const equipment = report.equipment || metadata.equipment || [...new Set(analysis.critical_events.map(equipmentLabel).filter(Boolean))].slice(0,3).join(' · ') || 'PLANT';
     const timeline = briefTimeline(report, 7);
     const timelineRows = timeline.visible.map(item => {
       const when = item.__timeOverride ? {primary:item.__timeOverride,secondary:''} : displayTime(item);
-      const claim = item.__reportContent ? shortText(item.claim) : operatorClaim(item);
+      const claim = item.__reportContent ? shortText(item.claim) : operatorPhrase(operatorClaim(item));
       return `<tr class="timeline-row"><td><b>${esc(when.primary)}</b>${when.secondary?`<small>${esc(when.secondary)}</small>`:''}</td><td>${esc(equipmentLabel(item))}</td><td>${esc(claim)}</td></tr>`;
     }).join('');
     const recoveryRows = list(report.report_rows).filter(row => ['운전원·정비 조치사항','조치 결과 및 복구 판정'].includes(String(row?.section || '')));
@@ -344,7 +385,7 @@ table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table
 <header class="doc-head"><div class="doc-title">${esc(title)}</div><div class="doc-meta"><div><span>발생 시각</span><b>${esc(incidentTime.primary)}</b>${incidentTime.secondary?`<small>${esc(incidentTime.secondary)}</small>`:''}</div><div><span>대상 설비</span><b>${esc(equipment)}</b></div><div><span>입력 자료</span><b>${esc(metadata.event_file || 'EVENT.csv')} + ${esc(metadata.raw_file || 'RAW.csv')}</b></div></div></header>
 <section class="section"><h2>1. 사고 개요</h2><div class="summary-line">${esc(operatorClaim({claim:summary}) || direct)}</div></section>
 <section class="section"><h2>2. 발생 원인</h2><div class="cause-grid"><div class="cause-box"><span>발생 원인</span><strong>${esc(primary)}</strong><small>${esc(displayTime(analysis.primary_cause).primary)}</small></div><div class="cause-box"><span>직접 보호동작</span><strong>${esc(direct)}</strong><small>${esc(displayTime(analysis.direct_trigger).primary)}</small></div></div></section>
-<section class="section"><h2>3. 시간순 사고 경위</h2><table class="timeline"><thead><tr><th>시간</th><th>설비 / 구분</th><th>발생 내용</th></tr></thead><tbody>${timelineRows || '<tr><td colspan="3">사고 기록 없음</td></tr>'}</tbody></table>${timeline.hiddenCount?`<div class="note">후속 기록 ${timeline.hiddenCount}건은 상세 분석 데이터에서 확인할 수 있습니다.</div>`:''}</section>
+<section class="section"><h2>3. 시간순 사고 경위</h2><table class="timeline"><thead><tr><th>시간</th><th>설비 / 구분</th><th>발생 내용</th></tr></thead><tbody>${timelineRows || '<tr><td colspan="3">사고 기록 없음</td></tr>'}</tbody></table>${timeline.hiddenCount?`<div class="note">후속 기록 ${timeline.hiddenCount}건 · 상세 분석 데이터 참조</div>`:''}</section>
 <section class="section"><h2>4. 복구조치 및 확인사항</h2><table><tbody>${recoveryBody}</tbody></table></section>
 <footer class="footer">TripLens READ-ONLY 사고분석 · 상세 근거는 CSV 내보내기에서 확인</footer>
 </main></body></html>`;
