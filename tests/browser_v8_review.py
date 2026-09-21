@@ -112,7 +112,7 @@ def main():
                 logic_dialog=page.get_by_role('dialog',name='태그·운전조건·룰 기준 도면')
                 expect(logic_dialog).to_be_visible()
                 viewer=page.frame_locator('dialog iframe')
-                expect(viewer.get_by_text('태그 검색 · 설비별 분류 · 로직 연결 · 상세 정보',exact=True)).to_be_visible()
+                expect(viewer.get_by_role('banner').get_by_text('태그 검색 · 설비별 분류 · 로직 연결 · 상세 정보',exact=True)).to_be_visible()
                 viewer_text=viewer.locator('body').inner_text()
                 for hidden in ('고정 Cause Matrix','등록 확인은 사고 원인 확정','미등록 관측 태그','등록 Logic: 미확인'):
                     assert hidden not in viewer_text,hidden
