@@ -42,3 +42,13 @@ test('logic viewer replaces internal diagram copy with operator labels',()=>{
   assert.match(logicViewerSource,/operatorDiagramText/);
   assert.match(logicViewerSource,/querySelectorAll\('#diagram \[aria-label\]'\)/);
 });
+
+
+test('screen 03 is a structured operator checklist instead of AI prose cards',()=>{
+  assert.match(source,/추가 확인·검토/);
+  assert.match(source,/operatorReviewItems/);
+  assert.match(source,/review-check-card/);
+  assert.match(source,/확인 필요/);
+  assert.match(source,/담당자 검토/);
+  assert.doesNotMatch(source,/즉시 확인·대응/);
+});
