@@ -10,33 +10,42 @@ function clearRow(){
   return row;
 }
 
-test('all registered recovery inputs clear produces READY',()=>{
+test('all current V8 readiness inputs clear makes both GT and ST ready to start',()=>{
   const result=deriveRecoveryReadiness([clearRow()]);
   assert.equal(result.status,READINESS_STATUS.SATISFIED);
   assert.equal(result.ready,true);
-  assert.equal(result.satisfied,result.total);
-  assert.equal(result.blocked_count,0);
-  assert.equal(result.missing_count,0);
+  assert.equal(result.trains.find(item=>item.id==='gt-ready').status,READINESS_STATUS.SATISFIED);
+  assert.equal(result.trains.find(item=>item.id==='st-ready').status,READINESS_STATUS.SATISFIED);
+  assert.equal(result.bop_hrsg.status,READINESS_STATUS.SATISFIED);
 });
 
-test('one active LP BFP trip latch blocks final readiness',()=>{
+test('LP BFP trip latch blocks BOP HRSG and propagates to both GT and ST ready-to-start',()=>{
   const row=clearRow();
   row.vppLPFWPTripLatchNative='1';
   const result=deriveRecoveryReadiness([row]);
-  assert.equal(result.status,READINESS_STATUS.BLOCKED);
-  assert.equal(result.ready,false);
-  assert.equal(result.blocked_count,1);
-  assert.equal(result.blockers[0].id,'lp-fwp-trip-latch');
+  assert.equal(result.bop_hrsg.status,READINESS_STATUS.BLOCKED);
+  assert.equal(result.trains.find(item=>item.id==='gt-ready').status,READINESS_STATUS.BLOCKED);
+  assert.equal(result.trains.find(item=>item.id==='st-ready').status,READINESS_STATUS.BLOCKED);
+  assert.equal(result.blockers.find(item=>item.id==='lp-fwp-trip-latch').affects.join('/'),'GT/ST');
 });
 
-test('missing required input is fail-closed as DATA_MISSING',()=>{
+test('GT-only latch blocks GT start without falsely blocking ST when shared prerequisites are ready',()=>{
+  const row=clearRow();
+  row.vppGTTripLatch='1';
+  const result=deriveRecoveryReadiness([row]);
+  assert.equal(result.trains.find(item=>item.id==='gt-ready').status,READINESS_STATUS.BLOCKED);
+  assert.equal(result.trains.find(item=>item.id==='st-ready').status,READINESS_STATUS.SATISFIED);
+  assert.equal(result.bop_hrsg.status,READINESS_STATUS.SATISFIED);
+});
+
+test('missing shared HRSG input fail-closes both GT and ST as data missing',()=>{
   const row=clearRow();
   delete row.vppIPDrumLLRaw;
   const result=deriveRecoveryReadiness([row]);
-  assert.equal(result.status,READINESS_STATUS.DATA_MISSING);
-  assert.equal(result.ready,false);
+  assert.equal(result.bop_hrsg.status,READINESS_STATUS.DATA_MISSING);
+  assert.equal(result.trains.find(item=>item.id==='gt-ready').status,READINESS_STATUS.DATA_MISSING);
+  assert.equal(result.trains.find(item=>item.id==='st-ready').status,READINESS_STATUS.DATA_MISSING);
   assert.equal(result.missing_count,1);
-  assert.equal(result.missing[0].id,'ip-drum-ll');
 });
 
 test('raw__ prefixed columns resolve without adding new OPC UA tags',()=>{
@@ -51,7 +60,7 @@ test('raw__ prefixed columns resolve without adding new OPC UA tags',()=>{
   assert.equal(result.missing_count,0);
 });
 
-test('latest non-empty sample controls the readiness state',()=>{
+test('latest non-empty sample controls the train readiness state',()=>{
   const first=clearRow();
   first.model_time_s='90.000';
   first.vppGTTripLatch='1';
@@ -59,7 +68,7 @@ test('latest non-empty sample controls the readiness state',()=>{
   last.model_time_s='100.000';
   last.vppGTTripLatch='0';
   const result=deriveRecoveryReadiness([first,last]);
-  assert.equal(result.ready,true);
+  assert.equal(result.trains.find(item=>item.id==='gt-ready').status,READINESS_STATUS.SATISFIED);
   const gt=result.groups.flatMap(group=>group.conditions).find(item=>item.id==='gt-trip-latch');
   assert.equal(gt.model_time_s,'100.000');
 });
