@@ -1,4 +1,7 @@
 """Drawing Master indexes existing draw.io cells without changing the source XML."""
+import hashlib
+import json
+from pathlib import Path
 import unittest
 
 
@@ -38,6 +41,18 @@ class DrawingMasterTest(unittest.TestCase):
         self.assertEqual(tag["verification_status"], "INDEXED_FROM_DRAWIO_XML")
         self.assertEqual(search_drawing_master(index, "HPBP")[0]["cell_id"], "operation:AL-HP")
         self.assertEqual(search_drawing_master(index, "HP.DRUM.LEVEL")[0]["cell_id"], "output:AL-HP:vppHPDrumLevelM")
+
+    def test_published_index_is_hash_bound_to_existing_drawio(self):
+        root = Path(__file__).resolve().parents[1]
+        index_path = root / "logic_diagrams" / "drawing_master_index.json"
+        drawio_path = root / "logic_diagrams" / "TripLens_Logic_Master_Current_V8.drawio"
+        if not index_path.exists() or not drawio_path.exists():
+            self.skipTest("published Drawing Master snapshot is not present")
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+        self.assertEqual(index["source_sha256"], hashlib.sha256(drawio_path.read_bytes()).hexdigest())
+        self.assertGreater(index["counts"]["pages"], 0)
+        self.assertGreater(index["counts"]["cells"], 0)
+        self.assertTrue(all("#page=" in row["source_ref"] and "&cell=" in row["source_ref"] for row in index["entries"]))
 
 
 if __name__ == "__main__":
