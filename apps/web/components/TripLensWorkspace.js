@@ -4,6 +4,7 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import {LogicLibraryDialog,openLogicLibrary} from './LogicLibrary';
 import LogicViewerFrame from './LogicViewerFrame';
 import RecoveryForm from './RecoveryForm';
+import RecoveryReadiness from './RecoveryReadiness';
 import {WORKSPACE_TABS} from '../lib/contracts';
 import {
   normalizeDisplayAnalysis,
@@ -418,7 +419,12 @@ export default function TripLensWorkspace({mode='blind'}){
     const checks=[...analysis.additional_evidence_required,...analysis.review_recommendations];
     view=<div className="panel-stack"><div className="section-heading"><h2>즉시 확인·대응</h2></div>{checks.length?checks.map((text,index)=><div className="check-row" key={index}><span>{String(index+1).padStart(2,'0')}</span><p>{text}</p></div>):<div className="empty-state">추가 확인 항목이 없습니다.</div>}</div>;
   }else if(activeTab==='recovery'){
-    view=<div className="panel-stack"><div className="section-heading"><h2>복구 기록</h2></div><RecoveryForm value={recovery} onChange={setRecovery} catalog={catalog}/></div>;
+    view=<div className="panel-stack">
+      <div className="section-heading"><h2>복구 · 설비 준비상태</h2></div>
+      <RecoveryReadiness rawData={rawData}/>
+      <div className="section-heading recovery-record-heading"><h2>실제 복구 기록</h2><span>운전·정비 담당자 입력</span></div>
+      <RecoveryForm value={recovery} onChange={setRecovery} catalog={catalog}/>
+    </div>;
   }else{
     const evidenceKinds=[...new Set(evidenceRows.map(entry=>String(entry.source_kind||entry.source||'')).filter(Boolean))].sort();
     const evidenceStates=[...new Set(evidenceRows.map(entry=>String(entry.state||'')).filter(Boolean))].sort();
