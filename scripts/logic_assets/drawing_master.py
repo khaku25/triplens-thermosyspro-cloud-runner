@@ -114,6 +114,8 @@ def create_drawing_master(
                 equipment_id = _text(item.get("group_id"))
             source_ref = f"{file_path}#page={page_id}&cell={cell_id}"
             canonical_tag = _text(canonical_tags.get(tag_id)) if tag_id else ""
+            if not canonical_tag and tag_id and '.' in tag_id:
+                canonical_tag = tag_id
             keywords = _keywords(
                 [
                     display_name,

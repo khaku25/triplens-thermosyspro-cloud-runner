@@ -11,7 +11,10 @@ def make_repository(tags, rules, census, *, layout_xml=None):
     drawing_master=create_drawing_master(
         xml,
         file_path='logic_diagrams/TripLens_Logic_Master_Current_V8.drawio',
-        canonical_tags={tag: row.get('canonical_tag','') for tag,row in model['tags'].items()},
+        aliases=[
+            'generated/logic/TripLens_Logic_Master_Current_V8.drawio',
+            'apps/web/public/logic-assets/TripLens_Logic_Master_Current_V8.drawio',
+        ],
     )
     from .build import derive_views
     return {'xml':xml,'index':index,'drawing_master':drawing_master,
