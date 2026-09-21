@@ -8,18 +8,29 @@ export const READINESS_STATUS = STATUS;
 
 export const RECOVERY_READINESS_GROUPS = Object.freeze([
   Object.freeze({
-    id:'unit-protection',
-    label:'UNIT / PROTECTION',
+    id:'gt-start',
+    label:'GT START PERMISSIVES',
+    affects:Object.freeze(['GT']),
     conditions:Object.freeze([
       Object.freeze({id:'gt-trip-latch',label:'GT Trip Latch Clear',aliases:['vppGTTripLatch','GT.TRIP.LATCH','GT_TRIP_LATCH'],expected:false,logic_id:'PROT-GT-LATCH'}),
-      Object.freeze({id:'st-trip-latch',label:'ST Trip Latch Clear',aliases:['vppSTTripLatchPublished','ST.TRIP.LATCH','ST_TRIP_LATCH'],expected:false,logic_id:'PROT-ST-LATCH'}),
       Object.freeze({id:'gt-trip-request',label:'GT Trip Request Clear',aliases:['vppGTTripRequest','GT.TRIP.REQUEST','GT_TRIP_REQUEST'],expected:false,logic_id:'PROT-GT-REQUEST'}),
-      Object.freeze({id:'st-trip-request',label:'ST Trip Request Clear',aliases:['vppSTTripRequest','ST.TRIP.REQUEST','ST_TRIP_REQUEST'],expected:false,logic_id:'PROT-ST-REQUEST'}),
+      Object.freeze({id:'52gt-open',label:'52GT Field Breaker Open',aliases:['vpp52GTClosed','vppECMS52GTClosed','ECMS.52GT.CLOSED'],expected:false,logic_id:'SEQ-52GT-OPEN'}),
     ]),
   }),
   Object.freeze({
-    id:'hrsg-protection',
+    id:'st-start',
+    label:'ST START PERMISSIVES',
+    affects:Object.freeze(['ST']),
+    conditions:Object.freeze([
+      Object.freeze({id:'st-trip-latch',label:'ST Trip Latch Clear',aliases:['vppSTTripLatchPublished','ST.TRIP.LATCH','ST_TRIP_LATCH'],expected:false,logic_id:'PROT-ST-LATCH'}),
+      Object.freeze({id:'st-trip-request',label:'ST Trip Request Clear',aliases:['vppSTTripRequest','ST.TRIP.REQUEST','ST_TRIP_REQUEST'],expected:false,logic_id:'PROT-ST-REQUEST'}),
+      Object.freeze({id:'52st-open',label:'52ST Breaker Open',aliases:['vpp52STClosed','vppECMS52STClosed','ECMS.52ST.CLOSED'],expected:false,logic_id:'SEQ-52ST-OPEN'}),
+    ]),
+  }),
+  Object.freeze({
+    id:'hrsg',
     label:'HRSG PROTECTION',
+    affects:Object.freeze(['GT','ST']),
     conditions:Object.freeze([
       Object.freeze({id:'hp-drum-hh',label:'HP Drum HH Clear',aliases:['vppHPDrumHHRaw','HRSG.HP.DRUM.LEVEL.HH'],expected:false,logic_id:'PROT-HP-DRUM-HH'}),
       Object.freeze({id:'hp-drum-ll',label:'HP Drum LL Clear',aliases:['vppHPDrumLLRaw','HRSG.HP.DRUM.LEVEL.LL'],expected:false,logic_id:'PROT-HP-DRUM-LL'}),
@@ -32,18 +43,11 @@ export const RECOVERY_READINESS_GROUPS = Object.freeze([
   Object.freeze({
     id:'feedwater',
     label:'FEEDWATER',
+    affects:Object.freeze(['GT','ST']),
     conditions:Object.freeze([
       Object.freeze({id:'hp-fwp-trip-latch',label:'HP BFP Trip Latch Clear',aliases:['vppHPFWPTripLatchNative','vppHPFWPTripLatch','FWP_HP.TRIP_LATCH'],expected:false,logic_id:'CMD-FWP-HP-TRIP'}),
       Object.freeze({id:'ip-fwp-trip-latch',label:'IP BFP Trip Latch Clear',aliases:['vppIPFWPTripLatchNative','vppIPFWPTripLatch','FWP_IP.TRIP_LATCH'],expected:false,logic_id:'CMD-FWP-IP-TRIP'}),
       Object.freeze({id:'lp-fwp-trip-latch',label:'LP BFP Trip Latch Clear',aliases:['vppLPFWPTripLatchNative','vppLPFWPTripLatch','FWP_LP.TRIP_LATCH'],expected:false,logic_id:'CMD-FWP-LP-TRIP'}),
-    ]),
-  }),
-  Object.freeze({
-    id:'electrical-isolation',
-    label:'ELECTRICAL / ISOLATION',
-    conditions:Object.freeze([
-      Object.freeze({id:'52gt-open',label:'52GT Field Breaker Open',aliases:['vpp52GTClosed','vppECMS52GTClosed','ECMS.52GT.CLOSED'],expected:false,logic_id:'SEQ-52GT-OPEN'}),
-      Object.freeze({id:'52st-open',label:'52ST Breaker Open',aliases:['vpp52STClosed','vppECMS52STClosed','ECMS.52ST.CLOSED'],expected:false,logic_id:'SEQ-52ST-OPEN'}),
     ]),
   }),
 ]);
@@ -101,33 +105,55 @@ function aggregate(items){
   return STATUS.SATISFIED;
 }
 
-export function evaluateReadinessCondition(records, condition){
+export function evaluateReadinessCondition(records, condition, affects=[]){
   const observed = latestValue(records, condition.aliases || []);
   if(!observed.found){
-    return {...condition,status:STATUS.DATA_MISSING,source_key:observed.key,raw_value:null,model_time_s:''};
+    return {...condition,affects,status:STATUS.DATA_MISSING,source_key:observed.key,raw_value:null,model_time_s:''};
   }
   const value = booleanValue(observed.value);
   if(value === null){
-    return {...condition,status:STATUS.DATA_MISSING,source_key:observed.key,raw_value:observed.value,model_time_s:observed.time};
+    return {...condition,affects,status:STATUS.DATA_MISSING,source_key:observed.key,raw_value:observed.value,model_time_s:observed.time};
   }
   const status = value === Boolean(condition.expected) ? STATUS.SATISFIED : STATUS.BLOCKED;
-  return {...condition,status,source_key:observed.key,raw_value:observed.value,model_time_s:observed.time};
+  return {...condition,affects,status,source_key:observed.key,raw_value:observed.value,model_time_s:observed.time};
 }
 
 export function deriveRecoveryReadiness(records=[]){
   const source = Array.isArray(records) ? records : [];
   const groups = RECOVERY_READINESS_GROUPS.map(group => {
-    const conditions = group.conditions.map(condition => evaluateReadinessCondition(source,condition));
+    const conditions = group.conditions.map(condition => evaluateReadinessCondition(source,condition,group.affects));
     return {...group,conditions,status:aggregate(conditions)};
   });
-  const conditions = groups.flatMap(group => group.conditions);
-  const status = aggregate(conditions);
-  const satisfied = conditions.filter(item => item.status === STATUS.SATISFIED).length;
-  const blocked = conditions.filter(item => item.status === STATUS.BLOCKED);
-  const missing = conditions.filter(item => item.status === STATUS.DATA_MISSING);
+  const byId=Object.fromEntries(groups.map(group=>[group.id,group]));
+  const bopHrsg={
+    id:'bop-hrsg',
+    label:'BOP / HRSG READY TO START',
+    status:aggregate([byId.hrsg,byId.feedwater]),
+    dependencies:[byId.hrsg,byId.feedwater],
+  };
+  const gt={
+    id:'gt-ready',
+    label:'GT READY TO START',
+    status:aggregate([byId['gt-start'],bopHrsg]),
+    dependencies:[byId['gt-start'],bopHrsg],
+  };
+  const st={
+    id:'st-ready',
+    label:'ST READY TO START',
+    status:aggregate([byId['st-start'],bopHrsg]),
+    dependencies:[byId['st-start'],bopHrsg],
+  };
+  const trains=[gt,st];
+  const status=aggregate(trains);
+  const conditions=groups.flatMap(group=>group.conditions);
+  const satisfied=conditions.filter(item=>item.status===STATUS.SATISFIED).length;
+  const blocked=conditions.filter(item=>item.status===STATUS.BLOCKED);
+  const missing=conditions.filter(item=>item.status===STATUS.DATA_MISSING);
   return {
     status,
-    ready:status === STATUS.SATISFIED,
+    ready:status===STATUS.SATISFIED,
+    trains,
+    bop_hrsg:bopHrsg,
     groups,
     total:conditions.length,
     satisfied,
