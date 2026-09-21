@@ -3,6 +3,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {LogicLibraryDialog,openLogicLibrary} from './LogicLibrary';
 import RecoveryForm from './RecoveryForm';
+import RecoveryReadiness from './RecoveryReadiness';
 import {WORKSPACE_TABS} from '../lib/contracts';
 import {
   normalizeDisplayAnalysis,
@@ -329,7 +330,12 @@ export default function TripLensWorkspace({mode='blind'}){
     const checks=[...analysis.additional_evidence_required,...analysis.review_recommendations];
     view=<div className="panel-stack"><div className="section-heading"><h2>즉시 확인·대응</h2></div>{checks.length?checks.map((text,index)=><div className="check-row" key={index}><span>{String(index+1).padStart(2,'0')}</span><p>{text}</p></div>):<div className="empty-state">추가 확인 항목이 없습니다.</div>}</div>;
   }else if(activeTab==='recovery'){
-    view=<div className="panel-stack"><div className="section-heading"><h2>복구 기록</h2></div><RecoveryForm value={recovery} onChange={setRecovery} catalog={catalog}/></div>;
+    view=<div className="panel-stack">
+      <div className="section-heading"><h2>복구 · 설비 준비상태</h2></div>
+      <RecoveryReadiness rawData={rawData}/>
+      <div className="section-heading recovery-record-heading"><h2>실제 복구 기록</h2><span>운전·정비 담당자 입력</span></div>
+      <RecoveryForm value={recovery} onChange={setRecovery} catalog={catalog}/>
+    </div>;
   }else{
     const filtered=catalog.filter(entry=>JSON.stringify([entry.evidence_id,entry.tag,entry.source_node,entry.canonical_tag]).toLowerCase().includes(evidenceQuery.toLowerCase()));
     view=<div className="panel-stack"><div className="section-heading"><h2>Event / RAW 근거</h2><span>{filtered.length}건</span></div><input className="filter-input" aria-label="근거 검색" placeholder="근거 또는 태그 검색" value={evidenceQuery} onChange={event=>setEvidenceQuery(event.target.value)}/><div className="scroll-table"><table><thead><tr><th>근거</th><th>종류</th><th>모델 시각</th><th>신호</th><th>값</th></tr></thead><tbody>{filtered.map((entry,index)=><tr key={entry.evidence_id||index}><td><EvidenceLinks ids={[entry.evidence_id]} onOpen={setDetail} named/></td><td>{entry.source_kind||entry.source||'—'}</td><td>{modelTime(entry.model_time_s)}</td><td><button className="tag-link" onClick={()=>setDetail({kind:'tag',value:entry.source_node||entry.tag})}>{friendlyTag(entry.source_node||entry.canonical_tag||entry.tag)}</button></td><td>{String(entry.value??'—')}</td></tr>)}</tbody></table></div></div>;
