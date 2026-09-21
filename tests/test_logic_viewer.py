@@ -80,18 +80,20 @@ class ViewerTest(unittest.TestCase):
         self.page.evaluate("TripLensLogic.openRule('AL-HP-LEVEL-HH')")
         self.page.wait_for_selector('[data-ready="true"]')
         self.page.locator('#diagram [data-tag="HRSG.HP.DRUM.LEVEL.HH"]').first.click()
-        self.assertIn('파생',self.page.locator('#inspector').inner_text())
-        self.assertIn('OPC UA',self.page.locator('#inspector').inner_text())
+        self.assertIn('파생 출력',self.page.locator('#inspector').inner_text())
+        self.assertNotIn('OPC UA Node 아님',self.page.locator('#inspector').inner_text())
 
     def test_behaviour_status_is_not_relabelled_live_pass(self):
         self.page.evaluate("TripLensLogic.openRule('AL-HP-LEVEL-HH')")
         self.page.wait_for_selector('[data-ready="true"]')
-        self.assertIn('PARTIAL',self.page.locator('#inspector').inner_text())
+        self.assertNotIn('PARTIAL',self.page.locator('#inspector').inner_text())
+        repository=json.loads(self.page.locator('#repository-data').text_content())
+        self.assertEqual(repository['index']['rules']['AL-HP-LEVEL-HH']['validation_status'],'PARTIAL')
 
     def test_unknown_tag_does_not_invent_rule(self):
         self.page.evaluate("TripLensLogic.openTag('vppMadeUp')")
         self.page.wait_for_selector('[data-ready="true"]')
-        self.assertIn('등록되지',self.page.locator('#inspector').inner_text())
+        self.assertIn('검색 결과가 없습니다.',self.page.locator('#inspector').inner_text())
         self.assertEqual(self.page.locator('#related-rules button').count(),0)
 
     def test_layout_drag_and_export_changes_geometry_not_condition(self):
@@ -131,8 +133,10 @@ class ViewerTest(unittest.TestCase):
             for node in nodes.all():
                 self.assertIsNone(node.get_attribute('role'))
                 self.assertIsNone(node.get_attribute('tabindex'))
-        for word in ('CONDITION','OPERATION','ADDITIONAL INFO'):
+        for word in ('조건','동작','상세 정보'):
             self.assertIn(word,self.page.locator('.legend').inner_text())
+        for word in ('CONDITION','OPERATION','ADDITIONAL INFO','원장','OPC UA Node 아님'):
+            self.assertNotIn(word,self.page.locator('.legend').inner_text())
 
     def test_schema_mismatch_and_mixed_central_ids_fail_closed(self):
         original=json.loads(self.page.locator('#repository-data').text_content())

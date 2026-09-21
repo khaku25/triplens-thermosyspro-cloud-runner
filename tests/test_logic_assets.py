@@ -61,8 +61,10 @@ class AssetsTest(unittest.TestCase):
                 operation = graph.find(f"object[@id='operation:{rid}']")
                 additional = graph.find(f"object[@id='additional:{rid}']")
                 self.assertNotIn('0.02 m', operation.get('label'))
-                for value in ('0.5 s', '0.02 m', 'PARTIAL', 'DERIVED_ALARM'):
+                for value in ('0.5 s', '0.02 m'):
                     self.assertIn(value, additional.get('label'))
+                self.assertEqual(additional.get('validation_status'), 'PARTIAL')
+                self.assertEqual(additional.get('output_class'), 'DERIVED_ALARM')
                 edges = graph.findall("mxCell[@edge='1']")
                 self.assertEqual(len(edges), 3)
                 self.assertEqual({(e.get('source').split(':')[0], e.get('target').split(':')[0]) for e in edges},
@@ -181,6 +183,15 @@ class AssetsTest(unittest.TestCase):
         repo=self.build()
         self.assertIn('HP 드럼 실제 수위',repo['xml'])
         self.assertEqual(repo['index']['tags']['vppLevel']['description_ko'],'HP 드럼 실제 수위')
+
+    def test_operator_diagram_omits_internal_verification_copy(self):
+        root=ET.fromstring(self.build()['xml'])
+        labels='\n'.join(obj.get('label','') for obj in root.findall('.//object'))
+        for phrase in ('원장 기반 로직도','조건 실행기가 아님','태그 존재 확인과 공학적 동작 검증',
+                       'UNKNOWN/PARTIAL','동작 검증(원장)','출력 분류:','ADDITIONAL INFO'):
+            self.assertNotIn(phrase,labels)
+        self.assertIn('태그·로직 연결도',labels)
+        self.assertIn('상세 정보',labels)
 
     def test_regeneration_is_idempotent(self):
         first=self.build()
