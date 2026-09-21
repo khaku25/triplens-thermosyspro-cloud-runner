@@ -13,7 +13,7 @@ test('operator phrase converts polite AI prose into concise report style',()=>{
   );
   assert.equal(
     operatorPhrase('관련 로직 조회가 확인되지 않았습니다. 승인 로직 원장을 확인해야 합니다.'),
-    '관련 로직 조회가 미확인 · 승인 로직 원장을 확인 필요'
+    '관련 로직 조회 미확인 · 승인 로직 원장을 확인 필요'
   );
 });
 
