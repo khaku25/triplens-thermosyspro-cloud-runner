@@ -9,6 +9,7 @@ import tempfile
 from .xmlio import write_csv, write_xlsx
 
 DRAWIO_NAME='TripLens_Logic_Master_Current_V8.drawio'
+DRAWING_MASTER_NAME='drawing_master_index.json'
 
 
 def derive_views(model,index):
@@ -55,6 +56,7 @@ def publish_repository(repository,target):
         def dump(name,value):
             (staging/name).write_text(json.dumps(value,ensure_ascii=False,sort_keys=True,indent=2)+'\n',encoding='utf-8')
         dump('logic_diagram_index.json',repository['index'])
+        dump(DRAWING_MASTER_NAME,repository['drawing_master'])
         for name,rows in repository['derived'].items():
             write_csv(staging/(name+'.csv'),rows)
         summary=[{'metric':k,'value':v} for k,v in repository['index']['counts'].items()]
@@ -71,7 +73,7 @@ def publish_repository(repository,target):
         package=Path(__file__).parent
         viewer=package/'viewer.html'
         if viewer.exists():
-            payload=json.dumps({'index':repository['index'],'xml':repository['xml']},ensure_ascii=False,separators=(',',':'))
+            payload=json.dumps({'index':repository['index'],'xml':repository['xml'],'drawing_master':repository['drawing_master']},ensure_ascii=False,separators=(',',':'))
             payload=payload.replace('<','\\u003c').replace('>','\\u003e').replace('&','\\u0026')
             html=viewer.read_text(encoding='utf-8').replace('__TRIPLENS_PAYLOAD__',payload)
             (staging/'viewer.html').write_text(html,encoding='utf-8')
