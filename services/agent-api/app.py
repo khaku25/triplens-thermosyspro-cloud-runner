@@ -35,7 +35,7 @@ async def save_upload(upload,path,budget):
     with path.open('wb') as f:
         while chunk:=await upload.read(1024*1024):
             size+=len(chunk)
-            if size>budget:raise HTTPException(413,detail='EVENTì RAW í©ê³ë íì¬ 4 MB ì´íì¬ì¼ í©ëë¤.')
+            if size>budget:raise HTTPException(413,detail='EVENT와 RAW 합계는 현재 4 MB 이하여야 합니다.')
             f.write(chunk)
     return size
 
@@ -60,11 +60,11 @@ async def bootstrap(event:UploadFile=File(...),raw:UploadFile=File(...)):
 
 @app.post('/analyze')
 async def analyze(event:UploadFile=File(...),raw:UploadFile=File(...)):
-    if not os.getenv('GEMINI_API_KEY','').strip():raise HTTPException(503,detail='ë°±ìë Gemini API í¤ê° ì¤ì ëì§ ìììµëë¤.')
+    if not os.getenv('GEMINI_API_KEY','').strip():raise HTTPException(503,detail='백엔드 Gemini API 키가 설정되지 않았습니다.')
     temp,store,run=await prepare(event,raw)
     try:
-        if store.readiness()['status']!='PASS':raise HTTPException(422,detail={'stage':'time_alignment','message':'ì¡°í ê°ë¥í EVENTì ìµì 2ìì ì RAW ë° ê³µíµ ìê°êµ¬ê°ì´ íìí©ëë¤.','validation':store.validation})
+        if store.readiness()['status']!='PASS':raise HTTPException(422,detail={'stage':'time_alignment','message':'조회 가능한 EVENT와 최소 2시점의 RAW 및 공통 시간구간이 필요합니다.','validation':store.validation})
         try:analysis=await run_in_threadpool(run_gemini_analysis,store,run_id=run['run_id'],data_digest=run['data_digest'])
-        except Exception as exc:raise HTTPException(502,detail={'stage':'gemini_agent','error_type':type(exc).__name__,'message':'Gemini ë¶ìì´ ìë£ëì§ ìììµëë¤. ìë ¥ì ì ì§ë©ëë¤. ì¸ì¦Â·íëÂ·ìëµ íìì ìë²ìì íì¸íì¸ì.'}) from exc
+        except Exception as exc:raise HTTPException(502,detail={'stage':'gemini_agent','error_type':type(exc).__name__,'message':'Gemini 분석이 완료되지 않았습니다. 입력은 유지됩니다. 인증·한도·응답 형식을 서버에서 확인하세요.'}) from exc
         run.update(analysis=analysis,evidence_catalog=store.evidence_catalog(),events=[store.describe_event(r) for r in store.event_rows[:1000]],events_truncated=len(store.event_rows)>1000,tool_contract=store.tool_manifest());return run
     finally:temp.cleanup()
