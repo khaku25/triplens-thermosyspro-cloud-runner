@@ -351,3 +351,30 @@ body:has(.app-shell){background:#d8dee3;color:#183348}
   .app-shell .readiness-condition dl{grid-template-columns:1fr}
   .app-shell .readiness-state.ready-badge{min-width:82px}
 }
+
+
+/* Screen 03: compact operator review checklist, not AI prose cards. */
+.app-shell .section-heading>div>p{margin:5px 0 0;color:#6f8293;font-size:12px;line-height:1.5}
+.app-shell .review-summary{display:grid;grid-template-columns:repeat(2,minmax(0,180px));gap:10px}
+.app-shell .review-summary>div{border:1px solid #b9c8d4;background:#f5f8fa;padding:10px 12px;display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.app-shell .review-summary span{font-size:11px;color:#5f7485;font-weight:700}
+.app-shell .review-summary b{font-size:20px;color:#183b52}
+.app-shell .review-checklist{display:grid;gap:10px}
+.app-shell .review-check-card{display:grid;grid-template-columns:38px minmax(0,1fr);gap:12px;border:1px solid #bdc9d2;background:#fff;padding:13px 14px}
+.app-shell .review-check-no{font-size:12px;color:#738697;padding-top:2px;font-variant-numeric:tabular-nums}
+.app-shell .review-check-main{min-width:0}
+.app-shell .review-check-main header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.app-shell .review-check-main strong{font-size:15px;color:#17374c}
+.app-shell .review-check-main header span{padding:4px 8px;border:1px solid #c7d1d9;background:#eef2f5;color:#566b7b;font-size:10px;font-weight:800;white-space:nowrap}
+.app-shell .review-check-main header span[data-kind="required"]{background:#fff1e8;border-color:#e7c3a8;color:#91542d}
+.app-shell .review-check-main header span[data-kind="review"]{background:#edf4fb;border-color:#bfd2e4;color:#315d7e}
+.app-shell .review-check-main p{margin:8px 0 0;font-size:13px;line-height:1.55;color:#40596b;overflow-wrap:anywhere}
+.app-shell .review-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.app-shell .review-tags em{font-style:normal;padding:3px 7px;border:1px solid #d1dbe3;background:#f7f9fb;color:#597083;font-size:10px}
+@media(max-width:640px){
+  .app-shell .review-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .app-shell .review-check-card{grid-template-columns:28px minmax(0,1fr);padding:12px 11px;gap:9px}
+  .app-shell .review-check-main header{align-items:flex-start;flex-direction:column;gap:6px}
+  .app-shell .review-check-main strong{font-size:14px}
+  .app-shell .review-check-main p{font-size:12px}
+}
