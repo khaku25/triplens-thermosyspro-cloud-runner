@@ -362,6 +362,7 @@
     const summarySource = String(summaryRow?.content ?? summaryRow?.['내용'] ?? summaryOriginal);
     const summaryEdited = Boolean(summaryRow && (summaryRow.edited === true || summarySource !== String(summaryOriginal)));
     const summary = summaryEdited ? shortText(summarySource, 180) : operatorPhrase(summarySource, 180);
+    const summaryDisplay = summaryEdited ? summary : operatorPhrase(operatorClaim({claim:summary}), 180);
     const equipment = report.equipment || metadata.equipment || [...new Set(analysis.critical_events.map(equipmentLabel).filter(Boolean))].slice(0,3).join(' · ') || 'PLANT';
     const timeline = briefTimeline(report, 7);
     const timelineRows = timeline.visible.map(item => {
@@ -385,7 +386,7 @@ table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table
 @media print{html,body{width:210mm;height:auto;overflow:visible}.report{margin:0}.section,table,tr{overflow:visible!important;max-height:none!important;height:auto!important}}
 </style></head><body><main class="report">
 <header class="doc-head"><div class="doc-title">${esc(title)}</div><div class="doc-meta"><div><span>발생 시각</span><b>${esc(incidentTime.primary)}</b>${incidentTime.secondary?`<small>${esc(incidentTime.secondary)}</small>`:''}</div><div><span>대상 설비</span><b>${esc(equipment)}</b></div><div><span>입력 자료</span><b>${esc(metadata.event_file || 'EVENT.csv')} + ${esc(metadata.raw_file || 'RAW.csv')}</b></div></div></header>
-<section class="section"><h2>1. 사고 개요</h2><div class="summary-line">${esc(operatorClaim({claim:summary}) || direct)}</div></section>
+<section class="section"><h2>1. 사고 개요</h2><div class="summary-line">${esc(summaryDisplay || direct)}</div></section>
 <section class="section"><h2>2. 발생 원인</h2><div class="cause-grid"><div class="cause-box"><span>발생 원인</span><strong>${esc(primary)}</strong><small>${esc(displayTime(analysis.primary_cause).primary)}</small></div><div class="cause-box"><span>직접 보호동작</span><strong>${esc(direct)}</strong><small>${esc(displayTime(analysis.direct_trigger).primary)}</small></div></div></section>
 <section class="section"><h2>3. 시간순 사고 경위</h2><table class="timeline"><thead><tr><th>시간</th><th>설비 / 구분</th><th>발생 내용</th></tr></thead><tbody>${timelineRows || '<tr><td colspan="3">사고 기록 없음</td></tr>'}</tbody></table>${timeline.hiddenCount?`<div class="note">후속 기록 ${timeline.hiddenCount}건 · 상세 분석 데이터 참조</div>`:''}</section>
 <section class="section"><h2>4. 복구조치 및 확인사항</h2><table><tbody>${recoveryBody}</tbody></table></section>
