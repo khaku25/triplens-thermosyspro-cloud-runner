@@ -65,6 +65,15 @@ test('preferred source tag falls back through canonical and original tag fields'
   assert.equal(eventIdentity({event_id:'E-only'}),'E-only');
 });
 
+test('merged events keep missing Model Time after timestamped events',()=>{
+  const events=mergeEvents([
+    {event_id:'UNKNOWN',model_time_s:null},
+    {event_id:'KNOWN',model_time_s:48.44},
+    {event_id:'BLANK',model_time_s:''},
+  ],[]);
+  assert.deepEqual(events.map(event=>event.event_id),['KNOWN','UNKNOWN','BLANK']);
+});
+
 test('real report builder unions a partial retrieved catalog with every EVENT',()=>{
   const events=mergeEvents(uploaded,enriched);
   const rows=buildDraftRows({events,evidence_catalog:retrieved,analysis:{}});

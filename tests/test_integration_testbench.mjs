@@ -34,6 +34,21 @@ test('evidence detail exposes one logic-library entry with grouped registered ru
   assert.deepEqual(targets.entry, {tag:'vppGTTripLatch',ruleCount:2});
 });
 
+test('drawer logic targets deduplicate rules and label their operator roles', () => {
+  const targets=buildEvidenceLogicTargets([
+    {source_node:'vppSTTripLatchPublished',logic_ids:['PROT-ST-LATCH','SEQ-52ST-OPEN','PROT-ST-LATCH']},
+    {source_node:'vpp52STTripCmd',logic_ids:['SEQ-52ST-TRIPCMD','SEQ-52ST-OPEN']},
+  ]);
+  assert.deepEqual(targets.tags,['vppSTTripLatchPublished','vpp52STTripCmd']);
+  assert.deepEqual(targets.rules,['PROT-ST-LATCH','SEQ-52ST-OPEN','SEQ-52ST-TRIPCMD']);
+  assert.deepEqual(targets.roles,[
+    {id:'PROT-ST-LATCH',label:'보호 래치'},
+    {id:'SEQ-52ST-OPEN',label:'차단기 개방 순서'},
+    {id:'SEQ-52ST-TRIPCMD',label:'Trip Command 연계'},
+  ]);
+  assert.deepEqual(targets.entry,{tag:'vppSTTripLatchPublished',ruleCount:3});
+});
+
 test('current analysis state is adapted to report v2 without losing edits or evidence', () => {
   const analysis={
     verification_gate:'HOLD',
@@ -52,4 +67,16 @@ test('current analysis state is adapted to report v2 without losing edits or evi
   assert.equal(out.chronological_events[0].wall_time_utc,'2026-09-15T14:52:04.213+00:00');
   assert.equal(out.chronological_events[0].equipment,'GT');
   assert.ok(out.sections.some(section=>section.id==='direct_trigger'));
+});
+
+test('export chronology keeps unknown Model Time last and never restores unfinished copy',()=>{
+  const out=buildExportReport({
+    events:[
+      {event_id:'UNKNOWN',model_time_s:null,message:'UNKNOWN TIME'},
+      {event_id:'KNOWN',model_time_s:10,message:'KNOWN TIME'},
+    ],
+    analysis:{},
+  });
+  assert.deepEqual(out.chronological_events.map(event=>event.claim),['KNOWN TIME','UNKNOWN TIME']);
+  assert.doesNotMatch(out.incident_summary,/초안/);
 });

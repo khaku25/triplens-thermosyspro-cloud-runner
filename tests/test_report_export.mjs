@@ -18,6 +18,7 @@ const report = {
   causal_chain: ['ST Trip latch', '52ST breaker open'],
   key_evidence: [{ source:'EVENT.csv', tag:'TRIP_LATCH' }],
   recovery_check: 'Not fully recovered',
+  recovery_actions: '재기동 보류 및 정비 인계',
   gemini_analysis: 'Additional engineering review text',
   counter_evidence: ['No independent mechanical-failure evidence'],
   additional_evidence_required: ['Protection relay record'],
@@ -49,6 +50,7 @@ test('PDF report restores a formal document header and approval grid', () => {
   }
   assert.match(html,/class="approval-table"/);
   assert.match(html,/class="document-info"/);
+  assert.match(html,/font-family:Pretendard,"Noto Sans KR","Malgun Gothic",Arial,sans-serif/);
   assert.match(html,/<th>사고 시각<\/th><td><b>T\+48\.000 s<\/b>/);
 });
 
@@ -63,6 +65,59 @@ test('PDF chronology uses model time as the primary accident time', () => {
     }],
   });
   assert.match(html,/class="timeline-row"><td><b>T\+48\.440 s<\/b><small>14:52:04\.212<\/small>/);
+});
+
+test('PDF header selects the earliest Model Time across unsorted incident inputs',()=>{
+  const meta=exporter.reportDocumentMeta({
+    critical_events:[{model_time_s:50.2,claim:'late critical'}],
+    chronological_events:[
+      {model_time_s:49.1,claim:'later'},
+      {model_time_s:48.44,wall_time_utc:'2026-09-15T14:52:04.212+00:00',claim:'first'},
+    ],
+  });
+  assert.deepEqual(meta.incidentTime,{primary:'T+48.440 s',secondary:'14:52:04.212'});
+});
+
+test('PDF chronology keeps missing Model Time after timestamped events',()=>{
+  const html=exporter.buildReportHtml({
+    ...report,
+    chronological_events:[
+      {claim:'NO_TIME_EVENT',model_time_s:null,evidence_ids:['NO-TIME']},
+      {claim:'EARLY_EVENT',model_time_s:48.44,evidence_ids:['EARLY']},
+    ],
+    report_rows:[],
+  });
+  assert.ok(html.indexOf('EARLY_EVENT')<html.indexOf('NO_TIME_EVENT'));
+});
+
+test('PDF omits the recovery section when only placeholder recovery rows exist', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    recovery_check:'',
+    recovery_status:'UNKNOWN',
+    recovery_decision_entered:false,
+    recovery_operator:'',
+    recovery_actions:'',
+    recovery_recovered_at:'',
+    report_rows:[
+      {section:'운전원·정비 조치사항',item:'실제 수행 조치',content:'기록 없음',status:'INPUT_PENDING',row_id:'RECOVERY-actions'},
+      {section:'조치 결과 및 복구 판정',item:'복구 상태',content:'기록 없음',status:'INPUT_PENDING',row_id:'RECOVERY-status'},
+    ],
+  });
+  assert.doesNotMatch(html,/4\. 복구조치 및 확인사항|기록 없음|입력 대기/);
+  assert.match(html,/상세 근거 별첨/);
+});
+
+test('PDF omits approver-only incomplete recovery data', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    recovery_check:'복구 기록 입력 대기',
+    recovery_actions:'',
+    recovery_operator:'',
+    recovery_approver:'Kim',
+    report_rows:[],
+  });
+  assert.doesNotMatch(html,/4\. 복구조치 및 확인사항|복구 기록 입력 대기/);
 });
 
 test('PINPOINT CSV keeps canonical evidence and review state', () => {
@@ -95,8 +150,8 @@ test('concise PDF preserves editable summary and direct-trigger wording', () => 
   const edited = {
     ...report,
     report_rows: [
-      { section:'개요', item:'장애 요약', content:'운전 담당자가 수정한 최종 초안 문구', status:'OBSERVED', evidence_ids:'EV-1', tags:'ST.TRIP.LATCH', time:'48.440 s', note:'담당자 편집' },
-      { section:'발생 원인', item:'직접 Trip 원인', content:'편집된 직접 Trip 원인', status:'CANDIDATE', evidence_ids:'EV-1', tags:'ST.TRIP.LATCH', time:'48.440 s', note:'최종 승인 전' },
+      { section:'개요', item:'장애 요약', content:'운전 담당자가 수정한 최종 초안 문구', status:'OBSERVED', evidence_ids:'EV-1', tags:'ST.TRIP.LATCH', time:'48.440 s', note:'담당자 편집', edited:true },
+      { section:'발생 원인', item:'직접 Trip 원인', content:'편집된 직접 Trip 원인', status:'CANDIDATE', evidence_ids:'EV-1', tags:'ST.TRIP.LATCH', time:'48.440 s', note:'최종 승인 전', edited:true },
     ],
   };
   const html = exporter.buildReportHtml(edited);
@@ -168,7 +223,7 @@ test('default PDF is a concise operator report without developer metadata or raw
     report_rows:[],
   };
   const html=exporter.buildReportHtml(operatorReport);
-  for(const text of ['사고 개요','핵심 분석','사고 개시 신호','직접 보호동작','시간순 사고 경위','시간','설비 / 구분','발생 내용','후속 기록 5건'])assert.match(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  for(const text of ['사고 개요','핵심 분석','사고 개시 신호','직접 보호동작','시간순 사고 경위','시간','설비 / 구분','발생 내용','후속 기록 5건','상세 근거 별첨'])assert.match(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   for(const text of ['Run ID','Data Digest','Analysis Engine','근거 ID','관련 태그','model_time_s','vppGTTripLatch','secret-digest'])assert.doesNotMatch(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   assert.equal((html.match(/class="timeline-row"/g)||[]).length,7);
   assert.match(html,/@page\{size:A4;margin:0\}/);
@@ -199,9 +254,9 @@ test('operator PDF preserves real edits even when known source tags are present'
     direct_trigger:{claim:'원본 직접 동작',related_tags:['vppGTTripLatch']},
     chronological_events:[{model_time_s:48.52,equipment:'52GT',claim:'원본 사건',evidence_ids:['EV-EDIT'],related_tags:['vpp52GTClosed']}],
     report_rows:[
-      {section:'발생 원인',item:'선행 원인',content:'운전원이 수정한 발생 원인'},
-      {section:'발생 원인',item:'직접 Trip 원인',content:'운전원이 수정한 직접 보호동작'},
-      {section:'시간대별 사건·자동동작(SOE)',item:'SOE 1',content:'운전원이 수정한 차단기 동작',evidence_ids:'EV-EDIT',time:'48.520 s'},
+      {section:'발생 원인',item:'선행 원인',content:'운전원이 수정한 발생 원인',edited:true},
+      {section:'발생 원인',item:'직접 Trip 원인',content:'운전원이 수정한 직접 보호동작',edited:true},
+      {section:'시간대별 사건·자동동작(SOE)',item:'SOE 1',content:'운전원이 수정한 차단기 동작',evidence_ids:'EV-EDIT',time:'48.520 s',edited:true},
     ],
   };
   const html=exporter.buildReportHtml(edited);
@@ -217,4 +272,13 @@ test('operator PDF does not infer OPEN from a closed-state tag', () => {
   });
   assert.match(html,/52GT 차단기 정상 투입 상태/);
   assert.doesNotMatch(html,/52GT 차단기 OPEN/);
+});
+
+test('operator PDF bounds recovery prose and omits empty recovery cells', () => {
+  const longAction='현장 설비 상태를 확인하고 운전 조건을 재검토함. '.repeat(20).trim();
+  const html=exporter.buildReportHtml({...report,recovery_actions:longAction,report_rows:[]});
+  assert.match(html,/4\. 복구조치 및 확인사항/);
+  assert.match(html,/수행 조치/);
+  assert.match(html,/…/);
+  assert.doesNotMatch(html,new RegExp(longAction));
 });

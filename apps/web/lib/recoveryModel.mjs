@@ -36,6 +36,11 @@ export function normalizeRecovery(value={}){
   };
 }
 
+export function hasRecoveryRecord(value={}){
+  const recovery=normalizeRecovery(value);
+  return Boolean(recovery.actions);
+}
+
 function requiredFields(value){
   if(!RECOVERY_STATUSES.has(value.status))return ['status'];
   if(value.status==='UNKNOWN')return ['decision_entered','operator','actions'];

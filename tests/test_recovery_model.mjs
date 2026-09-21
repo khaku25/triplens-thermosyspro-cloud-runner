@@ -4,6 +4,7 @@ import {
   EMPTY_RECOVERY,
   deriveRecoveryWorkflow,
   editRecovery,
+  hasRecoveryRecord,
   normalizeRecovery,
   parseEvidenceIds,
   recoveryStatusLabel,
@@ -35,6 +36,11 @@ test('empty recovery is human input pending and is not presented as engineering 
   assert.equal(deriveRecoveryWorkflow(EMPTY_RECOVERY),'INPUT_PENDING');
   assert.equal(workflowLabel('INPUT_PENDING'),'복구 기록 입력 대기');
   assert.doesNotMatch(recoverySummary(EMPTY_RECOVERY),/UNKNOWN/);
+  assert.equal(hasRecoveryRecord(EMPTY_RECOVERY),false);
+  assert.equal(hasRecoveryRecord(completeRecovered),true);
+  assert.equal(hasRecoveryRecord({status:'UNKNOWN',decision_entered:true,operator:'Lee',actions:'판단 보류'}),true);
+  assert.equal(hasRecoveryRecord({status:'UNKNOWN',approver:'Kim'}),false);
+  assert.equal(hasRecoveryRecord({status:'UNKNOWN',evidence_ids:['E1']}),false);
 });
 
 test('complete recovery waits for explicit approval timestamp and then becomes approved', () => {
