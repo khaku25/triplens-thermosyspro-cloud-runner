@@ -12,12 +12,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 from bridge import build_store,public_contract,sha256_files
 from gemini_agent import run_gemini_analysis,DEFAULT_MODEL
+from triplens.cors_config import web_origins
 from triplens.evidence_context import VERSION
 MAX_DIRECT_UPLOAD_BYTES=4_000_000
 app=FastAPI(title='TripLens Agent API',version='0.3.0')
-origins=['http://localhost:3000','http://127.0.0.1:3000','https://triplens-web-preview.vercel.app']
-configured=os.getenv('TRIPLENS_WEB_ORIGIN','').strip()
-if configured:origins.append(configured)
+origins=web_origins(os.getenv('TRIPLENS_WEB_ORIGIN',''))
 app.add_middleware(CORSMiddleware,allow_origins=origins,allow_credentials=False,allow_methods=['GET','POST'],allow_headers=['Content-Type'])
 
 def effective_contract():

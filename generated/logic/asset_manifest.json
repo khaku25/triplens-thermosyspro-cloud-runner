@@ -21,7 +21,8 @@
     "links.csv": "d6521353d58355a4267b76dfa9db4caef3359708673a22f2fb3bd5a1b05c4963",
     "logic_diagram_index.json": "77a7b89d988f23c52d9b4aa294abc1408344b60729631023da5da26f59431bcf",
     "ports.csv": "cd6214cd369d05e33e8dce63fca6efa51cd97e5ccb00f7975a1d837f2cebba0a",
-    "viewer.html": "e8c4441ab9f13d9a012b0980e01a243e3349fbdce8d60d6b14406fa485b5950e"
+    "viewer.html": "87513ad8d898f5e08bb4158f992184d1dcb9a6e56ba93a91176dc7841a9fc552",
+    "drawing_master_index.json": "28816e25d202dc79032ae10b802f1ab8a6a6cf460611e84a6a8dcc2033286e72"
   },
   "schema_version": 2,
   "semantic_sha256": "3f5398d2a9efc176d365a313ba7a3c7c9156135a9fc9ae6d8eef7d885ee87c12",

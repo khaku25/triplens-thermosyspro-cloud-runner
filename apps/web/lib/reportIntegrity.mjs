@@ -19,8 +19,8 @@ export function mergeEvents(uploaded=[],enriched=[]){
   uploaded.forEach((event,index)=>put(event,index,'uploaded'));
   enriched.forEach((event,index)=>put(event,index,'enriched'));
   return [...events.values()].sort((left,right)=>{
-    const leftTime=Number(left.model_time_s);
-    const rightTime=Number(right.model_time_s);
+    const leftTime=left.model_time_s===null||left.model_time_s===undefined||String(left.model_time_s).trim()===''?NaN:Number(left.model_time_s);
+    const rightTime=right.model_time_s===null||right.model_time_s===undefined||String(right.model_time_s).trim()===''?NaN:Number(right.model_time_s);
     const a=Number.isFinite(leftTime)?leftTime:Infinity;
     const b=Number.isFinite(rightTime)?rightTime:Infinity;
     return a-b;

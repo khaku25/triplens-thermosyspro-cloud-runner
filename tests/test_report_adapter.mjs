@@ -100,3 +100,24 @@ test('complete PARTIAL and NOT_RECOVERED records do not report restart condition
     assert.doesNotMatch(restart.content,/입력 대기/);
   }
 });
+
+test('workspace report chronology uses normalized operator edges instead of inactive repeats', () => {
+  const chronologyEvents=[
+    {event_id:'ST-0-A',source_node:'vppSTTripLatchPublished',model_time_s:40.92,value:0,state:'INACTIVE'},
+    {event_id:'ST-0-B',source_node:'vppSTTripLatchPublished',model_time_s:41.92,value:0,state:'INACTIVE'},
+    {event_id:'GT-1',source_node:'vppGTTripLatch',model_time_s:48.44,value:1,state:'ACTIVE'},
+    {event_id:'ST-1',source_node:'vppSTTripLatchPublished',model_time_s:48.46,value:1,state:'ACTIVE'},
+    {event_id:'52GT-CLOSED',source_node:'vpp52GTClosed',model_time_s:48.48,value:1,state:'CLOSED'},
+    {event_id:'52GT-OPEN',source_node:'vpp52GTClosed',model_time_s:48.52,value:0,state:'OPEN'},
+    {event_id:'52GT-OPEN-REPEAT',source_node:'vpp52GTClosed',model_time_s:48.56,value:0,state:'OPEN'},
+  ];
+  const out=buildWorkspaceExportReport({result:{run_id:'RUN-EDGE'},analysis,events:chronologyEvents,catalog:[],reportRows:[],recovery:{}});
+  assert.deepEqual(out.chronological_events.map(item=>item.claim),['GT·ST Trip Latch 동시 동작','52GT 차단기 OPEN']);
+  assert.deepEqual(out.chronological_events[0].evidence_ids,['GT-1','ST-1']);
+  assert.deepEqual(out.chronological_events[0].related_tags,['vppGTTripLatch','vppSTTripLatchPublished']);
+  assert.deepEqual(out.chronological_events[1].evidence_ids,['52GT-OPEN','52GT-OPEN-REPEAT']);
+  const html=exporter.buildReportHtml(out);
+  assert.match(html,/GT·ST Trip Latch 동시 동작/);
+  assert.match(html,/52GT 차단기 OPEN/);
+  assert.doesNotMatch(html,/ST-0-A|ST-0-B|INACTIVE/);
+});

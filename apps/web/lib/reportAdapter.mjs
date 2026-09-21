@@ -1,6 +1,7 @@
 import {buildDraftRows,REPORT_SECTIONS} from './analysisClient.mjs';
 import {buildExportReport} from './integrationTestbench.mjs';
 import {mergeEvents,mergeEvidenceCatalog,validateReportReferences} from './reportIntegrity.mjs';
+import {deriveOperatorAnalysis,normalizeOperatorEvents} from './workspacePresentation.mjs';
 import {
   deriveRecoveryWorkflow,
   normalizeRecovery,
@@ -119,9 +120,11 @@ export function buildWorkspaceExportReport(args={}){
   const recovery_validation=validateRecovery(recovery,[...events,...catalog]);
   const recovery_workflow=deriveRecoveryWorkflow(recovery);
   const document_state=analysis.verification_gate==='PASS'&&recovery_workflow==='APPROVED'?'REVIEWED':'DRAFT';
-  const legacy=buildExportReport({...args,result,analysis,events,catalog,reportRows});
+  const legacy=buildExportReport({...args,result,analysis,events:normalizeOperatorEvents(events),catalog,reportRows});
+  const operator_analysis=deriveOperatorAnalysis(analysis,catalog).analysis;
   return {
     ...legacy,
+    operator_analysis,
     // PINPOINT serializes sections, not report_rows. Keep the frozen adapter
     // unchanged and append the same authoritative recovery rows used by PDF/CSV.
     sections:[...legacy.sections,{

@@ -31,9 +31,14 @@ export function evaluateDeviceCases(index, cases = DEVICE_TEST_CASES) {
 }
 
 export function buildEvidenceLogicTargets(evidence = {}) {
-  const tags=uniq([evidence.source_node || evidence.canonical_tag || evidence.tag]);
-  const rules=uniq(evidence.logic_ids);
-  return {tags,rules,entry:tags.length?{tag:tags[0],ruleCount:rules.length}:null};
+  const rows=Array.isArray(evidence)?evidence:[evidence];
+  const tags=uniq(rows.map(item=>item?.source_node || item?.canonical_tag || item?.tag));
+  const rules=uniq(rows.flatMap(item=>item?.logic_ids||[]));
+  const roles=rules.map(id=>({
+    id,
+    label:/TRIPCMD|COMMAND/i.test(id)?'Trip Command 연계':/OPEN/i.test(id)?'차단기 개방 순서':/LATCH|PROT/i.test(id)?'보호 래치':'연결 로직',
+  }));
+  return {tags,rules,roles,entry:tags.length?{tag:tags[0],ruleCount:rules.length}:null};
 }
 
 function evidenceFor(ids, catalog) {
@@ -81,7 +86,7 @@ export function buildExportReport({result={},analysis={},events=[],catalog=[],re
     data_digest:result.data_digest || '',
     verification_gate:analysis.verification_gate || 'HOLD',
     metadata:{run_id:result.run_id || '',event_file:eventFileName,raw_file:rawFileName,data_digest:result.data_digest || '',analysis_engine:'Gemini Tool Analysis'},
-    incident_summary:critical[0]?.claim || direct?.claim || 'EVENT + RAW 사고분석 초안',
+    incident_summary:critical[0]?.claim || direct?.claim || 'EVENT + RAW 사고분석 결과',
     critical_events:critical,
     primary_cause:primary,
     direct_trigger:direct,
@@ -92,7 +97,11 @@ export function buildExportReport({result={},analysis={},events=[],catalog=[],re
     review_recommendations:analysis.review_recommendations || [],
     recovery_check:'UNKNOWN · 실제 복구 기록 및 담당자 승인 필요',
     report_rows:reportRows.map(row => ({...row})),
-    chronological_events:[...events].sort((a,b)=>Number(a.model_time_s)-Number(b.model_time_s)).map(event => ({
+    chronological_events:[...events].sort((a,b)=>{
+      const left=a.model_time_s===null||a.model_time_s===undefined||String(a.model_time_s).trim()===''?Infinity:Number(a.model_time_s);
+      const right=b.model_time_s===null||b.model_time_s===undefined||String(b.model_time_s).trim()===''?Infinity:Number(b.model_time_s);
+      return (Number.isFinite(left)?left:Infinity)-(Number.isFinite(right)?right:Infinity);
+    }).map(event => ({
       wall_time_utc:event.wall_time_utc || '',
       model_time_s:event.model_time_s ?? null,
       equipment:event.equipment || '',
@@ -100,8 +109,8 @@ export function buildExportReport({result={},analysis={},events=[],catalog=[],re
       category:event.event_class || event.source || 'EVENT',
       claim:event.message || `${event.equipment || ''} ${event.tag || ''}`.trim(),
       status:'OBSERVED',
-      evidence_ids:[event.evidence_id || event.event_id].filter(Boolean),
-      related_tags:[event.source_node || event.tag].filter(Boolean),
+      evidence_ids:(event.evidence_ids?.length?event.evidence_ids:[event.evidence_id || event.event_id]).filter(Boolean),
+      related_tags:(event.related_tags?.length?event.related_tags:[event.source_node || event.tag]).filter(Boolean),
     })),
     sections:[
       {id:'critical_events',title:'Critical Events',value:critical},
