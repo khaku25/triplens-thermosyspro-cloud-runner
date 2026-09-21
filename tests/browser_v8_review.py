@@ -86,7 +86,7 @@ def main():
             })""")
             assert colors=={'header':'rgb(35, 63, 80)','sidebar':'rgb(52, 83, 99)','canvas':'rgb(216, 222, 227)','panel':'rgb(255, 255, 255)'},colors
             page.screenshot(path=str(OUT/f'{name}-analysis.png'),full_page=True)
-            gt_open=page.locator('.analysis-list article').filter(has_text='52GT 차단기 OPEN')
+            gt_open=page.locator('.analysis-list article').filter(has_text='52GT 차단기 OPEN').first
             gt_open.locator('summary',has_text='상세 근거 보기').click()
             gt_open.get_by_role('button',name='E-3',exact=True).click()
             expect(page.get_by_role('button',name='이전 화면',exact=True)).to_be_visible()
