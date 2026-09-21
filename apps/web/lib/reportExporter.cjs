@@ -208,73 +208,113 @@
     return rows;
   }
 
+  function displayTime(item) {
+    const wall = String(item?.wall_time_utc || item?.recorded_wall_time || '').trim();
+    const clock = wall.match(/T(\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)/)?.[1] || '';
+    const raw = item?.model_time_s ?? item?.recorded_time ?? item?.aligned_time ?? item?.time;
+    const seconds = raw === null || raw === undefined || String(raw).trim() === '' ? null : Number(raw);
+    const model = seconds !== null && Number.isFinite(seconds) ? `T+${seconds.toFixed(3)} s` : '';
+    return { primary: clock || model || '시각 미확인', secondary: clock ? model : '' };
+  }
+
+  function shortText(value, limit = 160) {
+    const text = String(value || '').trim();
+    return text.length > limit ? `${text.slice(0, limit).trimEnd()}…` : text;
+  }
+
+  function operatorClaim(item, stage = '') {
+    const tags = new Set(list(item?.related_tags || item?.relatedTags || item?.tags).map(String));
+    if (stage === 'primary' && tags.has('vppExternalTripCommandNative')) return '외부 Trip Command 입력';
+    if (stage === 'direct' && tags.has('vppGTTripLatch') && tags.has('vppSTTripLatchPublished')) return 'GT·ST Trip Latch 동시 동작';
+    if (stage === 'direct' && tags.has('vppGTTripLatch')) return 'GT Trip Latch 동작';
+    if (stage === 'direct' && tags.has('vppSTTripLatchPublished')) return 'ST Trip Latch 동작';
+    const mapped = [
+      ['vpp52GTClosed', '52GT 차단기 OPEN'],
+      ['vpp52STClosed', '52ST 차단기 OPEN'],
+      ['vppGTExhaustMassFlowTH', 'GT 배기유량 LOW'],
+      ['vppGTExhaustTemperatureK', 'GT 배기온도 LOW'],
+      ['vppHPTurbineSteamFlowTH', 'HP 터빈 증기유량 LOW'],
+      ['vppIPTurbineSteamFlowTH', 'IP 터빈 증기유량 LOW'],
+      ['vppLPTurbineSteamFlowTH', 'LP 터빈 증기유량 LOW'],
+    ].find(([tag]) => tags.has(tag));
+    if (mapped) return mapped[1];
+    return shortText(String(item?.claim || item?.message || item?.description || item?.summary || asText(item))
+      .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*초에\s*/gi, '')
+      .replace(/\((?:vpp[A-Za-z0-9_.-]+)\)/g, '')
+      .replace(/\b(?:태그\s+)?vpp[A-Za-z0-9_.-]+(?:가|이|는|은)?\b/g, '')
+      .replace(/1(?:\.0)?\s*\(ACTIVE\)(?:으로)?/gi, 'ACTIVE')
+      .replace(/개로\s*\(0(?:\.0)?\)\s*됨/g, '개방')
+      .replace(/\s+/g, ' ')
+      .replace(/\s+([,.])/g, '$1')
+      .trim());
+  }
+
+  function editedContent(report, section, item, fallback = '') {
+    const row = list(report?.report_rows).find(value => String(value?.section ?? value?.['구분'] ?? '') === section && String(value?.item ?? value?.['항목'] ?? '') === item);
+    return row ? String(row.content ?? row['내용'] ?? fallback) : fallback;
+  }
+
+  function equipmentLabel(item) {
+    if (item?.equipment) return String(item.equipment);
+    const text = `${operatorClaim(item)} ${joinList(item?.related_tags || item?.tags)}`.toUpperCase();
+    if (text.includes('52GT')) return '52GT';
+    if (text.includes('52ST')) return '52ST';
+    if (text.includes('GT')) return 'GT';
+    if (text.includes('ST')) return 'ST';
+    if (text.includes('DRUM')) return 'HRSG';
+    return String(item?.category || item?.stage || 'PLANT');
+  }
+
+  function briefTimeline(report, limit = 7) {
+    const rows = chronology(report).slice().sort((left, right) => {
+      const a = Number(left?.model_time_s ?? left?.recorded_time ?? left?.aligned_time ?? left?.time);
+      const b = Number(right?.model_time_s ?? right?.recorded_time ?? right?.aligned_time ?? right?.time);
+      return (Number.isFinite(a) ? a : Infinity) - (Number.isFinite(b) ? b : Infinity);
+    });
+    return { visible: rows.slice(0, limit), hiddenCount: Math.max(0, rows.length - limit) };
+  }
+
   function buildReportHtml(report) {
     const analysis = normalizedAnalysis(report);
     const metadata = report.metadata || {};
-    const reviewed = report.document_state ? report.document_state === 'REVIEWED' : analysis.verification_gate === 'PASS';
-    const documentLabel = reviewed ? '검토 완료' : '분석 완료';
     const title = '설비 고장 분석보고서';
-    const metaRows = [
-      ['Run ID', report.run_id || metadata.run_id || ''],
-      ['EVENT', metadata.event_file || report.event_file || 'EVENT.csv'],
-      ['RAW', metadata.raw_file || report.raw_file || 'RAW.csv'],
-      ['Data Digest', metadata.data_digest || report.data_digest || ''],
-      ['Analysis Engine', metadata.analysis_engine || report.analysis_engine || 'Gemini'],
-    ].map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('');
-
-    const operating = report.operating_status && typeof report.operating_status === 'object'
-      ? Object.entries(report.operating_status).map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(asText(v))}</td></tr>`).join('')
-      : '<tr><th>운전 상태</th><td>자료 없음</td></tr>';
-
     const firstCritical = analysis.critical_events[0];
-    const incidentRows = [
-      ['발생 시각', report.incident_time || metadata.incident_time || claimField(firstCritical, 'recorded_time', '')],
-      ['대상 설비', report.equipment || metadata.equipment || ''],
-      ['장애 요약', report.incident_summary || ''],
-      ['분석 상태', documentLabel],
-    ].map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(asText(v))}</td></tr>`).join('');
-
-    const criticalRows = analysis.critical_events.map((item) => `<tr><td>${esc(item.recorded_time)}</td><td>${esc(item.claim)}</td><td>${esc(statusLabel(item.status))}</td><td>${esc(joinList(item.evidence_ids))}</td></tr>`).join('');
-    const propagationRows = analysis.propagation.map((item) => causeRow('파급 과정', 'Propagation', item)).join('');
-    const causalSummary = analysis.causal_chain.map((item) => typeof item === 'object' ? (item.claim || item.description || asText(item)) : asText(item)).filter(Boolean).join(' → ');
-    const counterEvidence = analysis.counter_evidence.length ? analysis.counter_evidence.map((item) => `<li>${esc(asText(item))}</li>`).join('') : '<li>없음 / 추가 확인 필요</li>';
-    const additional = analysis.additional_evidence_required.length ? analysis.additional_evidence_required.map((item) => `<li>${esc(asText(item))}</li>`).join('') : '<li>추가 확인 항목 없음</li>';
-    const recommendationRows = analysis.review_recommendations.length ? analysis.review_recommendations.map((item, index) => `<tr><td>${index + 1}</td><td>${esc(item.claim || asText(item))}</td><td>${esc(statusLabel(item.status || 'CANDIDATE'))}</td><td>${esc(joinList(item.evidence_ids || []))}</td><td>${esc(item.note || '담당자 승인 필요')}</td></tr>`).join('') : '<tr><td colspan="5">검토 권고사항 없음</td></tr>';
-    const evidenceRows = pinpointRows(report).map((row) => `<tr><td>${esc(row.event_id || '')}</td><td>${esc(row.source_system || '')}</td><td>${esc(row.event_tag || '')}</td><td>${esc(row.canonical_tag || '')}</td><td>${esc(row.aligned_time || row.original_time || '')}</td><td>${esc(row.disposition ? statusLabel(row.disposition) : (row.state || ''))}</td></tr>`).join('');
-
-    const editedRows = Array.isArray(report.report_rows) ? report.report_rows : [];
-    const workspaceRows = editedRows.some((row) => ['시간대별 사건·자동동작(SOE)','운전원·정비 조치사항','조치 결과 및 복구 판정'].includes(String(row?.section ?? row?.['구분'] ?? '')));
-    const editedSections = workspaceRows ? WORKSPACE_REPORT_SECTIONS : FAILURE_REPORT_SECTIONS;
-    const editedBody = editedRows.length ? editedSections.map((section, index) => {
-      const rows = editedRows.filter((row) => String(row.section ?? row['구분'] ?? '') === section);
-      const body = rows.length ? rows.map((row) => `<tr><td>${esc(row.item ?? row['항목'] ?? '')}</td><td>${esc(row.content ?? row['내용'] ?? '')}</td><td>${esc(statusLabel(row.status ?? row['상태'] ?? ''))}</td><td>${esc(row.evidence_ids ?? row['근거 ID'] ?? '')}</td><td>${esc(row.tags ?? row['관련 태그'] ?? '')}</td><td>${esc(row.time ?? row['기록 시각'] ?? '')}</td><td>${esc(row.note ?? row['비고'] ?? '')}</td></tr>`).join('') : '<tr><td colspan="7">자료 없음</td></tr>';
-      return `<section class="section"><h2>${index + 1}. ${esc(section)}</h2><table><thead><tr><th>항목</th><th>내용</th><th>상태</th><th>근거 ID</th><th>관련 태그</th><th>기록 시각</th><th>비고</th></tr></thead><tbody>${body}</tbody></table></section>`;
-    }).join('') : '';
-
-    const generatedBody = `
-<section class="section"><h2>1. 개요</h2><table><tbody>${incidentRows}</tbody></table></section>
-<section class="section"><h2>2. 사고 발생 전 운전 현황</h2><table><tbody>${operating}</tbody></table></section>
-<section class="section"><h2>3. 장애 현상</h2><table><thead><tr><th>기록 시각</th><th>주요 사건 (Critical Events)</th><th>상태</th><th>근거 ID</th></tr></thead><tbody>${criticalRows || '<tr><td colspan="4">자료 없음</td></tr>'}</tbody></table></section>
-<section class="section"><h2>4. 시간대별 조치사항</h2><table><thead><tr><th>순번</th><th>시각</th><th>구분</th><th>현상/동작</th><th>상태</th><th>근거 ID</th><th>관련 태그</th></tr></thead><tbody>${chronologyRows(report) || '<tr><td colspan="7">자료 없음</td></tr>'}</tbody></table><div class="note">※ 시간순 EVENT/RAW는 임의 5개 제한 없이 전체 배열을 유지합니다. 출력 시 페이지가 넘치면 “시간대별 조치사항 (계속)”으로 이어집니다.</div></section>
-<section class="section"><h2>5. 발생 원인</h2><table><thead><tr><th>항목</th><th>내용</th><th>상태</th><th>근거 ID</th><th>관련 태그</th><th>기록 시각</th><th>Logic Master</th></tr></thead><tbody>${causeRow('선행 원인','Primary Cause',analysis.primary_cause)}${causeRow('직접 Trip 원인','Direct Trigger',analysis.direct_trigger)}${propagationRows}</tbody></table>${causalSummary ? `<p><strong>인과관계 요약:</strong> ${esc(causalSummary)}</p>` : ''}</section>
-<section class="section"><h2>6. 조치 결과</h2><table><tbody><tr><th>복구 상태</th><td>${esc(asText(report.recovery_check || '기록 없음'))}</td></tr><tr><th>분석 상태</th><td>${esc(documentLabel)}</td></tr></tbody></table></section>
-<section class="section"><h2>7. 추정 원인 및 미확인 사항</h2><table><tbody><tr><th>반대 근거</th><td><ul>${counterEvidence}</ul></td></tr><tr><th>추가 확인 필요</th><td><ul>${additional}</ul></td></tr></tbody></table></section>
-<section class="section"><h2>8. 재발방지 대책 — 검토 권고사항</h2><table><thead><tr><th>순번</th><th>권고사항</th><th>상태</th><th>근거 ID</th><th>비고</th></tr></thead><tbody>${recommendationRows}</tbody></table></section>
-<section class="section"><h2>9. 증거자료</h2><table><thead><tr><th>근거 ID</th><th>원천</th><th>원본 태그</th><th>정규 태그</th><th>기록 시각</th><th>상태</th></tr></thead><tbody>${evidenceRows || '<tr><td colspan="6">자료 없음</td></tr>'}</tbody></table></section>`;
+    const incidentTime = displayTime({
+      wall_time_utc: report.incident_wall_time || firstCritical?.wall_time_utc,
+      model_time_s: report.incident_time || metadata.incident_time || firstCritical?.model_time_s || firstCritical?.recorded_time,
+    });
+    const primarySource = editedContent(report, '발생 원인', '선행 원인', claimField(analysis.primary_cause, 'claim', ''));
+    const directSource = editedContent(report, '발생 원인', '직접 Trip 원인', claimField(analysis.direct_trigger, 'claim', ''));
+    const primary = operatorClaim({...analysis.primary_cause, claim:primarySource}, 'primary') || '발생 원인 기록 없음';
+    const direct = operatorClaim({...analysis.direct_trigger, claim:directSource}, 'direct') || '직접 보호동작 기록 없음';
+    const summary = shortText(editedContent(report, '개요', '장애 요약', report.incident_summary || direct), 180);
+    const equipment = report.equipment || metadata.equipment || [...new Set(analysis.critical_events.map(equipmentLabel).filter(Boolean))].slice(0,3).join(' · ') || 'PLANT';
+    const timeline = briefTimeline(report, 7);
+    const timelineRows = timeline.visible.map(item => {
+      const when = displayTime(item);
+      return `<tr class="timeline-row"><td><b>${esc(when.primary)}</b>${when.secondary?`<small>${esc(when.secondary)}</small>`:''}</td><td>${esc(equipmentLabel(item))}</td><td>${esc(operatorClaim(item))}</td></tr>`;
+    }).join('');
+    const recoveryRows = list(report.report_rows).filter(row => ['운전원·정비 조치사항','조치 결과 및 복구 판정'].includes(String(row?.section || '')));
+    const recoveryBody = recoveryRows.length
+      ? recoveryRows.map(row => `<tr><th>${esc(row.item || '')}</th><td>${esc(row.content || '기록 없음')}${row.time?`<small>${esc(row.time)}</small>`:''}${row.note?`<small>${esc(row.note)}</small>`:''}</td></tr>`).join('')
+      : `<tr><th>복구 상태</th><td>${esc(asText(report.recovery_check || '기록 없음'))}</td></tr>`;
 
     return `<!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
 <style>
-@page{size:A4;margin:12mm 11mm 14mm}
-*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#111;font-family:Arial,"Noto Sans KR",sans-serif;font-size:10pt;line-height:1.45}
-.report{width:100%;max-width:190mm;margin:0 auto}.doc-head{border:1px solid #333;margin-bottom:5mm}.doc-title{font-size:18pt;font-weight:700;text-align:center;padding:5mm 3mm;border-bottom:1px solid #333}.doc-meta table{border:0}.section{margin:0 0 5mm;break-inside:auto;page-break-inside:auto;overflow:visible!important;max-height:none!important;height:auto!important}.section h2{font-size:11.5pt;margin:0 0 2mm;padding-bottom:1.5mm;border-bottom:1.5px solid #222;color:#111}.note{font-size:8.5pt;color:#444}.en{font-size:7.5pt;color:#555;font-weight:400}
-table{width:100%;border-collapse:collapse;table-layout:auto;break-inside:auto}thead{display:table-header-group}tr{break-inside:avoid-page;page-break-inside:avoid}th,td{border:1px solid #bbb;padding:1.8mm;vertical-align:top;overflow-wrap:anywhere}th{background:#f5f5f5;text-align:left;font-weight:700}ul{margin:1mm 0 0 5mm;padding-left:3mm}.footer{margin-top:7mm;padding-top:2mm;border-top:1px solid #bbb;font-size:8pt;color:#555}
-@media print{html,body{width:auto!important;height:auto!important;overflow:visible!important}.report{max-width:none}.section,table,tr{overflow:visible!important;max-height:none!important;height:auto!important}}
+@page{size:A4;margin:0}
+*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#172f3f;font-family:"Noto Sans KR","Malgun Gothic",Arial,sans-serif;font-size:10.5pt;line-height:1.42}
+.report{width:210mm;min-height:297mm;margin:0 auto;padding:11mm 12mm 12mm}.doc-head{border-top:4px solid #173e55;border-bottom:1px solid #8ea0ab;padding:0 0 4mm;margin-bottom:5mm}.doc-title{font-size:20pt;font-weight:800;color:#102f43;margin-bottom:3mm}.doc-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm}.doc-meta div{background:#eef3f5;border-left:3px solid #2a657f;padding:2.5mm}.doc-meta span{display:block;font-size:8pt;color:#5e7380;margin-bottom:.7mm}.doc-meta b{font-size:10pt}.section{margin:0 0 4.5mm;break-inside:avoid;page-break-inside:avoid}.section h2{font-size:12pt;margin:0 0 2mm;padding-bottom:1.5mm;border-bottom:1.5px solid #234b62;color:#15384d}.cause-grid{display:grid;grid-template-columns:1fr 1fr;gap:3mm}.cause-box{border:1px solid #aebcc4;padding:3mm;min-height:23mm}.cause-box span{display:block;color:#5d7280;font-size:8.5pt;margin-bottom:1.2mm}.cause-box strong{font-size:13pt;color:#12364b}.cause-box small{display:block;margin-top:1.5mm;color:#607582}.summary-line{padding:3mm;border:1px solid #aebcc4;background:#f7f9fa;font-size:11pt;font-weight:700}
+table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid-page;page-break-inside:avoid}th,td{border:1px solid #b8c3c9;padding:2.1mm;vertical-align:top;overflow-wrap:anywhere}th{background:#edf2f4;text-align:left;font-weight:700}td small{display:block;color:#6a7e89;font-size:8pt;margin-top:.5mm}.timeline th:nth-child(1){width:31%}.timeline th:nth-child(2){width:18%}.timeline td:nth-child(3){font-weight:650}.note{font-size:8.5pt;color:#586d79;margin-top:1.5mm}.footer{margin-top:5mm;padding-top:2mm;border-top:1px solid #aebbc3;font-size:8pt;color:#607480}
+@media print{html,body{width:210mm;height:auto;overflow:visible}.report{margin:0}.section,table,tr{overflow:visible!important;max-height:none!important;height:auto!important}}
 </style></head><body><main class="report">
-<header class="doc-head"><div class="doc-title">${esc(title)}</div><div class="doc-meta"><table><tbody>${metaRows}</tbody></table></div></header>
-${editedBody || generatedBody}
-<footer class="footer">TripLens READ-ONLY 사고분석 · EVENT + RAW 근거 기반 보고서</footer>
+<header class="doc-head"><div class="doc-title">${esc(title)}</div><div class="doc-meta"><div><span>발생 시각</span><b>${esc(incidentTime.primary)}</b>${incidentTime.secondary?`<small>${esc(incidentTime.secondary)}</small>`:''}</div><div><span>대상 설비</span><b>${esc(equipment)}</b></div><div><span>입력 자료</span><b>${esc(metadata.event_file || 'EVENT.csv')} + ${esc(metadata.raw_file || 'RAW.csv')}</b></div></div></header>
+<section class="section"><h2>1. 사고 개요</h2><div class="summary-line">${esc(operatorClaim({claim:summary}) || direct)}</div></section>
+<section class="section"><h2>2. 발생 원인</h2><div class="cause-grid"><div class="cause-box"><span>발생 원인</span><strong>${esc(primary)}</strong><small>${esc(displayTime(analysis.primary_cause).primary)}</small></div><div class="cause-box"><span>직접 보호동작</span><strong>${esc(direct)}</strong><small>${esc(displayTime(analysis.direct_trigger).primary)}</small></div></div></section>
+<section class="section"><h2>3. 시간순 사고 경위</h2><table class="timeline"><thead><tr><th>시간</th><th>설비 / 구분</th><th>발생 내용</th></tr></thead><tbody>${timelineRows || '<tr><td colspan="3">사고 기록 없음</td></tr>'}</tbody></table>${timeline.hiddenCount?`<div class="note">후속 기록 ${timeline.hiddenCount}건은 상세 분석 데이터에서 확인할 수 있습니다.</div>`:''}</section>
+<section class="section"><h2>4. 복구조치 및 확인사항</h2><table><tbody>${recoveryBody}</tbody></table></section>
+<footer class="footer">TripLens READ-ONLY 사고분석 · 상세 근거는 CSV 내보내기에서 확인</footer>
 </main></body></html>`;
   }
 

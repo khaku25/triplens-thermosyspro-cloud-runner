@@ -1,5 +1,13 @@
 const list=value=>Array.isArray(value)?value:[];
 
+const modelSeconds=value=>{
+  if(value===null||value===undefined||String(value).trim()==='')return null;
+  const number=Number(value);
+  return Number.isFinite(number)?number:null;
+};
+
+const sourceTags=item=>new Set(list(item?.related_tags||item?.tags).map(value=>String(value||'').trim()).filter(Boolean));
+
 export function analysisDisplayData({result}={}){
   if(!result)return {events:[],catalog:[]};
   return {
@@ -19,6 +27,84 @@ export function summarizeEvidence(values,limit=5){
   const unique=[...new Set(list(values).map(value=>String(value??'').trim()).filter(Boolean))];
   const cap=Math.max(3,Math.min(5,Number(limit)||5));
   return {visible:unique.slice(0,cap),hidden:unique.slice(cap),hiddenCount:Math.max(0,unique.length-cap)};
+}
+
+export function displayEventTime(item={}){
+  const wall=String(item?.wall_time_utc||item?.recorded_wall_time||'').trim();
+  const clock=wall.match(/T(\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)/)?.[1]||'';
+  const seconds=modelSeconds(item?.model_time_s??item?.recorded_time);
+  const model=seconds===null?'':`T+${seconds.toFixed(3)} s`;
+  return clock?{primary:clock,secondary:model}:{primary:model||'시각 미확인',secondary:''};
+}
+
+export function operatorSummary(item={},stage=''){
+  const tags=sourceTags(item);
+  if(stage==='primary'&&tags.has('vppExternalTripCommandNative'))return '외부 Trip Command 입력';
+  if(stage==='direct'&&tags.has('vppGTTripLatch')&&tags.has('vppSTTripLatchPublished'))return 'GT·ST Trip Latch 동시 동작';
+  if(stage==='direct'&&tags.has('vppGTTripLatch'))return 'GT Trip Latch 동작';
+  if(stage==='direct'&&tags.has('vppSTTripLatchPublished'))return 'ST Trip Latch 동작';
+
+  const mapped=[
+    ['vpp52GTClosed','52GT 차단기 OPEN'],
+    ['vpp52STClosed','52ST 차단기 OPEN'],
+    ['vppGTExhaustMassFlowTH','GT 배기유량 LOW'],
+    ['vppGTExhaustTemperatureK','GT 배기온도 LOW'],
+    ['vppHPTurbineSteamFlowTH','HP 터빈 증기유량 LOW'],
+    ['vppIPTurbineSteamFlowTH','IP 터빈 증기유량 LOW'],
+    ['vppLPTurbineSteamFlowTH','LP 터빈 증기유량 LOW'],
+  ].find(([tag])=>tags.has(tag));
+  if(mapped)return mapped[1];
+
+  return String(item?.claim||item?.message||item?.description||'')
+    .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*초에\s*/gi,'')
+    .replace(/\((?:vpp[A-Za-z0-9_.-]+)\)/g,'')
+    .replace(/\b(?:태그\s+)?vpp[A-Za-z0-9_.-]+(?:가|이|는|은)?\b/g,'')
+    .replace(/1(?:\.0)?\s*\(ACTIVE\)(?:으로)?/gi,'ACTIVE')
+    .replace(/개로\s*\(0(?:\.0)?\)\s*됨/g,'개방')
+    .replace(/\s+/g,' ')
+    .replace(/\s+([,.])/g,'$1')
+    .trim();
+}
+
+export function compactTimeline(events=[],limit=7){
+  const sorted=list(events).slice().sort((left,right)=>{
+    const a=modelSeconds(left?.model_time_s);
+    const b=modelSeconds(right?.model_time_s);
+    if(a===null&&b===null)return 0;
+    if(a===null)return 1;
+    if(b===null)return -1;
+    return a-b;
+  });
+  const cap=Math.max(1,Number(limit)||7);
+  return {visible:sorted.slice(0,cap),hidden:sorted.slice(cap),hiddenCount:Math.max(0,sorted.length-cap)};
+}
+
+export function incidentMetrics(events=[]){
+  const rows=list(events);
+  const first=rows.slice().sort((left,right)=>{
+    const a=modelSeconds(left?.model_time_s);
+    const b=modelSeconds(right?.model_time_s);
+    return (a??Infinity)-(b??Infinity);
+  })[0];
+  const firstTime=first?displayEventTime(first).primary:'—';
+  return {
+    firstTime:firstTime==='시각 미확인'?'—':firstTime,
+    protection:rows.filter(item=>String(item?.event_class||'').toUpperCase()==='PROTECTION').length,
+    alarms:rows.filter(item=>String(item?.event_class||'').toUpperCase()==='ALARM').length,
+  };
+}
+
+export function selectDetailEvidence(catalog=[],detail=null){
+  if(!detail)return [];
+  let rows=[];
+  if(detail.kind==='evidence')rows=list(catalog).filter(entry=>entry.evidence_id===detail.value);
+  else if(detail.kind==='claim'){
+    const ids=new Set(list(detail.evidenceIds).map(String));
+    rows=list(catalog).filter(entry=>ids.has(String(entry?.evidence_id||entry?.event_id||'')));
+  }else{
+    rows=list(catalog).filter(entry=>[entry?.tag,entry?.source_node,entry?.canonical_tag].includes(detail.value));
+  }
+  return rows.slice().sort((left,right)=>(modelSeconds(left?.model_time_s)??Infinity)-(modelSeconds(right?.model_time_s)??Infinity));
 }
 
 export function conciseClaim(value,limit=180){

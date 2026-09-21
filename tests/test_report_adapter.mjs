@@ -71,9 +71,11 @@ test('approved recovery appears consistently in PDF, report CSV and PINPOINT', (
   const html=exporter.buildReportHtml(out);
   const csv=draftCSV(out.report_rows);
   const pinpoint=exporter.buildPinpointCsv(out);
-  for(const value of [approved.actions,approved.operator,approved.restart_conditions,approved.approver,approved.approved_at,approved.recovered_at,'E1']){
+  for(const value of [approved.actions,approved.operator,approved.restart_conditions,approved.approver,approved.approved_at,approved.recovered_at]){
     for(const output of [html,csv,pinpoint])assert.ok(output.includes(value),`missing ${value} from export`);
   }
+  assert.doesNotMatch(html,/E1/);
+  for(const output of [csv,pinpoint])assert.ok(output.includes('E1'),'missing E1 from detailed export');
   const recoveryRows=parseCSV(pinpoint).records.filter(row=>row.causal_stage==='RECOVERY');
   assert.ok(recoveryRows.length>=4);
   assert.ok(recoveryRows.every(row=>row.recovery_status==='RECOVERED'));

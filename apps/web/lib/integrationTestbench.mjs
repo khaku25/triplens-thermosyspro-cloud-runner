@@ -31,10 +31,9 @@ export function evaluateDeviceCases(index, cases = DEVICE_TEST_CASES) {
 }
 
 export function buildEvidenceLogicTargets(evidence = {}) {
-  return {
-    tags:uniq([evidence.source_node || evidence.canonical_tag || evidence.tag]),
-    rules:uniq(evidence.logic_ids),
-  };
+  const tags=uniq([evidence.source_node || evidence.canonical_tag || evidence.tag]);
+  const rules=uniq(evidence.logic_ids);
+  return {tags,rules,entry:tags.length?{tag:tags[0],ruleCount:rules.length}:null};
 }
 
 function evidenceFor(ids, catalog) {
@@ -94,6 +93,9 @@ export function buildExportReport({result={},analysis={},events=[],catalog=[],re
     recovery_check:'UNKNOWN · 실제 복구 기록 및 담당자 승인 필요',
     report_rows:reportRows.map(row => ({...row})),
     chronological_events:[...events].sort((a,b)=>Number(a.model_time_s)-Number(b.model_time_s)).map(event => ({
+      wall_time_utc:event.wall_time_utc || '',
+      model_time_s:event.model_time_s ?? null,
+      equipment:event.equipment || '',
       recorded_time:event.model_time_s ?? '',
       category:event.event_class || event.source || 'EVENT',
       claim:event.message || `${event.equipment || ''} ${event.tag || ''}`.trim(),
