@@ -64,8 +64,8 @@ def main():
             expect(page.get_by_text('분석 입력 준비 완료',exact=True).last).to_be_visible()
             button=page.get_by_role('button',name='이 Dual Log 분석하기',exact=True)
             expect(button).to_be_enabled();button.click()
-            expect(page.get_by_text('52GT 차단기 OPEN',exact=True)).to_be_visible(timeout=30000)
-            expect(page.get_by_text('52ST 차단기 OPEN',exact=True)).to_be_visible()
+            expect(page.locator('.analysis-list article').filter(has_text='52GT 차단기 OPEN').first).to_be_visible(timeout=30000)
+            expect(page.locator('.analysis-list article').filter(has_text='52ST 차단기 OPEN').first).to_be_visible()
             expect(page.get_by_role('heading',name='발생 원인',exact=True)).to_be_visible()
             expect(page.get_by_role('heading',name='직접 보호동작',exact=True)).to_be_visible()
             expect(page.get_by_role('heading',name='파급 과정',exact=True)).to_be_visible()
@@ -101,7 +101,7 @@ def main():
             expect(dialog.locator('iframe')).to_have_attribute('src',re.compile(r'tag=vpp52GTClosed'))
             dialog.get_by_role('button',name='닫기',exact=True).click()
             page.get_by_role('button',name='이전 화면',exact=True).click()
-            expect(page.get_by_text('52GT 차단기 OPEN',exact=True)).to_be_visible()
+            expect(page.locator('.analysis-list article').filter(has_text='52GT 차단기 OPEN').first).to_be_visible()
             direct=page.locator('.cause-card').filter(has_text='직접 보호동작')
             direct.locator('summary',has_text='상세 근거 보기').click()
             direct.get_by_role('button',name='E-1',exact=True).click()
@@ -137,7 +137,7 @@ def main():
             assert page.get_by_text('52GT 차단기 OPEN',exact=True).count()==0
             button=page.get_by_role('button',name='이 Dual Log 분석하기',exact=True)
             expect(button).to_be_enabled();button.click()
-            expect(page.get_by_text('52GT 차단기 OPEN',exact=True)).to_be_visible(timeout=15000)
+            expect(page.locator('.analysis-list article').filter(has_text='52GT 차단기 OPEN').first).to_be_visible(timeout=15000)
             assert counts['analyze']==2,counts
             page.reload()
             expect(page.get_by_text('Dual Log 대기',exact=True).last).to_be_visible()
@@ -145,7 +145,7 @@ def main():
             expect(page.get_by_role('button',name='이 Dual Log 분석하기',exact=True)).to_be_disabled()
             page.get_by_label('EVENT 파일').set_input_files(str(event));page.get_by_label('RAW 파일').set_input_files(str(raw))
             page.get_by_role('button',name='이 Dual Log 분석하기',exact=True).click()
-            expect(page.get_by_text('52GT 차단기 OPEN',exact=True)).to_be_visible(timeout=15000)
+            expect(page.locator('.analysis-list article').filter(has_text='52GT 차단기 OPEN').first).to_be_visible(timeout=15000)
             assert counts['analyze']==3,counts
             page.get_by_role('button',name=re.compile('사고 진행 과정')).click()
             page.locator('summary',has_text='전체 사건 기록 보기').click()
