@@ -32,9 +32,9 @@ import {
   summarizeEvidence,
 } from '../lib/workspacePresentation.mjs';
 import reportExporter from '../lib/reportExporter.cjs';
+import {analysisApiUrl} from '../lib/analysisApi.mjs';
 import '../app/integration.css';
 
-const API_BASE=(process.env.NEXT_PUBLIC_TRIPLENS_API_BASE||'https://triplens-agent-api-preview.vercel.app').replace(/\/$/,'');
 const CLAIM_STATUS_CHOICES=['UNKNOWN','OBSERVED','CANDIDATE'];
 const REPORT_KEYS=['section','item','content','status','evidence_ids','tags','time','note'];
 const RAW_META_FIELDS=new Set(['record_sequence','session_id','incident_id','model_time_s','wall_time_utc','collector_quality','quality','time']);
@@ -49,7 +49,7 @@ const REPORT_STATUS_TEXT={
 };
 
 async function request(path,body){
-  const response=await fetch(`${API_BASE}${path}`,body?{method:'POST',body}:undefined);
+  const response=await fetch(analysisApiUrl(path),body?{method:'POST',body}:undefined);
   let data;
   try{data=await response.json();}
   catch{throw new Error(`서버 응답을 읽지 못했습니다. HTTP ${response.status}`);}
