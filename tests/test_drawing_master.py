@@ -54,6 +54,12 @@ class DrawingMasterTest(unittest.TestCase):
         self.assertGreater(index["counts"]["cells"], 0)
         self.assertTrue(all("#page=" in row["source_ref"] and "&cell=" in row["source_ref"] for row in index["entries"]))
 
+    def test_mobile_drawing_master_tab_wraps_for_touch(self):
+        viewer = Path(__file__).resolve().parents[1] / "scripts" / "logic_assets" / "viewer.html"
+        source = viewer.read_text(encoding="utf-8")
+        self.assertIn(".tabs{display:flex;flex-wrap:wrap", source)
+        self.assertIn("#tab-drawings{flex-basis:100%}", source)
+
 
 if __name__ == "__main__":
     unittest.main()
