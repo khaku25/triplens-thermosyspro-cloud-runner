@@ -366,7 +366,23 @@
     const primary = (primaryEdited ? shortText(primarySource) : operatorClaim(analysis.primary_cause, 'primary')) || '발생 원인 기록 없음';
     const direct = (directEdited ? shortText(directSource) : operatorClaim(analysis.direct_trigger, 'direct')) || '직접 보호동작 기록 없음';
     const summaryRow = editedRow(report, '개요', '장애 요약');
-    const summary = shortText(summaryRow?.edited === true ? String(summaryRow.content ?? summaryRow['내용'] ?? direct) : direct, 180);
+    const summarySource = summaryRow?.edited === true
+      ? String(summaryRow.content ?? summaryRow['내용'] ?? '')
+      : String(report.incident_summary || '');
+    const summary = shortText(summarySource || (primary && direct && primary !== direct
+      ? `${primary} 이후 ${direct}이 확인됨.`
+      : direct || primary), 180);
+    const conclusion = shortText(
+      report.analysis_conclusion ||
+      `${direct || '직접 보호동작'} 이후 차단기 개방과 후속 공정 응답이 순차적으로 발생함.`,
+      220,
+    );
+    const primaryTime = displayTime(analysis.primary_cause).primary === '시각 미확인'
+      ? documentMeta.incidentTime.primary
+      : displayTime(analysis.primary_cause).primary;
+    const directTime = displayTime(analysis.direct_trigger).primary === '시각 미확인'
+      ? documentMeta.incidentTime.primary
+      : displayTime(analysis.direct_trigger).primary;
     const timeline = briefTimeline(report, 7);
     const timelineRows = timeline.visible.map(item => {
       const when = item.__timeOverride ? {primary:item.__timeOverride,secondary:''} : displayTime(item);
@@ -381,7 +397,7 @@
     const recoveryBody = visibleRecoveryRows.length
       ? visibleRecoveryRows.slice(0, 4).map(row => `<tr><th>${esc(row.item || '')}</th><td>${esc(shortText(row.content || '', 280))}${row.time?`<small>${esc(row.time)}</small>`:''}${row.note?`<small>${esc(shortText(row.note, 100))}</small>`:''}</td></tr>`).join('') + (visibleRecoveryRows.length > 4 ? `<tr><th>별첨</th><td>추가 조치 ${visibleRecoveryRows.length - 4}건</td></tr>` : '')
       : `<tr><th>수행 조치</th><td>${esc(shortText(recoveryFallback, 280))}</td></tr>`;
-    const recoverySection = showRecovery ? `<section class="section"><h2>4. 복구조치 및 확인사항</h2><table><tbody>${recoveryBody}</tbody></table></section>` : '';
+    const recoverySection = showRecovery ? `<section class="section"><h2>5. 복구조치 및 확인사항</h2><table><tbody>${recoveryBody}</tbody></table></section>` : '';
     const approvalCell = value => value ? esc(value) : '&nbsp;';
 
     return `<!doctype html>
@@ -396,10 +412,11 @@ table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table
 </style></head><body><main class="report">
 <header class="doc-head"><div class="doc-head-grid"><div><div class="doc-kicker">TRIPLENS INCIDENT REPORT</div><div class="doc-title">${esc(title)}</div><div class="doc-subtitle">EVENT·RAW 기반 사고 경위 및 보호동작 분석</div></div><table class="approval-table"><caption>결재</caption><thead><tr><th>작성</th><th>검토</th><th>승인</th></tr></thead><tbody><tr><td>${approvalCell(documentMeta.author)}</td><td>${approvalCell(documentMeta.reviewer)}</td><td>${approvalCell(documentMeta.approver)}</td></tr><tr class="approval-date"><td>${approvalCell(documentMeta.authoredAt)}</td><td>${approvalCell(documentMeta.reviewedAt)}</td><td>${approvalCell(documentMeta.approvedAt)}</td></tr></tbody></table></div><table class="document-info"><tbody><tr><th>문서번호</th><td>${esc(documentMeta.reportNo)}</td><th>사고 시각</th><td><b>${esc(documentMeta.incidentTime.primary)}</b>${documentMeta.incidentTime.secondary?`<small>${esc(documentMeta.incidentTime.secondary)}</small>`:''}</td></tr><tr><th>대상 설비</th><td>${esc(documentMeta.equipment)}</td><th>입력 자료</th><td>${esc(documentMeta.inputFiles)}</td></tr></tbody></table></header>
 <section class="section"><h2>1. 사고 개요</h2><div class="summary-line">${esc(operatorClaim({claim:summary}) || direct)}</div></section>
-<section class="section"><h2>2. 핵심 분석</h2><div class="cause-grid"><div class="cause-box"><span>사고 개시 신호</span><strong>${esc(primary)}</strong><small>${esc(displayTime(analysis.primary_cause).primary)}</small></div><div class="cause-box"><span>직접 보호동작</span><strong>${esc(direct)}</strong><small>${esc(displayTime(analysis.direct_trigger).primary)}</small></div></div></section>
+<section class="section"><h2>2. 핵심 분석</h2><div class="cause-grid"><div class="cause-box"><span>발생 원인</span><strong>${esc(primary)}</strong><small>${esc(primaryTime)}</small></div><div class="cause-box"><span>직접 보호동작</span><strong>${esc(direct)}</strong><small>${esc(directTime)}</small></div></div></section>
 <section class="section"><h2>3. 시간순 사고 경위</h2><table class="timeline"><thead><tr><th>시간</th><th>설비 / 구분</th><th>발생 내용</th></tr></thead><tbody>${timelineRows || '<tr><td colspan="3">사고 기록 없음</td></tr>'}</tbody></table>${timeline.hiddenCount?`<div class="note">후속 기록 ${timeline.hiddenCount}건 · 상세 근거 별첨</div>`:''}</section>
+<section class="section"><h2>4. 분석 결론</h2><div class="summary-line conclusion-line">${esc(conclusion)}</div></section>
 ${recoverySection}
-<footer class="footer">문서번호 ${esc(documentMeta.reportNo)} · TripLens READ-ONLY 사고분석 · 상세 근거 별첨</footer>
+<footer class="footer">문서번호 ${esc(documentMeta.reportNo)} · 상세 근거 별첨</footer>
 </main></body></html>`;
   }
 

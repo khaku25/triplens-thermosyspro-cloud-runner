@@ -28,7 +28,7 @@ const report = {
 
 test('PDF report HTML follows the concise operator report structure', () => {
   const html = exporter.buildReportHtml(report);
-  for (const text of ['설비 고장 분석보고서','1. 사고 개요','2. 핵심 분석','사고 개시 신호','직접 보호동작','3. 시간순 사고 경위','4. 복구조치 및 확인사항','EVENT.csv','RAW.csv']) assert.match(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  for (const text of ['설비 고장 분석보고서','1. 사고 개요','2. 핵심 분석','발생 원인','직접 보호동작','3. 시간순 사고 경위','4. 분석 결론','5. 복구조치 및 확인사항','EVENT.csv','RAW.csv']) assert.match(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   for (const text of ['Verification Gate','AI Confidence','CANDIDATE','(초안)','근거 ID','관련 태그']) assert.doesNotMatch(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   assert.match(html,/overflow:visible!important/);
   assert.match(html,/max-height:none!important/);
@@ -104,7 +104,7 @@ test('PDF omits the recovery section when only placeholder recovery rows exist',
       {section:'조치 결과 및 복구 판정',item:'복구 상태',content:'기록 없음',status:'INPUT_PENDING',row_id:'RECOVERY-status'},
     ],
   });
-  assert.doesNotMatch(html,/4\. 복구조치 및 확인사항|기록 없음|입력 대기/);
+  assert.doesNotMatch(html,/5\. 복구조치 및 확인사항|기록 없음|입력 대기/);
   assert.match(html,/상세 근거 별첨/);
 });
 
@@ -117,7 +117,7 @@ test('PDF omits approver-only incomplete recovery data', () => {
     recovery_approver:'Kim',
     report_rows:[],
   });
-  assert.doesNotMatch(html,/4\. 복구조치 및 확인사항|복구 기록 입력 대기/);
+  assert.doesNotMatch(html,/5\. 복구조치 및 확인사항|복구 기록 입력 대기/);
 });
 
 test('PINPOINT CSV keeps canonical evidence and review state', () => {
@@ -167,12 +167,12 @@ test('workspace PDF projects ten-section source rows into four concise operator 
     '재발방지 대책 — 검토 권고사항','증거자료',
   ];
   const workspaceHtml=exporter.buildReportHtml({...report,report_rows:workspaceSections.map(section=>({section,item:'검토',content:'내용'}))});
-  assert.match(workspaceHtml,/4\. 복구조치 및 확인사항/);
+  assert.match(workspaceHtml,/5\. 복구조치 및 확인사항/);
   assert.match(workspaceHtml,/내용/);
   assert.doesNotMatch(workspaceHtml,/10\. 증거자료|근거 ID|관련 태그/);
 
   const legacyHtml=exporter.buildReportHtml({...report,report_rows:[{section:'개요',item:'검토',content:'내용'}]});
-  assert.match(legacyHtml,/4\. 복구조치 및 확인사항/);
+  assert.match(legacyHtml,/5\. 복구조치 및 확인사항/);
   assert.doesNotMatch(legacyHtml,/9\. 증거자료|10\. 증거자료/);
 });
 
@@ -223,7 +223,7 @@ test('default PDF is a concise operator report without developer metadata or raw
     report_rows:[],
   };
   const html=exporter.buildReportHtml(operatorReport);
-  for(const text of ['사고 개요','핵심 분석','사고 개시 신호','직접 보호동작','시간순 사고 경위','시간','설비 / 구분','발생 내용','후속 기록 5건','상세 근거 별첨'])assert.match(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  for(const text of ['사고 개요','핵심 분석','발생 원인','직접 보호동작','시간순 사고 경위','분석 결론','시간','설비 / 구분','발생 내용','후속 기록 5건','상세 근거 별첨'])assert.match(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   for(const text of ['Run ID','Data Digest','Analysis Engine','근거 ID','관련 태그','model_time_s','vppGTTripLatch','secret-digest'])assert.doesNotMatch(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   assert.equal((html.match(/class="timeline-row"/g)||[]).length,7);
   assert.match(html,/@page\{size:A4;margin:0\}/);
@@ -277,7 +277,7 @@ test('operator PDF does not infer OPEN from a closed-state tag', () => {
 test('operator PDF bounds recovery prose and omits empty recovery cells', () => {
   const longAction='현장 설비 상태를 확인하고 운전 조건을 재검토함. '.repeat(20).trim();
   const html=exporter.buildReportHtml({...report,recovery_actions:longAction,report_rows:[]});
-  assert.match(html,/4\. 복구조치 및 확인사항/);
+  assert.match(html,/5\. 복구조치 및 확인사항/);
   assert.match(html,/수행 조치/);
   assert.match(html,/…/);
   assert.doesNotMatch(html,new RegExp(longAction));

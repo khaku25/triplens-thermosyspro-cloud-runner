@@ -195,6 +195,8 @@ function OperatorReportPreview({analysis,events,recovery,report}){
   const timeline=compactTimeline(events,7);
   const primary=conciseClaim(operatorSummary(analysis.primary_cause,'primary'),140).summary;
   const direct=conciseClaim(operatorSummary(analysis.direct_trigger,'direct'),140).summary;
+  const summary=primary&&direct&&primary!==direct?`${primary} 이후 ${direct}이 확인됨.`:(direct||primary||'—');
+  const conclusion=`${direct||'직접 보호동작'} 이후 차단기 개방과 후속 공정 응답이 순차적으로 발생함.`;
   const documentMeta=reportExporter.reportDocumentMeta(report);
   const hasRecovery=hasRecoveryRecord(recovery);
   return <div className="operator-report-preview">
@@ -203,8 +205,10 @@ function OperatorReportPreview({analysis,events,recovery,report}){
       <table className="operator-report-approval"><caption>결재</caption><thead><tr><th>작성</th><th>검토</th><th>승인</th></tr></thead><tbody><tr><td>{documentMeta.author||'\u00a0'}</td><td>{documentMeta.reviewer||'\u00a0'}</td><td>{documentMeta.approver||'\u00a0'}</td></tr><tr><td>{documentMeta.authoredAt||'\u00a0'}</td><td>{documentMeta.reviewedAt||'\u00a0'}</td><td>{documentMeta.approvedAt||'\u00a0'}</td></tr></tbody></table>
       <dl className="operator-report-document-meta"><div><dt>보고서 번호</dt><dd>{documentMeta.reportNo}</dd></div><div><dt>사고 시각</dt><dd>{documentMeta.incidentTime.primary}{documentMeta.incidentTime.secondary?<small>{documentMeta.incidentTime.secondary}</small>:null}</dd></div><div><dt>대상 설비</dt><dd>{documentMeta.equipment}</dd></div><div><dt>입력 자료</dt><dd>{documentMeta.inputFiles}</dd></div></dl>
     </header>
-    <div className="operator-report-causes"><div><span>사고 개시 신호</span><strong>{primary||'—'}</strong></div><div><span>직접 보호동작</span><strong>{direct||'—'}</strong></div></div>
+    <div className="operator-report-summary"><span>사고 개요</span><strong>{summary}</strong></div>
+    <div className="operator-report-causes"><div><span>발생 원인</span><strong>{primary||'—'}</strong></div><div><span>직접 보호동작</span><strong>{direct||'—'}</strong></div></div>
     <div className="operator-report-timeline"><h3>시간순 사고 경위</h3>{timeline.visible.map((event,index)=>{const display=displayEventTime(event);const primaryTime=event.model_time_s===null||event.model_time_s===undefined?display.primary:modelTime(event.model_time_s);const secondaryTime=primaryTime===display.primary?display.secondary:display.primary;const summary=conciseClaim(operatorSummary(event)||event.message||friendlyTag(event.tag),140).summary;return <div key={event.event_id||index}><time>{primaryTime}{secondaryTime?<small>{secondaryTime}</small>:null}</time><b>{event.equipment||event.event_class||'PLANT'}</b><span>{summary}</span></div>;})}{timeline.hiddenCount?<p>후속 기록 {timeline.hiddenCount}건은 상세 분석 데이터에 포함됩니다.</p>:null}</div>
+    <div className="operator-report-conclusion"><span>분석 결론</span><strong>{conclusion}</strong></div>
     {hasRecovery?<div className="operator-report-recovery"><span>복구조치 및 확인사항</span><strong>{recovery.actions}</strong></div>:null}
   </div>;
 }
@@ -472,7 +476,7 @@ export default function TripLensWorkspace({mode='blind'}){
             <button className="export-button" disabled={exportBlocked} onClick={exportPDF}>보고서 PDF 저장</button>
             <details className="export-menu"><summary>내보내기</summary><div><button className="export-button" disabled={exportBlocked} onClick={exportCSV}>보고서 CSV</button><button className="export-button" disabled={exportBlocked} onClick={exportDetailedCSV}>상세 분석 데이터 CSV</button></div></details>
           </div>
-          <p className="report-help">핵심 사고 경위를 1~2페이지 운전 고장상보 형식으로 저장합니다.</p>
+          <p className="report-help">핵심 사고 경위와 결재 정보를 확인합니다.</p>
           <OperatorReportPreview analysis={operatorAnalysis} events={events} recovery={recovery} report={exportReport}/>
           <details className="report-editor"><summary>보고서 세부 항목 편집</summary><div className="scroll-table"><table className="editable-report"><thead><tr>{REPORT_COLUMNS.map(column=><th key={column}>{column}</th>)}</tr></thead><tbody>{displayReportRows.map((row,index)=>{
             const recoveryRow=row.row_id?.startsWith('RECOVERY-');

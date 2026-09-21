@@ -6,7 +6,7 @@ import reportExporter from '../lib/reportExporter.cjs';
 import '../app/integration.css';
 
 const SAMPLE_REPORT_ROWS=[
-  {section:'개요',item:'장애 요약',content:'단위기기 연동 테스트용 보고서 문구',status:'OBSERVED',evidence_ids:'TEST-EV-1',tags:'vppGTTripLatch',time:'48.440 s',note:'합성 테스트 데이터'},
+  {section:'개요',item:'장애 요약',content:'단위기기 연동 테스트용 보고서 문구',status:'OBSERVED',evidence_ids:'TEST-EV-1',tags:'vppGTTripLatch',time:'48.440 s',note:'합성 테스트 데이터',edited:true},
   {section:'발생 원인',item:'직접 Trip 원인',content:'등록 로직 연결 검증용 후보',status:'CANDIDATE',evidence_ids:'TEST-EV-1',tags:'vppGTTripLatch',time:'48.440 s',note:'원인 확정 아님'},
 ];
 
