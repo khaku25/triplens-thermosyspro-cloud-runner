@@ -55,6 +55,7 @@ def main():
                 else:route.abort();return
                 route.fulfill(status=200,json=body,headers={'Access-Control-Allow-Origin':'*'})
             context.route('https://triplens-agent-api-preview.vercel.app/**',handle)
+            context.route('**/api/triplens/**',handle)
             page.goto(os.getenv('TRIPLENS_UI_URL','http://localhost:3000/'))
             expect(page.get_by_label('EVENT 파일')).to_be_enabled()
             expect(page.get_by_text('Dual Log 대기',exact=True).last).to_be_visible()
