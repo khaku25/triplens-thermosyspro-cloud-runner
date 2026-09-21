@@ -138,6 +138,8 @@ export function operatorPhrase(value,limit=180){
     .replace(/선후관계를\s*확정할\s*수\s*없습니다\.?/g,'선후관계 미확정')
     .replace(/확인되지\s*않았습니다\.?/g,'미확인')
     .replace(/완료되지\s*않았습니다\.?/g,'미완료')
+    .replace(/확인되지\s*않았습니다\.?/g,'미확인')
+    .replace(/완료되지\s*않았습니다\.?/g,'미완료')
     .replace(/확인(?:이)?\s*필요합니다\.?/g,'확인 필요')
     .replace(/확인해야\s*합니다\.?/g,'확인 필요')
     .replace(/검토해야\s*합니다\.?/g,'검토 필요')
