@@ -161,3 +161,30 @@ test('operator PDF shortens unusually long AI prose', () => {
   assert.doesNotMatch(html,new RegExp(longClaim));
   assert.match(html,/상세 원인 설명 .*…/);
 });
+
+test('operator PDF preserves real edits even when known source tags are present', () => {
+  const edited={
+    ...report,
+    primary_cause:{claim:'원본 선행 원인',related_tags:['vppExternalTripCommandNative']},
+    direct_trigger:{claim:'원본 직접 동작',related_tags:['vppGTTripLatch']},
+    chronological_events:[{model_time_s:48.52,equipment:'52GT',claim:'원본 사건',evidence_ids:['EV-EDIT'],related_tags:['vpp52GTClosed']}],
+    report_rows:[
+      {section:'발생 원인',item:'선행 원인',content:'운전원이 수정한 발생 원인'},
+      {section:'발생 원인',item:'직접 Trip 원인',content:'운전원이 수정한 직접 보호동작'},
+      {section:'시간대별 사건·자동동작(SOE)',item:'SOE 1',content:'운전원이 수정한 차단기 동작',evidence_ids:'EV-EDIT',time:'48.520 s'},
+    ],
+  };
+  const html=exporter.buildReportHtml(edited);
+  for(const text of ['운전원이 수정한 발생 원인','운전원이 수정한 직접 보호동작','운전원이 수정한 차단기 동작'])assert.match(html,new RegExp(text));
+  for(const text of ['외부 Trip Command 입력','GT Trip Latch 동작','52GT 차단기 OPEN'])assert.doesNotMatch(html,new RegExp(text));
+});
+
+test('operator PDF does not infer OPEN from a closed-state tag', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    chronological_events:[{model_time_s:48.52,equipment:'52GT',claim:'52GT 차단기 정상 투입 상태',value:1,state:'CLOSED',related_tags:['vpp52GTClosed']}],
+    report_rows:[],
+  });
+  assert.match(html,/52GT 차단기 정상 투입 상태/);
+  assert.doesNotMatch(html,/52GT 차단기 OPEN/);
+});

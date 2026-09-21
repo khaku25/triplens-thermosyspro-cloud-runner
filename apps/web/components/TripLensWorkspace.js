@@ -83,6 +83,7 @@ function ClaimEvidence({item,onOpen}){
       <summary>상세 근거 보기{ids.length?` · ${ids.length}건`:''}</summary>
       <div className="detail-evidence-list">
         <EvidenceLinks ids={ids} onOpen={onOpen}/>
+        {tags.hidden.length?<div className="hidden-evidence-tags"><b>추가 근거 태그</b>{tags.hidden.map(tag=><span key={tag}>{friendlyTag(tag)}</span>)}</div>:null}
         {ids.length?<button className="tag-link" onClick={openClaim}>연결 근거 모아보기</button>:null}
       </div>
     </details>
@@ -106,7 +107,8 @@ function ClaimCard({title,item,stage,onOpen}){
 function AnalysisList({items,stage,onOpen,limit=5}){
   if(!items?.length)return <p className="empty-line">표시할 분석 결과가 없습니다.</p>;
   const visible=items.slice(0,limit);
-  return <div className="analysis-list">{visible.map((item,index)=>{
+  const hidden=items.slice(limit);
+  const renderItem=(item,index)=>{
     const original=claimText(item);
     const compact=conciseClaim(typeof item==='string'?item:operatorSummary(item,stage),150);
     const summary=compact.summary;
@@ -117,7 +119,8 @@ function AnalysisList({items,stage,onOpen,limit=5}){
       <ClaimEvidence item={item} onOpen={onOpen}/>
       {detail?<details><summary>상세 분석 설명</summary><p>{detail}</p></details>:null}
     </article>;
-  })}{items.length>visible.length?<p className="list-more">후속 기록 {items.length-visible.length}건은 상세 시간순서에서 확인</p>:null}</div>;
+  };
+  return <div className="analysis-list">{visible.map(renderItem)}{hidden.length?<details className="hidden-analysis-items"><summary>후속 분석 {hidden.length}건 보기</summary><div>{hidden.map((item,index)=>renderItem(item,index+limit))}</div></details>:null}</div>;
 }
 
 function EventTable({events,onOpen}){
@@ -273,7 +276,7 @@ export default function TripLensWorkspace({mode='blind'}){
   function exportDetailedCSV(){if(!exportBlocked)reportExporter.downloadPinpointCsv(exportReport,`TripLens_상세분석데이터_${result?.run_id||'analysis'}.csv`);}
 
   function editReportRow(row,key,value){
-    setReportRows(rows=>rows.map(existing=>existing.row_id===row.row_id?{...existing,[key]:value}:existing));
+    setReportRows(rows=>rows.map(existing=>existing.row_id===row.row_id?{...existing,[key]:value,edited:true}:existing));
   }
 
   const detailRows=selectDetailEvidence(catalog,detail);
@@ -308,11 +311,11 @@ export default function TripLensWorkspace({mode='blind'}){
         <ClaimCard title="직접 보호동작" stage="direct" item={analysis.direct_trigger} onOpen={setDetail}/>
       </div>
       <section className="analysis-section">
-        <div className="analysis-section-head"><div><span>03</span><h3>파급 과정</h3></div><p>보호동작 이후의 설비 변화</p></div>
+        <div className="analysis-section-head"><div><h3>파급 과정</h3></div><p>보호동작 이후의 설비 변화</p></div>
         <AnalysisList items={analysis.propagation} stage="propagation" onOpen={setDetail}/>
       </section>
       <section className="analysis-section causal-section">
-        <div className="analysis-section-head"><div><span>04</span><h3>시간순 사고 경위</h3></div><p>상세 인과관계</p></div>
+        <div className="analysis-section-head"><div><h3>시간순 사고 경위</h3></div><p>상세 인과관계</p></div>
         <details><summary>상세 시간순서 보기</summary><AnalysisList items={analysis.causal_chain} stage="causal" onOpen={setDetail}/></details>
       </section>
     </div>;

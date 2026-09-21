@@ -28,3 +28,8 @@ test('report preview defaults to concise operator summary and keeps editing coll
   assert.match(source,/운전 고장상보 형식/);
   assert.match(source,/report-editor/);
 });
+
+test('overflow analysis items and extra evidence tags stay available in disclosures',()=>{
+  assert.match(source,/hidden-analysis-items/);
+  assert.match(source,/추가 근거 태그/);
+});

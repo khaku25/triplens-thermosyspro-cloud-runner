@@ -224,21 +224,28 @@
 
   function operatorClaim(item, stage = '') {
     const tags = new Set(list(item?.related_tags || item?.relatedTags || item?.tags).map(String));
+    const source = String(item?.claim || item?.message || item?.description || item?.summary || asText(item));
+    const state = String(item?.state || '').toUpperCase();
+    const rawValue = item?.value;
+    const numericValue = rawValue === null || rawValue === undefined || String(rawValue).trim() === '' ? null : Number(rawValue);
+    const active = /ACTIVE|TRIPPED|LATCHED/.test(state) || rawValue === true || numericValue === 1 || /ACTIVE|동작|작동|인가/.test(source);
+    const opened = /OPEN|TRIPPED/.test(state) || numericValue === 0 || /\bOPEN\b|개방|개로/.test(source);
+    const low = /LOW|ALARM/.test(state) || /\bLOW(?:_LOW)?\b|저하|저유량|저온|하한|\bLL\b/i.test(source);
     if (stage === 'primary' && tags.has('vppExternalTripCommandNative')) return '외부 Trip Command 입력';
-    if (stage === 'direct' && tags.has('vppGTTripLatch') && tags.has('vppSTTripLatchPublished')) return 'GT·ST Trip Latch 동시 동작';
-    if (stage === 'direct' && tags.has('vppGTTripLatch')) return 'GT Trip Latch 동작';
-    if (stage === 'direct' && tags.has('vppSTTripLatchPublished')) return 'ST Trip Latch 동작';
+    if (stage === 'direct' && active && tags.has('vppGTTripLatch') && tags.has('vppSTTripLatchPublished')) return 'GT·ST Trip Latch 동시 동작';
+    if (stage === 'direct' && active && tags.has('vppGTTripLatch')) return 'GT Trip Latch 동작';
+    if (stage === 'direct' && active && tags.has('vppSTTripLatchPublished')) return 'ST Trip Latch 동작';
     const mapped = [
-      ['vpp52GTClosed', '52GT 차단기 OPEN'],
-      ['vpp52STClosed', '52ST 차단기 OPEN'],
-      ['vppGTExhaustMassFlowTH', 'GT 배기유량 LOW'],
-      ['vppGTExhaustTemperatureK', 'GT 배기온도 LOW'],
-      ['vppHPTurbineSteamFlowTH', 'HP 터빈 증기유량 LOW'],
-      ['vppIPTurbineSteamFlowTH', 'IP 터빈 증기유량 LOW'],
-      ['vppLPTurbineSteamFlowTH', 'LP 터빈 증기유량 LOW'],
-    ].find(([tag]) => tags.has(tag));
+      ['vpp52GTClosed', '52GT 차단기 OPEN', opened],
+      ['vpp52STClosed', '52ST 차단기 OPEN', opened],
+      ['vppGTExhaustMassFlowTH', 'GT 배기유량 LOW', low],
+      ['vppGTExhaustTemperatureK', 'GT 배기온도 LOW', low],
+      ['vppHPTurbineSteamFlowTH', 'HP 터빈 증기유량 LOW', low],
+      ['vppIPTurbineSteamFlowTH', 'IP 터빈 증기유량 LOW', low],
+      ['vppLPTurbineSteamFlowTH', 'LP 터빈 증기유량 LOW', low],
+    ].find(([tag,,confirmed]) => confirmed && tags.has(tag));
     if (mapped) return mapped[1];
-    return shortText(String(item?.claim || item?.message || item?.description || item?.summary || asText(item))
+    return shortText(source
       .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*초에\s*/gi, '')
       .replace(/\((?:vpp[A-Za-z0-9_.-]+)\)/g, '')
       .replace(/\b(?:태그\s+)?vpp[A-Za-z0-9_.-]+(?:가|이|는|은)?\b/g, '')
@@ -250,8 +257,16 @@
   }
 
   function editedContent(report, section, item, fallback = '') {
-    const row = list(report?.report_rows).find(value => String(value?.section ?? value?.['구분'] ?? '') === section && String(value?.item ?? value?.['항목'] ?? '') === item);
+    const row = editedRow(report, section, item);
     return row ? String(row.content ?? row['내용'] ?? fallback) : fallback;
+  }
+
+  function editedRow(report, section, item) {
+    return list(report?.report_rows).find(value => String(value?.section ?? value?.['구분'] ?? '') === section && String(value?.item ?? value?.['항목'] ?? '') === item);
+  }
+
+  function evidenceIds(value) {
+    return list(value).flatMap(item => String(item || '').split(';')).map(item => item.trim()).filter(Boolean);
   }
 
   function equipmentLabel(item) {
@@ -266,7 +281,17 @@
   }
 
   function briefTimeline(report, limit = 7) {
-    const rows = chronology(report).slice().sort((left, right) => {
+    const events = chronology(report).slice();
+    const sourceRows = list(report?.report_rows).filter(row => String(row?.section ?? row?.['구분'] ?? '') === '시간대별 사건·자동동작(SOE)');
+    const rows = sourceRows.length ? sourceRows.map((row,index) => {
+      const wanted = new Set(evidenceIds(row.evidence_ids ?? row['근거 ID']));
+      const event = events.find(item => evidenceIds(item.evidence_ids).some(id => wanted.has(id))) || events[index] || {};
+      const content = String(row.content ?? row['내용'] ?? '').trim();
+      const original = String(event.claim || event.message || '').trim();
+      const contentEdited = row.edited === true || (content && content !== original);
+      return {...event,claim:content || original,__reportContent:contentEdited,__timeOverride:row.edited === true ? String(row.time || '') : ''};
+    }) : events;
+    rows.sort((left, right) => {
       const a = Number(left?.model_time_s ?? left?.recorded_time ?? left?.aligned_time ?? left?.time);
       const b = Number(right?.model_time_s ?? right?.recorded_time ?? right?.aligned_time ?? right?.time);
       return (Number.isFinite(a) ? a : Infinity) - (Number.isFinite(b) ? b : Infinity);
@@ -283,16 +308,23 @@
       wall_time_utc: report.incident_wall_time || firstCritical?.wall_time_utc,
       model_time_s: report.incident_time || metadata.incident_time || firstCritical?.model_time_s || firstCritical?.recorded_time,
     });
-    const primarySource = editedContent(report, '발생 원인', '선행 원인', claimField(analysis.primary_cause, 'claim', ''));
-    const directSource = editedContent(report, '발생 원인', '직접 Trip 원인', claimField(analysis.direct_trigger, 'claim', ''));
-    const primary = operatorClaim({...analysis.primary_cause, claim:primarySource}, 'primary') || '발생 원인 기록 없음';
-    const direct = operatorClaim({...analysis.direct_trigger, claim:directSource}, 'direct') || '직접 보호동작 기록 없음';
+    const primaryOriginal = claimField(analysis.primary_cause, 'claim', '');
+    const directOriginal = claimField(analysis.direct_trigger, 'claim', '');
+    const primaryRow = editedRow(report, '발생 원인', '선행 원인');
+    const directRow = editedRow(report, '발생 원인', '직접 Trip 원인');
+    const primarySource = String(primaryRow?.content ?? primaryRow?.['내용'] ?? primaryOriginal);
+    const directSource = String(directRow?.content ?? directRow?.['내용'] ?? directOriginal);
+    const primaryEdited = Boolean(primaryRow && (primaryRow.edited === true || primarySource !== String(primaryOriginal)));
+    const directEdited = Boolean(directRow && (directRow.edited === true || directSource !== String(directOriginal)));
+    const primary = (primaryEdited ? shortText(primarySource) : operatorClaim(analysis.primary_cause, 'primary')) || '발생 원인 기록 없음';
+    const direct = (directEdited ? shortText(directSource) : operatorClaim(analysis.direct_trigger, 'direct')) || '직접 보호동작 기록 없음';
     const summary = shortText(editedContent(report, '개요', '장애 요약', report.incident_summary || direct), 180);
     const equipment = report.equipment || metadata.equipment || [...new Set(analysis.critical_events.map(equipmentLabel).filter(Boolean))].slice(0,3).join(' · ') || 'PLANT';
     const timeline = briefTimeline(report, 7);
     const timelineRows = timeline.visible.map(item => {
-      const when = displayTime(item);
-      return `<tr class="timeline-row"><td><b>${esc(when.primary)}</b>${when.secondary?`<small>${esc(when.secondary)}</small>`:''}</td><td>${esc(equipmentLabel(item))}</td><td>${esc(operatorClaim(item))}</td></tr>`;
+      const when = item.__timeOverride ? {primary:item.__timeOverride,secondary:''} : displayTime(item);
+      const claim = item.__reportContent ? shortText(item.claim) : operatorClaim(item);
+      return `<tr class="timeline-row"><td><b>${esc(when.primary)}</b>${when.secondary?`<small>${esc(when.secondary)}</small>`:''}</td><td>${esc(equipmentLabel(item))}</td><td>${esc(claim)}</td></tr>`;
     }).join('');
     const recoveryRows = list(report.report_rows).filter(row => ['운전원·정비 조치사항','조치 결과 및 복구 판정'].includes(String(row?.section || '')));
     const recoveryBody = recoveryRows.length

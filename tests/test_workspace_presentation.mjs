@@ -63,6 +63,21 @@ test('operator summaries remove raw field names and source tags from core trip e
   },'propagation'),'52GT 차단기 OPEN');
 });
 
+test('operator summaries never infer an alarm state from a tag name alone', () => {
+  assert.equal(operatorSummary({
+    claim:'52GT 차단기 정상 투입 상태',
+    related_tags:['vpp52GTClosed'],
+    value:1,
+    state:'CLOSED',
+  },'propagation'),'52GT 차단기 정상 투입 상태');
+  assert.equal(operatorSummary({
+    claim:'GT 배기온도 정상 범위',
+    related_tags:['vppGTExhaustTemperatureK'],
+    value:820,
+    state:'NORMAL',
+  },'propagation'),'GT 배기온도 정상 범위');
+});
+
 test('operator timeline is chronological and exposes only seven primary rows', () => {
   const events=Array.from({length:10},(_,index)=>({
     event_id:`E-${index}`,

@@ -26,7 +26,11 @@ def fixture():
     result=normalize_analysis({'primary_cause':obj('외부 GT Trip 명령 입력이 관측되었습니다. 운전 의도는 미확인입니다.',raw_ids,48.4,['vppExternalTripCommandNative']),
         'direct_trigger':obj('GT Trip Latch 동작이 기록되었습니다.',['E-1'],48.44,['vppGTTripLatch']),
         'critical_events':[obj('GT Trip Latch 관측',['E-1'],48.44,['vppGTTripLatch'])],
-        'propagation':[obj('52GT 차단기 개방 관측',['E-3'],48.52,['vpp52GTClosed']),obj('52ST 차단기 개방 관측',['E-4'],48.54,['vpp52STClosed'])],
+        'propagation':[
+            obj('52GT 차단기 개방 관측',['E-3'],48.52,['vpp52GTClosed']),
+            obj('52ST 차단기 개방 관측',['E-4'],48.54,['vpp52STClosed']),
+            *[obj(f'후속 설비 상태 {index}',['E-3'],48.54+index/100,[]) for index in range(1,6)],
+        ],
         'causal_chain':[obj('외부 명령 입력 관측',raw_ids,48.4,['vppExternalTripCommandNative']),obj('GT Latch 관측',['E-1'],48.44,['vppGTTripLatch']),obj('GT 차단기 개방',['E-3'],48.52,['vpp52GTClosed'])],
         'counter_evidence':[],'additional_evidence_required':['동일 입력에 의한 GT/ST 병렬 보호동작 여부를 검토하세요.'],'review_recommendations':['운전 일지에서 명령 입력 경위를 확인하세요.']},store,trace)
     result['agent_execution']={'tool_calls_used':2,'tool_budget':8,'model':'MOCK_FOR_UI_TEST_ONLY'}
@@ -66,6 +70,9 @@ def main():
             expect(page.get_by_role('heading',name='직접 보호동작',exact=True)).to_be_visible()
             expect(page.get_by_role('heading',name='파급 과정',exact=True)).to_be_visible()
             expect(page.get_by_role('heading',name='시간순 사고 경위',exact=True)).to_be_visible()
+            expect(page.get_by_text('후속 설비 상태 4',exact=True)).to_be_hidden()
+            page.locator('summary',has_text='후속 분석 2건 보기').click()
+            expect(page.get_by_text('후속 설비 상태 4',exact=True)).to_be_visible()
             expect(page.get_by_role('button',name='분석 완료',exact=True)).to_be_disabled()
             body_text=page.locator('body').inner_text()
             for hidden in ('Current Logic Master upstream','고정 Cause Matrix','Verification Gate','HOLD','CANDIDATE','초안','PINPOINT','Notion'):
