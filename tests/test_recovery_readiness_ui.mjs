@@ -6,15 +6,21 @@ const workspace=fs.readFileSync(new URL('../apps/web/components/TripLensWorkspac
 const component=fs.readFileSync(new URL('../apps/web/components/RecoveryReadiness.js',import.meta.url),'utf8');
 const contracts=fs.readFileSync(new URL('../apps/web/lib/contracts.js',import.meta.url),'utf8');
 
-test('recovery workspace renders model-derived readiness before human recovery record',()=>{
+test('recovery workspace renders GT ST readiness before human recovery record',()=>{
   assert.match(workspace,/RecoveryReadiness rawData=\{rawData\}/);
   assert.match(workspace,/실제 복구 기록/);
   assert.ok(workspace.indexOf('RecoveryReadiness rawData={rawData}')<workspace.indexOf('RecoveryForm value={recovery}'));
 });
 
-test('readiness UI is display-only and does not expose plant control actions',()=>{
-  assert.match(component,/FINAL READINESS/);
-  assert.match(component,/실제 발전소 APS 기동 Permissive 또는 운전 승인 로직이 아니라/);
+test('readiness UI centers GT and ST ready-to-start and shows BOP HRSG as shared prerequisite',()=>{
+  assert.match(component,/GT \/ ST 재기동 준비상태/);
+  assert.match(component,/GT \+ ST START READINESS/);
+  assert.match(component,/SHARED PREREQUISITE/);
+  assert.match(component,/BOP \/ HRSG READY TO START/);
+  assert.match(component,/GT·ST 재기동 준비관계/);
+});
+
+test('readiness UI remains display-only and exposes no plant control actions',()=>{
   assert.doesNotMatch(component,/TRIP RESET|SENSOR RESET|BREAKER CLOSE|START COMMAND/);
 });
 
