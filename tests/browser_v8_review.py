@@ -26,7 +26,11 @@ def fixture():
     result=normalize_analysis({'primary_cause':obj('외부 GT Trip 명령 입력이 관측되었습니다. 운전 의도는 미확인입니다.',raw_ids,48.4,['vppExternalTripCommandNative']),
         'direct_trigger':obj('GT Trip Latch 동작이 기록되었습니다.',['E-1'],48.44,['vppGTTripLatch']),
         'critical_events':[obj('GT Trip Latch 관측',['E-1'],48.44,['vppGTTripLatch'])],
-        'propagation':[obj('52GT 차단기 개방 관측',['E-3'],48.52,['vpp52GTClosed']),obj('52ST 차단기 개방 관측',['E-4'],48.54,['vpp52STClosed'])],
+        'propagation':[
+            obj('52GT 차단기 개방 관측',['E-3'],48.52,['vpp52GTClosed']),
+            obj('52ST 차단기 개방 관측',['E-4'],48.54,['vpp52STClosed']),
+            *[obj(f'후속 설비 상태 {index}',['E-3'],48.54+index/100,[]) for index in range(1,6)],
+        ],
         'causal_chain':[obj('외부 명령 입력 관측',raw_ids,48.4,['vppExternalTripCommandNative']),obj('GT Latch 관측',['E-1'],48.44,['vppGTTripLatch']),obj('GT 차단기 개방',['E-3'],48.52,['vpp52GTClosed'])],
         'counter_evidence':[],'additional_evidence_required':['동일 입력에 의한 GT/ST 병렬 보호동작 여부를 검토하세요.'],'review_recommendations':['운전 일지에서 명령 입력 경위를 확인하세요.']},store,trace)
     result['agent_execution']={'tool_calls_used':2,'tool_budget':8,'model':'MOCK_FOR_UI_TEST_ONLY'}
@@ -55,17 +59,20 @@ def main():
             expect(page.get_by_label('EVENT 파일')).to_be_enabled()
             expect(page.get_by_text('Dual Log 대기',exact=True).last).to_be_visible()
             expect(page.get_by_text('EVENT.csv와 RAW.csv를 선택해 주세요.',exact=True).last).to_be_visible()
-            assert page.get_by_text('52GT 차단기 개방 관측',exact=True).count()==0
+            assert page.get_by_text('52GT 차단기 OPEN',exact=True).count()==0
             page.get_by_label('EVENT 파일').set_input_files(str(event));page.get_by_label('RAW 파일').set_input_files(str(raw))
             expect(page.get_by_text('분석 입력 준비 완료',exact=True).last).to_be_visible()
             button=page.get_by_role('button',name='이 Dual Log 분석하기',exact=True)
             expect(button).to_be_enabled();button.click()
-            expect(page.get_by_text('52GT 차단기 개방 관측',exact=True)).to_be_visible(timeout=30000)
-            expect(page.get_by_text('52ST 차단기 개방 관측',exact=True)).to_be_visible()
-            expect(page.get_by_role('heading',name='Primary Cause',exact=True)).to_be_visible()
-            expect(page.get_by_role('heading',name='Direct Trigger',exact=True)).to_be_visible()
-            expect(page.get_by_role('heading',name='Propagation',exact=True)).to_be_visible()
-            expect(page.get_by_role('heading',name='Causal Chain',exact=True)).to_be_visible()
+            expect(page.locator('.analysis-list article').filter(has_text='52GT 차단기 OPEN').first).to_be_visible(timeout=30000)
+            expect(page.locator('.analysis-list article').filter(has_text='52ST 차단기 OPEN').first).to_be_visible()
+            expect(page.get_by_role('heading',name='발생 원인',exact=True)).to_be_visible()
+            expect(page.get_by_role('heading',name='직접 보호동작',exact=True)).to_be_visible()
+            expect(page.get_by_role('heading',name='파급 과정',exact=True)).to_be_visible()
+            expect(page.get_by_role('heading',name='시간순 사고 경위',exact=True)).to_be_visible()
+            expect(page.get_by_text('후속 설비 상태 4',exact=True)).to_be_hidden()
+            page.locator('summary',has_text='후속 분석 2건 보기').click()
+            expect(page.get_by_text('후속 설비 상태 4',exact=True)).to_be_visible()
             expect(page.get_by_role('button',name='분석 완료',exact=True)).to_be_disabled()
             body_text=page.locator('body').inner_text()
             for hidden in ('Current Logic Master upstream','고정 Cause Matrix','Verification Gate','HOLD','CANDIDATE','초안','PINPOINT','Notion'):
@@ -79,22 +86,26 @@ def main():
             })""")
             assert colors=={'header':'rgb(35, 63, 80)','sidebar':'rgb(52, 83, 99)','canvas':'rgb(216, 222, 227)','panel':'rgb(255, 255, 255)'},colors
             page.screenshot(path=str(OUT/f'{name}-analysis.png'),full_page=True)
-            gt_open=page.locator('.analysis-list article').filter(has_text='52GT 차단기 개방 관측')
+            gt_open=page.locator('.analysis-list article').filter(has_text='52GT 차단기 OPEN').first
             gt_open.locator('summary',has_text='상세 근거 보기').click()
             gt_open.get_by_role('button',name='E-3',exact=True).click()
             expect(page.get_by_role('button',name='이전 화면',exact=True)).to_be_visible()
             expect(page.get_by_role('heading',name='근거 상세',exact=True)).to_be_visible()
-            expect(page.get_by_role('button',name='태그 상세 · 52GT 차단기 상태',exact=True)).to_be_visible()
-            rule_button=page.get_by_role('button',name='로직 연결 · SEQ-52GT-OPEN',exact=True)
-            expect(rule_button).to_be_visible();rule_button.click()
-            dialog=page.get_by_role('dialog',name='운전조건·룰 기준 도면')
+            logic_button=page.locator('.logic-targets button')
+            expect(logic_button).to_have_count(1)
+            expect(logic_button).to_contain_text('52GT 차단기 상태 로직 보기')
+            expect(logic_button).to_contain_text('관련 로직')
+            logic_button.click()
+            dialog=page.get_by_role('dialog',name='태그 기준 도면')
             expect(dialog).to_be_visible()
-            expect(dialog.locator('iframe')).to_have_attribute('src',re.compile(r'rule=SEQ-52GT-OPEN'))
+            expect(dialog.locator('iframe')).to_have_attribute('src',re.compile(r'tag=vpp52GTClosed'))
             dialog.get_by_role('button',name='닫기',exact=True).click()
             page.get_by_role('button',name='이전 화면',exact=True).click()
-            expect(page.get_by_text('52GT 차단기 개방 관측',exact=True)).to_be_visible()
-            page.get_by_role('button',name='GT Trip Latch',exact=True).first.click()
-            expect(page.get_by_role('heading',name='태그 상세 정보',exact=True)).to_be_visible()
+            expect(page.locator('.analysis-list article').filter(has_text='52GT 차단기 OPEN').first).to_be_visible()
+            direct=page.locator('.cause-card').filter(has_text='직접 보호동작')
+            direct.locator('summary',has_text='상세 근거 보기').click()
+            direct.get_by_role('button',name='E-1',exact=True).click()
+            expect(page.get_by_role('heading',name='근거 상세',exact=True)).to_be_visible()
             page.get_by_role('button',name='이전 화면',exact=True).click()
             if width>640:
                 page.locator('.side-links button').click()
@@ -107,6 +118,7 @@ def main():
                     assert hidden not in viewer_text,hidden
                 logic_dialog.get_by_role('button',name='닫기',exact=True).click()
             page.get_by_role('button',name='고장분석 보고서 보기',exact=True).click()
+            page.locator('summary',has_text='보고서 세부 항목 편집').click()
             page.get_by_label('보고서 1 content',exact=True).fill('담당자 검토 수정 내용')
             expect(page.get_by_role('button',name='보고서 PDF 저장',exact=True)).to_be_visible()
             assert page.get_by_role('button',name=re.compile('PINPOINT')).count()==0
@@ -122,18 +134,18 @@ def main():
             page.get_by_label('EVENT 파일').dispatch_event('click')
             page.get_by_label('EVENT 파일').set_input_files(str(event))
             expect(page.get_by_text('분석 입력 준비 완료',exact=True).last).to_be_visible()
-            assert page.get_by_text('52GT 차단기 개방 관측',exact=True).count()==0
+            assert page.get_by_text('52GT 차단기 OPEN',exact=True).count()==0
             button=page.get_by_role('button',name='이 Dual Log 분석하기',exact=True)
             expect(button).to_be_enabled();button.click()
-            expect(page.get_by_text('52GT 차단기 개방 관측',exact=True)).to_be_visible(timeout=15000)
+            expect(page.locator('.analysis-list article').filter(has_text='52GT 차단기 OPEN').first).to_be_visible(timeout=15000)
             assert counts['analyze']==2,counts
             page.reload()
             expect(page.get_by_text('Dual Log 대기',exact=True).last).to_be_visible()
-            assert page.get_by_text('52GT 차단기 개방 관측',exact=True).count()==0
+            assert page.get_by_text('52GT 차단기 OPEN',exact=True).count()==0
             expect(page.get_by_role('button',name='이 Dual Log 분석하기',exact=True)).to_be_disabled()
             page.get_by_label('EVENT 파일').set_input_files(str(event));page.get_by_label('RAW 파일').set_input_files(str(raw))
             page.get_by_role('button',name='이 Dual Log 분석하기',exact=True).click()
-            expect(page.get_by_text('52GT 차단기 개방 관측',exact=True)).to_be_visible(timeout=15000)
+            expect(page.locator('.analysis-list article').filter(has_text='52GT 차단기 OPEN').first).to_be_visible(timeout=15000)
             assert counts['analyze']==3,counts
             page.get_by_role('button',name=re.compile('사고 진행 과정')).click()
             page.locator('summary',has_text='전체 사건 기록 보기').click()

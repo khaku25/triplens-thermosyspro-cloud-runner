@@ -9,7 +9,6 @@ import {
   claimText,
   modelTime,
   parseCSV,
-  summarizeEvents,
   buildDraftRows,
   draftCSV,
   REPORT_COLUMNS,
@@ -22,9 +21,14 @@ import {EMPTY_RECOVERY,normalizeRecovery,recoveryStatusLabel} from '../lib/recov
 import {applyRecoveryRows,buildWorkspaceExportReport} from '../lib/reportAdapter.mjs';
 import {
   analysisDisplayData,
+  compactTimeline,
   conciseClaim,
+  displayEventTime,
   friendlyTag,
+  incidentMetrics,
   inputStatus,
+  operatorSummary,
+  selectDetailEvidence,
   summarizeEvidence,
 } from '../lib/workspacePresentation.mjs';
 import reportExporter from '../lib/reportExporter.cjs';
@@ -69,44 +73,74 @@ function EvidenceLinks({ids,onOpen,named=false}){
 
 function ClaimEvidence({item,onOpen}){
   const tags=summarizeEvidence(item?.related_tags||[],5);
+  const allTags=[...tags.visible,...tags.hidden];
   const ids=[...new Set((item?.evidence_ids||[]).filter(Boolean))];
   if(!tags.visible.length&&!ids.length)return null;
+  const openClaim=()=>onOpen({kind:'claim',evidenceIds:ids,tags:allTags});
   return <div className="claim-evidence">
-    {tags.visible.length?<div className="evidence-pills" aria-label="핵심 근거 태그">{tags.visible.map(tag=><button key={tag} onClick={()=>onOpen({kind:'tag',value:tag})}>{friendlyTag(tag)}</button>)}</div>:null}
+    {tags.visible.length?<div className="evidence-pills" aria-label="핵심 근거 태그">{tags.visible.map(tag=><span key={tag}>{friendlyTag(tag)}</span>)}</div>:null}
     <details>
       <summary>상세 근거 보기{ids.length?` · ${ids.length}건`:''}</summary>
       <div className="detail-evidence-list">
         <EvidenceLinks ids={ids} onOpen={onOpen}/>
-        {[...tags.visible,...tags.hidden].map(tag=><button className="tag-link" key={tag} onClick={()=>onOpen({kind:'tag',value:tag})}>{friendlyTag(tag)}</button>)}
+        {tags.hidden.length?<div className="hidden-evidence-tags"><b>추가 근거 태그</b>{tags.hidden.map(tag=><span key={tag}>{friendlyTag(tag)}</span>)}</div>:null}
+        {ids.length?<button className="tag-link" onClick={openClaim}>연결 근거 모아보기</button>:null}
       </div>
     </details>
   </div>;
 }
 
-function ClaimCard({title,item,onOpen}){
-  const text=conciseClaim(claimText(item));
+function ClaimCard({title,item,stage,onOpen}){
+  const original=claimText(item);
+  const compact=conciseClaim(operatorSummary(item,stage),140);
+  const summary=compact.summary;
+  const detail=original&&original!==summary?original:compact.detail;
+  const time=displayEventTime(item);
   return <section className="claim-card cause-card">
-    <div className="claim-head"><h3>{title}</h3>{item?.model_time_s!=null?<time>{modelTime(item.model_time_s)}</time>:null}</div>
-    <div className="claim-text">{text.summary||'분석 결과가 없습니다.'}</div>
-    {text.detail?<details className="claim-detail"><summary>전체 설명 보기</summary><p>{text.detail}</p></details>:null}
+    <div className="claim-head"><h3>{title}</h3>{time.primary!=='시각 미확인'?<time>{time.primary}{time.secondary?<small>{time.secondary}</small>:null}</time>:null}</div>
+    <div className="claim-text">{summary||'분석 결과가 없습니다.'}</div>
+    {detail?<details className="claim-detail"><summary>상세 분석 설명</summary><p>{detail}</p></details>:null}
     <ClaimEvidence item={item} onOpen={onOpen}/>
   </section>;
 }
 
-function AnalysisList({items,onOpen}){
+function AnalysisList({items,stage,onOpen,limit=5}){
   if(!items?.length)return <p className="empty-line">표시할 분석 결과가 없습니다.</p>;
-  return <div className="analysis-list">{items.map((item,index)=>{
-    const text=conciseClaim(claimText(item),150);
+  const visible=items.slice(0,limit);
+  const hidden=items.slice(limit);
+  const renderItem=(item,index)=>{
+    const original=claimText(item);
+    const compact=conciseClaim(typeof item==='string'?item:operatorSummary(item,stage),150);
+    const summary=compact.summary;
+    const detail=original&&original!==summary?original:compact.detail;
+    const time=displayEventTime(item);
     return <article key={`${item?.claim||'item'}-${index}`}>
-      <div><b>{index+1}</b><p>{text.summary}</p>{item?.model_time_s!=null?<time>{modelTime(item.model_time_s)}</time>:null}</div>
+      <div><b>{String(index+1).padStart(2,'0')}</b><p>{summary}</p>{time.primary!=='시각 미확인'?<time>{time.primary}{time.secondary?<small>{time.secondary}</small>:null}</time>:null}</div>
       <ClaimEvidence item={item} onOpen={onOpen}/>
-      {text.detail?<details><summary>전체 설명 보기</summary><p>{text.detail}</p></details>:null}
+      {detail?<details><summary>상세 분석 설명</summary><p>{detail}</p></details>:null}
     </article>;
-  })}</div>;
+  };
+  return <div className="analysis-list">{visible.map(renderItem)}{hidden.length?<details className="hidden-analysis-items"><summary>후속 분석 {hidden.length}건 보기</summary><div>{hidden.map((item,index)=>renderItem(item,index+limit))}</div></details>:null}</div>;
 }
 
 function EventTable({events,onOpen}){
-  return <div className="scroll-table"><table><thead><tr><th>모델 시각</th><th>설비</th><th>사건</th><th>원천</th><th>근거</th></tr></thead><tbody>{events.map((event,index)=><tr key={event.event_id||index}><td>{modelTime(event.model_time_s)}</td><td>{event.equipment||'—'}</td><td>{event.message||friendlyTag(event.tag)}</td><td>{event.source||'—'}</td><td><EvidenceLinks ids={[event.evidence_id||event.event_id]} onOpen={onOpen} named/></td></tr>)}</tbody></table></div>;
+  return <div className="scroll-table"><table><thead><tr><th>시간</th><th>설비</th><th>사건</th><th>원천</th><th>근거</th></tr></thead><tbody>{events.map((event,index)=>{const time=displayEventTime(event);return <tr key={event.event_id||index}><td><b>{time.primary}</b>{time.secondary?<small>{time.secondary}</small>:null}</td><td>{event.equipment||'—'}</td><td>{operatorSummary(event)||event.message||friendlyTag(event.tag)}</td><td>{event.source||'—'}</td><td><EvidenceLinks ids={[event.evidence_id||event.event_id]} onOpen={onOpen} named/></td></tr>;})}</tbody></table></div>;
+}
+
+function OperatorTimeline({events,onOpen}){
+  const timeline=compactTimeline(events,7);
+  return <div className="operator-timeline">{timeline.visible.map((event,index)=>{const time=displayEventTime(event);const summary=conciseClaim(operatorSummary(event)||event.message||friendlyTag(event.tag),140).summary;return <article key={event.event_id||index}><time><b>{time.primary}</b>{time.secondary?<small>{time.secondary}</small>:null}</time><div><span>{event.equipment||event.event_class||'PLANT'}</span><strong>{summary}</strong></div><EvidenceLinks ids={[event.evidence_id||event.event_id]} onOpen={onOpen} named/></article>;})}{timeline.hiddenCount?<p>후속 기록 {timeline.hiddenCount}건은 전체 사건 기록에서 확인</p>:null}</div>;
+}
+
+function OperatorReportPreview({analysis,events,recovery}){
+  const timeline=compactTimeline(events,7);
+  const primary=conciseClaim(operatorSummary(analysis.primary_cause,'primary'),140).summary;
+  const direct=conciseClaim(operatorSummary(analysis.direct_trigger,'direct'),140).summary;
+  return <div className="operator-report-preview">
+    <div className="operator-report-causes"><div><span>발생 원인</span><strong>{primary||'기록 없음'}</strong></div><div><span>직접 보호동작</span><strong>{direct||'기록 없음'}</strong></div></div>
+    <div className="operator-report-timeline"><h3>시간순 사고 경위</h3>{timeline.visible.map((event,index)=>{const time=displayEventTime(event);const summary=conciseClaim(operatorSummary(event)||event.message||friendlyTag(event.tag),140).summary;return <div key={event.event_id||index}><time>{time.primary}</time><b>{event.equipment||event.event_class||'PLANT'}</b><span>{summary}</span></div>;})}{timeline.hiddenCount?<p>후속 기록 {timeline.hiddenCount}건은 상세 분석 데이터에 포함됩니다.</p>:null}</div>
+    <div className="operator-report-recovery"><span>복구조치 및 확인사항</span><strong>{recovery.actions||'기록 없음'}</strong></div>
+  </div>;
 }
 
 function WaitingPanel({status}){
@@ -134,7 +168,7 @@ export default function TripLensWorkspace({mode='blind'}){
   const currentData=useMemo(()=>analysisDisplayData({result}),[result]);
   const events=useMemo(()=>result?mergeEvents(eventData?.records||[],currentData.events):[],[result,eventData,currentData]);
   const catalog=useMemo(()=>result?mergeEvidenceCatalog(events,currentData.catalog):[],[result,events,currentData]);
-  const summary=useMemo(()=>summarizeEvents(events),[events]);
+  const metrics=useMemo(()=>incidentMetrics(events),[events]);
   const displayReportRows=useMemo(()=>applyRecoveryRows(reportRows,recovery),[reportRows,recovery]);
   const exportReport=useMemo(()=>buildWorkspaceExportReport({
     result,analysis,events,catalog,reportRows:displayReportRows,recovery,
@@ -242,12 +276,10 @@ export default function TripLensWorkspace({mode='blind'}){
   function exportDetailedCSV(){if(!exportBlocked)reportExporter.downloadPinpointCsv(exportReport,`TripLens_상세분석데이터_${result?.run_id||'analysis'}.csv`);}
 
   function editReportRow(row,key,value){
-    setReportRows(rows=>rows.map(existing=>existing.row_id===row.row_id?{...existing,[key]:value}:existing));
+    setReportRows(rows=>rows.map(existing=>existing.row_id===row.row_id?{...existing,[key]:value,edited:true}:existing));
   }
 
-  const detailRows=detail?catalog.filter(entry=>detail.kind==='evidence'
-    ?entry.evidence_id===detail.value
-    :[entry.tag,entry.source_node,entry.canonical_tag].includes(detail.value)):[];
+  const detailRows=selectDetailEvidence(catalog,detail);
 
   let view;
   if(!result){
@@ -255,42 +287,42 @@ export default function TripLensWorkspace({mode='blind'}){
   }else if(detail){
     view=<div className="panel-stack evidence-page">
       <button className="back-button" onClick={()=>setDetail(null)}>이전 화면</button>
-      <div className="section-heading"><h2>{detail.kind==='evidence'?'근거 상세':'태그 상세 정보'}</h2></div>
+      <div className="section-heading"><h2>{detail.kind==='tag'?'태그 추이':'근거 상세'}</h2></div>
       {detailRows.length?detailRows.map((entry,index)=>{
         const targets=buildEvidenceLogicTargets(entry);
+        const time=displayEventTime(entry);
         return <section className="claim-card evidence-detail" key={entry.evidence_id||index}>
           <h3>{entry.display_name||entry.message||friendlyTag(entry.source_node||entry.tag)}</h3>
           <dl>
-            <div><dt>모델 시각</dt><dd>{modelTime(entry.model_time_s)}</dd></div>
-            {entry.wall_time_utc?<div><dt>기록 시각</dt><dd>{entry.wall_time_utc}</dd></div>:null}
+            <div><dt>시간</dt><dd>{time.primary}{time.secondary?` · ${time.secondary}`:''}</dd></div>
             <div><dt>태그</dt><dd>{entry.canonical_tag||entry.source_node||entry.tag||'—'}</dd></div>
             <div><dt>값 / 상태</dt><dd>{String(entry.value??'—')} {entry.state?`/ ${entry.state}`:''}</dd></div>
           </dl>
           {entry.message?<p>{entry.message}</p>:null}
-          {targets.tags.length||targets.rules.length?<div className="logic-targets" aria-label="로직 연결">{targets.tags.map(tag=><button type="button" key={`tag-${tag}`} onClick={()=>openLogicLibrary({tag})}>태그 상세 · {friendlyTag(tag)}</button>)}{targets.rules.map(rule=><button type="button" key={`rule-${rule}`} onClick={()=>openLogicLibrary({rule})}>로직 연결 · {rule}</button>)}</div>:null}
+          {targets.entry?<div className="logic-targets" aria-label="로직 연결"><button type="button" onClick={()=>openLogicLibrary({tag:targets.entry.tag})}><b>{friendlyTag(targets.entry.tag)} 로직 보기</b><small>관련 로직 {targets.entry.ruleCount}개</small></button></div>:null}
         </section>;
       }):<div className="empty-state">연결된 상세 근거가 없습니다.</div>}
     </div>;
   }else if(activeTab==='cause'){
     view=<div className="panel-stack cause-layout">
-      <div className="section-heading"><div><span className="section-kicker">INCIDENT ANALYSIS</span><h2>원인 분석</h2></div></div>
+      <div className="section-heading"><div><h2>원인 분석</h2></div></div>
       <div className="cause-grid">
-        <ClaimCard title="Primary Cause" item={analysis.primary_cause} onOpen={setDetail}/>
-        <ClaimCard title="Direct Trigger" item={analysis.direct_trigger} onOpen={setDetail}/>
+        <ClaimCard title="발생 원인" stage="primary" item={analysis.primary_cause} onOpen={setDetail}/>
+        <ClaimCard title="직접 보호동작" stage="direct" item={analysis.direct_trigger} onOpen={setDetail}/>
       </div>
       <section className="analysis-section">
-        <div className="analysis-section-head"><div><span>03</span><h3>Propagation</h3></div><p>사고의 파급 과정</p></div>
-        <AnalysisList items={analysis.propagation} onOpen={setDetail}/>
+        <div className="analysis-section-head"><div><h3>파급 과정</h3></div><p>보호동작 이후의 설비 변화</p></div>
+        <AnalysisList items={analysis.propagation} stage="propagation" onOpen={setDetail}/>
       </section>
       <section className="analysis-section causal-section">
-        <div className="analysis-section-head"><div><span>04</span><h3>Causal Chain</h3></div><p>시간순 인과관계</p></div>
-        <details><summary>상세 시간순서 보기</summary><AnalysisList items={analysis.causal_chain} onOpen={setDetail}/></details>
+        <div className="analysis-section-head"><div><h3>시간순 사고 경위</h3></div><p>상세 인과관계</p></div>
+        <details><summary>상세 시간순서 보기</summary><AnalysisList items={analysis.causal_chain} stage="causal" onOpen={setDetail}/></details>
       </section>
     </div>;
   }else if(activeTab==='timeline'){
     view=<div className="panel-stack">
       <div className="section-heading"><h2>사고 진행 과정</h2><span>EVENT {events.length}건</span></div>
-      <section className="analysis-section"><h3>주요 사건</h3><AnalysisList items={analysis.critical_events} onOpen={setDetail}/></section>
+      <section className="analysis-section"><h3>주요 사건</h3><OperatorTimeline events={events} onOpen={setDetail}/></section>
       <details className="analysis-details"><summary>전체 사건 기록 보기 · {events.length}건</summary><EventTable events={events} onOpen={setDetail}/></details>
     </div>;
   }else if(activeTab==='checks'){
@@ -308,9 +340,9 @@ export default function TripLensWorkspace({mode='blind'}){
       <div className="brand"><div className="brand-mark">TL</div><div><h1>TripLens</h1><span>DUAL-INPUT ACCIDENT ANALYSIS</span></div></div>
       <div className="status-rail">
         <div><span>입력 상태</span><b>{result?'분석 완료':ready?'분석 준비':'Dual Log 대기'}</b></div>
-        <div><span>DCS EVENT</span><b>{summary.dcs}</b></div>
-        <div><span>ECMS EVENT</span><b>{summary.ecms}</b></div>
-        <div><span>TRIP</span><b>{summary.protection}</b></div>
+        <div><span>최초 동작</span><b>{metrics.firstTime}</b></div>
+        <div><span>보호 동작</span><b>{metrics.protection}건</b></div>
+        <div><span>후속 알람</span><b>{metrics.alarms}건</b></div>
       </div>
     </header>
     {mode==='demo'?<div className="demo-banner">시연용 분석 화면</div>:null}
@@ -345,11 +377,12 @@ export default function TripLensWorkspace({mode='blind'}){
             <button className="export-button" disabled={exportBlocked} onClick={exportPDF}>보고서 PDF 저장</button>
             <details className="export-menu"><summary>내보내기</summary><div><button className="export-button" disabled={exportBlocked} onClick={exportCSV}>보고서 CSV</button><button className="export-button" disabled={exportBlocked} onClick={exportDetailedCSV}>상세 분석 데이터 CSV</button></div></details>
           </div>
-          <p className="report-help">보고서 내용을 확인하고 필요한 항목을 편집할 수 있습니다.</p>
-          <div className="scroll-table"><table className="editable-report"><thead><tr>{REPORT_COLUMNS.map(column=><th key={column}>{column}</th>)}</tr></thead><tbody>{displayReportRows.map((row,index)=>{
+          <p className="report-help">핵심 사고 경위를 1~2페이지 운전 고장상보 형식으로 저장합니다.</p>
+          <OperatorReportPreview analysis={analysis} events={events} recovery={recovery}/>
+          <details className="report-editor"><summary>보고서 세부 항목 편집</summary><div className="scroll-table"><table className="editable-report"><thead><tr>{REPORT_COLUMNS.map(column=><th key={column}>{column}</th>)}</tr></thead><tbody>{displayReportRows.map((row,index)=>{
             const recoveryRow=row.row_id?.startsWith('RECOVERY-');
             return <tr key={row.row_id||index} data-row-id={row.row_id}>{REPORT_KEYS.map((key,column)=><td key={key} data-label={REPORT_COLUMNS[column]}>{key==='status'?(recoveryRow||!CLAIM_STATUS_CHOICES.includes(row.status)?<span className="report-status" data-status={row.status}>{reportStatusLabel(row.status)}</span>:<select aria-label={`보고서 ${index+1} 상태`} value={row.status} onChange={event=>editReportRow(row,key,event.target.value)}>{CLAIM_STATUS_CHOICES.map(statusValue=><option key={statusValue} value={statusValue}>{REPORT_STATUS_TEXT[statusValue]}</option>)}</select>):recoveryRow?<div className="report-readonly">{row[key]||'—'}{key==='content'?<button className="tag-link" onClick={()=>{setActiveTab('recovery');setDetail(null);requestAnimationFrame(()=>document.querySelector('.recovery-form')?.scrollIntoView({block:'start'}));}}>복구 기록에서 편집</button>:null}</div>:<textarea aria-label={`보고서 ${index+1} ${key}`} value={row[key]||''} onChange={event=>editReportRow(row,key,event.target.value)}/>}</td>)}</tr>;
-          })}</tbody></table></div>
+          })}</tbody></table></div></details>
         </section>:null}
       </section>
     </div>
