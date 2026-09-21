@@ -62,7 +62,7 @@ export function operatorSummary(item={},stage=''){
   ].find(([tag,,confirmed])=>confirmed&&tags.has(tag));
   if(mapped)return mapped[1];
 
-  return source
+  return operatorPhrase(source
     .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*초에\s*/gi,'')
     .replace(/\((?:vpp[A-Za-z0-9_.-]+)\)/g,'')
     .replace(/\b(?:태그\s+)?vpp[A-Za-z0-9_.-]+(?:가|이|는|은)?\b/g,'')
@@ -70,7 +70,7 @@ export function operatorSummary(item={},stage=''){
     .replace(/개로\s*\(0(?:\.0)?\)\s*됨/g,'개방')
     .replace(/\s+/g,' ')
     .replace(/\s+([,.])/g,'$1')
-    .trim();
+    .trim());
 }
 
 export function compactTimeline(events=[],limit=7){
@@ -120,6 +120,82 @@ export function conciseClaim(value,limit=180){
   const firstSentence=text.match(/^.*?[.!?。](?:\s|$)/)?.[0]?.trim();
   const summary=(firstSentence&&firstSentence.length<=limit?firstSentence:text.slice(0,limit).trimEnd()+'…');
   return {summary,detail:text};
+}
+
+
+export function operatorPhrase(value,limit=180){
+  let text=String(value??'').trim();
+  if(!text)return '';
+  const gtStLatch=/((가스\s*터빈|GT).*트립\s*래치.*(증기\s*터빈|ST).*트립\s*래치|(증기\s*터빈|ST).*트립\s*래치.*(가스\s*터빈|GT).*트립\s*래치)/i.test(text);
+  if(gtStLatch&&/(활성|동작|작동|ACTIVE|LATCH)/i.test(text))return 'GT·ST Trip Latch 동시 동작';
+  if(/외부\s*(?:GT\s*)?(?:Trip|트립)\s*(?:Command|명령).*(?:입력|인가|관측)/i.test(text))return '외부 Trip Command 입력';
+
+  text=text
+    .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*초에\s*/gi,'')
+    .replace(/^\s*\d+(?:\.\d+)?\s*초에\s*/,'')
+    .replace(/RAW\s*변화\s*시간구간이\s*Direct Trigger\s*시각과\s*겹칩니다\.?/gi,'RAW 변화구간 · Direct Trigger 시각 중첩')
+    .replace(/선후관계는\s*표본만으로\s*확정할\s*수\s*없습니다\.?/g,'선후관계 미확정')
+    .replace(/선후관계를\s*확정할\s*수\s*없습니다\.?/g,'선후관계 미확정')
+    .replace(/확인(?:이)?\s*필요합니다\.?/g,'확인 필요')
+    .replace(/확인해야\s*합니다\.?/g,'확인 필요')
+    .replace(/검토해야\s*합니다\.?/g,'검토 필요')
+    .replace(/확정할\s*수\s*없습니다\.?/g,'미확정')
+    .replace(/판단할\s*수\s*없습니다\.?/g,'판단 불가')
+    .replace(/알\s*수\s*없습니다\.?/g,'미확인')
+    .replace(/활성화되었습니다\.?/g,'활성')
+    .replace(/동작되었습니다\.?/g,'동작')
+    .replace(/작동(?:하였|했)습니다\.?/g,'동작')
+    .replace(/관측되었습니다\.?/g,'관측')
+    .replace(/기록되었습니다\.?/g,'기록')
+    .replace(/입력되었습니다\.?/g,'입력')
+    .replace(/인가되었습니다\.?/g,'인가')
+    .replace(/없습니다\.?/g,'없음')
+    .replace(/있습니다\.?/g,'있음')
+    .replace(/입니다\.?$/g,'')
+    .replace(/합니다\.?$/g,'')
+    .replace(/\.\s+/g,' · ')
+    .replace(/[.]$/,'')
+    .replace(/\s+/g,' ')
+    .replace(/\s+([,])/g,'$1')
+    .trim();
+  return text.length>limit?text.slice(0,limit).trimEnd()+'…':text;
+}
+
+function reviewTitle(value){
+  const text=String(value??'');
+  if(/(발신|출처|감사\s*로그)/.test(text)&&/(Trip|트립|외부)/i.test(text))return '외부 Trip Command 발신 경로';
+  if(/하드웨어\s*접점|통신\s*링크|전송\s*라인/.test(text))return '신호 경로 건전성';
+  if(/시간구간|선후관계|겹칩|겹칩니다|중첩|시각/.test(text))return '시각 선후관계';
+  if(/운전원.*조작|조작\s*이벤트|ESD|E-Stop/i.test(text))return '운전 조작이력';
+  if(/노이즈|단선|단락/.test(text))return '입력 신호 건전성';
+  if(/보호계전|계전|보호동작/.test(text))return '보호동작 기록';
+  if(/로직|logic/i.test(text))return '등록 로직 대조';
+  const phrase=operatorPhrase(text,44);
+  return phrase.split(' · ')[0].replace(/\s*확인 필요$/,'').replace(/\s*검토 필요$/,'').trim()||'추가 확인 항목';
+}
+
+export function operatorReviewItems(analysis={}){
+  const entries=[
+    ...list(analysis?.additional_evidence_required).map(value=>({value,kind:'required',status:'확인 필요'})),
+    ...list(analysis?.review_recommendations).map(value=>({value,kind:'review',status:'담당자 검토'})),
+  ];
+  const seen=new Set();
+  return entries.map(({value,kind,status})=>{
+    const raw=typeof value==='string'?value:String(value?.claim||value?.text||value?.description||'');
+    const tags=[...new Set(raw.match(/vpp[A-Za-z0-9_.-]+/g)||[])];
+    const cleaned=raw
+      .replace(/\((vpp[A-Za-z0-9_.-]+)\)/g,'')
+      .replace(/\b(?:태그\s+)?vpp[A-Za-z0-9_.-]+(?:가|이|는|은)?\b/g,'')
+      .replace(/\s+/g,' ')
+      .trim();
+    const title=reviewTitle(raw);
+    let detail=operatorPhrase(cleaned,170);
+    if(detail===title)detail='';
+    const key=(title+'|'+detail).toLowerCase();
+    if(seen.has(key))return null;
+    seen.add(key);
+    return {title,detail,status,kind,tags};
+  }).filter(Boolean);
 }
 
 export function friendlyTag(value){
