@@ -29,6 +29,8 @@ import {
   incidentMetrics,
   inputStatus,
   operatorSummary,
+  operatorPhrase,
+  operatorReviewItems,
   selectDetailEvidence,
   summarizeEvidence,
 } from '../lib/workspacePresentation.mjs';
@@ -99,14 +101,14 @@ function ClaimCard({title,item,stage,onOpen}){
   const time=displayEventTime(item);
   return <section className="claim-card cause-card">
     <div className="claim-head"><h3>{title}</h3>{time.primary!=='시각 미확인'?<time>{time.primary}{time.secondary?<small>{time.secondary}</small>:null}</time>:null}</div>
-    <div className="claim-text">{summary||'분석 결과가 없습니다.'}</div>
+    <div className="claim-text">{summary||'분석 결과 없음'}</div>
     {detail?<details className="claim-detail"><summary>상세 분석 설명</summary><p>{detail}</p></details>:null}
     <ClaimEvidence item={item} onOpen={onOpen}/>
   </section>;
 }
 
 function AnalysisList({items,stage,onOpen,limit=5}){
-  if(!items?.length)return <p className="empty-line">표시할 분석 결과가 없습니다.</p>;
+  if(!items?.length)return <p className="empty-line">표시할 분석 결과 없음</p>;
   const visible=items.slice(0,limit);
   const hidden=items.slice(limit);
   const renderItem=(item,index)=>{
@@ -135,11 +137,11 @@ function OperatorTimeline({events,onOpen}){
 
 function OperatorReportPreview({analysis,events,recovery}){
   const timeline=compactTimeline(events,7);
-  const primary=conciseClaim(operatorSummary(analysis.primary_cause,'primary'),140).summary;
-  const direct=conciseClaim(operatorSummary(analysis.direct_trigger,'direct'),140).summary;
+  const primary=operatorPhrase(operatorSummary(analysis.primary_cause,'primary'),140);
+  const direct=operatorPhrase(operatorSummary(analysis.direct_trigger,'direct'),140);
   return <div className="operator-report-preview">
     <div className="operator-report-causes"><div><span>발생 원인</span><strong>{primary||'기록 없음'}</strong></div><div><span>직접 보호동작</span><strong>{direct||'기록 없음'}</strong></div></div>
-    <div className="operator-report-timeline"><h3>시간순 사고 경위</h3>{timeline.visible.map((event,index)=>{const time=displayEventTime(event);const summary=conciseClaim(operatorSummary(event)||event.message||friendlyTag(event.tag),140).summary;return <div key={event.event_id||index}><time>{time.primary}</time><b>{event.equipment||event.event_class||'PLANT'}</b><span>{summary}</span></div>;})}{timeline.hiddenCount?<p>후속 기록 {timeline.hiddenCount}건은 상세 분석 데이터에 포함됩니다.</p>:null}</div>
+    <div className="operator-report-timeline"><h3>시간순 사고 경위</h3>{timeline.visible.map((event,index)=>{const time=displayEventTime(event);const summary=operatorPhrase(operatorSummary(event)||event.message||friendlyTag(event.tag),140);return <div key={event.event_id||index}><time>{time.primary}</time><b>{event.equipment||event.event_class||'PLANT'}</b><span>{summary}</span></div>;})}{timeline.hiddenCount?<p>후속 기록 {timeline.hiddenCount}건 · 상세 분석 데이터 참조</p>:null}</div>
     <div className="operator-report-recovery"><span>복구조치 및 확인사항</span><strong>{recovery.actions||'기록 없음'}</strong></div>
   </div>;
 }
@@ -327,8 +329,21 @@ export default function TripLensWorkspace({mode='blind'}){
       <details className="analysis-details"><summary>전체 사건 기록 보기 · {events.length}건</summary><EventTable events={events} onOpen={setDetail}/></details>
     </div>;
   }else if(activeTab==='checks'){
-    const checks=[...analysis.additional_evidence_required,...analysis.review_recommendations];
-    view=<div className="panel-stack"><div className="section-heading"><h2>즉시 확인·대응</h2></div>{checks.length?checks.map((text,index)=><div className="check-row" key={index}><span>{String(index+1).padStart(2,'0')}</span><p>{text}</p></div>):<div className="empty-state">추가 확인 항목이 없습니다.</div>}</div>;
+    const checks=operatorReviewItems(analysis);
+    const requiredCount=checks.filter(item=>item.kind==='required').length;
+    const reviewCount=checks.filter(item=>item.kind==='review').length;
+    view=<div className="panel-stack">
+      <div className="section-heading"><div><h2>추가 확인·검토</h2><p>원인 확정을 위해 남은 확인 대상과 담당자 검토사항</p></div></div>
+      {checks.length?<><div className="review-summary"><div><span>확인 필요</span><b>{requiredCount}</b></div><div><span>담당자 검토</span><b>{reviewCount}</b></div></div>
+      <div className="review-checklist">{checks.map((item,index)=><article className="review-check-card" key={`${item.kind}-${item.title}-${index}`}>
+        <div className="review-check-no">{String(index+1).padStart(2,'0')}</div>
+        <div className="review-check-main">
+          <header><strong>{item.title}</strong><span data-kind={item.kind}>{item.status}</span></header>
+          {item.detail?<p>{item.detail}</p>:null}
+          {item.tags.length?<div className="review-tags">{item.tags.map(tag=><em key={tag}>{friendlyTag(tag)}</em>)}</div>:null}
+        </div>
+      </article>)}</div></>:<div className="empty-state">추가 확인·검토 항목 없음</div>}
+    </div>;
   }else if(activeTab==='recovery'){
     view=<div className="panel-stack">
       <div className="section-heading"><h2>복구 · 설비 준비상태</h2></div>

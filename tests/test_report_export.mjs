@@ -188,3 +188,24 @@ test('operator PDF does not infer OPEN from a closed-state tag', () => {
   assert.match(html,/52GT 차단기 정상 투입 상태/);
   assert.doesNotMatch(html,/52GT 차단기 OPEN/);
 });
+
+
+test('operator report removes conversational AI endings from generated conclusions', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    primary_cause:{
+      claim:'외부 GT Trip 명령 입력이 관측되었습니다. 운전 의도는 미확인입니다.',
+      related_tags:['vppExternalTripCommandNative'],
+      model_time_s:48.4,
+    },
+    direct_trigger:{
+      claim:'48.44초에 가스터빈 트립 래치 및 증기터빈 트립 래치가 활성화되었습니다.',
+      related_tags:['vppGTTripLatch','vppSTTripLatchPublished'],
+      model_time_s:48.44,
+    },
+    report_rows:[],
+  });
+  assert.match(html,/외부 Trip Command 입력/);
+  assert.match(html,/GT·ST Trip Latch 동시 동작/);
+  for(const text of ['활성화되었습니다','관측되었습니다','확인할 수 있습니다','확정할 수 없습니다'])assert.doesNotMatch(html,new RegExp(text));
+});
