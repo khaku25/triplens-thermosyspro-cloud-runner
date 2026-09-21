@@ -27,12 +27,42 @@ const report = {
 
 test('PDF report HTML follows the concise operator report structure', () => {
   const html = exporter.buildReportHtml(report);
-  for (const text of ['설비 고장 분석보고서','1. 사고 개요','2. 발생 원인','직접 보호동작','3. 시간순 사고 경위','4. 복구조치 및 확인사항','EVENT.csv','RAW.csv']) assert.match(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  for (const text of ['설비 고장 분석보고서','1. 사고 개요','2. 핵심 분석','사고 개시 신호','직접 보호동작','3. 시간순 사고 경위','4. 복구조치 및 확인사항','EVENT.csv','RAW.csv']) assert.match(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   for (const text of ['Verification Gate','AI Confidence','CANDIDATE','(초안)','근거 ID','관련 태그']) assert.doesNotMatch(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   assert.match(html,/overflow:visible!important/);
   assert.match(html,/max-height:none!important/);
   assert.doesNotMatch(html,/T\+0\.000 s/);
   assert.doesNotMatch(html,/>Gemini Analysis</);
+});
+
+test('PDF report restores a formal document header and approval grid', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    run_id:'RUN-APPROVAL-001',
+    report_no:'TL-RPT-001',
+    recovery_operator:'함준식',
+    reviewer:'운전팀장',
+    recovery_approver:'발전소장',
+  });
+  for(const text of ['문서번호','TL-RPT-001','대상 설비','입력 자료','결재','작성','검토','승인','함준식','운전팀장','발전소장']){
+    assert.match(html,new RegExp(text));
+  }
+  assert.match(html,/class="approval-table"/);
+  assert.match(html,/class="document-info"/);
+  assert.match(html,/<th>사고 시각<\/th><td><b>T\+48\.000 s<\/b>/);
+});
+
+test('PDF chronology uses model time as the primary accident time', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    chronological_events:[{
+      model_time_s:48.44,
+      wall_time_utc:'2026-09-15T14:52:04.212+00:00',
+      equipment:'GT',
+      claim:'GT TRIP LATCH ACTIVE',
+    }],
+  });
+  assert.match(html,/class="timeline-row"><td><b>T\+48\.440 s<\/b><small>14:52:04\.212<\/small>/);
 });
 
 test('PINPOINT CSV keeps canonical evidence and review state', () => {
@@ -138,7 +168,7 @@ test('default PDF is a concise operator report without developer metadata or raw
     report_rows:[],
   };
   const html=exporter.buildReportHtml(operatorReport);
-  for(const text of ['사고 개요','발생 원인','직접 보호동작','시간순 사고 경위','시간','설비 / 구분','발생 내용','후속 기록 5건'])assert.match(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  for(const text of ['사고 개요','핵심 분석','사고 개시 신호','직접 보호동작','시간순 사고 경위','시간','설비 / 구분','발생 내용','후속 기록 5건'])assert.match(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   for(const text of ['Run ID','Data Digest','Analysis Engine','근거 ID','관련 태그','model_time_s','vppGTTripLatch','secret-digest'])assert.doesNotMatch(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   assert.equal((html.match(/class="timeline-row"/g)||[]).length,7);
   assert.match(html,/@page\{size:A4;margin:0\}/);

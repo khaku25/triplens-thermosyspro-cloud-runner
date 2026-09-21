@@ -26,6 +26,11 @@ test('each evidence card has one grouped logic-master entry',()=>{
 
 test('report preview defaults to concise operator summary and keeps editing collapsed',()=>{
   assert.match(source,/operator-report-preview/);
+  assert.match(source,/operator-report-document-head/);
+  assert.match(source,/operator-report-approval/);
+  assert.match(source,/보고서 번호/);
+  assert.match(source,/사고 개시 신호/);
+  assert.match(source,/report=\{exportReport\}/);
   assert.match(source,/운전 고장상보 형식/);
   assert.match(source,/report-editor/);
 });

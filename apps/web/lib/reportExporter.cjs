@@ -153,7 +153,7 @@
   }
 
   function chronology(report) {
-    return list(report.chronological_events || report.soe || report.timeline || report.actions);
+    return list(report?.chronological_events || report?.soe || report?.timeline || report?.actions);
   }
 
   function chronologyRows(report) {
@@ -214,7 +214,31 @@
     const raw = item?.model_time_s ?? item?.recorded_time ?? item?.aligned_time ?? item?.time;
     const seconds = raw === null || raw === undefined || String(raw).trim() === '' ? null : Number(raw);
     const model = seconds !== null && Number.isFinite(seconds) ? `T+${seconds.toFixed(3)} s` : '';
-    return { primary: clock || model || '시각 미확인', secondary: clock ? model : '' };
+    return { primary: model || clock || '시각 미확인', secondary: model ? clock : '' };
+  }
+
+  function reportDocumentMeta(report, analysis = normalizedAnalysis(report)) {
+    const metadata = report?.metadata || {};
+    const explicitIncident = {
+      wall_time_utc: report?.incident_wall_time || metadata.incident_wall_time,
+      model_time_s: report?.incident_time ?? metadata.incident_time,
+    };
+    const incidentSource = [explicitIncident, ...analysis.critical_events, ...chronology(report)]
+      .find(item => displayTime(item).primary !== '시각 미확인') || {};
+    const incidentTime = displayTime(incidentSource);
+    const equipment = report?.equipment || metadata.equipment || [...new Set(analysis.critical_events.map(equipmentLabel).filter(Boolean))].slice(0, 3).join(' · ') || 'PLANT';
+    return {
+      reportNo: String(report?.report_no || metadata.report_no || report?.run_id || metadata.run_id || '—'),
+      incidentTime,
+      equipment,
+      inputFiles: `${metadata.event_file || 'EVENT.csv'} + ${metadata.raw_file || 'RAW.csv'}`,
+      author: String(report?.recovery_operator || report?.author || metadata.author || ''),
+      reviewer: String(report?.reviewer || report?.reviewed_by || metadata.reviewer || ''),
+      approver: String(report?.recovery_approver || report?.approver || metadata.approver || ''),
+      authoredAt: String(report?.authored_at || metadata.authored_at || ''),
+      reviewedAt: String(report?.reviewed_at || metadata.reviewed_at || ''),
+      approvedAt: String(report?.recovery_approved_at || report?.approved_at || metadata.approved_at || ''),
+    };
   }
 
   function shortText(value, limit = 160) {
@@ -301,13 +325,8 @@
 
   function buildReportHtml(report) {
     const analysis = normalizedAnalysis(report);
-    const metadata = report.metadata || {};
     const title = '설비 고장 분석보고서';
-    const firstCritical = analysis.critical_events[0];
-    const incidentTime = displayTime({
-      wall_time_utc: report.incident_wall_time || firstCritical?.wall_time_utc,
-      model_time_s: report.incident_time || metadata.incident_time || firstCritical?.model_time_s || firstCritical?.recorded_time,
-    });
+    const documentMeta = reportDocumentMeta(report, analysis);
     const primaryOriginal = claimField(analysis.primary_cause, 'claim', '');
     const directOriginal = claimField(analysis.direct_trigger, 'claim', '');
     const primaryRow = editedRow(report, '발생 원인', '선행 원인');
@@ -319,7 +338,6 @@
     const primary = (primaryEdited ? shortText(primarySource) : operatorClaim(analysis.primary_cause, 'primary')) || '발생 원인 기록 없음';
     const direct = (directEdited ? shortText(directSource) : operatorClaim(analysis.direct_trigger, 'direct')) || '직접 보호동작 기록 없음';
     const summary = shortText(editedContent(report, '개요', '장애 요약', report.incident_summary || direct), 180);
-    const equipment = report.equipment || metadata.equipment || [...new Set(analysis.critical_events.map(equipmentLabel).filter(Boolean))].slice(0,3).join(' · ') || 'PLANT';
     const timeline = briefTimeline(report, 7);
     const timelineRows = timeline.visible.map(item => {
       const when = item.__timeOverride ? {primary:item.__timeOverride,secondary:''} : displayTime(item);
@@ -330,6 +348,7 @@
     const recoveryBody = recoveryRows.length
       ? recoveryRows.map(row => `<tr><th>${esc(row.item || '')}</th><td>${esc(row.content || '기록 없음')}${row.time?`<small>${esc(row.time)}</small>`:''}${row.note?`<small>${esc(row.note)}</small>`:''}</td></tr>`).join('')
       : `<tr><th>복구 상태</th><td>${esc(asText(report.recovery_check || '기록 없음'))}</td></tr>`;
+    const approvalCell = value => value ? esc(value) : '&nbsp;';
 
     return `<!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -337,16 +356,16 @@
 <style>
 @page{size:A4;margin:0}
 *{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#172f3f;font-family:"Noto Sans KR","Malgun Gothic",Arial,sans-serif;font-size:10.5pt;line-height:1.42}
-.report{width:210mm;min-height:297mm;margin:0 auto;padding:11mm 12mm 12mm}.doc-head{border-top:4px solid #173e55;border-bottom:1px solid #8ea0ab;padding:0 0 4mm;margin-bottom:5mm}.doc-title{font-size:20pt;font-weight:800;color:#102f43;margin-bottom:3mm}.doc-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm}.doc-meta div{background:#eef3f5;border-left:3px solid #2a657f;padding:2.5mm}.doc-meta span{display:block;font-size:8pt;color:#5e7380;margin-bottom:.7mm}.doc-meta b{font-size:10pt}.section{margin:0 0 4.5mm;break-inside:avoid;page-break-inside:avoid}.section h2{font-size:12pt;margin:0 0 2mm;padding-bottom:1.5mm;border-bottom:1.5px solid #234b62;color:#15384d}.cause-grid{display:grid;grid-template-columns:1fr 1fr;gap:3mm}.cause-box{border:1px solid #aebcc4;padding:3mm;min-height:23mm}.cause-box span{display:block;color:#5d7280;font-size:8.5pt;margin-bottom:1.2mm}.cause-box strong{font-size:13pt;color:#12364b}.cause-box small{display:block;margin-top:1.5mm;color:#607582}.summary-line{padding:3mm;border:1px solid #aebcc4;background:#f7f9fa;font-size:11pt;font-weight:700}
+.report{width:210mm;min-height:297mm;margin:0 auto;padding:10mm 12mm 12mm}.doc-head{border-top:4px solid #173e55;padding-top:3mm;margin-bottom:5mm}.doc-head-grid{display:grid;grid-template-columns:minmax(0,1fr) 62mm;gap:4mm;align-items:stretch}.doc-kicker{font-size:7.5pt;letter-spacing:.13em;color:#477083;margin-bottom:2mm}.doc-title{font-size:20pt;font-weight:800;color:#102f43;margin-bottom:1.5mm}.doc-subtitle{font-size:9pt;color:#627985}.approval-table{height:27mm}.approval-table caption{caption-side:top;background:#173e55;color:#fff;border:1px solid #173e55;padding:1mm;font-size:8pt;font-weight:700}.approval-table th,.approval-table td{text-align:center;padding:1.2mm;height:8mm;font-size:8.5pt}.approval-table th{background:#e8eff2}.approval-table .approval-date td{height:6mm;color:#607582;font-size:7.5pt}.document-info{margin-top:3mm}.document-info th{width:18%;font-size:8pt}.document-info td{font-size:9pt;font-weight:700}.section{margin:0 0 4.5mm;break-inside:avoid;page-break-inside:avoid}.section h2{font-size:12pt;margin:0 0 2mm;padding-bottom:1.5mm;border-bottom:1.5px solid #234b62;color:#15384d}.cause-grid{display:grid;grid-template-columns:1fr 1fr;gap:3mm}.cause-box{border:1px solid #aebcc4;padding:3mm;min-height:23mm}.cause-box span{display:block;color:#5d7280;font-size:8.5pt;margin-bottom:1.2mm}.cause-box strong{font-size:13pt;color:#12364b}.cause-box small{display:block;margin-top:1.5mm;color:#607582}.summary-line{padding:3mm;border:1px solid #aebcc4;background:#f7f9fa;font-size:11pt;font-weight:700}
 table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid-page;page-break-inside:avoid}th,td{border:1px solid #b8c3c9;padding:2.1mm;vertical-align:top;overflow-wrap:anywhere}th{background:#edf2f4;text-align:left;font-weight:700}td small{display:block;color:#6a7e89;font-size:8pt;margin-top:.5mm}.timeline th:nth-child(1){width:31%}.timeline th:nth-child(2){width:18%}.timeline td:nth-child(3){font-weight:650}.note{font-size:8.5pt;color:#586d79;margin-top:1.5mm}.footer{margin-top:5mm;padding-top:2mm;border-top:1px solid #aebbc3;font-size:8pt;color:#607480}
 @media print{html,body{width:210mm;height:auto;overflow:visible}.report{margin:0}.section,table,tr{overflow:visible!important;max-height:none!important;height:auto!important}}
 </style></head><body><main class="report">
-<header class="doc-head"><div class="doc-title">${esc(title)}</div><div class="doc-meta"><div><span>발생 시각</span><b>${esc(incidentTime.primary)}</b>${incidentTime.secondary?`<small>${esc(incidentTime.secondary)}</small>`:''}</div><div><span>대상 설비</span><b>${esc(equipment)}</b></div><div><span>입력 자료</span><b>${esc(metadata.event_file || 'EVENT.csv')} + ${esc(metadata.raw_file || 'RAW.csv')}</b></div></div></header>
+<header class="doc-head"><div class="doc-head-grid"><div><div class="doc-kicker">TRIPLENS INCIDENT REPORT</div><div class="doc-title">${esc(title)}</div><div class="doc-subtitle">EVENT·RAW 기반 사고 경위 및 보호동작 분석</div></div><table class="approval-table"><caption>결재</caption><thead><tr><th>작성</th><th>검토</th><th>승인</th></tr></thead><tbody><tr><td>${approvalCell(documentMeta.author)}</td><td>${approvalCell(documentMeta.reviewer)}</td><td>${approvalCell(documentMeta.approver)}</td></tr><tr class="approval-date"><td>${approvalCell(documentMeta.authoredAt)}</td><td>${approvalCell(documentMeta.reviewedAt)}</td><td>${approvalCell(documentMeta.approvedAt)}</td></tr></tbody></table></div><table class="document-info"><tbody><tr><th>문서번호</th><td>${esc(documentMeta.reportNo)}</td><th>사고 시각</th><td><b>${esc(documentMeta.incidentTime.primary)}</b>${documentMeta.incidentTime.secondary?`<small>${esc(documentMeta.incidentTime.secondary)}</small>`:''}</td></tr><tr><th>대상 설비</th><td>${esc(documentMeta.equipment)}</td><th>입력 자료</th><td>${esc(documentMeta.inputFiles)}</td></tr></tbody></table></header>
 <section class="section"><h2>1. 사고 개요</h2><div class="summary-line">${esc(operatorClaim({claim:summary}) || direct)}</div></section>
-<section class="section"><h2>2. 발생 원인</h2><div class="cause-grid"><div class="cause-box"><span>발생 원인</span><strong>${esc(primary)}</strong><small>${esc(displayTime(analysis.primary_cause).primary)}</small></div><div class="cause-box"><span>직접 보호동작</span><strong>${esc(direct)}</strong><small>${esc(displayTime(analysis.direct_trigger).primary)}</small></div></div></section>
+<section class="section"><h2>2. 핵심 분석</h2><div class="cause-grid"><div class="cause-box"><span>사고 개시 신호</span><strong>${esc(primary)}</strong><small>${esc(displayTime(analysis.primary_cause).primary)}</small></div><div class="cause-box"><span>직접 보호동작</span><strong>${esc(direct)}</strong><small>${esc(displayTime(analysis.direct_trigger).primary)}</small></div></div></section>
 <section class="section"><h2>3. 시간순 사고 경위</h2><table class="timeline"><thead><tr><th>시간</th><th>설비 / 구분</th><th>발생 내용</th></tr></thead><tbody>${timelineRows || '<tr><td colspan="3">사고 기록 없음</td></tr>'}</tbody></table>${timeline.hiddenCount?`<div class="note">후속 기록 ${timeline.hiddenCount}건은 상세 분석 데이터에서 확인할 수 있습니다.</div>`:''}</section>
 <section class="section"><h2>4. 복구조치 및 확인사항</h2><table><tbody>${recoveryBody}</tbody></table></section>
-<footer class="footer">TripLens READ-ONLY 사고분석 · 상세 근거는 CSV 내보내기에서 확인</footer>
+<footer class="footer">문서번호 ${esc(documentMeta.reportNo)} · TripLens READ-ONLY 사고분석 · 상세 근거 별첨</footer>
 </main></body></html>`;
   }
 
@@ -435,6 +454,7 @@ table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table
     PINPOINT_COLUMNS,
     FAILURE_REPORT_COLUMNS,
     normalizeSections,
+    reportDocumentMeta,
     buildReportHtml,
     printReport,
     pinpointRows,
