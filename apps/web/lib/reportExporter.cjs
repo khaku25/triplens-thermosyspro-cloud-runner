@@ -272,6 +272,10 @@
     const opened = /OPEN|TRIPPED/.test(state) || numericValue === 0 || /\bOPEN\b|개방|개로/.test(source);
     const low = /LOW|ALARM/.test(state) || /\bLOW(?:_LOW)?\b|저하|저유량|저온|하한|\bLL\b/i.test(source);
     if (stage === 'primary' && tags.has('vppExternalTripCommandNative')) return '외부 Trip Command 입력';
+    if (stage === 'primary' && tags.has('vppECMS52GTClosedCommandNative') && tags.has('vppCauseGTBreakerOpenWhileRunning')) return 'GT 운전 중 52GT 차단기 개로 원인 활성화됨';
+    if (stage === 'primary' && tags.has('vppECMS52GTClosedCommandNative')) return '52GT 차단기 투입 명령 해제';
+    if (stage === 'primary' && tags.has('vppECMS52STClosedCommandNative') && tags.has('vppCauseSTBreakerOpenWhileRunning')) return 'ST 운전 중 52ST 차단기 개로 원인 활성화됨';
+    if (stage === 'primary' && tags.has('vppECMS52STClosedCommandNative')) return '52ST 차단기 투입 명령 해제';
     if (stage === 'direct' && active && tags.has('vppGTTripLatch') && tags.has('vppSTTripLatchPublished')) return 'GT·ST Trip Latch 동시 동작';
     if (stage === 'direct' && active && tags.has('vppGTTripLatch')) return 'GT Trip Latch 동작';
     if (stage === 'direct' && active && tags.has('vppSTTripLatchPublished')) return 'ST Trip Latch 동작';
