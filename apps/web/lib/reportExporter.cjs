@@ -295,7 +295,7 @@
     if (active && tags.has('vppGTTripLatch') && tags.has('vppSTTripLatchPublished')) return 'GT·ST Trip Latch 동시 동작';
     if (active && tags.has('vppGTTripLatch')) return 'GT Trip Latch 동작';
     if (active && tags.has('vppSTTripLatchPublished')) return 'ST Trip Latch 동작';
-    const lowSeverity = /\bLOW[\s_-]*LOW\b|\bLL\b|저[\s-]*저/i.test(`${source} ${item?.tag || ''} ${item?.original_tag || ''}`) ? 'LOW-LOW' : 'LOW';
+    const lowSeverity = /(?:^|[^A-Z0-9])(?:FLOW[\s_-]+)?LOW[\s_-]+LOW(?:$|[^A-Z0-9])|\bLL\b|저[\s-]*저/i.test(`${source} ${item?.tag || ''} ${item?.original_tag || ''} ${joinList(item?.original_tags || item?.originalTags, ' ')}`) ? 'LOW-LOW' : 'LOW';
     const mapped = [
       ['vpp52GTClosed', '52GT 차단기 OPEN', opened],
       ['vpp52STClosed', '52ST 차단기 OPEN', opened],
@@ -372,7 +372,7 @@
 
   function stripInlineTechnicalTags(value) {
     const source = String(value || '');
-    return source.replace(/(\s*)\b(?:RAW:\d+:)?(?:태그\s+)?(vpp[A-Za-z0-9_.-]+)\b(에서|에게|으로|은|는|이|가|을|를|와|과|의|에|로)?/gi,
+    const stripped = source.replace(/(\s*)\b(?:RAW:\d+:)?(?:태그\s+)?(vpp[A-Za-z0-9_.-]+)\b(에서|에게|으로|은|는|이|가|을|를|와|과|의|에|로)?/gi,
       (match, gap, tag, particle, offset) => {
         const prefix = source.slice(0, offset);
         const suffix = source.slice(offset + match.length);
@@ -380,6 +380,7 @@
         if (!particle) {
           const previous = prefix.trimEnd().slice(-1);
           const following = suffix.trimStart();
+          if (/^:\s*[+-]?\d/.test(following)) return `${gap}${label}`;
           if (previous !== '(' && (/^\(/.test(following) || /^[+-]?\d/.test(following))) return `${gap}${label}`;
           return '';
         }
@@ -390,6 +391,8 @@
         if (needsSubject) return `${gap}${label}${chooseKoreanParticle(label, particle)}`;
         return chooseKoreanParticle(previousWord, particle);
       });
+    return stripped.replace(/신호인(은|는|이|가|을|를|와|과)(?=\s|[+-]?\d)/g,
+      (_, particle) => `신호${chooseKoreanParticle('신호', particle)}`);
   }
 
   function reportOperatorClaim(item, stage = '', limit = 180) {

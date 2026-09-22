@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
 
@@ -495,6 +496,13 @@ test('FLOW_LOW stays LOW when the equipment name itself ends in FLOW', () => {
   assert.doesNotMatch(html,/GT 배기유량 LOW-LOW/);
 });
 
+test('Blind Test 2 scenario 07 preserves distinct FLOW_LOW and FLOW_LOW_LOW propagation severities', () => {
+  const scenario = JSON.parse(readFileSync(new URL('./fixtures/07-ip-drum-hh-propagation.json', import.meta.url), 'utf8'));
+  const html = exporter.buildReportHtml(scenario);
+  assert.match(html,/HP 터빈 증기유량 LOW → HP 터빈 증기유량 LOW-LOW/);
+  assert.doesNotMatch(html,/HP 터빈 증기유량 LOW-LOW → HP 터빈 증기유량 LOW-LOW/);
+});
+
 test('report prose removes tag citations without leaving punctuation or detached Korean particles', () => {
   const html=exporter.buildReportHtml({
     ...report,
@@ -554,6 +562,50 @@ test('report prose preserves evidence times and repairs grammar around removed t
   assert.match(html,/인가 · 표본 간격에 따른 시간적 불확실성이 존재/);
   assert.match(html,/상태였으며 이 시점/);
   assert.doesNotMatch(html,/model_time_s|이벤트 로그에 시점에|LP_BFP_TRIP_PB 및\)|사이에가|인가되고, 가|발령된 것|상태였으며가|인가 표본/);
+});
+
+test('production LP BFP analysis removes the appositive suffix with its technical tag', () => {
+  const criticalClaim='31.4s에 LP BFP 트립 푸시버튼 동작 이벤트(LP_BFP_TRIP_PB)가 기록되었으나(SESSION_20260915_152746-00001), 해당 시점의 연계 물리 신호인 vppLPFWPTripPushbuttonNative는 0.0 상태(RAW:7:vppLPFWPTripPushbuttonNative)를 유지하여 즉각적인 트립 로직 동작으로 이어지지 않았음.';
+  const primaryClaim='LP BFP(저압 급수 펌프) 트립 푸시버튼 신호인 vppLPFWPTripPushbuttonNative가 47.96s(0.0)와 48.92s(1.0) 사이 구간에서 활성화되어 등록된 연계 로직(CMD-FWP-LP-TRIP)에 트립 신호를 입력함.';
+  const html=exporter.buildReportHtml({
+    ...report,
+    incident_summary:criticalClaim,
+    critical_events:[{
+      claim:criticalClaim,status:'OBSERVED',evidence_ids:['SESSION_20260915_152746-00001','RAW:7:vppLPFWPTripPushbuttonNative'],
+      related_tags:['vppLPFWPTripPushbuttonNative'],
+    }],
+    primary_cause:{
+      claim:primaryClaim,status:'CANDIDATE',evidence_ids:['RAW:21:vppLPFWPTripPushbuttonNative','RAW:22:vppLPFWPTripPushbuttonNative'],
+      related_tags:['vppLPFWPTripPushbuttonNative'],time_interval_s:[47.96,48.92],
+    },
+    report_rows:[],
+  });
+  assert.match(html,/연계 물리 신호는 0\.0 상태/);
+  assert.match(html,/트립 푸시버튼 신호가 47\.96s\(0\.0\)와 48\.92s\(1\.0\)/);
+  assert.doesNotMatch(html,/신호인(?:은|는|이|가|을|를|와|과)/);
+});
+
+test('production LP drum analysis keeps readable labels before colon-prefixed values', () => {
+  const criticalClaim='모델 시간 47.88초와 48.88초 사이에서 저압 드럼(LP Drum) 인벤토리 이상 유입 교란 신호(vppLPDrumInventoryFaultFlowCommand.signal: 0.0 -> 160.0, vppLPDrumInventoryDisturbanceMassFlowTH: 0.0 -> 576.0 t/h)가 인가되어 비정상 유입이 시작되었습니다.';
+  const primaryClaim='저압 드럼(LP Drum) 계통으로 모델 시간 47.88초와 48.88초 사이에 576 t/h 상당의 비정상 유량 교란(vppLPDrumInventoryFaultFlowCommand.signal: 0 -> 160 kg/s, vppLPDrumInventoryDisturbanceMassFlowTH: 0 -> 576 t/h)이 유입되어 드럼 수위의 제어 불능 급상승을 초래했습니다.';
+  const html=exporter.buildReportHtml({
+    ...report,
+    incident_summary:criticalClaim,
+    critical_events:[{
+      claim:criticalClaim,status:'CANDIDATE',time_interval_s:[47.88,48.88],
+      evidence_ids:['RAW:21:vppLPDrumInventoryFaultFlowCommand.signal','RAW:22:vppLPDrumInventoryDisturbanceMassFlowTH'],
+      related_tags:['vppLPDrumInventoryFaultFlowCommand.signal','vppLPDrumInventoryDisturbanceMassFlowTH'],
+    }],
+    primary_cause:{
+      claim:primaryClaim,status:'CANDIDATE',time_interval_s:[47.88,48.88],
+      evidence_ids:['RAW:21:vppLPDrumInventoryFaultFlowCommand.signal','RAW:22:vppLPDrumInventoryDisturbanceMassFlowTH'],
+      related_tags:['vppLPDrumInventoryFaultFlowCommand.signal','vppLPDrumInventoryDisturbanceMassFlowTH'],
+    },
+    report_rows:[],
+  });
+  assert.match(html,/교란 신호\(LP 드럼 외란 유입 지령: 0\.0 -&gt; 160\.0, LP 드럼 외란 유량: 0\.0 -&gt; 576\.0 t\/h\)/);
+  assert.match(html,/비정상 유량 교란\(LP 드럼 외란 유입 지령: 0 -&gt; 160 kg\/s, LP 드럼 외란 유량: 0 -&gt; 576 t\/h\)/);
+  assert.doesNotMatch(html,/\(\s*:|,\s*:/);
 });
 
 test('technical evidence citations are removed as a whole instead of leaving RAW prefixes', () => {
