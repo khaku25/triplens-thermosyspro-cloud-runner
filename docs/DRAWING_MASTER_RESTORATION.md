@@ -62,3 +62,7 @@ baseline and restored failure names and publishes both logs. A green comparison 
 Local Chromium in the ChatGPT container permits offline HTML but blocks HTTP navigation;
 the dedicated GitHub Actions browser checks exercise the HTTP deep links as well.
 Production main remains separate until this feature is explicitly promoted.
+
+## Preview deployment request
+
+This branch is intentionally kept separate from production `main`. A branch-only push may be used to request a Vercel Preview deployment for manual phone/browser validation. Production aliases must not be changed by this step.
