@@ -229,6 +229,8 @@
     if (gtStLatch && /(활성|동작|작동|ACTIVE|LATCH)/i.test(text)) return 'GT·ST Trip Latch 동시 동작';
     if (/외부\s*(?:GT\s*)?(?:Trip|트립)\s*(?:Command|명령).*(?:입력|인가|관측)/i.test(text)) return '외부 Trip Command 입력';
     text = text
+      .replace(/\b(HP|IP|LP)\s+TURBINE(?:\s*::\s*|\s+)FLOW_(LOW_LOW|LOW)\b/gi,
+        (_, unit, severity) => `${String(unit).toUpperCase()} 터빈 증기유량 ${String(severity).toUpperCase().replace('_', '-')}`)
       .replace(/\bmodel_time_s\s*=?\s*/gi, '')
       .replace(/RAW\s*변화\s*시간구간이\s*Direct Trigger\s*시각과\s*겹칩니다/gi, 'RAW 변화구간 · Direct Trigger 시각 중첩')
       .replace(/선후관계는\s*표본만으로\s*확정할\s*수\s*없습니다/g, '선후관계 미확정')
@@ -242,7 +244,8 @@
       .replace(/확정할\s*수\s*없습니다/g, '미확정')
       .replace(/판단할\s*수\s*없습니다/g, '판단 불가')
       .replace(/알\s*수\s*없습니다/g, '미확인')
-      .replace(/활성화되었습니다/g, '활성')
+      .replace(/활성화\s*전환(?:되었|됐)습니다/g, '활성 상태로 전환됨')
+      .replace(/활성화되었습니다/g, '활성화됨')
       .replace(/동작되었습니다/g, '동작')
       .replace(/작동(?:하였|했)습니다/g, '동작')
       .replace(/관측되었습니다/g, '관측')
@@ -309,6 +312,7 @@
     let cleaned = source
       .replace(/기록되었습니다\.\s*단,?\s*/g, '기록되었으나, ')
       .replace(/\bmodel_time_s\s*=?\s*/gi, '')
+      .replace(/\(\s*RAW:\d+:vpp[A-Za-z0-9_.-]+(?:\s*,\s*RAW:\d+:vpp[A-Za-z0-9_.-]+)+\s*\)/gi, '')
       .replace(/\((?:RAW:\d+:)?vpp[A-Za-z0-9_.-]+\)/gi, '');
     cleaned = stripInlineTechnicalTags(cleaned)
       .replace(/1(?:\.0)?\s*\(ACTIVE\)(?:으로)?/gi, 'ACTIVE')
@@ -372,31 +376,37 @@
 
   function stripInlineTechnicalTags(value) {
     const source = String(value || '');
-    const stripped = source.replace(/(\s*)\b(?:RAW:\d+:)?(?:태그\s+)?(vpp[A-Za-z0-9_.-]+)\b(에서|에게|으로|은|는|이|가|을|를|와|과|의|에|로)?/gi,
-      (match, gap, tag, particle, offset) => {
+    const operatorNounEnding = /(?:신호|명령|지령|상태|개도|유량|수위|압력|온도|속도|입력|출력|래치|접점|경보|알람|밸브|차단기|모터|플래그|조건|요인|원인)(?:인)?$/;
+    const stripped = source.replace(/(\s*)\b(RAW:\d+:)?(?:태그\s+)?(vpp[A-Za-z0-9_.-]+)\b(에서|에게|으로|은|는|이|가|을|를|와|과|의|에|로)?/gi,
+      (match, gap, rawPrefix, tag, particle, offset) => {
         const prefix = source.slice(0, offset);
         const suffix = source.slice(offset + match.length);
         const label = technicalTagLabel(tag);
         if (!particle) {
+          if (rawPrefix) return '';
           const previous = prefix.trimEnd().slice(-1);
           const following = suffix.trimStart();
+          const previousWord = prefix.match(/([가-힣]+)$/)?.[1] || '';
+          const outsideParenthetical = prefix.lastIndexOf('(') <= prefix.lastIndexOf(')');
           if (/^:\s*[+-]?\d/.test(following)) return `${gap}${label}`;
           if (previous !== '(' && (/^\(/.test(following) || /^[+-]?\d/.test(following))) return `${gap}${label}`;
+          if (outsideParenthetical && previous !== '(' && /^(?:,|;|(?:및|또는|와|과)(?=\s|$))/.test(following) && !operatorNounEnding.test(previousWord)) return `${gap}${label}`;
           return '';
         }
         const previousWord = prefix.match(/([가-힣]+)$/)?.[1] || '';
         const needsSubject = !previousWord
-          || /(?:사이|구간|시점)에$/.test(previousWord)
+          || /(?:사이|구간|시점)(?:에|에서)$/.test(previousWord)
           || /[,;:([{]$/.test(prefix);
         if (needsSubject) return `${gap}${label}${chooseKoreanParticle(label, particle)}`;
         return chooseKoreanParticle(previousWord, particle);
       });
-    return stripped.replace(/신호인(은|는|이|가|을|를|와|과)(?=\s|[+-]?\d)/g,
-      (_, particle) => `신호${chooseKoreanParticle('신호', particle)}`);
+    return stripped.replace(/(신호|명령|지령|상태|개도|유량|수위|압력|온도|속도|입력|출력|래치|접점|경보|알람|밸브|차단기|모터|플래그|조건|요인|원인)인(은|는|이|가|을|를|와|과|의|에|로)(?=\s|[+-]?\d)/g,
+      (_, noun, particle) => `${noun}${chooseKoreanParticle(noun, particle)}`);
   }
 
   function reportOperatorClaim(item, stage = '', limit = 180) {
-    if (stage !== 'propagation' || !item || typeof item !== 'object') return operatorClaim(item, stage, limit);
+    const propagationStage = stage === 'propagation' || (!stage && String(item?.stage || '').toLowerCase() === 'propagation');
+    if (!propagationStage || !item || typeof item !== 'object') return operatorClaim(item, stage, limit);
     const source = [
       item.claim,
       item.message,
@@ -406,12 +416,21 @@
       ...list(item.evidence).flatMap(evidence => [evidence?.canonical_tag, evidence?.event_tag, evidence?.tag]),
     ].filter(Boolean).join(' ');
     const technicalTags = new Set(source.match(/\bvpp[A-Za-z0-9_.-]+\b/g) || []);
-    if (technicalTags.size <= 1) return operatorClaim(item, stage, limit);
+    const alarmTags = new Set([
+      ...list(item.original_tags || item.originalTags),
+      ...(source.match(/\b[A-Z]+(?:_[A-Z]+)*_LOW(?:_LOW)?\b/gi) || []),
+    ].map(value => String(value).toUpperCase()));
+    const withoutLowLow = source.replace(/\bLOW(?:[-_\s]+)LOW\b/gi, '');
+    const hasNaturalLowPair = (/\bLOW(?:[-_\s]+)LOW\b/i.test(source) && /\bLOW\b/i.test(withoutLowLow))
+      || (/저하/.test(source) && /극저/.test(source));
+    const hasPairedLowSeverity = hasNaturalLowPair
+      || [...alarmTags].some(tag => tag.endsWith('_LOW_LOW') && alarmTags.has(tag.slice(0, -4)));
+    if (technicalTags.size <= 1 && !hasPairedLowSeverity) return operatorClaim(item, 'propagation', limit);
     // A single-tag shorthand is useful for one alarm, but selecting the first
     // shorthand from a multi-signal claim discards the remaining observations.
     // Reuse the same sanitiser without tag-driven shorthand so the complete
     // model narrative (equipment, condition and order) remains visible.
-    return operatorClaim({...item, related_tags:[], relatedTags:[], tags:[]}, stage, limit);
+    return operatorClaim({...item, related_tags:[], relatedTags:[], tags:[]}, 'propagation', limit);
   }
 
   function editedContent(report, section, item, fallback = '') {
