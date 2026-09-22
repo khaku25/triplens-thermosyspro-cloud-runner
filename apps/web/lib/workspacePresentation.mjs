@@ -37,6 +37,27 @@ export function displayEventTime(item={}){
   return clock?{primary:clock,secondary:model}:{primary:model||'시각 미확인',secondary:''};
 }
 
+function semanticTagSummary(tags,stage=''){
+  const joined=[...tags].join(' ');
+  if(stage==='primary'&&/vppExternal(?:ST)?TripCommandNative/.test(joined))return /ExternalSTTripCommandNative/.test(joined)?'외부 ST Trip Command 입력':'외부 GT Trip Command 입력';
+  if(stage==='primary'&&/vppCause(?:GT|ST)?BreakerOpenWhileRunning/.test(joined)){
+    const unit=/vppCauseSTBreakerOpenWhileRunning/.test(joined)?'ST':/vppCauseGTBreakerOpenWhileRunning/.test(joined)?'GT':'';
+    return unit?unit+' 운전 중 차단기 개로 원인 활성화됨':'운전 중 차단기 개로 원인 활성화됨';
+  }
+  if(stage==='primary'&&/vppECMS52(?:GT|ST)ClosedCommandNative/.test(joined)){
+    const unit=/vppECMS52STClosedCommandNative/.test(joined)?'ST':'GT';
+    return '52'+unit+' 차단기 투입 명령 해제';
+  }
+  if(stage==='direct'&&/vpp(?:GT|ST)TripLatch(?:Published)?/.test(joined)){
+    const gt=/vppGTTripLatch/.test(joined);
+    const st=/vppSTTripLatch/.test(joined);
+    if(gt&&st)return 'GT·ST Trip Latch 동시 동작';
+    if(gt)return 'GT Trip Latch 동작';
+    if(st)return 'ST Trip Latch 동작';
+  }
+  if(stage==='primary'&&/BreakerOpenWhileRunning/.test(joined))return '운전 중 차단기 개로 원인 활성화됨';
+  return '';
+}
 export function operatorSummary(item={},stage=''){
   const tags=sourceTags(item);
   const source=String(item?.claim||item?.message||item?.description||'');
@@ -46,14 +67,8 @@ export function operatorSummary(item={},stage=''){
   const active=/ACTIVE|TRIPPED|LATCHED/.test(state)||rawValue===true||numericValue===1||/ACTIVE|동작|작동|인가/.test(source);
   const opened=/OPEN|TRIPPED/.test(state)||numericValue===0||/\bOPEN\b|개방|개로/.test(source);
   const low=/LOW|ALARM/.test(state)||/\bLOW(?:_LOW)?\b|저하|저유량|저온|하한|\bLL\b/i.test(source);
-  if(stage==='primary'&&tags.has('vppExternalTripCommandNative'))return '외부 Trip Command 입력';
-  if(stage==='primary'&&tags.has('vppECMS52GTClosedCommandNative')&&tags.has('vppCauseGTBreakerOpenWhileRunning'))return 'GT 운전 중 52GT 차단기 개로 원인 활성화됨';
-  if(stage==='primary'&&tags.has('vppECMS52GTClosedCommandNative'))return '52GT 차단기 투입 명령 해제';
-  if(stage==='primary'&&tags.has('vppECMS52STClosedCommandNative')&&tags.has('vppCauseSTBreakerOpenWhileRunning'))return 'ST 운전 중 52ST 차단기 개로 원인 활성화됨';
-  if(stage==='primary'&&tags.has('vppECMS52STClosedCommandNative'))return '52ST 차단기 투입 명령 해제';
-  if(stage==='direct'&&active&&tags.has('vppGTTripLatch')&&tags.has('vppSTTripLatchPublished'))return 'GT·ST Trip Latch 동시 동작';
-  if(stage==='direct'&&active&&tags.has('vppGTTripLatch'))return 'GT Trip Latch 동작';
-  if(stage==='direct'&&active&&tags.has('vppSTTripLatchPublished'))return 'ST Trip Latch 동작';
+  const semantic=semanticTagSummary(tags,stage);
+  if(semantic)return semantic;
 
   const mapped=[
     ['vpp52GTClosed','52GT 차단기 OPEN',opened],
@@ -219,6 +234,11 @@ export function friendlyTag(value){
     'vppExternalSTTripCommandNative':'외부 ST Trip Command',
     'vpp52GTClosed':'52GT 차단기 상태',
     'vpp52STClosed':'52ST 차단기 상태',
+    'vppGTTripLatchPublished':'GT Trip Latch',
+    'vppSTTripLatch':'ST Trip Latch',
+    'vpp52GTClosedCommandNative':'52GT 투입 명령',
+    'vpp52STClosedCommandNative':'52ST 투입 명령',
+    'vppCauseBreakerOpenWhileRunning':'운전 중 차단기 개로 원인',
       'vppECMS52GTClosedCommandNative':'52GT 투입 명령',
       'vppECMS52STClosedCommandNative':'52ST 투입 명령',
       'vppCauseGTBreakerOpenWhileRunning':'GT 운전 중 차단기 개로 원인',
