@@ -99,6 +99,15 @@
       ? null
       : Number(aiConfidenceRaw);
 
+    const modelTimeRaw = src.model_time_s ?? src.aligned_time_s;
+    const modelTime = modelTimeRaw === '' || modelTimeRaw == null || !Number.isFinite(Number(modelTimeRaw))
+      ? null
+      : Number(modelTimeRaw);
+    const timeInterval = Array.isArray(src.time_interval_s) && src.time_interval_s.length === 2 &&
+      src.time_interval_s.every((item) => Number.isFinite(Number(item)))
+      ? src.time_interval_s.map(Number)
+      : null;
+
     return {
       stage: normalizedStage,
       status,
@@ -107,6 +116,13 @@
       description: claim,
       evidence_ids: ids,
       related_tags: tags,
+      original_tags: unique(array(src.original_tags || src.original_tag)),
+      logic_ids: unique(array(src.logic_ids || src.logic_id)),
+      equipment: String(src.equipment || ''),
+      evidence: array(src.evidence).map((item) => (item && typeof item === 'object' ? { ...item } : item)),
+      model_time_s: modelTime,
+      time_interval_s: timeInterval,
+      wall_time_utc: String(src.wall_time_utc || ''),
       recorded_time: recordedTime,
       ai_confidence: aiConfidence,
       logic_master_status: logicMasterStatus,
@@ -116,6 +132,11 @@
       counter_evidence: counterEvidence,
       review_required: src.review_required === true || status === 'CANDIDATE' || status === 'UNKNOWN',
       source: src.source || src.source_system || '',
+      category: src.category || src.event_class || '',
+      state: src.state || '',
+      value: src.value,
+      tag: src.tag || '',
+      original_tag: src.original_tag || '',
       note: src.note || src.notes || '',
     };
   }
