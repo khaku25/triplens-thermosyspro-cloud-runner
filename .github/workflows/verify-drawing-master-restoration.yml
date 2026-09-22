@@ -1,0 +1,62 @@
+name: Verify Drawing Master Restoration
+
+on:
+  push:
+    branches: [codex/restore-drawing-master-20260922]
+  pull_request:
+    paths:
+      - 'scripts/logic_assets/**'
+      - 'tests/test_drawing_master*.py'
+      - 'apps/web/public/logic-assets/**'
+      - '.github/workflows/verify-drawing-master-restoration.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: drawing-master-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Preserve exact source and legacy restoration reference
+        run: |
+          mkdir -p outputs/drawing-master-review
+          git rev-parse HEAD > outputs/drawing-master-review/source-sha.txt
+          git archive HEAD | gzip > outputs/drawing-master-review/source.tar.gz
+      - uses: actions/checkout@v4
+        with:
+          ref: 53b7c8d0b4ccf9058b583d00073bbb740093e472
+          path: .legacy-drawing-master
+          persist-credentials: false
+      - name: Archive the existing Drawing Master implementation for comparison
+        run: |
+          git -C .legacy-drawing-master archive HEAD scripts/logic_assets tests/test_drawing_master.py tests/test_logic_viewer.py docs/LOGIC_ASSETS.md | gzip > outputs/drawing-master-review/legacy-drawing-master.tar.gz
+          rm -rf .legacy-drawing-master
+      - name: Baseline generator and pipeline regression tests
+        run: |
+          python -m unittest discover -s tests -p 'test_logic_assets.py' -v
+          python -m unittest discover -s tests -p 'test_logic_pipeline.py' -v
+      - name: Drawing Master regressions when restored
+        run: |
+          python -m unittest discover -s tests -p 'test_drawing_master*.py' -v
+      - name: Preserve provenance and test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drawing-master-review-${{ github.run_id }}
+          path: outputs/drawing-master-review/
+          retention-days: 7
+          if-no-files-found: error
