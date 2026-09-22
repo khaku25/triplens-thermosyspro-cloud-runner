@@ -84,14 +84,12 @@ function ClaimEvidence({item,onOpen}){
   const timeText=[time.primary,time.secondary].filter(value=>value&&value!=='시각 미확인').join(' · ');
   const openClaim=()=>onOpen({kind:'claim',evidenceIds:ids,tags:allTags});
   return <div className="claim-evidence">
-    <div className="claim-evidence-summary"><span>근거</span><strong>{timeText&&timeText!=='시각 미확인'?timeText:'연결 기록'}{ids.length?` · ${ids.length}건`:''}</strong></div>
+    <div className="claim-evidence-summary"><span>근거</span><strong>{timeText||'연결 기록'}{ids.length?` · ${ids.length}건`:''}</strong></div>
     <details>
       <summary>상세 근거 보기{ids.length?` · ${ids.length}건`:''}</summary>
       <div className="detail-evidence-list">
-        <EvidenceLinks ids={ids} onOpen={onOpen}/>
-        {tags.visible.length?<div className="evidence-pills" aria-label="근거 태그">{tags.visible.map(tag=><span key={tag}>{friendlyTag(tag)}</span>)}</div>:null}
-        {tags.hidden.length?<div className="hidden-evidence-tags"><b>추가 근거 태그</b>{tags.hidden.map(tag=><span key={tag}>{friendlyTag(tag)}</span>)}</div>:null}
-        {ids.length?<button className="tag-link" onClick={openClaim}>연결 근거 모아보기</button>:null}
+        {allTags.length?<div className="raw-tag-list" aria-label="원시 근거 태그"><b>원시 태그</b>{allTags.map(tag=><button key={tag} className="raw-tag-link" title={tag} onClick={()=>onOpen({kind:'tag',value:tag})}>{tag}</button>)}</div>:null}
+        {ids.length?<button className="tag-link" onClick={openClaim}>연결 근거 모아보기 · {ids.length}건</button>:null}
       </div>
     </details>
   </div>;
@@ -101,7 +99,7 @@ function ClaimCard({title,item,stage,onOpen}){
   const original=claimText(item);
   const compact=conciseClaim(operatorSummary(item,stage),140);
   const summary=compact.summary;
-  const detail=original&&original!==summary?conciseClaim(operatorPhrase(original),240).summary:compact.detail;
+  const detail=original&&original!==summary?operatorPhrase(original,10000):compact.detail;
   const time=displayEventTime(item);
   return <section className="claim-card cause-card">
     <div className="claim-head"><h3>{title}</h3>{time.primary!=='시각 미확인'?<time>{time.primary}{time.secondary?<small>{time.secondary}</small>:null}</time>:null}</div>
@@ -119,7 +117,7 @@ function AnalysisList({items,stage,onOpen,limit=5}){
     const original=claimText(item);
     const compact=conciseClaim(typeof item==='string'?item:operatorSummary(item,stage),150);
     const summary=compact.summary;
-    const detail=original&&original!==summary?conciseClaim(operatorPhrase(original),240).summary:compact.detail;
+    const detail=original&&original!==summary?operatorPhrase(original,10000):compact.detail;
     const time=displayEventTime(item);
     return <article key={`${item?.claim||'item'}-${index}`}>
       <div><b>{String(index+1).padStart(2,'0')}</b><p>{summary}</p>{time.primary!=='시각 미확인'?<time>{time.primary}{time.secondary?<small>{time.secondary}</small>:null}</time>:null}</div>
