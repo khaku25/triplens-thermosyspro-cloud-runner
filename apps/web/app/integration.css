@@ -378,3 +378,25 @@ body:has(.app-shell){background:#d8dee3;color:#183348}
   .app-shell .review-check-main strong{font-size:14px}
   .app-shell .review-check-main p{font-size:12px}
 }
+
+/* Operator readability: low-contrast evidence and concise cause cards. */
+.app-shell .cause-card{background:#fbfcfd;border-color:#c7d2d9;color:#183348;box-shadow:0 1px 2px rgba(29,55,70,.05)}
+.app-shell .cause-card .claim-head{background:#f2f6f8;border-bottom-color:#d6e0e5;color:#294b5e}
+.app-shell .cause-card .claim-head h3{color:#294b5e}
+.app-shell .cause-card .claim-text{color:#183348;font-size:16px;font-weight:750;line-height:1.55;background:#fff}
+.app-shell .cause-card .claim-detail{border-top:1px solid #e0e7eb;color:#536b7b}
+.app-shell .cause-card .claim-detail summary,.app-shell .cause-card .claim-evidence summary{color:#476579}
+.app-shell .claim-evidence{border-top:1px solid #e0e7eb;padding:10px 12px;background:#f7fafb}
+.app-shell .claim-evidence-summary{display:flex;align-items:baseline;gap:8px;color:#6b8190;font-size:11px}
+.app-shell .claim-evidence-summary strong{color:#365b6f;font-size:12px;font-weight:700}
+.app-shell .evidence-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.app-shell .evidence-pills span{padding:4px 7px;border:1px solid #c9d8e0;background:#eef4f7;color:#41677a;font-size:10px}
+.app-shell .detail-evidence-list{color:#536b7b}
+.app-shell .evidence-links button,.app-shell .tag-link{color:#3d7189;border-bottom-color:#9bb7c4}
+.app-shell .analysis-section{border-color:#c7d2d9;background:#fff;color:#183348}
+.app-shell .analysis-section-head{border-bottom-color:#d6e0e5}
+.app-shell .analysis-list article{border-bottom-color:#e0e7eb}
+.app-shell .analysis-list article>div:first-child p{color:#244a60}
+.app-shell .analysis-list time{color:#6c8290}
+.app-shell .analysis-list article .claim-evidence{background:#f8fafb}
+.app-shell .cause-layout .causal-section{background:#f7fafb}
