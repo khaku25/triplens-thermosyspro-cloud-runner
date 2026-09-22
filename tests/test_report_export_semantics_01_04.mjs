@@ -126,3 +126,18 @@ test('technical drum signals keep operator labels when their values follow the r
   assert.match(summary,/사이에 IP 드럼 외란 유입 지령\(-250\.0\) 및 IP 드럼 외란 유량\(-900\.0 t\/h\)으로/);
   assert.doesNotMatch(summary,/사이에\(|및\(|vppIPDrum/);
 });
+
+test('Blind Test 2 scenario 08 keeps the tagged noun after a conjunction',()=>{
+  const claim='48.04초와 49.04초 사이에 vppHPDrumInventoryFaultFlowCommand.signal 및 vppHPDrumInventoryDisturbanceMassFlowTH의 급증(900 t/h 교란 유입)이 발생하여 HP 드럼 내부 수위가 급격히 상승하고 압력이 증가하여 급수 체크밸브가 차단된 것이 직접적인 근원 원인으로 추정됩니다.';
+  const html=exporter.buildReportHtml({
+    ...baseReport,
+    primary_cause:{
+      claim,status:'CANDIDATE',
+      evidence_ids:['RAW:21:vppHPDrumInventoryFaultFlowCommand.signal','RAW:22:vppHPDrumInventoryDisturbanceMassFlowTH'],
+      related_tags:['vppHPDrumInventoryFaultFlowCommand.signal','vppHPDrumInventoryDisturbanceMassFlowTH'],
+    },
+  });
+  const primary=html.match(/<b>선행 원인 \(Primary Cause\)<\/b><div><strong>(.*?)<\/strong>/)?.[1]||'';
+  assert.match(primary,/HP 드럼 외란 유입 지령 및 HP 드럼 외란 유량의 급증/);
+  assert.doesNotMatch(primary,/및의|vppHPDrum/);
+});

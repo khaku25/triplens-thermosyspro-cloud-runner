@@ -394,6 +394,9 @@
           return '';
         }
         const previousWord = prefix.match(/([가-힣]+)$/)?.[1] || '';
+        if (/^(?:및|또는|와|과)$/.test(previousWord)) {
+          return `${gap}${label}${chooseKoreanParticle(label, particle)}`;
+        }
         const needsSubject = !previousWord
           || /(?:사이|구간|시점)(?:에|에서)$/.test(previousWord)
           || /[,;:([{]$/.test(prefix);
