@@ -85,7 +85,7 @@ def main():
               canvas:getComputedStyle(document.querySelector('.main-area')).backgroundColor,
               panel:getComputedStyle(document.querySelector('.analysis-surface')).backgroundColor
             })""")
-            assert colors=={'header':'rgb(35, 63, 80)','sidebar':'rgb(52, 83, 99)','canvas':'rgb(216, 222, 227)','panel':'rgb(255, 255, 255)'},colors
+            assert colors=={'header':'rgb(35, 63, 80)','sidebar':'rgb(52, 83, 99)','canvas':'rgb(227, 232, 235)','panel':'rgb(251, 252, 253)'},colors
             page.screenshot(path=str(OUT/f'{name}-analysis.png'),full_page=True)
             gt_open=page.locator('.analysis-list article').filter(has_text='52GT 차단기 OPEN').first
             gt_open.locator('summary',has_text='상세 근거 보기').click()
