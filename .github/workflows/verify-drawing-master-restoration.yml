@@ -7,7 +7,6 @@ on:
       - 'scripts/logic_assets/**'
       - 'tests/test_drawing_master*.py'
       - 'apps/web/public/logic-assets/**'
-      - '.github/drawing-master-restoration/**'
       - '.github/workflows/verify-drawing-master-restoration.yml'
   pull_request:
     paths:
@@ -29,7 +28,6 @@ jobs:
     timeout-minutes: 15
     env:
       BASE_SHA: 0a57ecfeea8b34f1328a2df6b6e825aae562d055
-      LEGACY_SHA: 53b7c8d0b4ccf9058b583d00073bbb740093e472
       DRAWING_MASTER_SCREENSHOTS: outputs/drawing-master-review/screenshots
     steps:
       - uses: actions/checkout@v4
@@ -42,36 +40,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Apply bounded restoration delta once when staging is present
+      - name: Verify committed generated assets match their authoring sources
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p outputs/drawing-master-review
-          if [ -f .github/drawing-master-restoration/patch.0.b64 ]; then
-            git fetch --no-tags origin "$LEGACY_SHA"
-            for p in scripts/logic_assets/__init__.py scripts/logic_assets/build.py scripts/logic_assets/drawing_master.py scripts/logic_assets/pipeline.py scripts/logic_assets/viewer.html tests/test_drawing_master.py; do
-              git show "$LEGACY_SHA:$p" > "$p"
-            done
-            python - <<'PY'
-          import base64, hashlib, lzma, pathlib, subprocess
-          root=pathlib.Path('.github/drawing-master-restoration')
-          encoded=''.join((root/f'patch.{i}.b64').read_text().strip() for i in (0,1))
-          patch=lzma.decompress(base64.b64decode(encoded,validate=True))
-          assert hashlib.sha256(patch).hexdigest()=='bbb6c883202cc381f291b7ed79a07392e46e3b1ba5a01d6e6a2b02aec231e142', 'Restoration delta checksum mismatch'
-          allowed={'docs/DRAWING_MASTER_RESTORATION.md','scripts/logic_assets/__init__.py','scripts/logic_assets/pipeline.py','scripts/logic_assets/viewer.html','tests/test_drawing_master_browser.py','tests/test_drawing_master_restoration.py'}
-          paths={line[6:] for line in patch.decode().splitlines() if line.startswith('+++ b/')}
-          assert paths==allowed, paths
-          path=pathlib.Path('outputs/drawing-master-review/restoration.patch');path.write_bytes(patch)
-          subprocess.run(['git','apply','--check','--unidiff-zero',str(path)],check=True)
-          subprocess.run(['git','apply','--unidiff-zero',str(path)],check=True)
-          for i in (0,1):(root/f'patch.{i}.b64').unlink()
-          PY
-          fi
-      - name: Regenerate all Drawing Master publication paths
-        shell: bash
-        run: |
-          set -euo pipefail
-          python scripts/update_triplens_logic.py | tee outputs/drawing-master-review/generation.json
           python scripts/update_triplens_logic.py --check | tee outputs/drawing-master-review/consistency.json
       - name: Install browser test dependencies
         run: |
@@ -129,18 +102,16 @@ jobs:
           dm=json.loads((root/'logic_diagrams/drawing_master_index.json').read_text())
           xml=(root/'logic_diagrams/TripLens_Logic_Master_Current_V8.drawio').read_bytes()
           assert dm['source_sha256']==hashlib.sha256(xml).hexdigest()
-          print(json.dumps({'counts':dm['counts'],'source_sha256':dm['source_sha256']},indent=2))
-          (root/'outputs/drawing-master-review/counts.json').write_text(json.dumps({'counts':dm['counts'],'source_sha256':dm['source_sha256']},indent=2))
+          data={'counts':dm['counts'],'source_sha256':dm['source_sha256']}
+          print(json.dumps(data,indent=2))
+          (root/'outputs/drawing-master-review/counts.json').write_text(json.dumps(data,indent=2))
           PY
-      - name: Prepare reviewed branch-only patch
+      - name: Preserve exact tested revision and offline preview
         shell: bash
         run: |
-          set -euo pipefail
-          git add -N -- scripts/logic_assets tests/test_drawing_master.py tests/test_drawing_master_browser.py tests/test_drawing_master_restoration.py docs/DRAWING_MASTER_RESTORATION.md apps/web/public/logic-assets generated/logic logic_diagrams
-          git diff --binary HEAD > outputs/drawing-master-review/verified.patch
-          sha256sum outputs/drawing-master-review/verified.patch > outputs/drawing-master-review/verified.patch.sha256
-          git rev-parse HEAD > outputs/drawing-master-review/tested-base-sha.txt
-          git diff --stat HEAD > outputs/drawing-master-review/changed-files.txt
+          git rev-parse HEAD > outputs/drawing-master-review/tested-sha.txt
+          git diff --stat "$BASE_SHA" > outputs/drawing-master-review/changed-files.txt
+          git archive HEAD | gzip > outputs/drawing-master-review/source.tar.gz
           cp apps/web/public/logic-assets/viewer.html outputs/drawing-master-review/drawing-master-preview.html
       - name: Preserve successes and failures
         if: always()
@@ -150,38 +121,3 @@ jobs:
           path: outputs/drawing-master-review/
           retention-days: 7
           if-no-files-found: error
-
-  publish-restoration-branch:
-    needs: verify
-    if: github.event_name == 'push' && github.ref == 'refs/heads/codex/restore-drawing-master-20260922'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: drawing-master-review-${{ github.run_id }}
-          path: outputs/drawing-master-review
-      - name: Commit only verified restoration files without touching main
-        env:
-          EXPECTED_SHA: ${{ github.sha }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          sha256sum -c outputs/drawing-master-review/verified.patch.sha256
-          if [ ! -s outputs/drawing-master-review/verified.patch ]; then
-            echo 'No uncommitted restoration changes remain.'
-            exit 0
-          fi
-          test "$(git ls-remote origin refs/heads/codex/restore-drawing-master-20260922 | cut -f1)" = "$EXPECTED_SHA"
-          git apply --check outputs/drawing-master-review/verified.patch
-          git apply outputs/drawing-master-review/verified.patch
-          git add -- scripts/logic_assets tests/test_drawing_master.py tests/test_drawing_master_browser.py tests/test_drawing_master_restoration.py docs/DRAWING_MASTER_RESTORATION.md apps/web/public/logic-assets generated/logic logic_diagrams
-          git add -u -- .github/drawing-master-restoration
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Restore and verify Drawing Master exact object navigation'
-          git push origin HEAD:codex/restore-drawing-master-20260922
-          echo "Verified restoration commit: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
