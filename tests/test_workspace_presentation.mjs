@@ -52,7 +52,7 @@ test('operator summaries remove raw field names and source tags from core trip e
   assert.equal(operatorSummary({
     claim:'외부 트립 명령 태그 vppExternalTripCommandNative가 47.92초와 48.92초 사이에서 인가됨.',
     related_tags:['vppExternalTripCommandNative'],
-  },'primary'),'외부 Trip Command 입력');
+  },'primary'),'외부 GT Trip Command 입력');
   assert.equal(operatorSummary({
     claim:'model_time_s 48.44초에 GT TRIP LATCH(vppGTTripLatch) 및 ST TRIP LATCH(vppSTTripLatchPublished) 보호 기능이 1.0(ACTIVE)으로 동시에 작동함.',
     related_tags:['vppGTTripLatch','vppSTTripLatchPublished'],

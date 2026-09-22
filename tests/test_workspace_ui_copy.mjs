@@ -36,9 +36,9 @@ test('Drawing Master is named and remains reachable from the mobile workspace',(
   assert.doesNotMatch(integrationCss,/\.app-shell \.side-links\s*,\s*\.app-shell \.boundary\s*\{display:none\}/);
 });
 
-test('overflow analysis items and extra evidence tags stay available in disclosures',()=>{
+test('overflow analysis items and raw evidence tags stay available in disclosures',()=>{
   assert.match(source,/hidden-analysis-items/);
-  assert.match(source,/추가 근거 태그/);
+  assert.match(source,/원시 근거 태그/);
 });
 
 test('logic viewer replaces internal diagram copy with operator labels',()=>{
