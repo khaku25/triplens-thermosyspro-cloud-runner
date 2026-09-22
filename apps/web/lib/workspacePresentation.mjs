@@ -70,26 +70,40 @@ export function operatorSummary(item={},stage=''){
   const semantic=semanticTagSummary(tags,stage);
   if(semantic)return semantic;
 
+  const lowSeverity=/LOW[\s_-]*LOW|\bLL\b|저[\s-]*저/i.test(`${source} ${item?.tag||''} ${item?.original_tag||''}`)?'LOW-LOW':'LOW';
   const mapped=[
     ['vpp52GTClosed','52GT 차단기 OPEN',opened],
     ['vpp52STClosed','52ST 차단기 OPEN',opened],
-    ['vppGTExhaustMassFlowTH','GT 배기유량 LOW',low],
-    ['vppGTExhaustTemperatureK','GT 배기온도 LOW',low],
-    ['vppHPTurbineSteamFlowTH','HP 터빈 증기유량 LOW',low],
-    ['vppIPTurbineSteamFlowTH','IP 터빈 증기유량 LOW',low],
-    ['vppLPTurbineSteamFlowTH','LP 터빈 증기유량 LOW',low],
+    ['vppGTExhaustMassFlowTH',`GT 배기유량 ${lowSeverity}`,low],
+    ['vppGTExhaustTemperatureK',`GT 배기온도 ${lowSeverity}`,low],
+    ['vppHPTurbineSteamFlowTH',`HP 터빈 증기유량 ${lowSeverity}`,low],
+    ['vppIPTurbineSteamFlowTH',`IP 터빈 증기유량 ${lowSeverity}`,low],
+    ['vppLPTurbineSteamFlowTH',`LP 터빈 증기유량 ${lowSeverity}`,low],
   ].find(([tag,,confirmed])=>confirmed&&tags.has(tag));
   if(mapped)return mapped[1];
 
-  return operatorPhrase(source
-    .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*초에\s*/gi,'')
+  let cleaned=source
+    .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*초에(?=\s)\s*/gi,'')
     .replace(/\((?:vpp[A-Za-z0-9_.-]+)\)/g,'')
     .replace(/\b(?:태그\s+)?vpp[A-Za-z0-9_.-]+(?:가|이|는|은)?\b/g,'')
     .replace(/1(?:\.0)?\s*\(ACTIVE\)(?:으로)?/gi,'ACTIVE')
     .replace(/개로\s*\(0(?:\.0)?\)\s*됨/g,'개방')
+    .replace(/\(\s*,+\s*/g,'(')
+    .replace(/([,(])\s*=\s*/g,'$1')
+    .replace(/,\s*=\s*/g,', ')
+    .replace(/\(\s*(급증|급감|상승|하락|증가|감소|활성|비활성|동작|정지)\s*\)/g,' $1')
+    .replace(/\(\s*\)/g,'')
+    .replace(/\(\s+/g,'(')
+    .replace(/\s+\)/g,')')
+    .replace(/\s*,\s*/g,', ')
     .replace(/\s+/g,' ')
     .replace(/\s+([,.])/g,'$1')
-    .trim());
+    .trim();
+  if(/^서\s+-?\d+(?:\.\d+)?\s*초\s*(?:사이|구간)/.test(cleaned)){
+    const start=Array.isArray(item?.time_interval_s)&&Number.isFinite(Number(item.time_interval_s[0]))?Number(item.time_interval_s[0]):null;
+    cleaned=`${start===null?'관측 시작 시각에':`${start}초에`}${cleaned}`;
+  }
+  return operatorPhrase(cleaned);
 }
 
 export function compactTimeline(events=[],limit=7){
@@ -150,16 +164,16 @@ export function operatorPhrase(value,limit=180){
   if(/외부\s*(?:GT\s*)?(?:Trip|트립)\s*(?:Command|명령).*(?:입력|인가|관측)/i.test(text))return '외부 Trip Command 입력';
 
   text=text
-    .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*초에\s*/gi,'')
-    .replace(/^\s*\d+(?:\.\d+)?\s*초에\s*/,'')
-    .replace(/RAW\s*변화\s*시간구간이\s*Direct Trigger\s*시각과\s*겹칩니다\.?/gi,'RAW 변화구간 · Direct Trigger 시각 중첩')
+    .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*초에(?=\s)\s*/gi,'')
+    .replace(/^\s*\d+(?:\.\d+)?\s*초에(?=\s)\s*/,'')
+    .replace(/RAW\s*변화\s*시간구간이\s*Direct Trigger\s*시각과\s*겹칩니다\.?/gi,'RAW 변화구간 · Direct Trigger 시각 중첩.')
     .replace(/선후관계는\s*표본만으로\s*확정할\s*수\s*없습니다\.?/g,'선후관계 미확정')
     .replace(/선후관계를\s*확정할\s*수\s*없습니다\.?/g,'선후관계 미확정')
-    .replace(/확인되지\s*않았습니다\.?/g,'미확인')
+    .replace(/확인되지\s*않았습니다\.?/g,'미확인.')
     .replace(/완료되지\s*않았습니다\.?/g,'미완료')
     .replace(/조회가\s*미확인/g,'조회 미확인')
     .replace(/확인(?:이)?\s*필요합니다\.?/g,'확인 필요')
-    .replace(/확인해야\s*합니다\.?/g,'확인 필요')
+    .replace(/확인해야\s*합니다\.?/g,'확인 필요.')
     .replace(/검토해야\s*합니다\.?/g,'검토 필요')
     .replace(/확정할\s*수\s*없습니다\.?/g,'미확정')
     .replace(/판단할\s*수\s*없습니다\.?/g,'판단 불가')
