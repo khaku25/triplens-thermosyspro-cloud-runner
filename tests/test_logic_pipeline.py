@@ -64,6 +64,26 @@ class PipelineTest(unittest.TestCase):
         self.assertEqual(len(ports),4)
         self.assertNotIn('MISSING',{p['kind'] for p in ports})
 
+    def test_drawing_master_is_published_and_hash_bound_for_every_consumer(self):
+        pipeline.publish_project(self.repo(), self.root)
+        relative_paths = [
+            'logic_diagrams/drawing_master_index.json',
+            'generated/logic/drawing_master_index.json',
+            'apps/web/public/logic-assets/drawing_master_index.json',
+        ]
+        payloads = [(self.root / path).read_bytes() for path in relative_paths]
+        self.assertTrue(all(payload == payloads[0] for payload in payloads[1:]))
+
+        drawing = json.loads(payloads[0])
+        drawio = (self.root / 'logic_diagrams/TripLens_Logic_Master_Current_V8.drawio').read_bytes()
+        self.assertEqual(drawing['source_sha256'], hashlib.sha256(drawio).hexdigest())
+
+        manifest = json.loads((self.root / 'apps/web/public/logic-assets/asset_manifest.json').read_text())
+        self.assertEqual(
+            manifest['files']['drawing_master_index.json'],
+            hashlib.sha256(payloads[0]).hexdigest(),
+        )
+
     def test_schema_two_manifest_and_block_tables_follow_signal_path(self):
         repo = self.repo()
         pipeline.publish_project(repo, self.root)

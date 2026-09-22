@@ -56,13 +56,13 @@ function setLegendText(element, value) {
 
 function scrubViewer(document) {
   const headerCopy = document.querySelector('.top p');
-  setText(headerCopy, '태그 검색 · 설비별 분류 · 로직 연결 · 상세 정보');
+  setText(headerCopy, '태그 · 로직 · Drawing Master 도면 검색 · 상세 정보');
 
   const revision = document.querySelector('#revision');
   setText(revision, '태그 및 로직 데이터 · Current V8');
 
   const notice = document.querySelector('#notice');
-  setText(notice, '등록된 태그, 설비 분류, 로직 연결 정보를 조회할 수 있습니다.');
+  setText(notice, '등록된 태그, 로직 연결, Drawing Master 도면 위치를 조회할 수 있습니다.');
 
   const legendItems = document.querySelectorAll('.legend > span');
   setLegendText(legendItems[0], '입력 태그');

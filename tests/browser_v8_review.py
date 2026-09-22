@@ -85,11 +85,11 @@ def main():
               canvas:getComputedStyle(document.querySelector('.main-area')).backgroundColor,
               panel:getComputedStyle(document.querySelector('.analysis-surface')).backgroundColor
             })""")
-            assert colors=={'header':'rgb(35, 63, 80)','sidebar':'rgb(52, 83, 99)','canvas':'rgb(216, 222, 227)','panel':'rgb(255, 255, 255)'},colors
+            assert colors=={'header':'rgb(35, 63, 80)','sidebar':'rgb(52, 83, 99)','canvas':'rgb(227, 232, 235)','panel':'rgb(251, 252, 253)'},colors
             page.screenshot(path=str(OUT/f'{name}-analysis.png'),full_page=True)
             gt_open=page.locator('.analysis-list article').filter(has_text='52GT 차단기 OPEN').first
             gt_open.locator('summary',has_text='상세 근거 보기').click()
-            gt_open.get_by_role('button',name='E-3',exact=True).click()
+            gt_open.get_by_role('button',name='연결 근거 모아보기 · 1건',exact=True).click()
             expect(page.get_by_role('button',name='이전 화면',exact=True)).to_be_visible()
             expect(page.get_by_role('heading',name='근거 상세',exact=True)).to_be_visible()
             logic_button=page.locator('.logic-targets button')
@@ -105,7 +105,7 @@ def main():
             expect(page.locator('.analysis-list article').filter(has_text='52GT 차단기 OPEN').first).to_be_visible()
             direct=page.locator('.cause-card').filter(has_text='직접 보호동작')
             direct.locator('summary',has_text='상세 근거 보기').click()
-            direct.get_by_role('button',name='E-1',exact=True).click()
+            direct.get_by_role('button',name='연결 근거 모아보기 · 1건',exact=True).click()
             expect(page.get_by_role('heading',name='근거 상세',exact=True)).to_be_visible()
             page.get_by_role('button',name='이전 화면',exact=True).click()
             if width>640:
@@ -113,7 +113,7 @@ def main():
                 logic_dialog=page.get_by_role('dialog',name='태그·운전조건·룰 기준 도면')
                 expect(logic_dialog).to_be_visible()
                 viewer=page.frame_locator('dialog iframe')
-                expect(viewer.get_by_role('banner').get_by_text('태그 검색 · 설비별 분류 · 로직 연결 · 상세 정보',exact=True)).to_be_visible()
+                expect(viewer.get_by_role('banner').get_by_text('태그 · 로직 · Drawing Master 도면 검색 · 상세 정보',exact=True)).to_be_visible()
                 viewer_text=viewer.locator('body').inner_text()
                 for hidden in ('고정 Cause Matrix','등록 확인은 사고 원인 확정','미등록 관측 태그','등록 Logic: 미확인'):
                     assert hidden not in viewer_text,hidden

@@ -74,13 +74,45 @@ test('approved recovery appears consistently in PDF, report CSV and PINPOINT', (
   for(const value of [approved.actions,approved.operator,approved.restart_conditions,approved.approver,approved.approved_at,approved.recovered_at]){
     for(const output of [html,csv,pinpoint])assert.ok(output.includes(value),`missing ${value} from export`);
   }
-  assert.doesNotMatch(html,/E1/);
-  for(const output of [csv,pinpoint])assert.ok(output.includes('E1'),'missing E1 from detailed export');
+  for(const output of [html,csv,pinpoint])assert.ok(output.includes('E1'),'missing E1 from detailed export');
   const recoveryRows=parseCSV(pinpoint).records.filter(row=>row.causal_stage==='RECOVERY');
   assert.ok(recoveryRows.length>=4);
   assert.ok(recoveryRows.every(row=>row.recovery_status==='RECOVERED'));
   assert.ok(recoveryRows.some(row=>row.event_id==='E1'&&row.canonical_tag==='GT.TRIP.LATCH'));
   assert.ok(recoveryRows.some(row=>row.disposition==='APPROVED'));
+});
+
+test('four-page PDF points overflow events to the report CSV that retains every SOE row', () => {
+  const bulkEvents=Array.from({length:40},(_,index)=>({
+    event_id:`E${index+1}`,
+    evidence_id:`E${index+1}`,
+    model_time_s:48+index/10,
+    message:`Bulk workspace event ${String(index+1).padStart(2,'0')}`,
+    source_node:`vppBulk${index+1}`,
+    tag:`BULK_${index+1}`,
+    source:'DCS',
+  }));
+  const bulkCatalog=bulkEvents.map(event=>({
+    evidence_id:event.evidence_id,
+    source_kind:'EVENT',
+    model_time_s:event.model_time_s,
+    source_node:event.source_node,
+    tag:event.tag,
+    canonical_tag:event.tag,
+  }));
+  const reportRows=buildDraftRows({events:bulkEvents,evidence_catalog:bulkCatalog,analysis});
+  const out=buildWorkspaceExportReport({
+    result:{run_id:'RUN-BULK',data_digest:'bulk'},analysis,events:bulkEvents,catalog:bulkCatalog,reportRows,recovery,
+    eventFileName:'EVENT.csv',rawFileName:'RAW.csv',
+  });
+  const html=exporter.buildReportHtml(out);
+  const csv=draftCSV(out.report_rows);
+  assert.match(html,/Bulk workspace event 12/);
+  assert.doesNotMatch(html,/Bulk workspace event 13/);
+  assert.match(html,/나머지 28건은 보고서 CSV에서 확인/);
+  assert.equal(out.report_rows.filter(row=>row.section==='시간대별 사건·자동동작(SOE)').length,40);
+  assert.match(csv,/Bulk workspace event 01/);
+  assert.match(csv,/Bulk workspace event 40/);
 });
 
 test('unresolved recovery evidence is included in the workspace integrity result', () => {

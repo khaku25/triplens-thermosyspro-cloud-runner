@@ -174,6 +174,29 @@ class ViewerTest(unittest.TestCase):
         self.page.wait_for_selector('[data-ready="true"]')
         self.page.screenshot(path=os.getenv('TRIPLENS_DESKTOP_SCREENSHOT',str(self.output/'desktop.png')),full_page=True)
 
+    def test_mobile_drawing_master_tap_opens_exact_cell(self):
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        self.page.get_by_role('button', name='Drawing Master', exact=True).click()
+        self.assertEqual(self.page.locator('#search').get_attribute('placeholder'), '태그 · 로직 · 페이지 · 셀 검색')
+        self.page.locator('#search').fill('operation:CMD-FWP-HP-TRIP')
+        self.page.locator('#results button').first.click()
+        self.assertEqual(self.page.locator('#page-select').input_value(), 'IG-030')
+        self.assertEqual(self.page.locator('#diagram [data-cell-id="operation:CMD-FWP-HP-TRIP"].selected').count(), 1)
+        self.assertEqual(self.page.locator('#diagram .selected').count(), 1)
+        self.assertIn('source_ref:', self.page.locator('#inspector').inner_text())
+
+        source_ref = 'logic_diagrams/TripLens_Logic_Master_Current_V8.drawio#page=screen:09b807ee953a&cell=operation:CMD-FWP-HP-TRIP'
+        self.page.locator('#search').fill(source_ref)
+        self.assertEqual(self.page.locator('#results button').count(), 1)
+        self.page.locator('#results button').click()
+        self.assertEqual(self.page.locator('#page-select').input_value(), 'screen:09b807ee953a')
+        self.assertEqual(self.page.locator('#diagram .selected').count(), 1)
+        self.assertEqual(self.page.locator('#diagram [data-cell-id="operation:CMD-FWP-HP-TRIP"].selected').count(), 1)
+
+        self.assertFalse(self.page.evaluate("TripLensLogic.openDrawing('title')"))
+        self.assertIn('여러 페이지', self.page.locator('#inspector').inner_text())
+        self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'), 392)
+
 
 if __name__=='__main__':
     unittest.main()

@@ -346,7 +346,21 @@
       const content = String(row.content ?? row['내용'] ?? '').trim();
       const original = String(event.claim || event.message || '').trim();
       const contentEdited = row.edited === true || (content && content !== original);
-      return {...event,claim:content || original,__reportContent:contentEdited,__timeOverride:row.edited === true ? String(row.time || '') : ''};
+      const projected = {...event,claim:content || original,__reportContent:contentEdited};
+      const field = (...keys) => keys.find(key => Object.prototype.hasOwnProperty.call(row, key));
+      const statusKey = field('status', '상태');
+      if (statusKey) {
+        const status = String(row[statusKey] ?? '').trim() || 'UNKNOWN';
+        projected.status = status;
+        projected.disposition = status;
+      }
+      const evidenceKey = field('evidence_ids', '근거 ID');
+      if (evidenceKey) projected.evidence_ids = evidenceIds(row[evidenceKey]);
+      const tagsKey = field('tags', '관련 태그');
+      if (tagsKey) projected.related_tags = list(row[tagsKey]).flatMap(value => String(value || '').split(/[;,]/)).map(value => value.trim()).filter(Boolean);
+      const timeKey = field('time', '기록 시각');
+      projected.__timeOverride = timeKey ? (String(row[timeKey] ?? '').trim() || '시각 미확인') : '';
+      return projected;
     }) : events;
     rows.sort((left, right) => {
       const a = Number(left?.model_time_s ?? left?.recorded_time ?? left?.aligned_time ?? left?.time);
@@ -365,7 +379,49 @@
   function buildReportHtml(report) {
     const analysis = normalizedAnalysis(report);
     const metadata = report.metadata || {};
-    const title = '설비 고장 분석보고서';
+    const title = '설비 장애·고장 보고서';
+    const reportRows = list(report.report_rows);
+    const valueOf = (row, ...keys) => {
+      for (const key of keys) {
+        const value = row?.[key];
+        if (value !== undefined && value !== null && String(value).trim() !== '') return String(value).trim();
+      }
+      return '';
+    };
+    const sectionRows = (...names) => {
+      const wanted = new Set(names);
+      return reportRows.filter(row => wanted.has(valueOf(row, 'section', '구분')));
+    };
+    const placeholder = /^(?:기록 없음|복구·조치 기록 입력 대기|입력 대기|입력 필요|추가 확인 필요|미확인|미기록|—|-)$/;
+    const fullText = value => String(value ?? '')
+      .replace(/…/g, '')
+      .replace(/\.{3,}/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const useful = value => {
+      const text = fullText(value);
+      return text && !placeholder.test(text) ? text : '';
+    };
+    const printableStatus = value => {
+      const status = String(value || '').toUpperCase();
+      if (/CONFIRMED|PASS|APPROVED|ACTIVE|COMPLETE/.test(status)) return '■ 확인';
+      if (/OBSERVED|RECOVERED|PARTIAL/.test(status)) return '○ 관측';
+      if (/CANDIDATE|HOLD|UNKNOWN|REVIEW|PENDING/.test(status)) return '△ 후보';
+      return useful(value) || '연결';
+    };
+    const fullOperator = (item, stage = '') => {
+      const compact = fullText(operatorClaim(item, stage));
+      if (compact && !String(operatorClaim(item, stage)).includes('…')) return compact;
+      const source = item?.claim || item?.message || item?.description || item?.summary || asText(item);
+      return fullText(operatorPhrase(source, 4000));
+    };
+    const evidenceCount = item => evidenceIds(item?.evidence_ids || item?.evidenceIds || []).length;
+    const evidenceMeta = item => {
+      const when = displayTime(item);
+      const time = when.primary === '시각 미확인' ? '' : [when.primary, when.secondary].filter(Boolean).join(' · ');
+      const count = evidenceCount(item);
+      return [time, count ? `근거 ${count}건` : ''].filter(Boolean).join(' · ') || 'EVENT·RAW 연결';
+    };
     const firstCritical = analysis.critical_events[0];
     const incidentTime = displayTime({
       wall_time_utc: report.incident_wall_time || firstCritical?.wall_time_utc,
@@ -379,43 +435,176 @@
     const directSource = String(directRow?.content ?? directRow?.['내용'] ?? directOriginal);
     const primaryEdited = Boolean(primaryRow && (primaryRow.edited === true || primarySource !== String(primaryOriginal)));
     const directEdited = Boolean(directRow && (directRow.edited === true || directSource !== String(directOriginal)));
-    const primary = (primaryEdited ? shortText(primarySource) : operatorPhrase(operatorClaim(analysis.primary_cause, 'primary'))) || '발생 원인 기록 없음';
-    const direct = (directEdited ? shortText(directSource) : operatorPhrase(operatorClaim(analysis.direct_trigger, 'direct'))) || '직접 보호동작 기록 없음';
+    const primary = useful(primaryEdited ? primarySource : fullOperator(analysis.primary_cause, 'primary')) || '선행 원인 후보 없음';
+    const direct = useful(directEdited ? directSource : fullOperator(analysis.direct_trigger, 'direct')) || '직접 보호동작 없음';
+    const projectClaimRow = (source, row, claim) => {
+      const projected = {...(source || {}), claim};
+      if (!row) return projected;
+      const field = (...keys) => keys.find(key => Object.prototype.hasOwnProperty.call(row, key));
+      const statusKey = field('status', '상태');
+      if (statusKey) {
+        const status = String(row[statusKey] ?? '').trim() || 'UNKNOWN';
+        projected.status = status;
+        projected.disposition = status;
+      }
+      const evidenceKey = field('evidence_ids', '근거 ID');
+      if (evidenceKey) projected.evidence_ids = evidenceIds(row[evidenceKey]);
+      const tagsKey = field('tags', '관련 태그');
+      if (tagsKey) projected.related_tags = list(row[tagsKey]).flatMap(value => String(value || '').split(/[;,]/)).map(value => value.trim()).filter(Boolean);
+      const timeKey = field('time', '기록 시각');
+      if (timeKey) {
+        delete projected.model_time_s;
+        delete projected.aligned_time;
+        const reportTime = String(row[timeKey] ?? '').trim();
+        const modelTime = reportTime.match(/(?:T\+)?(-?\d+(?:\.\d+)?)\s*s?$/i);
+        if (/^\d{4}-\d{2}-\d{2}T/.test(reportTime)) projected.wall_time_utc = reportTime;
+        else projected.recorded_time = modelTime ? modelTime[1] : reportTime;
+      }
+      return projected;
+    };
+    const primaryItem = projectClaimRow(analysis.primary_cause, primaryRow, primary);
+    const directItem = projectClaimRow(analysis.direct_trigger, directRow, direct);
     const summaryOriginal = report.incident_summary || direct;
     const summaryRow = editedRow(report, '개요', '장애 요약');
     const summarySource = String(summaryRow?.content ?? summaryRow?.['내용'] ?? summaryOriginal);
     const summaryEdited = Boolean(summaryRow && (summaryRow.edited === true || summarySource !== String(summaryOriginal)));
-    const summary = summaryEdited ? shortText(summarySource, 180) : operatorPhrase(summarySource, 180);
-    const summaryDisplay = summaryEdited ? summary : operatorPhrase(operatorClaim({claim:summary}), 180);
+    const summary = fullText(summarySource);
+    const summaryDisplay = useful(summaryEdited ? summary : fullOperator({claim:summary})) || direct;
     const equipment = report.equipment || metadata.equipment || [...new Set(analysis.critical_events.map(equipmentLabel).filter(Boolean))].slice(0,3).join(' · ') || 'PLANT';
-    const timeline = briefTimeline(report, 7);
-    const timelineRows = timeline.visible.map(item => {
+    const timeline = briefTimeline(report, 12);
+    const timelineItems = timeline.visible;
+    const timelineTotal = timelineItems.length + timeline.hiddenCount;
+    const timelineRow = (item, index, detailed = false) => {
       const when = item.__timeOverride ? {primary:item.__timeOverride,secondary:''} : displayTime(item);
-      const claim = item.__reportContent ? shortText(item.claim) : operatorPhrase(operatorClaim(item));
-      return `<tr class="timeline-row"><td><b>${esc(when.primary)}</b>${when.secondary?`<small>${esc(when.secondary)}</small>`:''}</td><td>${esc(equipmentLabel(item))}</td><td>${esc(claim)}</td></tr>`;
+      const claim = useful(item.__reportContent ? item.claim : fullOperator(item)) || '사고 구간 변화';
+      const ids = evidenceIds(item?.evidence_ids || item?.evidenceIds || []);
+      const source = useful(item?.source || item?.category || item?.stage) || 'EVENT';
+      const state = printableStatus(item?.status || item?.disposition || 'OBSERVED');
+      if (detailed) return `<tr><td>${index + 1}</td><td><b>${esc(when.primary === '시각 미확인' ? '사고 구간' : when.primary)}</b>${when.secondary?`<small>${esc(when.secondary)}</small>`:''}</td><td>${esc(source)}</td><td>${esc(equipmentLabel(item))}</td><td>${esc(claim)}</td><td>${esc(state)}</td><td>${esc(ids.join(' · ') || '연결')}</td></tr>`;
+      return `<tr><td><b>${esc(when.primary === '시각 미확인' ? '사고 구간' : when.primary)}</b>${when.secondary?`<small>${esc(when.secondary)}</small>`:''}</td><td>${esc(source)}</td><td>${esc(claim)}</td><td>${esc(state)}</td><td>${esc(ids.join(' · ') || '연결')}</td></tr>`;
+    };
+    const firstTimelineRows = timelineItems.slice(0, 4).map((item, index) => timelineRow(item, index)).join('');
+    const continuation = timelineItems.length > 4 ? timelineItems.slice(4) : timelineItems;
+    const continuationRows = continuation.map((item, index) => timelineRow(item, timelineItems.length > 4 ? index + 4 : index, true)).join('');
+
+    const operationRows = sectionRows('사고 발생 전 운전 현황').filter(row => useful(valueOf(row, 'content', '내용')));
+    const operationCards = (operationRows.length ? operationRows.slice(0, 4).map(row => ({
+      label:valueOf(row, 'item', '항목') || '운전 상태', value:useful(valueOf(row, 'content', '내용')),
+    })) : [
+      {label:'대상 설비',value:equipment},
+      {label:'사고 구간',value:incidentTime.secondary || (incidentTime.primary === '시각 미확인' ? 'EVENT 기준' : incidentTime.primary)},
+      {label:'보호 상태',value:direct},
+      {label:'파급 항목',value:analysis.propagation.length ? `${analysis.propagation.length}건 관측` : 'EVENT·RAW 연결'},
+    ]).map(item => `<div class="metric-card"><span>${esc(item.label)}</span><b>${esc(item.value)}</b></div>`).join('');
+
+    const propagationText = analysis.propagation.map(item => fullOperator(item, 'propagation')).filter(Boolean).slice(0, 4).join(' → ') || '보호동작 이후 설비 변화 연결';
+    const faultRows = [
+      ['최초 Event', fullOperator(firstCritical) || direct, printableStatus(firstCritical?.status || 'CONFIRMED')],
+      ['주요 현상', [direct, propagationText].filter(Boolean).join(' → '), '시간순 확인'],
+      ['상태 판정', `선행 원인 ${printableStatus(primaryItem?.status || primaryItem?.disposition || 'CANDIDATE')} · 직접 보호동작 ${printableStatus(directItem?.status || directItem?.disposition || 'CONFIRMED')} · 파급 ${analysis.propagation.length ? '○ 관측' : '연결'}`, '근거 연결'],
+    ].map(row => `<tr><th>${esc(row[0])}</th><td>${esc(row[1])}</td><td>${esc(row[2])}</td></tr>`).join('');
+
+    const causeRows = [
+      ['선행 원인 (Primary Cause)', primary, printableStatus(primaryItem?.status || primaryItem?.disposition || 'CANDIDATE'), evidenceMeta(primaryItem)],
+      ['직접 Trip 원인 (Direct Trigger)', direct, printableStatus(directItem?.status || directItem?.disposition || 'CONFIRMED'), evidenceMeta(directItem)],
+      ['파급 결과 (Propagation)', propagationText, analysis.propagation.length ? '○ 관측' : '연결', analysis.propagation.length ? `${analysis.propagation.length}개 파급 항목` : 'EVENT·RAW 연결'],
+    ].map(row => `<div class="cause-row"><b>${esc(row[0])}</b><div><strong>${esc(row[1])}</strong><small>${esc(row[3])}</small></div><span class="status">${esc(row[2])}</span></div>`).join('');
+    const keyEvidenceRows = [
+      ['선행 원인', evidenceMeta(primaryItem), printableStatus(primaryItem?.status || primaryItem?.disposition || 'CANDIDATE')],
+      ['직접 보호동작', evidenceMeta(directItem), printableStatus(directItem?.status || directItem?.disposition || 'CONFIRMED')],
+      ['파급 결과', analysis.propagation.length ? `${analysis.propagation.length}개 항목 · EVENT·RAW 연결` : 'EVENT·RAW 연결', analysis.propagation.length ? '○ 관측' : '연결'],
+    ].map(row => `<tr><th>${esc(row[0])}</th><td>${esc(row[1])}</td><td>${esc(row[2])}</td></tr>`).join('');
+
+    const causalCards = [
+      ['선행 원인 (Primary Cause)', primary, primaryItem],
+      ['주요 이벤트 (Critical Event)', fullOperator(firstCritical) || direct, firstCritical || directItem],
+      ['직접 Trip 원인 (Direct Trigger)', direct, directItem],
+      ['파급 결과 (Propagation)', propagationText, analysis.propagation[0] || {}],
+    ].map(([label,claim,item]) => {
+      const when=displayTime(item); const ids=evidenceIds(item?.evidence_ids || []);
+      return `<div class="chain-row"><div class="chain-time">${esc(when.primary === '시각 미확인' ? '사고 구간' : when.primary)}</div><div class="chain-card"><b>${esc(label)}</b><span class="status">${esc(printableStatus(item?.status || (label.includes('선행')?'CANDIDATE':'OBSERVED')))}</span><strong>${esc(claim)}</strong><small>${esc(ids.length ? `근거 ID ${ids.join(' · ')}` : evidenceMeta(item))}</small></div></div>`;
     }).join('');
-    const recoveryRows = list(report.report_rows).filter(row => ['운전원·정비 조치사항','조치 결과 및 복구 판정'].includes(String(row?.section || '')));
-    const recoveryBody = recoveryRows.length
-      ? recoveryRows.map(row => `<tr><th>${esc(row.item || '')}</th><td>${esc(row.content || '기록 없음')}${row.time?`<small>${esc(row.time)}</small>`:''}${row.note?`<small>${esc(row.note)}</small>`:''}</td></tr>`).join('')
-      : `<tr><th>복구 상태</th><td>${esc(asText(report.recovery_check || '기록 없음'))}</td></tr>`;
+
+    const recommendationRows = sectionRows('재발방지 대책 — 검토 권고사항').filter(row => useful(valueOf(row, 'content', '내용')));
+    const recommendationSource = recommendationRows.length ? recommendationRows : analysis.review_recommendations.map((item,index)=>({item:`검토 항목 ${index+1}`,content:item?.claim || asText(item),status:item?.status || 'CANDIDATE'}));
+    const recommendationBody = (recommendationSource.length ? recommendationSource : [
+      {item:'근거 연결 유지',content:'EVENT·RAW와 Tag Master 연결 상태를 다음 분석에도 동일하게 유지',status:'CANDIDATE'},
+    ]).slice(0,5).map(row => `<tr><th>${esc(valueOf(row,'item','항목') || '검토 항목')}</th><td>${esc(useful(valueOf(row,'content','내용') || row?.claim) || '근거 연결 유지')}</td><td>${esc(printableStatus(valueOf(row,'status','상태') || row?.status || 'CANDIDATE'))}</td></tr>`).join('');
+
+    const recoveryDetailRows = sectionRows('운전원·정비 조치사항','조치 결과 및 복구 판정').filter(row => useful(valueOf(row,'content','내용')));
+    const recoveryDetails = recoveryDetailRows.length ? `<table class="recovery-details"><tbody>${recoveryDetailRows.map(row => {
+      const content=useful(valueOf(row,'content','내용'));
+      const meta=[useful(valueOf(row,'time','기록 시각')),useful(valueOf(row,'note','비고'))].filter(Boolean).join(' · ');
+      return `<tr><th>${esc(valueOf(row,'item','항목') || '조치 결과')}</th><td>${esc(content)}${meta?`<small>${esc(meta)}</small>`:''}</td></tr>`;
+    }).join('')}</tbody></table>` : '';
+
+    const evidenceSourceRows = sectionRows('증거자료').filter(row => evidenceIds(valueOf(row,'evidence_ids','근거 ID')).length || useful(valueOf(row,'tags','관련 태그')) || useful(valueOf(row,'content','내용')));
+    const claimEvidence = [primaryItem,directItem,...analysis.critical_events,...analysis.propagation].flatMap((item,itemIndex) => {
+      const ids=evidenceIds(item?.evidence_ids || []); const tags=list(item?.related_tags || item?.tags);
+      return ids.map((id,index)=>({section:'증거자료',item:id,content:fullOperator(item),status:item?.status || 'OBSERVED',evidence_ids:id,tags:tags[index] || tags[0] || '',time:displayTime(item).primary,__order:itemIndex}));
+    });
+    const evidenceRows = (evidenceSourceRows.length ? evidenceSourceRows : claimEvidence).slice(0, 10).map((row,index) => {
+      const ids=evidenceIds(valueOf(row,'evidence_ids','근거 ID'));
+      const id=ids[0] || valueOf(row,'item','항목') || `근거-${index+1}`;
+      const source=/^RAW/i.test(id)?'RAW':/^EV|EVENT/i.test(id)?'EVENT':'EVENT/RAW';
+      const tag=useful(valueOf(row,'tags','관련 태그','source_node','canonical_tag')) || '연결 태그';
+      const label=useful(valueOf(row,'content','내용','item','항목')) || fullOperator(row) || '근거 데이터';
+      const time=useful(valueOf(row,'time','기록 시각','recorded_time')) || '사고 구간';
+      const status=printableStatus(valueOf(row,'status','상태') || row?.status || 'OBSERVED');
+      return {id,source,tag,label,time,status};
+    });
+    const evidenceBody = evidenceRows.map(row => `<tr><td>${esc(row.id)}</td><td>${esc(row.source)}</td><td><code>${esc(row.tag)}</code></td><td>${esc(row.label)}</td><td>${esc(row.time)}</td><td>${esc(row.status)}</td></tr>`).join('') || '<tr><td colspan="6">EVENT·RAW 핵심 근거 연결</td></tr>';
+    const tagExample = evidenceRows[0] || {tag:'Tag Master 연결',label:'표시명',source:'EVENT/RAW',id:'연결 근거'};
+    const documentDate = String(report.incident_wall_time || firstCritical?.wall_time_utc || '').slice(0,10) || '사고 분석일';
+    const documentNumber = useful(report.document_number || metadata.document_number) || `TL-INC-${String(report.run_id || metadata.run_id || 'REPORT').replace(/[^A-Za-z0-9-]/g,'-')}`;
+    const inputFiles = `${metadata.event_file || 'EVENT.csv'} + ${metadata.raw_file || 'RAW.csv'}`;
+    const header = (page, continued = false) => `<header class="report-head"><div><h1>${esc(title)}${continued?' <span>(계속)</span>':''}</h1><p>사고분석 근거: ${esc(inputFiles)} / 분석제출: READ-ONLY</p><p>문서번호 ${esc(documentNumber)} · 설비 ${esc(equipment)} · 발생일시 ${esc(documentDate)}</p></div><div class="approval"><div><span>작성</span><b>자동</b></div><div><span>검토</span><b>자동</b></div><div><span>승인</span><b>READ-ONLY</b></div></div></header>`;
+    const footer = page => `<footer class="page-footer"><span>TripLens READ-ONLY · 근거 확보 항목만 표시 · 원본 EVENT/RAW 별도 보관</span><b>${page} / 4</b></footer>`;
+    const page = (number, body, continued = number > 1) => `<main class="report-page">${header(number,continued)}<div class="page-body"><div class="page-content">${body}</div></div>${footer(number)}</main>`;
+
+    const pageOne = page(1, `
+      <section><h2>1. 개요</h2><table class="overview"><tbody>
+        <tr><th>발생 시각</th><td>${esc(incidentTime.primary === '시각 미확인' ? 'EVENT 기록 기준 사고 구간' : [incidentTime.primary,incidentTime.secondary].filter(Boolean).join(' · '))}</td></tr>
+        <tr><th>대상 설비</th><td>${esc(equipment)}</td></tr>
+        <tr><th>장애 요약</th><td>${esc(summaryDisplay)}</td></tr>
+        <tr><th>분석 상태</th><td>EVENT·RAW 연결 · 핵심 사고경위 ${timelineItems.length}건${timeline.hiddenCount ? ` / 전체 ${timelineTotal}건` : ''}</td></tr>
+      </tbody></table></section>
+      <section><h2>2. 운전 현황</h2><div class="metric-grid">${operationCards}</div></section>
+      <section><h2>3. 장애 현상</h2><table class="phenomena"><tbody>${faultRows}</tbody></table></section>
+      <section><h2>5. 발생 원인</h2><div class="cause-list">${causeRows}</div></section>
+      <section><h2>핵심 근거 요약</h2><table class="key-evidence"><tbody>${keyEvidenceRows}</tbody></table></section>
+      <p class="policy-note">상태 표시는 보고서 편집 행의 확인·관측·후보 판정과 연결 근거를 그대로 따른다.</p>`);
+
+    const pageTwo = page(2, `
+      <div class="page-kicker">시간대별 조치사항 및 인과관계</div>
+      <section><h2>4. 시간대별 조치사항</h2><table class="timeline"><thead><tr><th>기록 시각</th><th>구분</th><th>내용</th><th>상태</th><th>근거 ID</th></tr></thead><tbody>${firstTimelineRows || '<tr><td colspan="5">EVENT·RAW 사고 구간 연결</td></tr>'}</tbody></table></section>
+      <section><h2>6. 조치 결과</h2><div class="metric-grid three"><div class="metric-card"><span>보호 동작</span><b>${esc(printableStatus(directItem?.status || directItem?.disposition || 'CONFIRMED'))}</b></div><div class="metric-card"><span>근거 연결</span><b>EVENT·RAW ${evidenceRows.length}건</b></div><div class="metric-card"><span>최종 판정</span><b>${esc(report.document_state==='REVIEWED'?'검토 완료':'분석 완료')}</b></div></div>${recoveryDetails}</section>
+      <section><h2>5-1. 인과관계 요약</h2><div class="chain-list">${causalCards}</div></section>
+      <section><h2>7. 판정 기준</h2><div class="rule-box"><b>선행 원인</b><span>RAW 변화구간과 원인 로직 연결</span><b>직접 보호동작</b><span>EVENT 기록과 RAW 상태 연결</span><b>표시 원칙</b><span>확인 · 관측 · 후보 상태로 구분</span></div></section>`);
+
+    const pageThree = page(3, `
+      <div class="page-kicker">재발방지 대책 및 증거자료</div>
+      <section><h2>8. 재발방지 대책</h2><table class="recommendations"><thead><tr><th>검토 영역</th><th>내용</th><th>상태</th></tr></thead><tbody>${recommendationBody}</tbody></table></section>
+      <section><h2>9. 증거자료</h2><table class="evidence"><thead><tr><th>근거 ID</th><th>원천</th><th>원본 태그</th><th>표시명</th><th>기록 시각</th><th>상태</th></tr></thead><tbody>${evidenceBody}</tbody></table></section>
+      <section><h2>태그 표시 예시</h2><div class="tag-example"><b>원본 태그</b><code>${esc(tagExample.tag)}</code><b>표시명</b><span>${esc(tagExample.label)}</span><b>원천</b><span>${esc(tagExample.source)}</span><b>근거 ID</b><span>${esc(tagExample.id)}</span></div></section>
+      <section><h2>보고서 적용 기준</h2><ul class="report-rules"><li>근거 ID와 원본 태그를 함께 표시</li><li>EVENT·RAW 원본은 별도 보관하고 PDF에는 핵심 행만 표시</li><li>빈 입력란과 미래 담당자 입력 항목은 출력하지 않음</li></ul></section>`);
+
+    const pageFour = page(4, `
+      <section><h2>4. 시간대별 조치사항 ${timelineItems.length > 4 ? '(계속)' : '(전체)'}</h2><div class="metric-grid four"><div class="metric-card"><span>총 이벤트</span><b>${timelineTotal}건</b></div><div class="metric-card"><span>PDF 표시</span><b>${timelineItems.length}건</b></div><div class="metric-card"><span>시간 유효성</span><b>EVENT·RAW 연결</b></div><div class="metric-card"><span>CSV 전체 유지</span><b>원본 보존</b></div></div>
+      <table class="timeline detailed"><thead><tr><th>순번</th><th>기록 시각</th><th>원천</th><th>설비/태그</th><th>내용</th><th>상태</th><th>근거 ID</th></tr></thead><tbody>${continuationRows || '<tr><td colspan="7">EVENT·RAW 사고 구간 연결</td></tr>'}</tbody></table></section>
+      <div class="source-note"><b>사건 EVENT/RAW는 고정된 원본 CSV와 함께 보존한다.</b><p>본 보고서는 핵심 근거 요약본이며, 전체 이벤트·태그·시간축은 CSV 원본과 상세 근거 화면에서 확인한다.${timeline.hiddenCount ? ` 나머지 ${timeline.hiddenCount}건은 보고서 CSV에서 확인한다.` : ''}</p></div>`);
 
     return `<!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
 <style>
 @page{size:A4;margin:0}
-*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#172f3f;font-family:"Noto Sans KR","Malgun Gothic",Arial,sans-serif;font-size:10.5pt;line-height:1.42}
-.report{width:210mm;min-height:297mm;margin:0 auto;padding:11mm 12mm 12mm}.doc-head{border-top:4px solid #173e55;border-bottom:1px solid #8ea0ab;padding:0 0 4mm;margin-bottom:5mm}.doc-title{font-size:20pt;font-weight:800;color:#102f43;margin-bottom:3mm}.doc-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm}.doc-meta div{background:#eef3f5;border-left:3px solid #2a657f;padding:2.5mm}.doc-meta span{display:block;font-size:8pt;color:#5e7380;margin-bottom:.7mm}.doc-meta b{font-size:10pt}.section{margin:0 0 4.5mm;break-inside:avoid;page-break-inside:avoid}.section h2{font-size:12pt;margin:0 0 2mm;padding-bottom:1.5mm;border-bottom:1.5px solid #234b62;color:#15384d}.cause-grid{display:grid;grid-template-columns:1fr 1fr;gap:3mm}.cause-box{border:1px solid #aebcc4;padding:3mm;min-height:23mm}.cause-box span{display:block;color:#5d7280;font-size:8.5pt;margin-bottom:1.2mm}.cause-box strong{font-size:13pt;color:#12364b}.cause-box small{display:block;margin-top:1.5mm;color:#607582}.cause-box .evidence-line{color:#3f7187;font-weight:700;font-size:8pt}.summary-line{padding:3mm;border:1px solid #aebcc4;background:#f7f9fa;font-size:11pt;font-weight:700}
-table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid-page;page-break-inside:avoid}th,td{border:1px solid #b8c3c9;padding:2.1mm;vertical-align:top;overflow-wrap:anywhere}th{background:#edf2f4;text-align:left;font-weight:700}td small{display:block;color:#6a7e89;font-size:8pt;margin-top:.5mm}.timeline th:nth-child(1){width:31%}.timeline th:nth-child(2){width:18%}.timeline td:nth-child(3){font-weight:650}.note{font-size:8.5pt;color:#586d79;margin-top:1.5mm}.footer{margin-top:5mm;padding-top:2mm;border-top:1px solid #aebbc3;font-size:8pt;color:#607480}
-@media print{html,body{width:210mm;height:auto;overflow:visible}.report{margin:0}.section,table,tr{overflow:visible!important;max-height:none!important;height:auto!important}}
-</style></head><body><main class="report">
-<header class="doc-head"><div class="doc-title">${esc(title)}</div><div class="doc-meta"><div><span>발생 시각</span><b>${esc(incidentTime.primary)}</b>${incidentTime.secondary?`<small>${esc(incidentTime.secondary)}</small>`:''}</div><div><span>대상 설비</span><b>${esc(equipment)}</b></div><div><span>입력 자료</span><b>${esc(metadata.event_file || 'EVENT.csv')} + ${esc(metadata.raw_file || 'RAW.csv')}</b></div></div></header>
-<section class="section"><h2>1. 사고 개요</h2><div class="summary-line">${esc(summaryDisplay || direct)}</div></section>
-<section class="section"><h2>2. 발생 원인</h2><div class="cause-grid"><div class="cause-box"><span>발생 원인</span><strong>${esc(primary)}</strong><small>${esc(displayTime(analysis.primary_cause).primary)}</small><small class="evidence-line">${esc(reportEvidenceLine(analysis.primary_cause))}</small></div><div class="cause-box"><span>직접 보호동작</span><strong>${esc(direct)}</strong><small>${esc(displayTime(analysis.direct_trigger).primary)}</small><small class="evidence-line">${esc(reportEvidenceLine(analysis.direct_trigger))}</small></div></div></section>
-<section class="section"><h2>3. 시간순 사고 경위</h2><table class="timeline"><thead><tr><th>시간</th><th>설비 / 구분</th><th>발생 내용</th></tr></thead><tbody>${timelineRows || '<tr><td colspan="3">사고 기록 없음</td></tr>'}</tbody></table>${timeline.hiddenCount?`<div class="note">후속 기록 ${timeline.hiddenCount}건 · 상세 분석 데이터 참조</div>`:''}</section>
-<section class="section"><h2>4. 복구조치 및 확인사항</h2><table><tbody>${recoveryBody}</tbody></table></section>
-<footer class="footer">TripLens READ-ONLY 사고분석 · 상세 근거는 CSV 내보내기에서 확인</footer>
-</main></body></html>`;
+*{box-sizing:border-box}html,body{margin:0;padding:0;background:#eef1f3;color:#263845;font-family:"Noto Sans KR","Malgun Gothic",Arial,sans-serif;font-size:8pt;line-height:1.3}body{padding:8mm 0}.report-page{position:relative;width:210mm;height:297mm;margin:0 auto 8mm;background:#fff;padding:9mm 10mm 15mm;overflow:hidden;break-after:page;page-break-after:always}.report-page:last-child{break-after:auto;page-break-after:auto}.report-head{height:16mm;border:1px solid #b8c5ce;display:grid;grid-template-columns:1fr 54mm;grid-template-rows:minmax(0,1fr);margin-bottom:4mm}.report-head>div:first-child{padding:2.4mm 3mm}.report-head h1{font-size:11.5pt;line-height:1.15;margin:0 0 1.2mm}.report-head h1 span{font-size:8pt;color:#667785}.report-head p{font-size:6.2pt;color:#667785;margin:.4mm 0}.approval{display:grid;grid-template-columns:repeat(3,1fr)}.approval>div{border-left:1px solid #b8c5ce;padding:1.5mm;text-align:center}.approval span{display:block;color:#667785;font-size:6pt}.approval b{display:block;margin-top:2.2mm;font-size:6.3pt}.page-body{height:245mm;overflow:hidden;position:relative}.page-content{transform-origin:top left}.page-kicker{font-size:10pt;font-weight:800;margin:0 0 2.5mm}section{margin:0 0 3mm;break-inside:avoid;page-break-inside:avoid}section h2{font-size:8.7pt;margin:0 0 2mm;padding-bottom:1.2mm;border-bottom:1px solid #b8c5ce}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid-page;page-break-inside:avoid}th,td{border:1px solid #b8c5ce;padding:2mm 2.4mm;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#eef3f6;text-align:left;font-weight:700}thead th{background:#486477;color:#fff;text-align:center;font-size:6.4pt}.overview th{width:34mm}.phenomena th{width:34mm}.phenomena td:last-child{width:27mm;text-align:center}.key-evidence th{width:34mm}.key-evidence td:last-child{width:23mm;text-align:center}.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5mm}.metric-grid.three{grid-template-columns:repeat(3,1fr)}.metric-grid.four{margin-bottom:2.2mm}.metric-card{min-height:13mm;border:1px solid #b8c5ce;padding:2mm;background:#fff}.metric-card span{display:block;color:#667785;font-size:6.2pt;margin-bottom:1mm}.metric-card b{font-size:7pt}.recovery-details{margin-top:1.5mm;font-size:6.7pt}.recovery-details th{width:34mm}.recovery-details th,.recovery-details td{padding:1.35mm 2mm}.recovery-details td small{display:block;margin-top:.45mm;color:#667785;font-size:5.7pt}.cause-list{display:grid;gap:1mm}.cause-row{display:grid;grid-template-columns:55mm 1fr 23mm;gap:3mm;align-items:start;border:1px solid #b8c5ce;padding:2.1mm 3mm;min-height:8.5mm}.cause-row strong,.cause-row small{display:block}.cause-row strong{font-size:7.2pt}.cause-row small{color:#667785;font-size:6.1pt;margin-top:.6mm}.status{text-align:center;color:#486477;font-weight:800;font-size:6.2pt}.policy-note{margin:1.5mm 0 0;color:#667785;font-size:6.1pt}.timeline th,.timeline td{padding:1.5mm 2mm}.timeline th:nth-child(1){width:27mm}.timeline th:nth-child(2){width:25mm}.timeline th:nth-child(4){width:20mm}.timeline th:nth-child(5){width:26mm}.timeline td small{display:block;color:#667785;font-size:5.7pt}.chain-list{display:grid;gap:.8mm}.chain-row{display:grid;grid-template-columns:20mm 1fr;gap:2mm;align-items:start}.chain-time{padding-top:2.5mm;text-align:center;color:#667785;font-size:5.9pt}.chain-card{position:relative;border:1px solid #b8c5ce;padding:1.7mm 27mm 1.7mm 3mm;min-height:12.5mm}.chain-card>b,.chain-card>strong,.chain-card>small{display:block}.chain-card>strong{margin-top:.55mm}.chain-card>small{margin-top:.5mm;color:#667785;font-size:5.8pt}.chain-card>.status{position:absolute;right:3mm;top:2mm}.rule-box{display:grid;grid-template-columns:27mm 1fr;border:1px solid #b8c5ce;background:#f7f9fa}.rule-box>*{padding:1.2mm 2.5mm;border-bottom:1px solid #d8e1e7}.rule-box>*:nth-last-child(-n+2){border-bottom:0}.recommendations th:first-child{width:45mm}.recommendations th:last-child{width:22mm}.evidence{font-size:6.2pt}.evidence th:nth-child(1){width:21mm}.evidence th:nth-child(2){width:18mm}.evidence th:nth-child(3){width:50mm}.evidence th:nth-child(5){width:31mm}.evidence th:nth-child(6){width:20mm}.evidence code,.tag-example code{font-family:"Noto Sans Mono","Malgun Gothic",monospace;white-space:normal;overflow-wrap:anywhere}.tag-example{display:grid;grid-template-columns:27mm 1fr;border:1px solid #b8c5ce;background:#f7f9fa}.tag-example>*{padding:1.7mm 3mm;border-bottom:1px solid #d8e1e7}.tag-example>*:nth-last-child(-n+2){border-bottom:0}.report-rules{margin:0;padding:3mm 7mm;border:1px solid #b8c5ce;background:#f7f9fa}.report-rules li{margin:1mm 0}.timeline.detailed{font-size:6.2pt}.timeline.detailed th:nth-child(1){width:12mm}.timeline.detailed th:nth-child(2){width:26mm}.timeline.detailed th:nth-child(3){width:19mm}.timeline.detailed th:nth-child(4){width:38mm}.timeline.detailed th:nth-child(6){width:19mm}.timeline.detailed th:nth-child(7){width:23mm}.source-note{margin-top:5mm;padding:4mm;border:1px solid #b8c5ce;background:#f7f9fa}.source-note p{color:#667785;margin:1.5mm 0 0}.page-footer{position:absolute;left:10mm;right:10mm;bottom:8mm;border-top:1px solid #d8e1e7;padding-top:2mm;display:flex;justify-content:space-between;color:#667785;font-size:6pt}
+@media print{html,body{width:210mm;background:#fff;padding:0;height:auto}.report-page{margin:0;height:297mm!important;min-height:297mm!important;max-height:297mm!important;overflow:hidden!important}}
+</style></head><body>${pageOne}${pageTwo}${pageThree}${pageFour}<script>
+function fitReportPages(){document.querySelectorAll('.page-body').forEach(function(body){const content=body.querySelector('.page-content');if(!content)return;content.style.transform='none';content.style.width='100%';const available=Math.max(1,body.clientHeight);let scale=Math.min(1,available/Math.max(1,content.scrollHeight));for(let pass=0;pass<3;pass+=1){content.style.width=(100/scale)+'%';scale=Math.min(1,available/Math.max(1,content.scrollHeight));}content.style.width=(100/scale)+'%';content.style.transform='scale('+scale+')';content.dataset.fitScale=scale.toFixed(4);});}
+window.TripLensFitReport=fitReportPages;requestAnimationFrame(function(){fitReportPages();requestAnimationFrame(fitReportPages);});
+</script></body></html>`;
   }
 
   function printReport(report) {
@@ -428,7 +617,7 @@ table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table
     popup.document.close();
     const printWhenReady = () => {
       const fonts = popup.document.fonts && popup.document.fonts.ready ? popup.document.fonts.ready : Promise.resolve();
-      fonts.finally(() => { popup.focus(); popup.print(); });
+      fonts.finally(() => { if (typeof popup.TripLensFitReport === 'function') popup.TripLensFitReport(); popup.focus(); popup.print(); });
     };
     if (popup.document.readyState === 'complete') printWhenReady();
     else popup.addEventListener('load', printWhenReady, { once: true });

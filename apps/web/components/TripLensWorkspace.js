@@ -373,7 +373,7 @@ export default function TripLensWorkspace({mode='blind'}){
       <aside className="sidebar">
         <div className="side-title">ANALYSIS WORKSPACE</div>
         <nav>{WORKSPACE_TABS.map(tab=><button disabled={!result} className={`nav-item ${activeTab===tab.id?'active':''}`} key={tab.id} onClick={()=>{setActiveTab(tab.id);setDetail(null);}}><span className="nav-no">{tab.no}</span><span><b>{tab.label}</b><em>{tab.sub}</em></span></button>)}</nav>
-        <div className="side-links"><button onClick={()=>openLogicLibrary()}><b>LM</b><span>Logic / TAG Master<em>{logic?`${logic.live_rules} Logic · ${logic.protection} Protection`:'태그 검색 · 로직 연결'}</em></span></button></div>
+        <div className="side-links"><button onClick={()=>openLogicLibrary()}><b>DM</b><span>Logic / TAG / Drawing Master<em>{logic?`${logic.live_rules} Logic · ${logic.protection} Protection · 도면 검색`:'태그 · 로직 · 도면 검색'}</em></span></button></div>
         <div className="boundary"><b>READ-ONLY</b><span>분석 및 보고서 전용</span></div>
       </aside>
       <section className="main-area">
@@ -400,7 +400,7 @@ export default function TripLensWorkspace({mode='blind'}){
             <button className="export-button" disabled={exportBlocked} onClick={exportPDF}>보고서 PDF 저장</button>
             <details className="export-menu"><summary>내보내기</summary><div><button className="export-button" disabled={exportBlocked} onClick={exportCSV}>보고서 CSV</button><button className="export-button" disabled={exportBlocked} onClick={exportDetailedCSV}>상세 분석 데이터 CSV</button></div></details>
           </div>
-          <p className="report-help">핵심 사고 경위를 1~2페이지 운전 고장상보 형식으로 저장합니다.</p>
+          <p className="report-help">핵심 사고 경위를 4페이지 운전 고장상보 형식으로 저장합니다.</p>
           <OperatorReportPreview analysis={analysis} events={events} recovery={recovery}/>
           <details className="report-editor"><summary>보고서 세부 항목 편집</summary><div className="scroll-table"><table className="editable-report"><thead><tr>{REPORT_COLUMNS.map(column=><th key={column}>{column}</th>)}</tr></thead><tbody>{displayReportRows.map((row,index)=>{
             const recoveryRow=row.row_id?.startsWith('RECOVERY-');

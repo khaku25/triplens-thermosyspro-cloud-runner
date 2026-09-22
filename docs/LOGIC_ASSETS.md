@@ -1,4 +1,4 @@
-# TripLens — 태그·로직·draw.io 한 번에 갱신하기
+# TripLens — 태그·로직·Drawing Master·draw.io 한 번에 갱신하기
 
 ## 사용자가 수정하는 곳은 두 원장입니다
 
@@ -43,30 +43,90 @@ Linux/macOS:
 ```
 
 `--check`는 기존 산출물의 일치 여부만 검사하며 쓰지 않습니다.
+위 갱신 명령은 Drawing Master도 함께 다시 생성·게시합니다. 세 `drawing_master_index.json`을
+직접 편집하지 않고 06/07 원장과 선택한 stable-ID draw.io를 입력으로 사용합니다.
 
 ## 생성되는 것
 
 - `logic_diagrams/TripLens_Logic_Master_Current_V8.drawio`: 편집 가능한 통합 도면.
 - `logic_diagrams/logic_diagram_index.json`: 태그/Rule/페이지/cell exact 색인.
+- `drawing_master_index.json`: 기존 draw.io의 `object` cell 위치를 읽기 전용으로 기록한 Drawing Master 색인.
 - `generated/logic/08…xlsx`, `09…xlsx`, `10…xlsx`: 같은 데이터로 생성된 원장 뷰.
 - `apps/web/public/logic-assets/viewer.html`: 같은 draw.io XML을 읽는 자체 웹 뷰어. 인터넷 draw.io 사이트가 없어도 열립니다.
 - `data/current_v8/` 및 `services/agent-api/triplens/current_v8/`: 동일 runtime 자료와 manifest.
 - `apps/web/lib/current-logic-summary.json`: 원장 변경에 맞춰 갱신되는 웹 요약.
 
+Drawing Master는 같은 바이트로 다음 세 위치에 게시됩니다.
+
+| 소비자 | 게시 경로 |
+|---|---|
+| 편집·검토 기준 | `logic_diagrams/drawing_master_index.json` |
+| 생성 릴리스 | `generated/logic/drawing_master_index.json` |
+| 웹 정적 자산 | `apps/web/public/logic-assets/drawing_master_index.json` |
+
 초기 입력 snapshot에서 603 Source Tag, 53 Rule, 35 입력 그룹, 9 설비 화면입니다.
 전체 도면은 목차 1 + 설비 9 + 입력 그룹 35 + 개별 Rule 53 = 98페이지입니다.
 이 숫자는 미래 버전을 강제로 제한하는 상수가 아닙니다. 실제 입력으로 다시 계산합니다.
 
+현재 생성된 Drawing Master snapshot은 draw.io 1개, 98페이지, 1,551개 `object` cell을 색인하며,
+그중 53개 고유 Logic ID와 86개 고유 Tag ID가 연결되어 있습니다. 이 수도 생성 결과이지 고정 상수가 아닙니다.
+
+## Drawing Master 계약
+
+Drawing Master의 정책 문자열은
+`READ_ONLY_INDEX_OF_EXISTING_DRAWIO; NO_LOGIC_REINTERPRETATION`입니다.
+생성기는 `TripLens_Logic_Master_Current_V8.drawio`에 이미 존재하는 `object`와 그 하위 `mxCell`만 읽습니다.
+도형을 새로 만들거나, 로직 조건을 재해석하거나, 유사 이름을 임의의 태그·로직에 연결하지 않습니다.
+등록되지 않은 식별자는 검색 결과가 없으며 편집 거리, 접두어 추정, 의미 기반 fuzzy matching으로 대체하지 않습니다.
+
+색인의 최상위 `schema_version`은 1이며, 기존 `logic_diagram_index.json`과 draw.io의 schema 2와는
+서로 다른 파일 계약입니다. 주요 필드는 다음과 같습니다.
+
+| 범위 | 필드 | 의미 |
+|---|---|---|
+| 색인 | `index_type`, `policy`, `source_sha256`, `counts` | 색인 유형, 읽기 전용 정책, 원본 draw.io 해시, 동적 집계 |
+| 도면 | `drawing_id`, `file_path`, `aliases`, `sha256`, `page_count` | 원본 경로와 동일 도면의 게시 별칭 |
+| 위치 | `page_id`, `page_name`, `page_scope`, `cell_id`, `x`, `y`, `width`, `height` | 기존 페이지·cell exact ID와 XML의 좌표 |
+| 연결 | `canonical_tag`, `tag_id`, `logic_id`, `equipment_id`, `object_type` | XML 속성과 페이지 메타데이터에서 보존한 식별자 |
+| 증거 | `source_ref`, `evidence_ref`, `verification_status` | `파일#page=<exact>&cell=<exact>` 형태의 재현 가능한 위치 |
+
+`verification_status=INDEXED_FROM_DRAWIO_XML`은 해당 객체가 XML에서 색인되었다는 뜻입니다.
+보호동작이 실기에서 검증됐거나 사고 원인이 확정됐다는 의미가 아닙니다.
+명시적인 canonical mapping이 없을 때 점(`.`)이 들어간 `tag_id`는 같은 문자열을
+`canonical_tag`에 그대로 보존합니다. 이는 별칭이나 의미를 추론하는 동작이 아닙니다.
+`equipment_id`는 명시된 값, equipment 페이지 이름, `group_id` 순서로 기존 XML 값만 사용합니다.
+
+Python의 `search_drawing_master()`는 `canonical_tag`, `tag_id`, `logic_id`, `page_name`,
+`display_name`, `equipment_id`, `source_ref`, `keywords`를 대소문자 구분 없이 리터럴로 검색하고
+필드 전체가 정확히 일치하는 결과를 먼저 둡니다. 웹의 Drawing Master 탭도 `page_name`, `page_id`,
+`cell_id`, `tag_id`, `canonical_tag`, `logic_id`, `display_name`, `source_ref`에 실제 저장된 문자열만 검색합니다.
+부분 문자열 검색은 허용하지만 식별자를 정규화하거나 다른 객체로 추론하지 않습니다.
+
 ## 웹에서 보는 법
 
-기존 TripLens의 **Event Logic Master** 버튼이 도면 상세 창을 엽니다.
+기존 TripLens의 **Logic / TAG / Drawing Master** 버튼이 도면 상세 창을 엽니다.
 분석 결과의 태그를 누르면 동일 상세 창에서 해당 태그의 관련 로직으로 이동합니다.
 창을 닫으면 업로드 파일/분석 결과를 유지한 기존 화면으로 돌아옵니다.
 별도 페이지는 `/logic`, 직접 연결은 `/logic?tag=vppHPDrumLevelM` 또는 `/logic?rule=AL-HP-LEVEL-HH`입니다.
+Drawing Master 위치는 다음과 같이 exact `source_ref`를 URL 인코딩해 직접 열 수 있습니다.
+
+```text
+/logic?drawing=logic_diagrams%2FTripLens_Logic_Master_Current_V8.drawio%23page%3DIG-030%26cell%3Doperation%3ACMD-FWP-HP-TRIP
+```
+
+독립 뷰어는 같은 값을 `#drawing=...` hash로 받습니다. iframe API의
+`TripLensLogic.openDrawing(sourceRefOrCellId)`는 완전한 `source_ref` 또는 전역에서 고유한 `cell_id`를 받아
+해당 페이지로 이동하고 그 cell 하나만 선택 표시합니다. `cell_id`가 페이지 사이에 중복되면 첫 항목을
+임의 선택하지 않고 `false`를 반환하며 완전한 `source_ref` 사용을 안내합니다. 선택 후 hash도 완전한
+`source_ref`로 갱신됩니다.
 근거 상세에서는 Evidence Catalog의 `source_node`와 `logic_ids`를 각각 태그 도면/Rule 도면 버튼으로 표시합니다.
 운영 분석 전에 `/testbench`에서 GT·ST·52GT·52ST·HP/IP/LP FWP·HP/IP/LP Drum의 exact 연결을 독립적으로 확인할 수 있습니다.
 도면 입력/출력을 누르면 태그 상세로, 로직 블록을 누르면 Rule 상세로 이동합니다.
 등록되지 않은 식별자는 임의로 비슷한 태그에 매칭하지 않습니다.
+
+모바일에서도 분석 화면의 Drawing Master 진입 버튼을 숨기지 않습니다. 뷰어의 탭은 줄바꿈되고
+Drawing Master가 한 줄 전체의 터치 대상으로 표시됩니다. 390×844 브라우저 회귀시험은
+`operation:CMD-FWP-HP-TRIP` 검색이 `IG-030`의 exact cell을 선택하는지와 문서 가로 overflow가 없는지 확인합니다.
 
 ## draw.io에서 수정 가능한 범위
 
@@ -108,6 +168,11 @@ schema 1의 `logic:` 레이아웃은 한 번 schema 2로 이전합니다. 이전
 `event-driven`, `runtime-defined`, `external runtime interface`는 타이머 초 값으로 만들지 않습니다.
 Hysteresis와 지연은 ADDITIONAL INFO에 원장 속성으로 기록하며 별도의 하류 실행 블록을 추측해 붙이지 않습니다.
 
+Drawing Master는 원본 XML의 SHA-256을 `source_sha256`과 도면 항목의 `sha256`에 기록합니다.
+이 값은 `logic_diagram_index.json`의 `drawio_sha256`과 같아야 하며, 웹 뷰어는 다르면 fail-closed합니다.
+세 게시 위치의 `asset_manifest.json`은 각 위치의 `drawing_master_index.json` SHA-256을 기록합니다.
+`--check`는 원본, 색인, 세 게시 복사본과 manifest가 다시 생성한 결과와 일치하는지 쓰기 없이 검사합니다.
+
 ## 저장·배포 경계
 
 로컬 갱신은 산출물을 staging에서 생성·검사한 뒤 반영합니다. 처리 중 예외에는 변경 파일을 복구합니다.
@@ -129,14 +194,29 @@ Drive 미설정이어도 로컬/GitHub 산출물과 웹 파일 생성은 가능�
 예를 들어 원장의 HH 표시 조건을 1.25→1.30으로 바꿔도 실제 보호 런타임의 설정값이 바뀌지는 않습니다.
 실제 플랜트/모델 변경은 별도 코드 검토와 실행 검증이 필요합니다.
 
+현재 Drawing Master의 입력 범위는 `logic_diagrams/TripLens_Logic_Master_Current_V8.drawio` 한 개뿐입니다.
+`topology/`의 SVG/PNG, P&ID, SLD, Modelica/ThermoSysPro 모델, FMU, OPC UA node/runtime,
+보호 로직 실행 코드는 색인 대상이 아니며 이 갱신으로 변경되지 않습니다. Drawing Master 생성 자체도
+원본 XML을 수정하지 않습니다. 기존 뷰어의 별도 레이아웃 편집 기능으로 내보낸 파일은 사용자가
+`--layout`으로 명시해 다음 갱신에 전달할 때만 채택됩니다. Drive 쓰기도 `--sync-drive`와 별도 인증 없이는 수행하지 않습니다.
+
 ## 개발 검증
 
 ```sh
 python -m unittest discover -s tests -p 'test_logic_*.py'
+python -m unittest tests.test_drawing_master -v
+python -m unittest tests.test_logic_pipeline -v
 python -m unittest discover -s tests -p test_current_catalog.py
 python scripts/update_triplens_logic.py --check
+npm run build --prefix apps/web
+git diff --check
 ```
 
 브라우저 테스트에는 Playwright 1.57.0과 Chromium이 필요합니다.
+`test_drawing_master.py`는 색인 스키마, exact source reference, 원본 hash 결합, 모바일 탭 배치와
+canonical tag 보존을 검사합니다. `test_logic_pipeline.py`는 세 게시 복사본의 byte equality와
+각 manifest의 hash를 검사합니다. `test_logic_viewer.py`는 데스크톱/모바일 탐색과 exact cell 선택을 검사합니다.
+GitHub의 **Update TripLens Logic Assets** workflow는 이 테스트와 Next.js production build를 실행한 뒤
+마지막 `--check` 및 `git diff --check`를 다시 수행합니다.
 생성기/엑셀 reader/도면 exporter에는 Python 3.10 이상 표준 라이브러리만 필요합니다.
 Testbench, 근거 상세 매핑과 GitHub→Vercel 단일 승격 절차는 [`INTEGRATION_TESTBENCH_REPORT_V2.md`](INTEGRATION_TESTBENCH_REPORT_V2.md)를 따릅니다.

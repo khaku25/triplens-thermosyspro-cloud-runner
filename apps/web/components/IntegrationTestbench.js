@@ -29,7 +29,7 @@ export default function IntegrationTestbench(){
     const pinpoint=reportExporter.buildPinpointCsv(report);
     return [
       {label:'편집 행 → 보고서 V2',pass:html.includes(SAMPLE_REPORT_ROWS[0].content)&&!html.includes('EVENT + RAW 사고분석 초안')},
-      {label:'A4 PDF 출력 템플릿',pass:html.includes('@page{size:A4')&&html.includes('4. 복구조치 및 확인사항')},
+      {label:'A4 PDF 출력 템플릿',pass:html.includes('@page{size:A4')&&(html.match(/class="report-page"/g)||[]).length===4&&html.includes('4. 시간대별 조치사항')},
       {label:'PINPOINT.csv 스키마',pass:pinpoint.startsWith('run_id,pinpoint_rank,causal_stage,claim,disposition,')},
     ];
   },[report]);
