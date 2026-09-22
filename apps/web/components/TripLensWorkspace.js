@@ -71,7 +71,8 @@ function reportStatusLabel(status){
 function EvidenceLinks({ids,onOpen,named=false}){
   const values=[...new Set((ids||[]).filter(Boolean))];
   if(!values.length)return <span className="muted">연결된 근거 없음</span>;
-  return <span className="evidence-links">{values.map((id,index)=><button key={id} onClick={()=>onOpen({kind:'evidence',value:id})}>{named?`근거 ${index+1}`:id}</button>)}</span>;
+  const label=named?'사건 기록 열기':'상세 기록 열기';
+  return <span className="evidence-links">{values.map((id,index)=><button key={id} title={'ID: '+id} aria-label={label+' '+(index+1)} onClick={()=>onOpen({kind:'evidence',value:id})}>{label}</button>)}</span>;
 }
 
 function ClaimEvidence({item,onOpen}){
@@ -80,7 +81,7 @@ function ClaimEvidence({item,onOpen}){
   const ids=[...new Set((item?.evidence_ids||[]).filter(Boolean))];
   if(!tags.visible.length&&!ids.length)return null;
   const time=displayEventTime(item);
-  const timeText=time.secondary||time.primary;
+  const timeText=[time.primary,time.secondary].filter(value=>value&&value!=='시각 미확인').join(' · ');
   const openClaim=()=>onOpen({kind:'claim',evidenceIds:ids,tags:allTags});
   return <div className="claim-evidence">
     <div className="claim-evidence-summary"><span>근거</span><strong>{timeText&&timeText!=='시각 미확인'?timeText:'연결 기록'}{ids.length?` · ${ids.length}건`:''}</strong></div>
@@ -100,7 +101,7 @@ function ClaimCard({title,item,stage,onOpen}){
   const original=claimText(item);
   const compact=conciseClaim(operatorSummary(item,stage),140);
   const summary=compact.summary;
-  const detail=original&&original!==summary?original:compact.detail;
+  const detail=original&&original!==summary?conciseClaim(operatorPhrase(original),240).summary:compact.detail;
   const time=displayEventTime(item);
   return <section className="claim-card cause-card">
     <div className="claim-head"><h3>{title}</h3>{time.primary!=='시각 미확인'?<time>{time.primary}{time.secondary?<small>{time.secondary}</small>:null}</time>:null}</div>
@@ -118,7 +119,7 @@ function AnalysisList({items,stage,onOpen,limit=5}){
     const original=claimText(item);
     const compact=conciseClaim(typeof item==='string'?item:operatorSummary(item,stage),150);
     const summary=compact.summary;
-    const detail=original&&original!==summary?original:compact.detail;
+    const detail=original&&original!==summary?conciseClaim(operatorPhrase(original),240).summary:compact.detail;
     const time=displayEventTime(item);
     return <article key={`${item?.claim||'item'}-${index}`}>
       <div><b>{String(index+1).padStart(2,'0')}</b><p>{summary}</p>{time.primary!=='시각 미확인'?<time>{time.primary}{time.secondary?<small>{time.secondary}</small>:null}</time>:null}</div>
