@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const source=fs.readFileSync(new URL('../apps/web/components/TripLensWorkspace.js',import.meta.url),'utf8');
 const logicViewerSource=fs.readFileSync(new URL('../apps/web/components/LogicViewerFrame.js',import.meta.url),'utf8');
+const integrationCss=fs.readFileSync(new URL('../apps/web/app/integration.css',import.meta.url),'utf8');
 
 test('cause screen uses operator-facing Korean hierarchy',()=>{
   for(const text of ['발생 원인','직접 보호동작','파급 과정','시간순 사고 경위'])assert.match(source,new RegExp(text));
@@ -26,8 +27,13 @@ test('each evidence card has one grouped logic-master entry',()=>{
 
 test('report preview defaults to concise operator summary and keeps editing collapsed',()=>{
   assert.match(source,/operator-report-preview/);
-  assert.match(source,/운전 고장상보 형식/);
+  assert.match(source,/4페이지 운전 고장상보 형식/);
   assert.match(source,/report-editor/);
+});
+
+test('Drawing Master is named and remains reachable from the mobile workspace',()=>{
+  assert.match(source,/Logic \/ TAG \/ Drawing Master/);
+  assert.doesNotMatch(integrationCss,/\.app-shell \.side-links\s*,\s*\.app-shell \.boundary\s*\{display:none\}/);
 });
 
 test('overflow analysis items and extra evidence tags stay available in disclosures',()=>{

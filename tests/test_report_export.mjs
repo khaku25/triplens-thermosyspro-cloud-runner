@@ -25,12 +25,62 @@ const report = {
   chronological_events: Array.from({length:12},(_,i)=>({ recorded_time:String(48+i/10), category:'SOE', claim:`Chronology ${i+1}`, status:'OBSERVED', evidence_ids:[`SEQ-${i+1}`], related_tags:[`TAG_${i+1}`] })),
 };
 
-test('PDF report HTML follows the concise operator report structure', () => {
+test('PDF report uses the approved four-page Figma V2 shell', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    operating_status:{'GT 상태':'운전 중','ST 상태':'운전 중'},
+    report_rows:[
+      {section:'개요',item:'장애 요약',content:'GT·ST Trip Latch 동작 후 차단기 개방과 공정 저하가 이어짐'},
+      {section:'사고 발생 전 운전 현황',item:'GT 상태',content:'운전 중'},
+      {section:'장애 현상',item:'최초 Event',content:'GT Trip Latch 동작',status:'CONFIRMED',evidence_ids:'EV-1',tags:'vppGTTripLatch',time:'48.440 s'},
+      {section:'발생 원인',item:'선행 원인',content:'GT 운전 중 차단기 개로 원인 활성화됨',status:'CANDIDATE',evidence_ids:'RAW-017',tags:'vppCauseGTBreakerOpenWhileRunning',time:'48.200 s'},
+      {section:'증거자료',item:'RAW-017',content:'52GT 투입 명령',status:'OBSERVED',evidence_ids:'RAW-017',tags:'vppECMS52GTClosedCommandNative',time:'48.200 s'},
+    ],
+  });
+  assert.equal((html.match(/class="report-page"/g)||[]).length,4);
+  for(const text of [
+    '설비 장애·고장 보고서','1. 개요','2. 운전 현황','3. 장애 현상','5. 발생 원인',
+    '4. 시간대별 조치사항','5-1. 인과관계 요약','8. 재발방지 대책','9. 증거자료',
+    'vppECMS52GTClosedCommandNative','4 / 4',
+  ])assert.match(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  assert.doesNotMatch(html,/class="doc-meta"|Run ID|Data Digest/);
+  assert.doesNotMatch(html,/text-overflow\s*:\s*ellipsis|…|\.\.\./);
+  assert.doesNotMatch(html,/입력 필요|입력 대기|미기록|기록 없음/);
+});
+
+test('PDF approval grid row stays inside the fixed report header box', () => {
+  const html=exporter.buildReportHtml(report);
+  assert.match(html,/\.report-head\{[^}]*grid-template-rows:minmax\(0,1fr\)/);
+});
+
+test('four-page PDF bounds large timelines and discloses CSV continuation', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    chronological_events:Array.from({length:40},(_,index)=>({
+      recorded_time:48+index/10,
+      category:'SOE',
+      claim:`Bulk event ${String(index+1).padStart(2,'0')}`,
+      status:'OBSERVED',
+      evidence_ids:[`BULK-${index+1}`],
+    })),
+  });
+  assert.equal((html.match(/class="report-page"/g)||[]).length,4);
+  assert.match(html,/Bulk event 12/);
+  assert.doesNotMatch(html,/Bulk event 13/);
+  assert.match(html,/총 이벤트<\/span><b>40건/);
+  assert.match(html,/PDF 표시<\/span><b>12건/);
+  assert.match(html,/나머지 28건은 보고서 CSV/);
+  assert.match(html,/function fitReportPages\(\)/);
+  assert.match(html,/@media print\{[\s\S]*?\.report-page\{[^}]*overflow:hidden!important/);
+  assert.doesNotMatch(html,/\.report-page,section,table,tr\{overflow:visible/);
+});
+
+test('PDF report HTML follows the Figma V2 operating report structure', () => {
   const html = exporter.buildReportHtml(report);
-  for (const text of ['설비 고장 분석보고서','1. 사고 개요','2. 발생 원인','직접 보호동작','3. 시간순 사고 경위','4. 복구조치 및 확인사항','EVENT.csv','RAW.csv']) assert.match(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
-  for (const text of ['Verification Gate','AI Confidence','CANDIDATE','(초안)','근거 ID','관련 태그']) assert.doesNotMatch(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
-  assert.match(html,/overflow:visible!important/);
-  assert.match(html,/max-height:none!important/);
+  for (const text of ['설비 장애·고장 보고서','1. 개요','2. 운전 현황','3. 장애 현상','5. 발생 원인','4. 시간대별 조치사항','5-1. 인과관계 요약','9. 증거자료','EVENT.csv','RAW.csv']) assert.match(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  for (const text of ['Verification Gate','AI Confidence','CANDIDATE','(초안)']) assert.doesNotMatch(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  assert.match(html,/\.report-page\{margin:0;height:297mm!important;min-height:297mm!important;max-height:297mm!important;overflow:hidden!important\}/);
+  assert.match(html,/window\.TripLensFitReport=fitReportPages/);
   assert.doesNotMatch(html,/T\+0\.000 s/);
   assert.doesNotMatch(html,/>Gemini Analysis</);
 });
@@ -55,7 +105,7 @@ test('failure report CSV uses the fixed v2 columns and evidence-linked sections'
 
 test('internal verification state is not shown as unfinished report copy', () => {
   const html = exporter.buildReportHtml(report);
-  assert.match(html,/설비 고장 분석보고서/);
+  assert.match(html,/설비 장애·고장 보고서/);
   assert.doesNotMatch(html,/초안|Verification Gate|HOLD|검증 미완료/);
   assert.doesNotMatch(html,/Root Cause Confirmed/);
   assert.doesNotMatch(html,/>최종 확정</);
@@ -66,29 +116,65 @@ test('concise PDF preserves editable summary and direct-trigger wording', () => 
     ...report,
     report_rows: [
       { section:'개요', item:'장애 요약', content:'운전 담당자가 수정한 최종 초안 문구', status:'OBSERVED', evidence_ids:'EV-1', tags:'ST.TRIP.LATCH', time:'48.440 s', note:'담당자 편집' },
-      { section:'발생 원인', item:'직접 Trip 원인', content:'편집된 직접 Trip 원인', status:'CANDIDATE', evidence_ids:'EV-1', tags:'ST.TRIP.LATCH', time:'48.440 s', note:'최종 승인 전' },
+      { section:'발생 원인', item:'직접 Trip 원인', content:'편집된 직접 Trip 원인', status:'CANDIDATE', evidence_ids:'EV-EDITED', tags:'ST.TRIP.LATCH', time:'48.440 s', note:'최종 승인 전' },
     ],
   };
   const html = exporter.buildReportHtml(edited);
   assert.match(html,/운전 담당자가 수정한 최종 초안 문구/);
   assert.match(html,/편집된 직접 Trip 원인/);
+  const directCause=html.match(/<div class="cause-row"><b>직접 Trip 원인 \(Direct Trigger\)<\/b>[\s\S]*?<span class="status">[^<]+<\/span><\/div>/)?.[0] || '';
+  assert.match(directCause,/△ 후보/);
+  assert.doesNotMatch(directCause,/■ 확인/);
+  assert.match(html,/EV-EDITED/);
+  assert.doesNotMatch(html,/직접 보호동작은 확인/);
   assert.doesNotMatch(html,/Dual Log evidence preserved/);
 });
 
-test('workspace PDF projects ten-section source rows into four concise operator sections', () => {
+test('editable timeline rows keep their own review status and evidence', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    chronological_events:[{
+      recorded_time:48.5,
+      category:'SOE',
+      claim:'original confirmed event',
+      status:'CONFIRMED',
+      evidence_ids:['EV-ORIGINAL'],
+      related_tags:['ORIGINAL.TAG'],
+    }],
+    report_rows:[{
+      section:'시간대별 사건·자동동작(SOE)',
+      item:'SOE 1',
+      content:'operator downgraded event',
+      status:'CANDIDATE',
+      evidence_ids:'EV-EDITED',
+      tags:'EDITED.TAG',
+      time:'49.000 s',
+      edited:true,
+    }],
+  });
+  const row=html.match(/<tr><td><b>49\.000 s<\/b><\/td>[\s\S]*?operator downgraded event[\s\S]*?<\/tr>/)?.[0] || '';
+  assert.match(row,/△ 후보/);
+  assert.match(row,/EV-EDITED/);
+  assert.doesNotMatch(row,/■ 확인|EV-ORIGINAL/);
+  assert.doesNotMatch(html,/EV-ORIGINAL/);
+});
+
+test('workspace PDF projects ten-section source rows into the four-page report', () => {
   const workspaceSections = [
     '개요','사고 발생 전 운전 현황','장애 현상','시간대별 사건·자동동작(SOE)','발생 원인',
     '운전원·정비 조치사항','조치 결과 및 복구 판정','추정 원인 및 미확인 사항',
     '재발방지 대책 — 검토 권고사항','증거자료',
   ];
   const workspaceHtml=exporter.buildReportHtml({...report,report_rows:workspaceSections.map(section=>({section,item:'검토',content:'내용'}))});
-  assert.match(workspaceHtml,/4\. 복구조치 및 확인사항/);
+  assert.equal((workspaceHtml.match(/class="report-page"/g)||[]).length,4);
+  assert.match(workspaceHtml,/4\. 시간대별 조치사항/);
+  assert.match(workspaceHtml,/9\. 증거자료/);
   assert.match(workspaceHtml,/내용/);
-  assert.doesNotMatch(workspaceHtml,/10\. 증거자료|근거 ID|관련 태그/);
+  assert.doesNotMatch(workspaceHtml,/10\. 증거자료/);
 
   const legacyHtml=exporter.buildReportHtml({...report,report_rows:[{section:'개요',item:'검토',content:'내용'}]});
-  assert.match(legacyHtml,/4\. 복구조치 및 확인사항/);
-  assert.doesNotMatch(legacyHtml,/9\. 증거자료|10\. 증거자료/);
+  assert.match(legacyHtml,/9\. 증거자료/);
+  assert.doesNotMatch(legacyHtml,/10\. 증거자료/);
 });
 
 test('legacy failure-report CSV neutralizes spreadsheet formulas without changing eight columns', () => {
@@ -102,14 +188,14 @@ test('legacy failure-report CSV neutralizes spreadsheet formulas without changin
 test('workspace document state keeps the same finished report title', () => {
   const reportRows=[{section:'운전원·정비 조치사항',item:'실제 수행 조치',content:'점검 완료'}];
   const draft=exporter.buildReportHtml({...report,verification_gate:'PASS',document_state:'DRAFT',report_rows:reportRows});
-  assert.match(draft,/설비 고장 분석보고서/);
-  assert.doesNotMatch(draft,/설비 고장 분석보고서 \(초안\)|설비 고장 분석보고서 \(검토본\)/);
+  assert.match(draft,/설비 장애·고장 보고서/);
+  assert.doesNotMatch(draft,/설비 장애·고장 보고서 \(초안\)|설비 장애·고장 보고서 \(검토본\)/);
   const reviewed=exporter.buildReportHtml({...report,verification_gate:'PASS',document_state:'REVIEWED',report_rows:reportRows});
-  assert.match(reviewed,/설비 고장 분석보고서/);
-  assert.doesNotMatch(reviewed,/설비 고장 분석보고서 \(초안\)|설비 고장 분석보고서 \(검토본\)/);
+  assert.match(reviewed,/설비 장애·고장 보고서/);
+  assert.doesNotMatch(reviewed,/설비 장애·고장 보고서 \(초안\)|설비 장애·고장 보고서 \(검토본\)/);
 });
 
-test('default PDF is a concise operator report without developer metadata or raw evidence columns', () => {
+test('default PDF hides developer metadata while keeping raw tags on the evidence page', () => {
   const operatorReport={
     ...report,
     metadata:{
@@ -138,9 +224,8 @@ test('default PDF is a concise operator report without developer metadata or raw
     report_rows:[],
   };
   const html=exporter.buildReportHtml(operatorReport);
-  for(const text of ['사고 개요','발생 원인','직접 보호동작','시간순 사고 경위','시간','설비 / 구분','발생 내용','후속 기록 5건'])assert.match(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
-  for(const text of ['Run ID','Data Digest','Analysis Engine','근거 ID','관련 태그','model_time_s','vppGTTripLatch','secret-digest'])assert.doesNotMatch(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
-  assert.equal((html.match(/class="timeline-row"/g)||[]).length,7);
+  for(const text of ['1. 개요','5. 발생 원인','직접 보호동작','4. 시간대별 조치사항','기록 시각','내용','9. 증거자료','vppGTTripLatch','후속 알람 11'])assert.match(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  for(const text of ['Run ID','Data Digest','Analysis Engine','model_time_s','secret-digest'])assert.doesNotMatch(html,new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   assert.match(html,/@page\{size:A4;margin:0\}/);
 });
 
@@ -151,15 +236,15 @@ test('detailed CSV remains available after the PDF is shortened', () => {
   assert.match(csv,/EV-1/);
 });
 
-test('operator PDF shortens unusually long AI prose', () => {
+test('operator PDF wraps unusually long AI prose without truncating it', () => {
   const longClaim='상세 원인 설명 '.repeat(40).trim();
   const html=exporter.buildReportHtml({
     ...report,
     primary_cause:{claim:longClaim,related_tags:[]},
     report_rows:[],
   });
-  assert.doesNotMatch(html,new RegExp(longClaim));
-  assert.match(html,/상세 원인 설명 .*…/);
+  assert.match(html,new RegExp(longClaim));
+  assert.doesNotMatch(html,/…|text-overflow\s*:\s*ellipsis/);
 });
 
 test('operator PDF preserves real edits even when known source tags are present', () => {
@@ -205,7 +290,7 @@ test('operator report removes conversational AI endings from generated conclusio
     },
     report_rows:[],
   });
-  assert.match(html,/외부 Trip Command 입력/);
+  assert.match(html,/외부 (?:GT )?Trip Command 입력/);
   assert.match(html,/GT·ST Trip Latch 동시 동작/);
   for(const text of ['활성화되었습니다','관측되었습니다','확인할 수 있습니다','확정할 수 없습니다'])assert.doesNotMatch(html,new RegExp(text));
 });

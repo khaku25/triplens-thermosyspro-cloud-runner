@@ -9,6 +9,7 @@ on:
       - 'scripts/update_triplens_logic.py'
       - 'scripts/install_logic_web.py'
       - 'tests/test_logic_*.py'
+      - 'tests/test_drawing_master.py'
       - 'tests/test_current_catalog.py'
       - 'data/current_v8/**'
       - 'logic_diagrams/**'
@@ -112,6 +113,7 @@ jobs:
           TRIPLENS_MOBILE_SCREENSHOT: ${{ runner.temp }}/logic-mobile.png
         run: |
           python -m unittest discover -s tests -p 'test_logic_*.py' -v
+          python -m unittest tests.test_drawing_master -v
           python -m unittest discover -s tests -p test_current_catalog.py -v
           python -m unittest discover -s services/agent-api/tests -p 'test_*.py' -v
       - name: Existing analysis report placement and Gemini serialization regressions

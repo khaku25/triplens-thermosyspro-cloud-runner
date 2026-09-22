@@ -228,7 +228,9 @@ body:has(.app-shell){background:#d8dee3;color:#183348}
   .app-shell .workspace{grid-template-columns:1fr}
   .app-shell .sidebar{border-bottom:1px solid #203d4d}
   .app-shell .sidebar nav{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));overflow:auto}
-  .app-shell .side-links,.app-shell .boundary{display:none}
+  .app-shell .boundary{display:none}
+  .app-shell .side-links{display:block;margin-top:0;padding-top:10px}
+  .app-shell .side-links button{width:100%}
   .app-shell .intake{grid-template-columns:1fr}
 }
 @media(max-width:700px){

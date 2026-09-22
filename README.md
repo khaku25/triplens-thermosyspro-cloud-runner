@@ -15,9 +15,15 @@ V8은 현재 V8.5.3 RC1 검증 단계입니다. LP BFP 단기 시나리오는 Gi
 검증 범위와 승격 조건은
 [`docs/V8_5_3_RC1_VALIDATION.md`](docs/V8_5_3_RC1_VALIDATION.md)를 기준으로 합니다.
 
-TripLens 웹의 근거→Tag/Logic 도면 연결, `/testbench`, 보고서 V2/PDF/PINPOINT 및
+TripLens 웹의 근거→Tag/Logic/Drawing Master 도면 연결, `/testbench`, 보고서 V2/PDF/PINPOINT 및
 GitHub CI 통과 후 동일 Vercel Preview artifact를 한 번만 운영 승격하는 절차는
 [`docs/INTEGRATION_TESTBENCH_REPORT_V2.md`](docs/INTEGRATION_TESTBENCH_REPORT_V2.md)를 기준으로 합니다.
+
+Drawing Master는 Current V8 draw.io에 이미 존재하는 페이지와 `object` cell을 exact ID로 찾는
+읽기 전용 색인입니다. fuzzy matching이나 로직 재해석을 하지 않으며, 현재 snapshot은 98페이지의
+1,551개 cell, 53개 Logic ID, 86개 Tag ID를 색인합니다. 생성·게시·hash 검증·모바일 사용법과
+P&ID/SLD/Modelica runtime을 변경하지 않는 범위는
+[`docs/LOGIC_ASSETS.md`](docs/LOGIC_ASSETS.md)의 **Drawing Master 계약**을 따릅니다.
 
 저장소에 함께 있는 MATLAB ECMS VPP와 Python 변환기는 웹 변환부 이관 및
 예제 검증을 위한 실행 가능한 기준 구현입니다. Action 실행 경로와는 분리되어
