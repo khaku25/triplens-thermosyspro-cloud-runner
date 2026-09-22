@@ -70,10 +70,10 @@ def project_files(repository):
         release=publish_repository(repository,Path(tmp)/'release')
         for p in sorted(release.iterdir()):
             if p.is_file(): files['generated/logic/'+p.name]=p.read_bytes()
-    for name in [DRAWIO_NAME,'logic_diagram_index.json','asset_manifest.json']:
+    for name in [DRAWIO_NAME,'logic_diagram_index.json','drawing_master_index.json','asset_manifest.json']:
         files['logic_diagrams/'+name]=files['generated/logic/'+name]
     # The generated viewer contains the exact same XML and index and works offline.
-    for name in ['viewer.html',DRAWIO_NAME,'logic_diagram_index.json','asset_manifest.json']:
+    for name in ['viewer.html',DRAWIO_NAME,'logic_diagram_index.json','drawing_master_index.json','asset_manifest.json']:
         files['apps/web/public/logic-assets/'+name]=files['generated/logic/'+name]
     runtime=runtime_assets(repository)
     for prefix in ['data/current_v8','services/agent-api/triplens/current_v8']:
