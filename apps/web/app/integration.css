@@ -458,3 +458,21 @@ body:has(.app-shell){background:#d8dee3;color:#183348}
   .app-shell .claim-evidence-summary{align-items:flex-start;flex-direction:column;gap:2px}
   .app-shell .analysis-list .claim-evidence{padding-left:35px}
 }
+
+/* Evidence/detail separation and raw-tag readability. */
+.app-shell .raw-tag-list{display:flex;flex-wrap:wrap;align-items:center;gap:7px;width:100%;padding:2px 0}
+.app-shell .raw-tag-list>b{width:100%;color:#5a7280;font-size:11px}
+.app-shell .raw-tag-link{max-width:100%;overflow-wrap:anywhere;text-align:left;padding:5px 7px;border:1px solid #c4d4dc;background:#f2f6f8;color:#416579;font:11px ui-monospace,SFMono-Regular,Consolas,monospace;cursor:pointer}
+.app-shell .raw-tag-link:hover{background:#e7f0f3;border-color:#91b1bf}
+.app-shell .claim-evidence>details{margin-top:10px;padding-top:9px;border-top:1px solid #dbe4e8}
+.app-shell .claim-evidence>details>summary{padding:2px 0 4px}
+.app-shell .claim-card .claim-detail{margin-top:14px;padding-top:11px;border-top:1px solid #dbe4e8}
+.app-shell .claim-card .claim-evidence{margin-top:14px}
+.app-shell .analysis-list article>details{margin:14px 0 0 38px;padding-top:10px;border-top:1px solid #dbe4e8}
+.app-shell .analysis-list article>details summary{padding:2px 0 5px}
+.app-shell .analysis-list article>details p{margin:6px 0 0;color:#405e70;line-height:1.7;overflow-wrap:anywhere}
+.app-shell .analysis-list article .claim-evidence + details{margin-top:15px}
+@media(max-width:700px){
+  .app-shell .analysis-list article>details{margin-left:35px}
+  .app-shell .claim-card .claim-detail,.app-shell .claim-card .claim-evidence{margin-left:11px;margin-right:11px}
+}
