@@ -229,29 +229,29 @@
     if (gtStLatch && /(활성|동작|작동|ACTIVE|LATCH)/i.test(text)) return 'GT·ST Trip Latch 동시 동작';
     if (/외부\s*(?:GT\s*)?(?:Trip|트립)\s*(?:Command|명령).*(?:입력|인가|관측)/i.test(text)) return '외부 Trip Command 입력';
     text = text
-      .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*(?:초|s)(?:에)?(?=\s|$)\s*/gi, '')
-      .replace(/^\s*\d+(?:\.\d+)?\s*초에(?=\s)\s*/, '')
-      .replace(/RAW\s*변화\s*시간구간이\s*Direct Trigger\s*시각과\s*겹칩니다\.?/gi, 'RAW 변화구간 · Direct Trigger 시각 중첩.')
-      .replace(/선후관계는\s*표본만으로\s*확정할\s*수\s*없습니다\.?/g, '선후관계 미확정')
-      .replace(/선후관계를\s*확정할\s*수\s*없습니다\.?/g, '선후관계 미확정')
-      .replace(/확인되지\s*않았습니다\.?/g, '미확인.')
-      .replace(/완료되지\s*않았습니다\.?/g, '미완료')
+      .replace(/\bmodel_time_s\s*=?\s*/gi, '')
+      .replace(/RAW\s*변화\s*시간구간이\s*Direct Trigger\s*시각과\s*겹칩니다/gi, 'RAW 변화구간 · Direct Trigger 시각 중첩')
+      .replace(/선후관계는\s*표본만으로\s*확정할\s*수\s*없습니다/g, '선후관계 미확정')
+      .replace(/선후관계를\s*확정할\s*수\s*없습니다/g, '선후관계 미확정')
+      .replace(/확인되지\s*않았습니다/g, '미확인')
+      .replace(/완료되지\s*않았습니다/g, '미완료')
       .replace(/조회가\s*미확인/g, '조회 미확인')
-      .replace(/확인(?:이)?\s*필요합니다\.?/g, '확인 필요')
-      .replace(/확인해야\s*합니다\.?/g, '확인 필요.')
-      .replace(/검토해야\s*합니다\.?/g, '검토 필요')
-      .replace(/확정할\s*수\s*없습니다\.?/g, '미확정')
-      .replace(/판단할\s*수\s*없습니다\.?/g, '판단 불가')
-      .replace(/알\s*수\s*없습니다\.?/g, '미확인')
-      .replace(/활성화되었습니다\.?/g, '활성')
-      .replace(/동작되었습니다\.?/g, '동작')
-      .replace(/작동(?:하였|했)습니다\.?/g, '동작')
-      .replace(/관측되었습니다\.?/g, '관측')
-      .replace(/기록되었습니다\.?/g, '기록')
-      .replace(/입력되었습니다\.?/g, '입력')
-      .replace(/인가되었습니다\.?/g, '인가')
-      .replace(/없습니다\.?/g, '없음')
-      .replace(/있습니다\.?/g, '있음')
+      .replace(/확인(?:이)?\s*필요합니다/g, '확인 필요')
+      .replace(/확인해야\s*합니다/g, '확인 필요')
+      .replace(/검토해야\s*합니다/g, '검토 필요')
+      .replace(/확정할\s*수\s*없습니다/g, '미확정')
+      .replace(/판단할\s*수\s*없습니다/g, '판단 불가')
+      .replace(/알\s*수\s*없습니다/g, '미확인')
+      .replace(/활성화되었습니다/g, '활성')
+      .replace(/동작되었습니다/g, '동작')
+      .replace(/작동(?:하였|했)습니다/g, '동작')
+      .replace(/관측되었습니다/g, '관측')
+      .replace(/기록되었습니다/g, '기록')
+      .replace(/입력되었습니다/g, '입력')
+      .replace(/인가되었습니다/g, '인가')
+      .replace(/([가-힣]+)된\s*것입니다\.?$/g, '$1됨')
+      .replace(/없습니다/g, '없음')
+      .replace(/있습니다/g, '있음')
       .replace(/입니다\.?$/g, '')
       .replace(/합니다\.?$/g, '')
       .replace(/\.\s+/g, ' · ')
@@ -262,7 +262,7 @@
     return text.length > limit ? `${text.slice(0, limit).trimEnd()}…` : text;
   }
 
-  function operatorClaim(item, stage = '') {
+  function operatorClaim(item, stage = '', limit = 180) {
     const tags = new Set(list(item?.related_tags || item?.relatedTags || item?.tags).map(String));
     const sourceValue = item && typeof item === 'object'
       ? (item.claim || item.message || item.description || item.summary || '')
@@ -308,9 +308,9 @@
     if (mapped) return mapped[1];
     let cleaned = source
       .replace(/기록되었습니다\.\s*단,?\s*/g, '기록되었으나, ')
-      .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*(?:초|s)(?:에)?(?=\s|$)\s*/gi, '')
-      .replace(/\((?:RAW:\d+:)?vpp[A-Za-z0-9_.-]+\)/gi, '')
-      .replace(/\b(?:태그\s+)?vpp[A-Za-z0-9_.-]+\b/g, '')
+      .replace(/\bmodel_time_s\s*=?\s*/gi, '')
+      .replace(/\((?:RAW:\d+:)?vpp[A-Za-z0-9_.-]+\)/gi, '');
+    cleaned = stripInlineTechnicalTags(cleaned)
       .replace(/1(?:\.0)?\s*\(ACTIVE\)(?:으로)?/gi, 'ACTIVE')
       .replace(/개로\s*\(0(?:\.0)?\)\s*됨/g, '개방')
       .replace(/\(\s*,+\s*/g, '(')
@@ -318,34 +318,97 @@
       .replace(/,\s*=\s*/g, ', ')
       .replace(/\(\s*(급증|급감|상승|하락|증가|감소|활성|비활성|동작|정지)\s*\)/g, ' $1')
       .replace(/\(\s*\)/g, '')
+      .replace(/,\s*,+/g, ', ')
+      .replace(/(?:\s*(?:및|또는|와|과)|\s*[,/&])+\s*(?=\))/g, '')
+      .replace(/,\s*(및|또는)\s+/g, ' $1 ')
       .replace(/\(\s+/g, '(')
       .replace(/\s+\)/g, ')')
       .replace(/\s*,\s*/g, ', ')
       .replace(/\s+/g, ' ')
       .replace(/\s+([,.])/g, '$1')
       .trim();
-    cleaned = attachKoreanParticles(cleaned);
+    cleaned = correctParentheticalParticles(cleaned);
     if (/^서\s+-?\d+(?:\.\d+)?\s*초\s*(?:사이|구간)/.test(cleaned)) {
       const start = Array.isArray(item?.time_interval_s) && Number.isFinite(Number(item.time_interval_s[0])) ? Number(item.time_interval_s[0]) : null;
       cleaned = `${start === null ? '관측 시작 시각에' : `${start}초에`}${cleaned}`;
     }
-    return operatorPhrase(cleaned);
+    return operatorPhrase(cleaned, limit);
   }
 
-  function attachKoreanParticles(value) {
-    const choose = (word, particle) => {
-      if (['의', '에', '에서', '에게'].includes(particle)) return particle;
-      const code = word.charCodeAt(word.length - 1) - 0xac00;
-      const jong = code >= 0 && code <= 11171 ? code % 28 : 0;
-      if (particle === '은' || particle === '는') return jong ? '은' : '는';
-      if (particle === '이' || particle === '가') return jong ? '이' : '가';
-      if (particle === '을' || particle === '를') return jong ? '을' : '를';
-      if (particle === '와' || particle === '과') return jong ? '과' : '와';
-      if (particle === '로' || particle === '으로') return jong && jong !== 8 ? '으로' : '로';
-      return particle;
-    };
-    return String(value || '').replace(/([가-힣]+)\s+(에서|에게|으로|은|는|이|가|을|를|와|과|의|에|로)(?=\s|[,.)]|$)/g,
-      (_, word, particle) => `${word}${choose(word, particle)}`);
+  function chooseKoreanParticle(word, particle) {
+    if (['의', '에', '에서', '에게'].includes(particle)) return particle;
+    const code = word.charCodeAt(word.length - 1) - 0xac00;
+    const jong = code >= 0 && code <= 11171 ? code % 28 : 0;
+    if (particle === '은' || particle === '는') return jong ? '은' : '는';
+    if (particle === '이' || particle === '가') return jong ? '이' : '가';
+    if (particle === '을' || particle === '를') return jong ? '을' : '를';
+    if (particle === '와' || particle === '과') return jong ? '과' : '와';
+    if (particle === '로' || particle === '으로') return jong && jong !== 8 ? '으로' : '로';
+    return particle;
+  }
+
+  function correctParentheticalParticles(value) {
+    return String(value || '').replace(/([가-힣]+)(\([^)]*\))(에서|에게|으로|은|는|이|가|을|를|와|과|의|에|로)(?=\s|[,.)]|$)/g,
+      (_, word, parenthetical, particle) => `${word}${parenthetical}${chooseKoreanParticle(word, particle)}`);
+  }
+
+  function technicalTagLabel(value) {
+    const tag = String(value || '');
+    const unit = tag.match(/vpp(HP|IP|LP)/)?.[1] || '';
+    if (/DrumInventoryFaultFlowCommand/i.test(tag)) return `${unit ? `${unit} ` : ''}드럼 외란 유입 지령`;
+    if (/DrumInventoryDisturbanceMassFlow/i.test(tag)) return `${unit ? `${unit} ` : ''}드럼 외란 유량`;
+    if (/DrumLevel/i.test(tag)) return `${unit ? `${unit} ` : ''}드럼 수위`;
+    if (/DrumPressure/i.test(tag)) return `${unit ? `${unit} ` : ''}드럼 압력`;
+    if (/(HP|IP|LP)TurbineSteamFlow/i.test(tag)) return `${tag.match(/vpp(HP|IP|LP)/i)?.[1]?.toUpperCase() || ''} 터빈 증기 유량`.trim();
+    if (/GTExhaustMassFlow/i.test(tag)) return 'GT 배기 유량';
+    if (/GTExhaustTemperature/i.test(tag)) return 'GT 배기 온도';
+    if (/FWPTripPushbutton/i.test(tag)) return `${unit ? `${unit} ` : ''}BFP 트립 푸시버튼 신호`;
+    if (/FWPTripLatch/i.test(tag)) return `${unit ? `${unit} ` : ''}BFP 트립 래치`;
+    if (/FWPTripCommand/i.test(tag)) return `${unit ? `${unit} ` : ''}BFP 트립 명령`;
+    if (/FWPRunning/i.test(tag)) return `${unit ? `${unit} ` : ''}BFP 운전 신호`;
+    if (/FWPSpeedProven/i.test(tag)) return `${unit ? `${unit} ` : ''}BFP 속도 확인 신호`;
+    return '신호';
+  }
+
+  function stripInlineTechnicalTags(value) {
+    const source = String(value || '');
+    return source.replace(/(\s*)\b(?:RAW:\d+:)?(?:태그\s+)?(vpp[A-Za-z0-9_.-]+)\b(에서|에게|으로|은|는|이|가|을|를|와|과|의|에|로)?/gi,
+      (match, gap, tag, particle, offset) => {
+        const prefix = source.slice(0, offset);
+        const suffix = source.slice(offset + match.length);
+        const label = technicalTagLabel(tag);
+        if (!particle) {
+          const previous = prefix.trimEnd().slice(-1);
+          const following = suffix.trimStart();
+          if (previous !== '(' && (/^\(/.test(following) || /^[+-]?\d/.test(following))) return `${gap}${label}`;
+          return '';
+        }
+        const previousWord = prefix.match(/([가-힣]+)$/)?.[1] || '';
+        const needsSubject = !previousWord
+          || /(?:사이|구간|시점)에$/.test(previousWord)
+          || /[,;:([{]$/.test(prefix);
+        if (needsSubject) return `${gap}${label}${chooseKoreanParticle(label, particle)}`;
+        return chooseKoreanParticle(previousWord, particle);
+      });
+  }
+
+  function reportOperatorClaim(item, stage = '', limit = 180) {
+    if (stage !== 'propagation' || !item || typeof item !== 'object') return operatorClaim(item, stage, limit);
+    const source = [
+      item.claim,
+      item.message,
+      item.description,
+      item.summary,
+      joinList(item.related_tags || item.relatedTags || item.tags, ' '),
+      ...list(item.evidence).flatMap(evidence => [evidence?.canonical_tag, evidence?.event_tag, evidence?.tag]),
+    ].filter(Boolean).join(' ');
+    const technicalTags = new Set(source.match(/\bvpp[A-Za-z0-9_.-]+\b/g) || []);
+    if (technicalTags.size <= 1) return operatorClaim(item, stage, limit);
+    // A single-tag shorthand is useful for one alarm, but selecting the first
+    // shorthand from a multi-signal claim discards the remaining observations.
+    // Reuse the same sanitiser without tag-driven shorthand so the complete
+    // model narrative (equipment, condition and order) remains visible.
+    return operatorClaim({...item, related_tags:[], relatedTags:[], tags:[]}, stage, limit);
   }
 
   function editedContent(report, section, item, fallback = '') {
@@ -573,12 +636,7 @@
       return useful(value) || '연결';
     };
     const fullOperator = (item, stage = '') => {
-      const compact = fullText(operatorClaim(item, stage));
-      if (compact && !String(operatorClaim(item, stage)).includes('…')) return compact;
-      const source = item && typeof item === 'object'
-        ? (item.claim || item.message || item.description || item.summary || '')
-        : asText(item);
-      return fullText(operatorPhrase(source, 4000));
+      return fullText(reportOperatorClaim(item, stage, 4000));
     };
     const evidenceCount = item => evidenceIds(item?.evidence_ids || item?.evidenceIds || []).length;
     const evidenceMeta = item => {
@@ -687,7 +745,23 @@
       {label:'파급 항목',value:propagationCount ? `${propagationCount}건 관측` : '후속 변화 근거 없음'},
     ]).map(item => `<div class="metric-card"><span>${esc(item.label)}</span><b>${esc(item.value)}</b></div>`).join('');
 
-    const propagationText = propagationItems.map(item => fullOperator(item, 'propagation')).filter(Boolean).slice(0, 4).join(' → ') || '후속 변화 근거 없음';
+    const visiblePropagationItems = propagationItems
+      .map(item => ({item, claim:fullOperator(item, 'propagation')}))
+      .filter(entry => entry.claim)
+      .slice(0, 4);
+    const propagationText = visiblePropagationItems.map(entry => entry.claim).join(' → ') || '후속 변화 근거 없음';
+    const propagationEvidenceIds = [];
+    const seenPropagationEvidenceIds = new Set();
+    for (const {item} of visiblePropagationItems) {
+      for (const id of evidenceIds(item?.evidence_ids || item?.evidenceIds || [])) {
+        if (seenPropagationEvidenceIds.has(id)) continue;
+        seenPropagationEvidenceIds.add(id);
+        propagationEvidenceIds.push(id);
+      }
+    }
+    const propagationCardItem = visiblePropagationItems.length
+      ? {...visiblePropagationItems[0].item, evidence_ids:propagationEvidenceIds}
+      : {};
     const faultRows = [
       ['최초 Event', criticalDisplay || direct, printableStatus(firstCritical?.status || directItem?.status || 'OBSERVED')],
       ['주요 현상', [direct, propagationText].filter(Boolean).join(' → '), '시간순 확인'],
@@ -709,7 +783,7 @@
       ['선행 원인 (Primary Cause)', primary, primaryItem],
       ['주요 이벤트 (Critical Event)', criticalDisplay || direct, firstCritical || directItem],
       ['직접 Trip 원인 (Direct Trigger)', direct, directItem],
-      ['파급 결과 (Propagation)', propagationText, propagationItems[0] || {}],
+      ['파급 결과 (Propagation)', propagationText, propagationCardItem],
     ].map(([label,claim,item]) => {
       const when=displayTime(item); const ids=evidenceIds(item?.evidence_ids || []);
       return `<div class="chain-row"><div class="chain-time">${esc(when.primary === '시각 미확인' ? '사고 구간' : when.primary)}</div><div class="chain-card"><b>${esc(label)}</b><span class="status">${esc(printableStatus(item?.status || (label.includes('선행')?'CANDIDATE':'OBSERVED')))}</span><strong>${esc(claim)}</strong><small>${esc(ids.length ? `근거 ID ${ids.join(' · ')}` : evidenceMeta(item))}</small></div></div>`;

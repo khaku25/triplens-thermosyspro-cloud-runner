@@ -516,6 +516,78 @@ test('report prose removes tag citations without leaving punctuation or detached
   assert.doesNotMatch(html,/model_time_s|지시 이|명령 에|접점 가|상태 이/);
 });
 
+test('report prose preserves evidence times and repairs grammar around removed technical tags', () => {
+  const firstEvent='이벤트 로그에 model_time_s 31.4초 시점에 LP BFP 트립 푸시버튼 눌림(LP_BFP_TRIP_PB PRESSED) 이벤트가 기록되었으나, 동 시점의 RAW 데이터(LP_BFP_TRIP_PB 및 vppLPFWPTripPushbuttonNative)는 0.0으로 비활성 상태였습니다.';
+  const html=exporter.buildReportHtml({
+    ...report,
+    incident_summary:firstEvent,
+    critical_events:[{
+      claim:firstEvent,status:'OBSERVED',model_time_s:31.4,
+      evidence_ids:['EV-PB','RAW:7:vppLPFWPTripPushbuttonNative'],
+      related_tags:['LP_BFP_TRIP_PB','vppLPFWPTripPushbuttonNative'],
+    }],
+    primary_cause:{
+      claim:'47.88초와 48.88초 사이에 vppLPDrumInventoryFaultFlowCommand.signal이 0.0에서 160.0으로 인가되고, vppLPDrumInventoryDisturbanceMassFlowTH가 0.0 t/h에서 576.0 t/h로 급증했습니다.',
+      status:'CANDIDATE',evidence_ids:['RAW:21:vppLPDrumInventoryFaultFlowCommand.signal'],
+      related_tags:['vppLPDrumInventoryFaultFlowCommand.signal','vppLPDrumInventoryDisturbanceMassFlowTH'],
+    },
+    direct_trigger:{
+      claim:'model_time_s 48.92초에 LP BFP 트립 래치(vppLPFWPTripLatchState)가 활성화되어 VCB-A02 트립 명령(vppVCBA02TripCommandNative)이 발령된 것입니다.',
+      status:'CANDIDATE',model_time_s:48.92,evidence_ids:['RAW:22:vppVCBA02TripCommandNative'],
+      related_tags:['vppLPFWPTripLatchState','vppVCBA02TripCommandNative'],
+    },
+    propagation:[{
+      claim:'외부 ST 트립 명령(vppExternalSTTripCommandNative)이 인가되었습니다. 표본 간격에 따른 시간적 불확실성이 존재합니다.',
+      status:'OBSERVED',evidence_ids:['RAW:22:vppExternalSTTripCommandNative'],
+      related_tags:['vppExternalSTTripCommandNative'],
+    }],
+    chronological_events:[{
+      model_time_s:31.84,category:'EVENT',status:'OBSERVED',evidence_ids:['EV-IP'],
+      claim:'미등록 관측 상태였으며 이 시점의 실제 RAW 신호 전이로 즉시 이어지지 않았습니다.',
+    }],
+    report_rows:[],
+  });
+  assert.match(html,/이벤트 로그에 31\.4초 시점에/);
+  assert.match(html,/RAW 데이터\(LP_BFP_TRIP_PB\)는/);
+  assert.match(html,/48\.92초에 LP BFP 트립 래치가 활성화되어 VCB-A02 트립 명령이 발령됨/);
+  assert.match(html,/47\.88초와 48\.88초 사이에 LP 드럼 외란 유입 지령이 0\.0에서 160\.0으로 인가되고, LP 드럼 외란 유량이 0\.0 t\/h/);
+  assert.match(html,/인가 · 표본 간격에 따른 시간적 불확실성이 존재/);
+  assert.match(html,/상태였으며 이 시점/);
+  assert.doesNotMatch(html,/model_time_s|이벤트 로그에 시점에|LP_BFP_TRIP_PB 및\)|사이에가|인가되고, 가|발령된 것|상태였으며가|인가 표본/);
+});
+
+test('technical evidence citations are removed as a whole instead of leaving RAW prefixes', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    primary_cause:{
+      claim:'48.12초에 입력(RAW:21:vppIPFWPTripPushbuttonNative, 0.0)과 운전 상태(EV-4, vppIPFWPRunning RUNNING_LOST)를 확인했습니다.',
+      status:'CANDIDATE',evidence_ids:['RAW:21:vppIPFWPTripPushbuttonNative','EV-4'],
+      related_tags:['vppIPFWPTripPushbuttonNative','vppIPFWPRunning'],
+    },
+    report_rows:[],
+  });
+  const primary=html.match(/<b>선행 원인 \(Primary Cause\)<\/b><div><strong>(.*?)<\/strong>/)?.[1]||'';
+  assert.match(primary,/입력\(0\.0\)과 운전 상태\(EV-4, RUNNING_LOST\)/);
+  assert.doesNotMatch(primary,/RAW:21:|vppIPFWP/);
+});
+
+test('long report narratives use the same technical-tag sanitiser as compact narratives', () => {
+  const longDirect='등록된 IP BFP 트립 로직(CMD-FWP-IP-TRIP)에 따라 트립 명령(vppIPFWPTripCommandNative), 트립 래치(vppIPFWPTripLatchNative), 및 차단기 트립 명령(vppVCBB01TripCommandNative)이 48.12초와 49.24초 사이에 활성화되어 48.96초에 VCB-B01 개로(SESSION-00002, vppECMSVCBB01Closed) 및 모터 전원 차단(SESSION-00003, vppIPFWPMotorEnergized)을 직접 트리거했습니다.';
+  const html=exporter.buildReportHtml({
+    ...report,
+    direct_trigger:{
+      claim:longDirect,status:'CANDIDATE',time_interval_s:[48.12,49.24],
+      evidence_ids:['RAW:21:vppIPFWPTripCommandNative','SESSION-00002','SESSION-00003'],
+      related_tags:['vppIPFWPTripCommandNative','vppIPFWPTripLatchNative','vppVCBB01TripCommandNative'],
+    },
+    report_rows:[],
+  });
+  const direct=html.match(/<b>직접 Trip 원인 \(Direct Trigger\)<\/b><div><strong>(.*?)<\/strong>/)?.[1]||'';
+  assert.match(direct,/트립 명령, 트립 래치 및 차단기 트립 명령/);
+  assert.match(direct,/VCB-B01 개로\(SESSION-00002\).*모터 전원 차단\(SESSION-00003\)/);
+  assert.doesNotMatch(direct,/vpp[A-Za-z0-9_.-]+|,\s*\)/);
+});
+
 test('report date falls back to a dated EVENT when the first critical item is a RAW interval', () => {
   const html=exporter.buildReportHtml({
     ...report,
@@ -560,4 +632,47 @@ test('unknown direct trigger uses observed protection and follow-on EVENT eviden
   assert.match(html,/대상 설비<\/th><td>LP DRUM · 52GT · 52ST/);
   assert.match(html,/추가 검증 필요/);
   assert.doesNotMatch(html,/최종 판정<\/span><b>분석 완료/);
+});
+
+test('combined propagation card cites the stable evidence union for every visible propagation claim', () => {
+  const profiles = [
+    ['05', [2, 3]],
+    ['06', [1, 1, 2, 3]],
+    ['07', [1, 2, 4]],
+    ['08', [3, 3, 1]],
+    ['10', [3, 3, 1]],
+    ['11', [3, 6, 1]],
+    ['12', [2, 2, 1]],
+  ];
+  for (const [scenario, evidenceCounts] of profiles) {
+    const propagation = evidenceCounts.map((count, itemIndex) => ({
+      claim:`Scenario ${scenario} propagation ${itemIndex + 1}`,
+      status:'OBSERVED',
+      recorded_time:String(60 + itemIndex),
+      evidence_ids:Array.from({length:count}, (_, evidenceIndex) =>
+        scenario === '10' && itemIndex === 1 && evidenceIndex === 0
+          ? `S${scenario}-I1-E1`
+          : `S${scenario}-I${itemIndex + 1}-E${evidenceIndex + 1}`),
+    }));
+    if (scenario === '06') propagation.push({
+      claim:'Scenario 06 hidden fifth propagation',
+      status:'OBSERVED',
+      evidence_ids:['S06-HIDDEN-EVIDENCE'],
+    });
+    const visible = propagation.slice(0, 4);
+    const expectedIds = [...new Set(visible.flatMap(item => item.evidence_ids))];
+    const html = exporter.buildReportHtml({
+      ...report,
+      primary_cause:{...report.primary_cause,evidence_ids:[`S${scenario}-PRIMARY-ONLY`]},
+      direct_trigger:{...report.direct_trigger,evidence_ids:[`S${scenario}-DIRECT-ONLY`]},
+      propagation,
+      report_rows:[],
+    });
+    const card = html.match(/<div class="chain-row"><div class="chain-time">[^<]*<\/div><div class="chain-card"><b>파급 결과 \(Propagation\)<\/b>[\s\S]*?<\/div><\/div>/)?.[0] || '';
+    assert.ok(card, `scenario ${scenario} propagation card is present`);
+    const evidenceLine = card.match(/<small>(.*?)<\/small>/)?.[1] || '';
+    assert.equal(evidenceLine, `근거 ID ${expectedIds.join(' · ')}`, `scenario ${scenario} uses the ordered visible evidence union`);
+    assert.doesNotMatch(evidenceLine, new RegExp(`S${scenario}-(?:PRIMARY|DIRECT)-ONLY`));
+    if (scenario === '06') assert.doesNotMatch(evidenceLine, /S06-HIDDEN-EVIDENCE/);
+  }
 });
