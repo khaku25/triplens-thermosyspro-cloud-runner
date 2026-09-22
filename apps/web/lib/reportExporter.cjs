@@ -271,6 +271,19 @@
     const active = /ACTIVE|TRIPPED|LATCHED/.test(state) || rawValue === true || numericValue === 1 || /ACTIVE|동작|작동|인가/.test(source);
     const opened = /OPEN|TRIPPED/.test(state) || numericValue === 0 || /\bOPEN\b|개방|개로/.test(source);
     const low = /LOW|ALARM/.test(state) || /\bLOW(?:_LOW)?\b|저하|저유량|저온|하한|\bLL\b/i.test(source);
+    const joinedTags = [...tags].join(' ');
+    if (stage === 'primary' && /vppExternal(?:ST)?TripCommandNative/.test(joinedTags)) return /ExternalSTTripCommandNative/.test(joinedTags) ? '외부 ST Trip Command 입력' : '외부 GT Trip Command 입력';
+    if (stage === 'primary' && /vppCause(?:GT|ST)?BreakerOpenWhileRunning/.test(joinedTags)) {
+      const unit = /vppCauseSTBreakerOpenWhileRunning/.test(joinedTags) ? 'ST' : /vppCauseGTBreakerOpenWhileRunning/.test(joinedTags) ? 'GT' : '';
+      return unit ? unit + ' 운전 중 차단기 개로 원인 활성화됨' : '운전 중 차단기 개로 원인 활성화됨';
+    }
+    if (stage === 'primary' && /vppECMS52(?:GT|ST)ClosedCommandNative/.test(joinedTags)) return /vppECMS52STClosedCommandNative/.test(joinedTags) ? '52ST 차단기 투입 명령 해제' : '52GT 차단기 투입 명령 해제';
+    if (stage === 'direct' && /vpp(?:GT|ST)TripLatch(?:Published)?/.test(joinedTags)) {
+      const gt = /vppGTTripLatch/.test(joinedTags); const st = /vppSTTripLatch/.test(joinedTags);
+      if (gt && st) return 'GT·ST Trip Latch 동시 동작';
+      if (gt) return 'GT Trip Latch 동작';
+      if (st) return 'ST Trip Latch 동작';
+    }
     if (stage === 'primary' && tags.has('vppExternalTripCommandNative')) return '외부 Trip Command 입력';
     if (stage === 'primary' && tags.has('vppECMS52GTClosedCommandNative') && tags.has('vppCauseGTBreakerOpenWhileRunning')) return 'GT 운전 중 52GT 차단기 개로 원인 활성화됨';
     if (stage === 'primary' && tags.has('vppECMS52GTClosedCommandNative')) return '52GT 차단기 투입 명령 해제';
@@ -343,6 +356,12 @@
     return { visible: rows.slice(0, limit), hiddenCount: Math.max(0, rows.length - limit) };
   }
 
+  function reportEvidenceLine(item) {
+    const ids = evidenceIds(item?.evidence_ids || item?.evidenceIds || []);
+    const time = displayTime(item);
+    const timeText = [time.primary, time.secondary].filter(value => value && value !== '시각 미확인').join(' · ');
+    return [timeText, ids.length ? '근거 ' + ids.length + '건' : '근거 기록 없음'].filter(Boolean).join(' · ');
+  }
   function buildReportHtml(report) {
     const analysis = normalizedAnalysis(report);
     const metadata = report.metadata || {};
@@ -386,13 +405,13 @@
 <style>
 @page{size:A4;margin:0}
 *{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#172f3f;font-family:"Noto Sans KR","Malgun Gothic",Arial,sans-serif;font-size:10.5pt;line-height:1.42}
-.report{width:210mm;min-height:297mm;margin:0 auto;padding:11mm 12mm 12mm}.doc-head{border-top:4px solid #173e55;border-bottom:1px solid #8ea0ab;padding:0 0 4mm;margin-bottom:5mm}.doc-title{font-size:20pt;font-weight:800;color:#102f43;margin-bottom:3mm}.doc-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm}.doc-meta div{background:#eef3f5;border-left:3px solid #2a657f;padding:2.5mm}.doc-meta span{display:block;font-size:8pt;color:#5e7380;margin-bottom:.7mm}.doc-meta b{font-size:10pt}.section{margin:0 0 4.5mm;break-inside:avoid;page-break-inside:avoid}.section h2{font-size:12pt;margin:0 0 2mm;padding-bottom:1.5mm;border-bottom:1.5px solid #234b62;color:#15384d}.cause-grid{display:grid;grid-template-columns:1fr 1fr;gap:3mm}.cause-box{border:1px solid #aebcc4;padding:3mm;min-height:23mm}.cause-box span{display:block;color:#5d7280;font-size:8.5pt;margin-bottom:1.2mm}.cause-box strong{font-size:13pt;color:#12364b}.cause-box small{display:block;margin-top:1.5mm;color:#607582}.summary-line{padding:3mm;border:1px solid #aebcc4;background:#f7f9fa;font-size:11pt;font-weight:700}
+.report{width:210mm;min-height:297mm;margin:0 auto;padding:11mm 12mm 12mm}.doc-head{border-top:4px solid #173e55;border-bottom:1px solid #8ea0ab;padding:0 0 4mm;margin-bottom:5mm}.doc-title{font-size:20pt;font-weight:800;color:#102f43;margin-bottom:3mm}.doc-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm}.doc-meta div{background:#eef3f5;border-left:3px solid #2a657f;padding:2.5mm}.doc-meta span{display:block;font-size:8pt;color:#5e7380;margin-bottom:.7mm}.doc-meta b{font-size:10pt}.section{margin:0 0 4.5mm;break-inside:avoid;page-break-inside:avoid}.section h2{font-size:12pt;margin:0 0 2mm;padding-bottom:1.5mm;border-bottom:1.5px solid #234b62;color:#15384d}.cause-grid{display:grid;grid-template-columns:1fr 1fr;gap:3mm}.cause-box{border:1px solid #aebcc4;padding:3mm;min-height:23mm}.cause-box span{display:block;color:#5d7280;font-size:8.5pt;margin-bottom:1.2mm}.cause-box strong{font-size:13pt;color:#12364b}.cause-box small{display:block;margin-top:1.5mm;color:#607582}.cause-box .evidence-line{color:#3f7187;font-weight:700;font-size:8pt}.summary-line{padding:3mm;border:1px solid #aebcc4;background:#f7f9fa;font-size:11pt;font-weight:700}
 table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid-page;page-break-inside:avoid}th,td{border:1px solid #b8c3c9;padding:2.1mm;vertical-align:top;overflow-wrap:anywhere}th{background:#edf2f4;text-align:left;font-weight:700}td small{display:block;color:#6a7e89;font-size:8pt;margin-top:.5mm}.timeline th:nth-child(1){width:31%}.timeline th:nth-child(2){width:18%}.timeline td:nth-child(3){font-weight:650}.note{font-size:8.5pt;color:#586d79;margin-top:1.5mm}.footer{margin-top:5mm;padding-top:2mm;border-top:1px solid #aebbc3;font-size:8pt;color:#607480}
 @media print{html,body{width:210mm;height:auto;overflow:visible}.report{margin:0}.section,table,tr{overflow:visible!important;max-height:none!important;height:auto!important}}
 </style></head><body><main class="report">
 <header class="doc-head"><div class="doc-title">${esc(title)}</div><div class="doc-meta"><div><span>발생 시각</span><b>${esc(incidentTime.primary)}</b>${incidentTime.secondary?`<small>${esc(incidentTime.secondary)}</small>`:''}</div><div><span>대상 설비</span><b>${esc(equipment)}</b></div><div><span>입력 자료</span><b>${esc(metadata.event_file || 'EVENT.csv')} + ${esc(metadata.raw_file || 'RAW.csv')}</b></div></div></header>
 <section class="section"><h2>1. 사고 개요</h2><div class="summary-line">${esc(summaryDisplay || direct)}</div></section>
-<section class="section"><h2>2. 발생 원인</h2><div class="cause-grid"><div class="cause-box"><span>발생 원인</span><strong>${esc(primary)}</strong><small>${esc(displayTime(analysis.primary_cause).primary)}</small></div><div class="cause-box"><span>직접 보호동작</span><strong>${esc(direct)}</strong><small>${esc(displayTime(analysis.direct_trigger).primary)}</small></div></div></section>
+<section class="section"><h2>2. 발생 원인</h2><div class="cause-grid"><div class="cause-box"><span>발생 원인</span><strong>${esc(primary)}</strong><small>${esc(displayTime(analysis.primary_cause).primary)}</small><small class="evidence-line">${esc(reportEvidenceLine(analysis.primary_cause))}</small></div><div class="cause-box"><span>직접 보호동작</span><strong>${esc(direct)}</strong><small>${esc(displayTime(analysis.direct_trigger).primary)}</small><small class="evidence-line">${esc(reportEvidenceLine(analysis.direct_trigger))}</small></div></div></section>
 <section class="section"><h2>3. 시간순 사고 경위</h2><table class="timeline"><thead><tr><th>시간</th><th>설비 / 구분</th><th>발생 내용</th></tr></thead><tbody>${timelineRows || '<tr><td colspan="3">사고 기록 없음</td></tr>'}</tbody></table>${timeline.hiddenCount?`<div class="note">후속 기록 ${timeline.hiddenCount}건 · 상세 분석 데이터 참조</div>`:''}</section>
 <section class="section"><h2>4. 복구조치 및 확인사항</h2><table><tbody>${recoveryBody}</tbody></table></section>
 <footer class="footer">TripLens READ-ONLY 사고분석 · 상세 근거는 CSV 내보내기에서 확인</footer>
