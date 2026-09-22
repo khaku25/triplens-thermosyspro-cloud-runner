@@ -229,7 +229,7 @@
     if (gtStLatch && /(활성|동작|작동|ACTIVE|LATCH)/i.test(text)) return 'GT·ST Trip Latch 동시 동작';
     if (/외부\s*(?:GT\s*)?(?:Trip|트립)\s*(?:Command|명령).*(?:입력|인가|관측)/i.test(text)) return '외부 Trip Command 입력';
     text = text
-      .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*초에(?=\s)\s*/gi, '')
+      .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*(?:초|s)(?:에)?(?=\s|$)\s*/gi, '')
       .replace(/^\s*\d+(?:\.\d+)?\s*초에(?=\s)\s*/, '')
       .replace(/RAW\s*변화\s*시간구간이\s*Direct Trigger\s*시각과\s*겹칩니다\.?/gi, 'RAW 변화구간 · Direct Trigger 시각 중첩.')
       .replace(/선후관계는\s*표본만으로\s*확정할\s*수\s*없습니다\.?/g, '선후관계 미확정')
@@ -292,10 +292,10 @@
     if (stage === 'primary' && tags.has('vppECMS52GTClosedCommandNative')) return '52GT 차단기 투입 명령 해제';
     if (stage === 'primary' && tags.has('vppECMS52STClosedCommandNative') && tags.has('vppCauseSTBreakerOpenWhileRunning')) return 'ST 운전 중 52ST 차단기 개로 원인 활성화됨';
     if (stage === 'primary' && tags.has('vppECMS52STClosedCommandNative')) return '52ST 차단기 투입 명령 해제';
-    if (stage === 'direct' && active && tags.has('vppGTTripLatch') && tags.has('vppSTTripLatchPublished')) return 'GT·ST Trip Latch 동시 동작';
-    if (stage === 'direct' && active && tags.has('vppGTTripLatch')) return 'GT Trip Latch 동작';
-    if (stage === 'direct' && active && tags.has('vppSTTripLatchPublished')) return 'ST Trip Latch 동작';
-    const lowSeverity = /LOW[\s_-]*LOW|\bLL\b|저[\s-]*저/i.test(`${source} ${item?.tag || ''} ${item?.original_tag || ''}`) ? 'LOW-LOW' : 'LOW';
+    if (active && tags.has('vppGTTripLatch') && tags.has('vppSTTripLatchPublished')) return 'GT·ST Trip Latch 동시 동작';
+    if (active && tags.has('vppGTTripLatch')) return 'GT Trip Latch 동작';
+    if (active && tags.has('vppSTTripLatchPublished')) return 'ST Trip Latch 동작';
+    const lowSeverity = /\bLOW[\s_-]*LOW\b|\bLL\b|저[\s-]*저/i.test(`${source} ${item?.tag || ''} ${item?.original_tag || ''}`) ? 'LOW-LOW' : 'LOW';
     const mapped = [
       ['vpp52GTClosed', '52GT 차단기 OPEN', opened],
       ['vpp52STClosed', '52ST 차단기 OPEN', opened],
@@ -307,9 +307,10 @@
     ].find(([tag,,confirmed]) => confirmed && tags.has(tag));
     if (mapped) return mapped[1];
     let cleaned = source
-      .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*초에(?=\s)\s*/gi, '')
-      .replace(/\((?:vpp[A-Za-z0-9_.-]+)\)/g, '')
-      .replace(/\b(?:태그\s+)?vpp[A-Za-z0-9_.-]+(?:가|이|는|은)?\b/g, '')
+      .replace(/기록되었습니다\.\s*단,?\s*/g, '기록되었으나, ')
+      .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*(?:초|s)(?:에)?(?=\s|$)\s*/gi, '')
+      .replace(/\((?:RAW:\d+:)?vpp[A-Za-z0-9_.-]+\)/gi, '')
+      .replace(/\b(?:태그\s+)?vpp[A-Za-z0-9_.-]+\b/g, '')
       .replace(/1(?:\.0)?\s*\(ACTIVE\)(?:으로)?/gi, 'ACTIVE')
       .replace(/개로\s*\(0(?:\.0)?\)\s*됨/g, '개방')
       .replace(/\(\s*,+\s*/g, '(')
@@ -323,11 +324,28 @@
       .replace(/\s+/g, ' ')
       .replace(/\s+([,.])/g, '$1')
       .trim();
+    cleaned = attachKoreanParticles(cleaned);
     if (/^서\s+-?\d+(?:\.\d+)?\s*초\s*(?:사이|구간)/.test(cleaned)) {
       const start = Array.isArray(item?.time_interval_s) && Number.isFinite(Number(item.time_interval_s[0])) ? Number(item.time_interval_s[0]) : null;
       cleaned = `${start === null ? '관측 시작 시각에' : `${start}초에`}${cleaned}`;
     }
     return operatorPhrase(cleaned);
+  }
+
+  function attachKoreanParticles(value) {
+    const choose = (word, particle) => {
+      if (['의', '에', '에서', '에게'].includes(particle)) return particle;
+      const code = word.charCodeAt(word.length - 1) - 0xac00;
+      const jong = code >= 0 && code <= 11171 ? code % 28 : 0;
+      if (particle === '은' || particle === '는') return jong ? '은' : '는';
+      if (particle === '이' || particle === '가') return jong ? '이' : '가';
+      if (particle === '을' || particle === '를') return jong ? '을' : '를';
+      if (particle === '와' || particle === '과') return jong ? '과' : '와';
+      if (particle === '로' || particle === '으로') return jong && jong !== 8 ? '으로' : '로';
+      return particle;
+    };
+    return String(value || '').replace(/([가-힣]+)\s+(에서|에게|으로|은|는|이|가|을|를|와|과|의|에|로)(?=\s|[,.)]|$)/g,
+      (_, word, particle) => `${word}${choose(word, particle)}`);
   }
 
   function editedContent(report, section, item, fallback = '') {
@@ -419,6 +437,20 @@
       const semantic = [item.claim, item.message, item.description, item.summary, joinList(item.related_tags || item.tags), item.tag, item.original_tag].filter(Boolean).join(' ');
       for (const equipment of semanticEquipment(semantic)) add(equipment, baseScore);
     };
+    const equipmentOf = (item, stage = '') => {
+      if (!item || typeof item !== 'object') return [];
+      const values = [];
+      const include = value => {
+        const equipment = canonicalEquipment(value);
+        if (equipment && !values.includes(equipment)) values.push(equipment);
+      };
+      for (const equipment of semanticEquipment(operatorClaim(item, stage))) include(equipment);
+      include(item.equipment);
+      for (const evidence of list(item.evidence)) include(evidence?.equipment);
+      const semantic = [item.claim, item.message, item.description, item.summary, joinList(item.related_tags || item.tags), item.tag, item.original_tag].filter(Boolean).join(' ');
+      for (const equipment of semanticEquipment(semantic)) include(equipment);
+      return values;
+    };
     add(report?.equipment, 260);
     add(report?.metadata?.equipment, 250);
     inspect(report?.primary_cause || analysis?.primary_cause, 160);
@@ -433,7 +465,32 @@
     if (!ranked.length) return 'PLANT';
     const eligible = ranked.filter(item => item.score >= ranked[0].score - 55);
     const specific = eligible.filter(item => equipmentSpecificity(item.equipment) > 0);
-    return (specific.length ? specific : eligible).slice(0, 3).map(item => item.equipment).join(' · ') || 'PLANT';
+    const primarySource = report?.primary_cause || analysis?.primary_cause;
+    const directSourceItem = report?.direct_trigger || analysis?.direct_trigger;
+    const primaryEquipment = equipmentOf(primarySource, 'primary');
+    const criticalRoot = analysis?.critical_events?.find(item => equipmentOf(item).length);
+    const primaryRoot = primaryEquipment[0] || equipmentOf(criticalRoot)[0] || '';
+    const preferredTrain = /^(?:GT|ST)$/.test(primaryRoot)
+      ? primaryRoot
+      : primaryRoot ? '' : [
+        ...equipmentOf(observedEvent, 'direct'),
+        ...equipmentOf(directSourceItem, 'direct'),
+      ].find(equipment => /^(?:GT|ST)$/.test(equipment));
+    const selected = [...(specific.length ? specific : eligible)];
+    if (preferredTrain) selected.unshift(candidates.get(preferredTrain) || {equipment:preferredTrain,score:Infinity,order:-1});
+    for (const item of chronology(report)) {
+      if (!/PROTECTION/i.test(String(item?.category || item?.event_class || item?.source || ''))) continue;
+      for (const equipment of equipmentOf(item)) {
+        if (equipmentSpecificity(equipment) <= 0) continue;
+        selected.push(candidates.get(equipment) || {equipment,score:0,order:Number.MAX_SAFE_INTEGER});
+      }
+    }
+    const unique = [];
+    for (const item of selected) {
+      if (!unique.some(existing => existing.equipment === item.equipment)) unique.push(item);
+      if (unique.length === 3) break;
+    }
+    return unique.map(item => item.equipment).join(' · ') || 'PLANT';
   }
 
   function equipmentLabel(item) {
@@ -498,7 +555,7 @@
       const wanted = new Set(names);
       return reportRows.filter(row => wanted.has(valueOf(row, 'section', '구분')));
     };
-    const placeholder = /^(?:기록 없음|복구·조치 기록 입력 대기|입력 대기|입력 필요|추가 확인 필요|설명 미제공|분석 결과 없음|미확인|미기록|—|-)$/;
+    const placeholder = /^(?:기록 없음|복구·조치 기록 입력 대기|입력 대기|입력 필요|추가 확인 필요|설명 미제공|분석 결과 없음|미확인|미기록|—|-|[.…·-]+)$/;
     const fullText = value => String(value ?? '')
       .replace(/…/g, '')
       .replace(/\.{3,}/g, '')
@@ -533,8 +590,10 @@
     const observedDirect = observedProtectionEvent(report);
     const observedDirectText = useful(fullOperator(observedDirect, 'direct'));
     const firstCritical = analysis.critical_events.find(item => useful(fullOperator(item))) || observedDirect || analysis.critical_events[0];
+    const firstDatedEvent = chronology(report).find(item => String(item?.wall_time_utc || item?.recorded_wall_time || '').trim());
+    const incidentWallTime = report.incident_wall_time || firstCritical?.wall_time_utc || observedDirect?.wall_time_utc || firstDatedEvent?.wall_time_utc || firstDatedEvent?.recorded_wall_time;
     const incidentTime = displayTime({
-      wall_time_utc: report.incident_wall_time || firstCritical?.wall_time_utc,
+      wall_time_utc: incidentWallTime,
       model_time_s: report.incident_time || metadata.incident_time || firstCritical?.model_time_s || firstCritical?.recorded_time,
     });
     const primaryOriginal = claimField(analysis.primary_cause, 'claim', '');
@@ -581,11 +640,30 @@
     const summarySource = String(summaryRow?.content ?? summaryRow?.['내용'] ?? summaryOriginal);
     const summaryEdited = Boolean(summaryRow && (summaryRow.edited === true || summarySource !== String(summaryOriginal)));
     const summary = fullText(summarySource);
-    const summaryDisplay = useful(summaryEdited ? summary : fullOperator({claim:summary})) || direct || criticalDisplay;
+    const verificationPending = analysis.verification_gate !== 'PASS';
+    const verificationCounts = [
+      analysis.counter_evidence.length ? `반증 ${analysis.counter_evidence.length}건` : '',
+      analysis.additional_evidence_required.length ? `추가 확인 ${analysis.additional_evidence_required.length}건` : '',
+    ].filter(Boolean).join(' · ');
+    const verificationLabel = verificationPending
+      ? `추가 검증 필요${verificationCounts ? ` (${verificationCounts})` : ''}`
+      : '검증 통과';
+    const summaryBase = useful(summaryEdited ? summary : fullOperator({claim:summary})) || direct || criticalDisplay;
+    const summaryDisplay = verificationPending && !summaryBase.includes('추가 검증 필요')
+      ? `${summaryBase} · ${verificationLabel}`
+      : summaryBase;
     const equipment = deriveReportEquipment(report, analysis, observedDirect);
     const timeline = briefTimeline(report, 12);
     const timelineItems = timeline.visible;
     const timelineTotal = timelineItems.length + timeline.hiddenCount;
+    const chronological = chronology(report);
+    const observedDirectIndex = chronological.indexOf(observedDirect);
+    const fallbackPropagation = chronological
+      .slice(observedDirectIndex >= 0 ? observedDirectIndex + 1 : 1)
+      .filter(item => useful(fullOperator(item, 'propagation')))
+      .slice(0, 4);
+    const propagationItems = analysis.propagation.length ? analysis.propagation : fallbackPropagation;
+    const propagationCount = propagationItems.length;
     const timelineRow = (item, index, detailed = false) => {
       const when = item.__timeOverride ? {primary:item.__timeOverride,secondary:''} : displayTime(item);
       const claim = useful(item.__reportContent ? item.claim : fullOperator(item)) || '사고 구간 변화';
@@ -606,32 +684,32 @@
       {label:'대상 설비',value:equipment},
       {label:'사고 구간',value:incidentTime.secondary || (incidentTime.primary === '시각 미확인' ? 'EVENT 기준' : incidentTime.primary)},
       {label:'보호 상태',value:direct},
-      {label:'파급 항목',value:analysis.propagation.length ? `${analysis.propagation.length}건 관측` : 'EVENT·RAW 연결'},
+      {label:'파급 항목',value:propagationCount ? `${propagationCount}건 관측` : '후속 변화 근거 없음'},
     ]).map(item => `<div class="metric-card"><span>${esc(item.label)}</span><b>${esc(item.value)}</b></div>`).join('');
 
-    const propagationText = analysis.propagation.map(item => fullOperator(item, 'propagation')).filter(Boolean).slice(0, 4).join(' → ') || '보호동작 이후 설비 변화 연결';
+    const propagationText = propagationItems.map(item => fullOperator(item, 'propagation')).filter(Boolean).slice(0, 4).join(' → ') || '후속 변화 근거 없음';
     const faultRows = [
       ['최초 Event', criticalDisplay || direct, printableStatus(firstCritical?.status || directItem?.status || 'OBSERVED')],
       ['주요 현상', [direct, propagationText].filter(Boolean).join(' → '), '시간순 확인'],
-      ['상태 판정', `선행 원인 ${printableStatus(primaryItem?.status || primaryItem?.disposition || 'CANDIDATE')} · 직접 보호동작 ${printableStatus(directItem?.status || directItem?.disposition || 'CONFIRMED')} · 파급 ${analysis.propagation.length ? '○ 관측' : '연결'}`, '근거 연결'],
+      ['상태 판정', `선행 원인 ${printableStatus(primaryItem?.status || primaryItem?.disposition || 'CANDIDATE')} · 직접 보호동작 ${printableStatus(directItem?.status || directItem?.disposition || 'CONFIRMED')} · 파급 ${propagationCount ? '○ 관측' : '연결'}`, '근거 연결'],
     ].map(row => `<tr><th>${esc(row[0])}</th><td>${esc(row[1])}</td><td>${esc(row[2])}</td></tr>`).join('');
 
     const causeRows = [
       ['선행 원인 (Primary Cause)', primary, printableStatus(primaryItem?.status || primaryItem?.disposition || 'CANDIDATE'), evidenceMeta(primaryItem)],
       ['직접 Trip 원인 (Direct Trigger)', direct, printableStatus(directItem?.status || directItem?.disposition || 'CONFIRMED'), evidenceMeta(directItem)],
-      ['파급 결과 (Propagation)', propagationText, analysis.propagation.length ? '○ 관측' : '연결', analysis.propagation.length ? `${analysis.propagation.length}개 파급 항목` : 'EVENT·RAW 연결'],
+      ['파급 결과 (Propagation)', propagationText, propagationCount ? '○ 관측' : '연결', propagationCount ? `${propagationCount}개 파급 항목` : '후속 변화 근거 없음'],
     ].map(row => `<div class="cause-row"><b>${esc(row[0])}</b><div><strong>${esc(row[1])}</strong><small>${esc(row[3])}</small></div><span class="status">${esc(row[2])}</span></div>`).join('');
     const keyEvidenceRows = [
       ['선행 원인', evidenceMeta(primaryItem), printableStatus(primaryItem?.status || primaryItem?.disposition || 'CANDIDATE')],
       ['직접 보호동작', evidenceMeta(directItem), printableStatus(directItem?.status || directItem?.disposition || 'CONFIRMED')],
-      ['파급 결과', analysis.propagation.length ? `${analysis.propagation.length}개 항목 · EVENT·RAW 연결` : 'EVENT·RAW 연결', analysis.propagation.length ? '○ 관측' : '연결'],
+      ['파급 결과', propagationCount ? `${propagationCount}개 항목 · EVENT·RAW 연결` : '후속 변화 근거 없음', propagationCount ? '○ 관측' : '연결'],
     ].map(row => `<tr><th>${esc(row[0])}</th><td>${esc(row[1])}</td><td>${esc(row[2])}</td></tr>`).join('');
 
     const causalCards = [
       ['선행 원인 (Primary Cause)', primary, primaryItem],
       ['주요 이벤트 (Critical Event)', criticalDisplay || direct, firstCritical || directItem],
       ['직접 Trip 원인 (Direct Trigger)', direct, directItem],
-      ['파급 결과 (Propagation)', propagationText, analysis.propagation[0] || {}],
+      ['파급 결과 (Propagation)', propagationText, propagationItems[0] || {}],
     ].map(([label,claim,item]) => {
       const when=displayTime(item); const ids=evidenceIds(item?.evidence_ids || []);
       return `<div class="chain-row"><div class="chain-time">${esc(when.primary === '시각 미확인' ? '사고 구간' : when.primary)}</div><div class="chain-card"><b>${esc(label)}</b><span class="status">${esc(printableStatus(item?.status || (label.includes('선행')?'CANDIDATE':'OBSERVED')))}</span><strong>${esc(claim)}</strong><small>${esc(ids.length ? `근거 ID ${ids.join(' · ')}` : evidenceMeta(item))}</small></div></div>`;
@@ -667,7 +745,7 @@
     });
     const evidenceBody = evidenceRows.map(row => `<tr><td>${esc(row.id)}</td><td>${esc(row.source)}</td><td><code>${esc(row.tag)}</code></td><td>${esc(row.label)}</td><td>${esc(row.time)}</td><td>${esc(row.status)}</td></tr>`).join('') || '<tr><td colspan="6">EVENT·RAW 핵심 근거 연결</td></tr>';
     const tagExample = evidenceRows[0] || {tag:'Tag Master 연결',label:'표시명',source:'EVENT/RAW',id:'연결 근거'};
-    const documentDate = String(report.incident_wall_time || firstCritical?.wall_time_utc || '').slice(0,10) || '사고 분석일';
+    const documentDate = String(incidentWallTime || '').slice(0,10) || '날짜 미확인';
     const documentNumber = useful(report.document_number || metadata.document_number) || `TL-INC-${String(report.run_id || metadata.run_id || 'REPORT').replace(/[^A-Za-z0-9-]/g,'-')}`;
     const inputFiles = `${metadata.event_file || 'EVENT.csv'} + ${metadata.raw_file || 'RAW.csv'}`;
     const header = (page, continued = false) => `<header class="report-head"><div><h1>${esc(title)}${continued?' <span>(계속)</span>':''}</h1><p>사고분석 근거: ${esc(inputFiles)} / 분석제출: READ-ONLY</p><p>문서번호 ${esc(documentNumber)} · 설비 ${esc(equipment)} · 발생일시 ${esc(documentDate)}</p></div><div class="approval"><div><span>작성</span><b>자동</b></div><div><span>검토</span><b>자동</b></div><div><span>승인</span><b>READ-ONLY</b></div></div></header>`;
@@ -679,7 +757,7 @@
         <tr><th>발생 시각</th><td>${esc(incidentTime.primary === '시각 미확인' ? 'EVENT 기록 기준 사고 구간' : [incidentTime.primary,incidentTime.secondary].filter(Boolean).join(' · '))}</td></tr>
         <tr><th>대상 설비</th><td>${esc(equipment)}</td></tr>
         <tr><th>장애 요약</th><td>${esc(summaryDisplay)}</td></tr>
-        <tr><th>분석 상태</th><td>EVENT·RAW 연결 · 핵심 사고경위 ${timelineItems.length}건${timeline.hiddenCount ? ` / 전체 ${timelineTotal}건` : ''}</td></tr>
+        <tr><th>분석 상태</th><td>EVENT·RAW 연결 · ${esc(verificationLabel)} · 핵심 사고경위 ${timelineItems.length}건${timeline.hiddenCount ? ` / 전체 ${timelineTotal}건` : ''}</td></tr>
       </tbody></table></section>
       <section><h2>2. 운전 현황</h2><div class="metric-grid">${operationCards}</div></section>
       <section><h2>3. 장애 현상</h2><table class="phenomena"><tbody>${faultRows}</tbody></table></section>
@@ -690,7 +768,7 @@
     const pageTwo = page(2, `
       <div class="page-kicker">시간대별 조치사항 및 인과관계</div>
       <section><h2>4. 시간대별 조치사항</h2><table class="timeline"><thead><tr><th>기록 시각</th><th>구분</th><th>내용</th><th>상태</th><th>근거 ID</th></tr></thead><tbody>${firstTimelineRows || '<tr><td colspan="5">EVENT·RAW 사고 구간 연결</td></tr>'}</tbody></table></section>
-      <section><h2>6. 조치 결과</h2><div class="metric-grid three"><div class="metric-card"><span>보호 동작</span><b>${esc(printableStatus(directItem?.status || directItem?.disposition || 'CONFIRMED'))}</b></div><div class="metric-card"><span>근거 연결</span><b>EVENT·RAW ${evidenceRows.length}건</b></div><div class="metric-card"><span>최종 판정</span><b>${esc(report.document_state==='REVIEWED'?'검토 완료':'분석 완료')}</b></div></div>${recoveryDetails}</section>
+      <section><h2>6. 조치 결과</h2><div class="metric-grid three"><div class="metric-card"><span>보호 동작</span><b>${esc(printableStatus(directItem?.status || directItem?.disposition || 'CONFIRMED'))}</b></div><div class="metric-card"><span>근거 연결</span><b>EVENT·RAW ${evidenceRows.length}건</b></div><div class="metric-card"><span>최종 판정</span><b>${esc(verificationPending?'추가 검증 필요':report.document_state==='REVIEWED'?'검토 완료':'분석 완료')}</b></div></div>${recoveryDetails}</section>
       <section><h2>5-1. 인과관계 요약</h2><div class="chain-list">${causalCards}</div></section>
       <section><h2>7. 판정 기준</h2><div class="rule-box"><b>선행 원인</b><span>RAW 변화구간과 원인 로직 연결</span><b>직접 보호동작</b><span>EVENT 기록과 RAW 상태 연결</span><b>표시 원칙</b><span>확인 · 관측 · 후보 상태로 구분</span></div></section>`);
 

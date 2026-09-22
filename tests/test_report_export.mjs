@@ -377,6 +377,53 @@ test('production report prioritizes drum equipment over generic turbine and stag
   assert.doesNotMatch(html,/대상 설비<\/th><td>(?:ST|GT|HRSG|CRITICAL_EVENT)(?: ·|<)/);
 });
 
+test('direct trip reports keep the tripped train ahead of downstream equipment', () => {
+  for (const train of ['GT','ST']) {
+    const breaker=`52${train}`;
+    const latchTag=train==='GT'?'vppGTTripLatch':'vppSTTripLatchPublished';
+    const html=exporter.buildReportHtml({
+      ...report,
+      incident_summary:`${train} direct trip`,
+      primary_cause:{
+        claim:`외부 ${train} Trip Command 입력`,status:'CANDIDATE',evidence_ids:['R-CMD'],
+        related_tags:[train==='GT'?'vppExternalTripCommandNative':'vppExternalSTTripCommandNative'],
+      },
+      direct_trigger:{
+        claim:`${train} Trip Latch 동작`,status:'CONFIRMED',evidence_ids:['E-LATCH'],related_tags:[latchTag],
+      },
+      critical_events:[
+        {claim:`${breaker} 차단기 OPEN`,equipment:breaker,status:'OBSERVED',evidence_ids:['E-CB'],related_tags:[`vpp${breaker}Closed`]},
+        {claim:'HP DRUM 후속 경보',equipment:'HP DRUM',status:'OBSERVED',evidence_ids:['E-DRUM'],related_tags:['vppHPDrumLLRaw']},
+      ],
+      chronological_events:[
+        {model_time_s:48.4,equipment:train,claim:`${train} TRIP LATCH ACTIVE`,category:'PROTECTION',evidence_ids:['E-LATCH'],related_tags:[latchTag]},
+        {model_time_s:48.5,equipment:breaker,claim:`${breaker} BREAKER OPEN`,category:'PROTECTION',evidence_ids:['E-CB'],related_tags:[`vpp${breaker}Closed`]},
+        {model_time_s:60,equipment:'HP DRUM',claim:'HP DRUM ALARM',category:'ALARM',evidence_ids:['E-DRUM'],related_tags:['vppHPDrumLLRaw']},
+      ],
+      report_rows:[],
+    });
+    assert.match(html,new RegExp(`대상 설비<\\/th><td>${train}(?: ·|<)`));
+  }
+});
+
+test('tag-driven direct commands keep their causal train despite noisy downstream prose', () => {
+  for (const train of ['GT','ST']) {
+    const externalTag=train==='GT'?'vppExternalTripCommandNative':'vppExternalSTTripCommandNative';
+    const html=exporter.buildReportHtml({
+      ...report,
+      primary_cause:{
+        claim:`외부 명령 이후 HP DRUM 경보와 52${train} 개방이 관측되었습니다.`,
+        status:'CANDIDATE',evidence_ids:['R-CMD'],related_tags:[externalTag],
+      },
+      direct_trigger:{claim:'직접 트립 동작',status:'OBSERVED',evidence_ids:['E-TRIP'],related_tags:[]},
+      critical_events:[{claim:'HP DRUM 후속 경보',equipment:'HP DRUM',status:'OBSERVED',evidence_ids:['E-DRUM'],related_tags:['vppHPDrumLLRaw']}],
+      chronological_events:[],
+      report_rows:[],
+    });
+    assert.match(html,new RegExp(`대상 설비<\\/th><td>${train}(?: ·|<)`));
+  }
+});
+
 test('empty model narratives fall back to the first observed protection event', () => {
   const html=exporter.buildReportHtml({
     ...report,
@@ -390,7 +437,7 @@ test('empty model narratives fall back to the first observed protection event', 
     report_rows:[],
   });
   assert.match(html,/대상 설비<\/th><td>ST/);
-  assert.match(html,/장애 요약<\/th><td>ST Trip Latch 동작<\/td>/);
+  assert.match(html,/장애 요약<\/th><td>ST Trip Latch 동작 · 추가 검증 필요/);
   assert.match(html,/직접 Trip 원인 \(Direct Trigger\)[\s\S]*?ST Trip Latch 동작/);
   assert.doesNotMatch(html,/설명 미제공/);
 });
@@ -430,4 +477,87 @@ test('LOW-LOW evidence is not collapsed to LOW in report wording', () => {
     report_rows:[],
   });
   assert.match(html,/HP 터빈 증기유량 LOW-LOW/);
+});
+
+test('FLOW_LOW stays LOW when the equipment name itself ends in FLOW', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    critical_events:[],
+    propagation:[],
+    chronological_events:[{
+      model_time_s:48.72,equipment:'GT EXHAUST',category:'ALARM',
+      claim:'GT EXHAUST FLOW LOW ALARM',status:'OBSERVED',
+      evidence_ids:['EV-FLOW-LOW'],related_tags:['vppGTExhaustMassFlowTH'],
+    }],
+    report_rows:[],
+  });
+  assert.match(html,/GT 배기유량 LOW/);
+  assert.doesNotMatch(html,/GT 배기유량 LOW-LOW/);
+});
+
+test('report prose removes tag citations without leaving punctuation or detached Korean particles', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    incident_summary:'47.12초(RAW:20:vppHPDrumInventoryDisturbanceMassFlowTH)에서 외란이 시작되었습니다.',
+    critical_events:[{
+      claim:'48.04초에 외란 유량 지시 vppIPDrumInventoryFaultFlowCommand.signal이 상승했습니다.',
+      status:'OBSERVED',evidence_ids:['RAW:20:vppIPDrumInventoryFaultFlowCommand.signal'],
+      related_tags:['vppIPDrumInventoryFaultFlowCommand.signal'],
+    }],
+    propagation:[{
+      claim:'model_time_s=48.44s에 트립 명령 vppVCBA02TripCommandNative에 의해 차단기 접점 vppECMSVCBA02Closed가 개로되고 운전 상태 vppLPFWPRunning이 정지했습니다.',
+      status:'OBSERVED',evidence_ids:['EV-PROP'],related_tags:['vppVCBA02TripCommandNative'],
+    }],
+    report_rows:[],
+  });
+  assert.doesNotMatch(html,/47\.12초\(RAW:20:\)/);
+  assert.match(html,/외란 유량 지시가 상승/);
+  assert.match(html,/트립 명령에 의해 차단기 접점이 개로되고 운전 상태가 정지/);
+  assert.doesNotMatch(html,/model_time_s|지시 이|명령 에|접점 가|상태 이/);
+});
+
+test('report date falls back to a dated EVENT when the first critical item is a RAW interval', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    critical_events:[{
+      claim:'47.92초에서 48.92초 사이 외부 지령이 활성화되었습니다.',
+      status:'CANDIDATE',time_interval_s:[47.92,48.92],evidence_ids:['RAW:21:signal'],
+    }],
+    chronological_events:[{
+      model_time_s:48.44,wall_time_utc:'2026-09-15T14:52:04.212+00:00',
+      equipment:'GT',category:'PROTECTION',claim:'GT TRIP LATCH ACTIVE',
+      status:'OBSERVED',evidence_ids:['EV-DATED'],related_tags:['vppGTTripLatch'],
+    }],
+    report_rows:[],
+  });
+  assert.match(html,/발생일시 2026-09-15/);
+  assert.doesNotMatch(html,/발생일시 (?:사고 분석일|날짜 미확인)/);
+});
+
+test('unknown direct trigger uses observed protection and follow-on EVENT evidence without placeholders', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    verification_gate:'HOLD',
+    critical_events:[{
+      claim:'LP DRUM LEVEL LOW ALARM',equipment:'LP DRUM',status:'OBSERVED',
+      evidence_ids:['EV-LP-LOW'],related_tags:['vppLPDrumLevelM'],
+    }],
+    primary_cause:{claim:'선행 원인은 미확인입니다.',status:'UNKNOWN',evidence_ids:[],related_tags:['vppLPDrumLevelM']},
+    direct_trigger:{claim:'...',description:'...',status:'UNKNOWN',evidence_ids:[],related_tags:[]},
+    propagation:[],
+    chronological_events:[
+      {model_time_s:67.8,wall_time_utc:'2026-09-15T15:21:42.538+00:00',equipment:'LP DRUM',category:'ALARM',claim:'LP DRUM LEVEL LOW ALARM',status:'OBSERVED',evidence_ids:['EV-LP-LOW'],related_tags:['vppLPDrumLevelM']},
+      {model_time_s:85.63,wall_time_utc:'2026-09-15T15:22:02.550+00:00',equipment:'GT',category:'PROTECTION',claim:'GT TRIP LATCH ACTIVE',status:'OBSERVED',evidence_ids:['EV-GT'],related_tags:['vppGTTripLatch']},
+      {model_time_s:85.63,wall_time_utc:'2026-09-15T15:22:02.552+00:00',equipment:'ST',category:'PROTECTION',claim:'ST TRIP LATCH ACTIVE',status:'OBSERVED',evidence_ids:['EV-ST'],related_tags:['vppSTTripLatchPublished']},
+      {model_time_s:85.71,wall_time_utc:'2026-09-15T15:22:19.813+00:00',equipment:'52GT',category:'PROTECTION',claim:'52GT BREAKER OPEN',status:'OBSERVED',evidence_ids:['EV-52GT'],related_tags:['vpp52GTClosed']},
+      {model_time_s:85.73,wall_time_utc:'2026-09-15T15:22:24.064+00:00',equipment:'52ST',category:'PROTECTION',claim:'52ST BREAKER OPEN',status:'OBSERVED',evidence_ids:['EV-52ST'],related_tags:['vpp52STClosed']},
+    ],
+    report_rows:[],
+  });
+  assert.doesNotMatch(html,/>[.…]{1,3}</);
+  assert.match(html,/GT Trip Latch 동작/);
+  assert.match(html,/ST Trip Latch 동작 → 52GT 차단기 OPEN → 52ST 차단기 OPEN/);
+  assert.match(html,/대상 설비<\/th><td>LP DRUM · 52GT · 52ST/);
+  assert.match(html,/추가 검증 필요/);
+  assert.doesNotMatch(html,/최종 판정<\/span><b>분석 완료/);
 });
