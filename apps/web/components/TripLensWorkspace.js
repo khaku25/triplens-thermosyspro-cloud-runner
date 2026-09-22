@@ -79,13 +79,16 @@ function ClaimEvidence({item,onOpen}){
   const allTags=[...tags.visible,...tags.hidden];
   const ids=[...new Set((item?.evidence_ids||[]).filter(Boolean))];
   if(!tags.visible.length&&!ids.length)return null;
+  const time=displayEventTime(item);
+  const timeText=time.secondary||time.primary;
   const openClaim=()=>onOpen({kind:'claim',evidenceIds:ids,tags:allTags});
   return <div className="claim-evidence">
-    {tags.visible.length?<div className="evidence-pills" aria-label="핵심 근거 태그">{tags.visible.map(tag=><span key={tag}>{friendlyTag(tag)}</span>)}</div>:null}
+    <div className="claim-evidence-summary"><span>근거</span><strong>{timeText&&timeText!=='시각 미확인'?timeText:'연결 기록'}{ids.length?` · ${ids.length}건`:''}</strong></div>
     <details>
       <summary>상세 근거 보기{ids.length?` · ${ids.length}건`:''}</summary>
       <div className="detail-evidence-list">
         <EvidenceLinks ids={ids} onOpen={onOpen}/>
+        {tags.visible.length?<div className="evidence-pills" aria-label="근거 태그">{tags.visible.map(tag=><span key={tag}>{friendlyTag(tag)}</span>)}</div>:null}
         {tags.hidden.length?<div className="hidden-evidence-tags"><b>추가 근거 태그</b>{tags.hidden.map(tag=><span key={tag}>{friendlyTag(tag)}</span>)}</div>:null}
         {ids.length?<button className="tag-link" onClick={openClaim}>연결 근거 모아보기</button>:null}
       </div>
