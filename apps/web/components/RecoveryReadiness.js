@@ -55,7 +55,7 @@ function ReadyBadge({status}){
 
 function TrainCard({train}){
   const isGt=train.id==='gt-ready';
-  return <section className="readiness-train" data-status={train.status}>
+  return <section className="readiness-train" data-status={train.status} aria-label={isGt?'GT READY TO START':'ST READY TO START'}>
     <div className="readiness-train-title">
       {isGt?<GTIcon/>:<STIcon/>}
       <div>
@@ -99,7 +99,7 @@ export default function RecoveryReadiness({rawData}){
     <div className="readiness-train-row">
       <TrainCard train={gt}/>
       <div className="readiness-link" aria-hidden="true">←</div>
-      <section className="readiness-train shared" data-status={readiness.bop_hrsg.status}>
+      <section className="readiness-train shared" data-status={readiness.bop_hrsg.status} aria-label="BOP / HRSG READY TO START">
         <div className="readiness-train-title">
           <HRSGIcon/>
           <div><small>SHARED PREREQUISITE</small><strong>{readiness.bop_hrsg.label}</strong></div>

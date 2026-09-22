@@ -7,6 +7,7 @@ import {
   incidentMetrics,
   inputStatus,
   operatorSummary,
+  operatorPhrase,
   selectDetailEvidence,
   summarizeEvidence,
 } from '../apps/web/lib/workspacePresentation.mjs';
@@ -76,6 +77,24 @@ test('operator summaries never infer an alarm state from a tag name alone', () =
     value:820,
     state:'NORMAL',
   },'propagation'),'GT 배기온도 정상 범위');
+});
+
+test('operator narrative preserves interval starts and cleans punctuation left by raw-tag removal', () => {
+  assert.equal(
+    operatorSummary({
+      claim:'47.12초에서 48.12초 사이에 외란 유출(vppHPDrumInventoryFaultFlowCommand.signal = -160.0, vppHPDrumInventoryDisturbanceMassFlowTH = -576.0 t/h)이 발생했습니다.',
+      related_tags:['vppHPDrumInventoryFaultFlowCommand.signal','vppHPDrumInventoryDisturbanceMassFlowTH'],
+    }),
+    '47.12초에서 48.12초 사이에 외란 유출(-160.0, -576.0 t/h)이 발생했습니다',
+  );
+  assert.equal(operatorPhrase('48.44초에 보호동작이 발생했습니다.'),'보호동작이 발생했습니다');
+});
+
+test('operator summary retains LOW-LOW severity from observed wording', () => {
+  assert.equal(operatorSummary({
+    claim:'HP TURBINE STEAM FLOW LOW-LOW ALARM',
+    state:'ACTIVE',related_tags:['vppHPTurbineSteamFlowTH'],
+  },'propagation'),'HP 터빈 증기유량 LOW-LOW');
 });
 
 test('operator timeline is chronological and exposes only seven primary rows', () => {
