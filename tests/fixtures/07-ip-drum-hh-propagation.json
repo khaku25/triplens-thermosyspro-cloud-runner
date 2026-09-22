@@ -1,0 +1,44 @@
+{
+  "title": "TripLens Incident Analysis Report",
+  "run_id": "RUN-BLIND-TEST-2-07",
+  "verification_gate": "PASS",
+  "metadata": {
+    "event_file": "EVENT.csv",
+    "raw_file": "RAW.csv"
+  },
+  "incident_summary": "IP 드럼 수위 HH 분석",
+  "propagation": [
+    {
+      "stage": "propagation",
+      "status": "OBSERVED",
+      "claim": "72.92초에 고압 터빈 증기 유량(vppHPTurbineSteamFlowTH)이 저하되어 HP TURBINE FLOW_LOW 경보(346.06 t/h)가 발생했습니다.",
+      "description": "72.92초에 고압 터빈 증기 유량(vppHPTurbineSteamFlowTH)이 저하되어 HP TURBINE FLOW_LOW 경보(346.06 t/h)가 발생했습니다.",
+      "evidence_ids": [
+        "SESSION_20260915_150509-00005"
+      ],
+      "related_tags": [
+        "vppHPTurbineSteamFlowTH"
+      ],
+      "original_tags": [
+        "FLOW_LOW"
+      ],
+      "model_time_s": 72.92
+    },
+    {
+      "stage": "propagation",
+      "status": "OBSERVED",
+      "claim": "73.24초에 고압 터빈 증기 유량이 추가 저하되어 HP TURBINE FLOW_LOW_LOW 경보(191.36 t/h)가 발생했습니다.",
+      "description": "73.24초에 고압 터빈 증기 유량이 추가 저하되어 HP TURBINE FLOW_LOW_LOW 경보(191.36 t/h)가 발생했습니다.",
+      "evidence_ids": [
+        "SESSION_20260915_150509-00006"
+      ],
+      "related_tags": [
+        "vppHPTurbineSteamFlowTH"
+      ],
+      "original_tags": [
+        "FLOW_LOW_LOW"
+      ],
+      "model_time_s": 73.24
+    }
+  ]
+}
