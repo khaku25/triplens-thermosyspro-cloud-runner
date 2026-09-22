@@ -16,12 +16,13 @@
     "TripLens_Logic_Master_Current_V8.drawio": "b8beeafffdcfc4f6a9ee831bb35fab83077a70e12558055ff08ddf8ce497b616",
     "blocks.csv": "ce19ae6a31cbea6c2807fdc7bb6622a267f3a13968f4a219ea38ef75658474d8",
     "definitions.csv": "cf29c0654592098ebadeb8512b0bb325c2492e576bbf6e8a4cdbb9405174345e",
+    "drawing_master_index.json": "9d601ad14b87be5b1468c04c1d286b6b6bfda44b39e3ef9768213f9267779cc9",
     "edges.csv": "9b69368ca7a6086b9d402e337d0a1290c0a5d1046f843c98c85077dbf8979d85",
     "groups.csv": "f721c5519c151ab97efd515b032a62c79cd215d4252f729623c074e136e63913",
     "links.csv": "d6521353d58355a4267b76dfa9db4caef3359708673a22f2fb3bd5a1b05c4963",
     "logic_diagram_index.json": "77a7b89d988f23c52d9b4aa294abc1408344b60729631023da5da26f59431bcf",
     "ports.csv": "cd6214cd369d05e33e8dce63fca6efa51cd97e5ccb00f7975a1d837f2cebba0a",
-    "viewer.html": "e8c4441ab9f13d9a012b0980e01a243e3349fbdce8d60d6b14406fa485b5950e"
+    "viewer.html": "553ec49d324bccc9a52e9b2b9156e901697cca971dd2e3b471a5993fcbed0fee"
   },
   "schema_version": 2,
   "semantic_sha256": "3f5398d2a9efc176d365a313ba7a3c7c9156135a9fc9ae6d8eef7d885ee87c12",
