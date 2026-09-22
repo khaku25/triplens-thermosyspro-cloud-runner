@@ -400,3 +400,61 @@ body:has(.app-shell){background:#d8dee3;color:#183348}
 .app-shell .analysis-list time{color:#6c8290}
 .app-shell .analysis-list article .claim-evidence{background:#f8fafb}
 .app-shell .cause-layout .causal-section{background:#f7fafb}
+
+/* Final operator readability pass: calm surfaces, compact labels, and direct evidence. */
+.app-shell .main-area{background:#e3e8eb}
+.app-shell .analysis-surface,.app-shell .report-preview{border-color:#b7c5cc;background:#fbfcfd}
+.app-shell .section-heading h2{letter-spacing:-.02em}
+.app-shell .cause-grid{gap:14px}
+.app-shell .cause-card{background:#fbfcfd;border-color:#c2d0d7;box-shadow:0 1px 3px rgba(28,58,73,.06)}
+.app-shell .cause-card .claim-text{font-size:17px;line-height:1.5;min-height:72px;padding:18px 16px}
+.app-shell .claim-evidence-summary{min-height:24px;display:flex;align-items:center;gap:8px;color:#6a7e89;font-size:11px}
+.app-shell .claim-evidence-summary span{font-weight:800;color:#547080}
+.app-shell .claim-evidence-summary strong{color:#2f6075;font-size:12px}
+.app-shell .claim-evidence>details{margin-top:6px}
+.app-shell .claim-evidence summary{font-size:12px}
+.app-shell .detail-evidence-list{line-height:1.55}
+.app-shell .evidence-links button,.app-shell .tag-link{min-height:32px;padding:6px 0}
+.app-shell .evidence-pills span,.app-shell .hidden-evidence-tags span{font-size:11px;line-height:1.35}
+.app-shell .analysis-section{border-color:#c2d0d7;box-shadow:0 1px 2px rgba(28,58,73,.04)}
+.app-shell .analysis-section-head{background:#f3f7f8;border-bottom-color:#d6e0e5}
+.app-shell .analysis-list article{padding:13px 16px}
+.app-shell .analysis-list p{font-size:14px;line-height:1.55}
+.app-shell .analysis-list .claim-evidence{padding-left:38px}
+.app-shell .operator-report-preview{background:#fbfcfd;border-color:#c2d0d7}
+.app-shell .operator-report-causes>div,.app-shell .operator-report-recovery{background:#f5f8f9;border-color:#c8d5db}
+.app-shell .operator-report-causes strong{font-size:16px;line-height:1.45}
+.app-shell .operator-report-timeline>div{border-bottom-color:#dfe7ea}
+.app-shell .operator-report-timeline>div span{color:#244e62;line-height:1.45}
+.app-shell .readiness-head{background:#e9f0f3;border-bottom-color:#c8d6dc}
+.app-shell .recovery-readiness{background:#f7fafb;color:#294b5c;border-color:#b9cbd3}
+.app-shell .readiness-head h3,.app-shell .empty-readiness h3{color:#1e4356}
+.app-shell .readiness-head p,.app-shell .empty-readiness p{color:#5c7481}
+.app-shell .readiness-kicker{color:#397287}
+.app-shell .readiness-legend span{background:#f7fafb;border-color:#c6d4da;color:#4d6876}
+.app-shell .readiness-train{background:#f8fbfc;border-color:#c2d1d7}
+.app-shell .readiness-train.shared{background:#f1f6f8}
+.app-shell .readiness-train-title small{color:#718995}
+.app-shell .readiness-train-title strong{color:#244b60}
+.app-shell .readiness-group{background:#fff;border-color:#c5d2d8}
+.app-shell .readiness-group>header{background:#f1f6f8;border-bottom-color:#d4dfe4}
+.app-shell .readiness-group h4{color:#294f62}
+.app-shell .readiness-group>header small{color:#718995}
+.app-shell .readiness-condition{border-bottom-color:#e0e7ea}
+.app-shell .readiness-condition summary{color:#36596a}
+.app-shell .readiness-condition dd{color:#56707c}
+.app-shell .readiness-foot{background:#f3f7f8;border-top-color:#d2dfe4}
+.app-shell .readiness-blockers b{color:#a85d65}
+.app-shell .readiness-missing b{color:#9a7c35}
+.app-shell .readiness-clear b{color:#43805e}
+.app-shell .readiness-state[data-status="SATISFIED"]{color:#347653;background:#eef8f2;border-color:#a9cfb7}
+.app-shell .readiness-state[data-status="BLOCKED"]{color:#a3535c;background:#fff0f1;border-color:#e0b2b6}
+.app-shell .readiness-state[data-status="DATA_MISSING"]{color:#687c87;background:#f1f4f5;border-color:#c4d0d5}
+.app-shell .readiness-train[data-status="SATISFIED"]{box-shadow:inset 4px 0 0 #6cae85}
+.app-shell .readiness-train[data-status="BLOCKED"]{box-shadow:inset 4px 0 0 #d28a91}
+.app-shell .readiness-train[data-status="DATA_MISSING"]{box-shadow:inset 4px 0 0 #9aaeb7}
+@media(max-width:700px){
+  .app-shell .cause-card .claim-text{font-size:16px}
+  .app-shell .claim-evidence-summary{align-items:flex-start;flex-direction:column;gap:2px}
+  .app-shell .analysis-list .claim-evidence{padding-left:35px}
+}
