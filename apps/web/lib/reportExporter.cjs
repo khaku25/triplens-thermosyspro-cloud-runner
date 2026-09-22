@@ -229,16 +229,16 @@
     if (gtStLatch && /(활성|동작|작동|ACTIVE|LATCH)/i.test(text)) return 'GT·ST Trip Latch 동시 동작';
     if (/외부\s*(?:GT\s*)?(?:Trip|트립)\s*(?:Command|명령).*(?:입력|인가|관측)/i.test(text)) return '외부 Trip Command 입력';
     text = text
-      .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*초에\s*/gi, '')
-      .replace(/^\s*\d+(?:\.\d+)?\s*초에\s*/, '')
-      .replace(/RAW\s*변화\s*시간구간이\s*Direct Trigger\s*시각과\s*겹칩니다\.?/gi, 'RAW 변화구간 · Direct Trigger 시각 중첩')
+      .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*초에(?=\s)\s*/gi, '')
+      .replace(/^\s*\d+(?:\.\d+)?\s*초에(?=\s)\s*/, '')
+      .replace(/RAW\s*변화\s*시간구간이\s*Direct Trigger\s*시각과\s*겹칩니다\.?/gi, 'RAW 변화구간 · Direct Trigger 시각 중첩.')
       .replace(/선후관계는\s*표본만으로\s*확정할\s*수\s*없습니다\.?/g, '선후관계 미확정')
       .replace(/선후관계를\s*확정할\s*수\s*없습니다\.?/g, '선후관계 미확정')
-      .replace(/확인되지\s*않았습니다\.?/g, '미확인')
+      .replace(/확인되지\s*않았습니다\.?/g, '미확인.')
       .replace(/완료되지\s*않았습니다\.?/g, '미완료')
       .replace(/조회가\s*미확인/g, '조회 미확인')
       .replace(/확인(?:이)?\s*필요합니다\.?/g, '확인 필요')
-      .replace(/확인해야\s*합니다\.?/g, '확인 필요')
+      .replace(/확인해야\s*합니다\.?/g, '확인 필요.')
       .replace(/검토해야\s*합니다\.?/g, '검토 필요')
       .replace(/확정할\s*수\s*없습니다\.?/g, '미확정')
       .replace(/판단할\s*수\s*없습니다\.?/g, '판단 불가')
@@ -264,7 +264,10 @@
 
   function operatorClaim(item, stage = '') {
     const tags = new Set(list(item?.related_tags || item?.relatedTags || item?.tags).map(String));
-    const source = String(item?.claim || item?.message || item?.description || item?.summary || asText(item));
+    const sourceValue = item && typeof item === 'object'
+      ? (item.claim || item.message || item.description || item.summary || '')
+      : asText(item);
+    const source = String(sourceValue || '');
     const state = String(item?.state || '').toUpperCase();
     const rawValue = item?.value;
     const numericValue = rawValue === null || rawValue === undefined || String(rawValue).trim() === '' ? null : Number(rawValue);
@@ -292,25 +295,39 @@
     if (stage === 'direct' && active && tags.has('vppGTTripLatch') && tags.has('vppSTTripLatchPublished')) return 'GT·ST Trip Latch 동시 동작';
     if (stage === 'direct' && active && tags.has('vppGTTripLatch')) return 'GT Trip Latch 동작';
     if (stage === 'direct' && active && tags.has('vppSTTripLatchPublished')) return 'ST Trip Latch 동작';
+    const lowSeverity = /LOW[\s_-]*LOW|\bLL\b|저[\s-]*저/i.test(`${source} ${item?.tag || ''} ${item?.original_tag || ''}`) ? 'LOW-LOW' : 'LOW';
     const mapped = [
       ['vpp52GTClosed', '52GT 차단기 OPEN', opened],
       ['vpp52STClosed', '52ST 차단기 OPEN', opened],
-      ['vppGTExhaustMassFlowTH', 'GT 배기유량 LOW', low],
-      ['vppGTExhaustTemperatureK', 'GT 배기온도 LOW', low],
-      ['vppHPTurbineSteamFlowTH', 'HP 터빈 증기유량 LOW', low],
-      ['vppIPTurbineSteamFlowTH', 'IP 터빈 증기유량 LOW', low],
-      ['vppLPTurbineSteamFlowTH', 'LP 터빈 증기유량 LOW', low],
+      ['vppGTExhaustMassFlowTH', `GT 배기유량 ${lowSeverity}`, low],
+      ['vppGTExhaustTemperatureK', `GT 배기온도 ${lowSeverity}`, low],
+      ['vppHPTurbineSteamFlowTH', `HP 터빈 증기유량 ${lowSeverity}`, low],
+      ['vppIPTurbineSteamFlowTH', `IP 터빈 증기유량 ${lowSeverity}`, low],
+      ['vppLPTurbineSteamFlowTH', `LP 터빈 증기유량 ${lowSeverity}`, low],
     ].find(([tag,,confirmed]) => confirmed && tags.has(tag));
     if (mapped) return mapped[1];
-    return operatorPhrase(source
-      .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*초에\s*/gi, '')
+    let cleaned = source
+      .replace(/model_time_s\s*=?\s*\d+(?:\.\d+)?\s*초에(?=\s)\s*/gi, '')
       .replace(/\((?:vpp[A-Za-z0-9_.-]+)\)/g, '')
       .replace(/\b(?:태그\s+)?vpp[A-Za-z0-9_.-]+(?:가|이|는|은)?\b/g, '')
       .replace(/1(?:\.0)?\s*\(ACTIVE\)(?:으로)?/gi, 'ACTIVE')
       .replace(/개로\s*\(0(?:\.0)?\)\s*됨/g, '개방')
+      .replace(/\(\s*,+\s*/g, '(')
+      .replace(/([,(])\s*=\s*/g, '$1')
+      .replace(/,\s*=\s*/g, ', ')
+      .replace(/\(\s*(급증|급감|상승|하락|증가|감소|활성|비활성|동작|정지)\s*\)/g, ' $1')
+      .replace(/\(\s*\)/g, '')
+      .replace(/\(\s+/g, '(')
+      .replace(/\s+\)/g, ')')
+      .replace(/\s*,\s*/g, ', ')
       .replace(/\s+/g, ' ')
       .replace(/\s+([,.])/g, '$1')
-      .trim());
+      .trim();
+    if (/^서\s+-?\d+(?:\.\d+)?\s*초\s*(?:사이|구간)/.test(cleaned)) {
+      const start = Array.isArray(item?.time_interval_s) && Number.isFinite(Number(item.time_interval_s[0])) ? Number(item.time_interval_s[0]) : null;
+      cleaned = `${start === null ? '관측 시작 시각에' : `${start}초에`}${cleaned}`;
+    }
+    return operatorPhrase(cleaned);
   }
 
   function editedContent(report, section, item, fallback = '') {
@@ -326,15 +343,104 @@
     return list(value).flatMap(item => String(item || '').split(';')).map(item => item.trim()).filter(Boolean);
   }
 
+  const NON_EQUIPMENT_LABELS = new Set([
+    'PLANT', 'HRSG', 'EVENT', 'RAW', 'CRITICAL EVENT', 'PRIMARY CAUSE', 'DIRECT TRIGGER',
+    'PROPAGATION', 'CAUSAL CHAIN', 'ALARM', 'PROTECTION', 'SYSTEM', 'OPERATOR ACTION',
+  ]);
+
+  function canonicalEquipment(value) {
+    let text = String(value || '').trim().toUpperCase().replace(/_/g, ' ').replace(/\s+/g, ' ');
+    if (!text || NON_EQUIPMENT_LABELS.has(text)) return '';
+    let match = text.match(/^FWP[- ](HP|IP|LP)$/);
+    if (match) return `${match[1]} BFP`;
+    match = text.match(/^(HP|IP|LP) FWP$/);
+    if (match) return `${match[1]} BFP`;
+    text = text.replace(/FEED\s+WATER/g, 'FEEDWATER');
+    return NON_EQUIPMENT_LABELS.has(text) ? '' : text;
+  }
+
+  function semanticEquipment(value) {
+    const source = String(value || '');
+    const upper = source.toUpperCase().replace(/_/g, ' ');
+    const result = [];
+    const add = value => {
+      const equipment = canonicalEquipment(value);
+      if (equipment && !result.includes(equipment)) result.push(equipment);
+    };
+    for (const match of source.matchAll(/vpp(HP|IP|LP)Drum[A-Za-z0-9_.-]*/g)) add(`${match[1]} DRUM`);
+    for (const match of upper.matchAll(/\b(HP|IP|LP)\s+DRUM\b/g)) add(`${match[1]} DRUM`);
+    if (/고압\s*드럼/.test(source)) add('HP DRUM');
+    if (/중압\s*드럼/.test(source)) add('IP DRUM');
+    if (/저압\s*드럼/.test(source)) add('LP DRUM');
+    for (const match of source.matchAll(/vpp(HP|IP|LP)FWP(?:Trip|Reset|Speed|Running|Latch|Command|Pushbutton)[A-Za-z0-9_.-]*/g)) add(`${match[1]} BFP`);
+    for (const match of upper.matchAll(/\b(HP|IP|LP)\s+(?:BFP|FWP)\b/g)) add(`${match[1]} BFP`);
+    for (const match of upper.matchAll(/\b(HP|IP|LP)\s+(?:FEEDWATER|FW\s+FLOW)\b/g)) add(`${match[1]} FEEDWATER`);
+    for (const match of source.matchAll(/\b(HP|IP|LP)\s*급수/g)) add(`${match[1]} FEEDWATER`);
+    for (const match of upper.matchAll(/\bVCB[- ]?([A-Z]\d{2})\b/g)) add(`VCB-${match[1]}`);
+    for (const match of source.matchAll(/vpp(?:ECMS)?VCB([A-Z]\d{2})[A-Za-z0-9_.-]*/g)) add(`VCB-${match[1]}`);
+    for (const match of upper.matchAll(/\b(HP|IP|LP)\s+BFP\s+NRV\b/g)) add(`${match[1]} BFP NRV`);
+    for (const match of upper.matchAll(/\b(HP|IP|LP)\s+TURBINE\b/g)) add(`${match[1]} TURBINE`);
+    if (/\b52GT\b/.test(upper)) add('52GT');
+    if (/\b52ST\b/.test(upper)) add('52ST');
+    if (/\bGT\b.*(?:TRIP|LATCH)|(?:TRIP|LATCH).*\bGT\b/i.test(upper)) add('GT');
+    if (/\bST\b.*(?:TRIP|LATCH)|(?:TRIP|LATCH).*\bST\b/i.test(upper)) add('ST');
+    return result;
+  }
+
+  function equipmentSpecificity(value) {
+    if (/\b(?:BFP|DRUM|VCB)-?|FEEDWATER/.test(value)) return 30;
+    if (/\b(?:TURBINE|EXHAUST|NRV)\b/.test(value)) return 20;
+    if (/^52(?:GT|ST)$/.test(value)) return 10;
+    return 0;
+  }
+
+  function observedProtectionEvent(report) {
+    const rows = chronology(report);
+    return rows.find(item => /TRIP[ _-]*LATCH|트립\s*래치/i.test(`${item?.claim || item?.message || ''} ${joinList(item?.related_tags || item?.tags)}`))
+      || rows.find(item => /PROTECTION/i.test(String(item?.category || item?.event_class || item?.source || '')))
+      || rows[0]
+      || null;
+  }
+
+  function deriveReportEquipment(report, analysis, observedEvent) {
+    const candidates = new Map();
+    let order = 0;
+    const add = (value, baseScore) => {
+      const equipment = canonicalEquipment(value);
+      if (!equipment) return;
+      const score = baseScore + equipmentSpecificity(equipment);
+      const previous = candidates.get(equipment);
+      if (!previous || score > previous.score) candidates.set(equipment, {equipment, score, order:order++});
+    };
+    const inspect = (item, baseScore) => {
+      if (!item || typeof item !== 'object') return;
+      add(item.equipment, baseScore + 20);
+      for (const evidence of list(item.evidence)) add(evidence?.equipment, baseScore + 20);
+      const semantic = [item.claim, item.message, item.description, item.summary, joinList(item.related_tags || item.tags), item.tag, item.original_tag].filter(Boolean).join(' ');
+      for (const equipment of semanticEquipment(semantic)) add(equipment, baseScore);
+    };
+    add(report?.equipment, 260);
+    add(report?.metadata?.equipment, 250);
+    inspect(report?.primary_cause || analysis?.primary_cause, 160);
+    for (const item of list(report?.critical_events).length ? list(report.critical_events) : list(analysis?.critical_events)) inspect(item, 150);
+    inspect(report?.direct_trigger || analysis?.direct_trigger, 135);
+    for (const item of list(report?.propagation).length ? list(report.propagation) : list(analysis?.propagation)) inspect(item, 110);
+    const directSource = report?.direct_trigger || analysis?.direct_trigger || {};
+    const directNarrative = String(directSource?.claim || directSource?.description || '').trim();
+    inspect(observedEvent, directNarrative && !/^(?:설명 미제공|분석 결과 없음|추가 확인 필요)$/.test(directNarrative) ? 90 : 170);
+    chronology(report).forEach((item, index) => inspect(item, Math.max(45, 80 - index)));
+    const ranked = [...candidates.values()].sort((left, right) => right.score - left.score || left.order - right.order);
+    if (!ranked.length) return 'PLANT';
+    const eligible = ranked.filter(item => item.score >= ranked[0].score - 55);
+    const specific = eligible.filter(item => equipmentSpecificity(item.equipment) > 0);
+    return (specific.length ? specific : eligible).slice(0, 3).map(item => item.equipment).join(' · ') || 'PLANT';
+  }
+
   function equipmentLabel(item) {
-    if (item?.equipment) return String(item.equipment);
-    const text = `${operatorClaim(item)} ${joinList(item?.related_tags || item?.tags)}`.toUpperCase();
-    if (text.includes('52GT')) return '52GT';
-    if (text.includes('52ST')) return '52ST';
-    if (text.includes('GT')) return 'GT';
-    if (text.includes('ST')) return 'ST';
-    if (text.includes('DRUM')) return 'HRSG';
-    return String(item?.category || item?.stage || 'PLANT');
+    const explicit = canonicalEquipment(item?.equipment);
+    if (explicit) return explicit;
+    const text = `${operatorClaim(item)} ${joinList(item?.related_tags || item?.tags)} ${item?.tag || ''}`;
+    return semanticEquipment(text)[0] || 'PLANT';
   }
 
   function briefTimeline(report, limit = 7) {
@@ -392,7 +498,7 @@
       const wanted = new Set(names);
       return reportRows.filter(row => wanted.has(valueOf(row, 'section', '구분')));
     };
-    const placeholder = /^(?:기록 없음|복구·조치 기록 입력 대기|입력 대기|입력 필요|추가 확인 필요|미확인|미기록|—|-)$/;
+    const placeholder = /^(?:기록 없음|복구·조치 기록 입력 대기|입력 대기|입력 필요|추가 확인 필요|설명 미제공|분석 결과 없음|미확인|미기록|—|-)$/;
     const fullText = value => String(value ?? '')
       .replace(/…/g, '')
       .replace(/\.{3,}/g, '')
@@ -412,7 +518,9 @@
     const fullOperator = (item, stage = '') => {
       const compact = fullText(operatorClaim(item, stage));
       if (compact && !String(operatorClaim(item, stage)).includes('…')) return compact;
-      const source = item?.claim || item?.message || item?.description || item?.summary || asText(item);
+      const source = item && typeof item === 'object'
+        ? (item.claim || item.message || item.description || item.summary || '')
+        : asText(item);
       return fullText(operatorPhrase(source, 4000));
     };
     const evidenceCount = item => evidenceIds(item?.evidence_ids || item?.evidenceIds || []).length;
@@ -422,7 +530,9 @@
       const count = evidenceCount(item);
       return [time, count ? `근거 ${count}건` : ''].filter(Boolean).join(' · ') || 'EVENT·RAW 연결';
     };
-    const firstCritical = analysis.critical_events[0];
+    const observedDirect = observedProtectionEvent(report);
+    const observedDirectText = useful(fullOperator(observedDirect, 'direct'));
+    const firstCritical = analysis.critical_events.find(item => useful(fullOperator(item))) || observedDirect || analysis.critical_events[0];
     const incidentTime = displayTime({
       wall_time_utc: report.incident_wall_time || firstCritical?.wall_time_utc,
       model_time_s: report.incident_time || metadata.incident_time || firstCritical?.model_time_s || firstCritical?.recorded_time,
@@ -436,7 +546,9 @@
     const primaryEdited = Boolean(primaryRow && (primaryRow.edited === true || primarySource !== String(primaryOriginal)));
     const directEdited = Boolean(directRow && (directRow.edited === true || directSource !== String(directOriginal)));
     const primary = useful(primaryEdited ? primarySource : fullOperator(analysis.primary_cause, 'primary')) || '선행 원인 후보 없음';
-    const direct = useful(directEdited ? directSource : fullOperator(analysis.direct_trigger, 'direct')) || '직접 보호동작 없음';
+    const directAnalysisText = useful(directEdited ? directSource : fullOperator(analysis.direct_trigger, 'direct'));
+    const direct = directAnalysisText || observedDirectText || '직접 보호동작 근거 확인 필요';
+    const criticalDisplay = firstCritical === observedDirect ? observedDirectText : useful(fullOperator(firstCritical));
     const projectClaimRow = (source, row, claim) => {
       const projected = {...(source || {}), claim};
       if (!row) return projected;
@@ -463,14 +575,14 @@
       return projected;
     };
     const primaryItem = projectClaimRow(analysis.primary_cause, primaryRow, primary);
-    const directItem = projectClaimRow(analysis.direct_trigger, directRow, direct);
+    const directItem = projectClaimRow(directAnalysisText ? analysis.direct_trigger : (observedDirect || analysis.direct_trigger), directRow, direct);
     const summaryOriginal = report.incident_summary || direct;
     const summaryRow = editedRow(report, '개요', '장애 요약');
     const summarySource = String(summaryRow?.content ?? summaryRow?.['내용'] ?? summaryOriginal);
     const summaryEdited = Boolean(summaryRow && (summaryRow.edited === true || summarySource !== String(summaryOriginal)));
     const summary = fullText(summarySource);
-    const summaryDisplay = useful(summaryEdited ? summary : fullOperator({claim:summary})) || direct;
-    const equipment = report.equipment || metadata.equipment || [...new Set(analysis.critical_events.map(equipmentLabel).filter(Boolean))].slice(0,3).join(' · ') || 'PLANT';
+    const summaryDisplay = useful(summaryEdited ? summary : fullOperator({claim:summary})) || direct || criticalDisplay;
+    const equipment = deriveReportEquipment(report, analysis, observedDirect);
     const timeline = briefTimeline(report, 12);
     const timelineItems = timeline.visible;
     const timelineTotal = timelineItems.length + timeline.hiddenCount;
@@ -499,7 +611,7 @@
 
     const propagationText = analysis.propagation.map(item => fullOperator(item, 'propagation')).filter(Boolean).slice(0, 4).join(' → ') || '보호동작 이후 설비 변화 연결';
     const faultRows = [
-      ['최초 Event', fullOperator(firstCritical) || direct, printableStatus(firstCritical?.status || 'CONFIRMED')],
+      ['최초 Event', criticalDisplay || direct, printableStatus(firstCritical?.status || directItem?.status || 'OBSERVED')],
       ['주요 현상', [direct, propagationText].filter(Boolean).join(' → '), '시간순 확인'],
       ['상태 판정', `선행 원인 ${printableStatus(primaryItem?.status || primaryItem?.disposition || 'CANDIDATE')} · 직접 보호동작 ${printableStatus(directItem?.status || directItem?.disposition || 'CONFIRMED')} · 파급 ${analysis.propagation.length ? '○ 관측' : '연결'}`, '근거 연결'],
     ].map(row => `<tr><th>${esc(row[0])}</th><td>${esc(row[1])}</td><td>${esc(row[2])}</td></tr>`).join('');
@@ -517,7 +629,7 @@
 
     const causalCards = [
       ['선행 원인 (Primary Cause)', primary, primaryItem],
-      ['주요 이벤트 (Critical Event)', fullOperator(firstCritical) || direct, firstCritical || directItem],
+      ['주요 이벤트 (Critical Event)', criticalDisplay || direct, firstCritical || directItem],
       ['직접 Trip 원인 (Direct Trigger)', direct, directItem],
       ['파급 결과 (Propagation)', propagationText, analysis.propagation[0] || {}],
     ].map(([label,claim,item]) => {
@@ -602,7 +714,7 @@
 *{box-sizing:border-box}html,body{margin:0;padding:0;background:#eef1f3;color:#263845;font-family:"Noto Sans KR","Malgun Gothic",Arial,sans-serif;font-size:8pt;line-height:1.3}body{padding:8mm 0}.report-page{position:relative;width:210mm;height:297mm;margin:0 auto 8mm;background:#fff;padding:9mm 10mm 15mm;overflow:hidden;break-after:page;page-break-after:always}.report-page:last-child{break-after:auto;page-break-after:auto}.report-head{height:16mm;border:1px solid #b8c5ce;display:grid;grid-template-columns:1fr 54mm;grid-template-rows:minmax(0,1fr);margin-bottom:4mm}.report-head>div:first-child{padding:2.4mm 3mm}.report-head h1{font-size:11.5pt;line-height:1.15;margin:0 0 1.2mm}.report-head h1 span{font-size:8pt;color:#667785}.report-head p{font-size:6.2pt;color:#667785;margin:.4mm 0}.approval{display:grid;grid-template-columns:repeat(3,1fr)}.approval>div{border-left:1px solid #b8c5ce;padding:1.5mm;text-align:center}.approval span{display:block;color:#667785;font-size:6pt}.approval b{display:block;margin-top:2.2mm;font-size:6.3pt}.page-body{height:245mm;overflow:hidden;position:relative}.page-content{transform-origin:top left}.page-kicker{font-size:10pt;font-weight:800;margin:0 0 2.5mm}section{margin:0 0 3mm;break-inside:avoid;page-break-inside:avoid}section h2{font-size:8.7pt;margin:0 0 2mm;padding-bottom:1.2mm;border-bottom:1px solid #b8c5ce}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid-page;page-break-inside:avoid}th,td{border:1px solid #b8c5ce;padding:2mm 2.4mm;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#eef3f6;text-align:left;font-weight:700}thead th{background:#486477;color:#fff;text-align:center;font-size:6.4pt}.overview th{width:34mm}.phenomena th{width:34mm}.phenomena td:last-child{width:27mm;text-align:center}.key-evidence th{width:34mm}.key-evidence td:last-child{width:23mm;text-align:center}.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5mm}.metric-grid.three{grid-template-columns:repeat(3,1fr)}.metric-grid.four{margin-bottom:2.2mm}.metric-card{min-height:13mm;border:1px solid #b8c5ce;padding:2mm;background:#fff}.metric-card span{display:block;color:#667785;font-size:6.2pt;margin-bottom:1mm}.metric-card b{font-size:7pt}.recovery-details{margin-top:1.5mm;font-size:6.7pt}.recovery-details th{width:34mm}.recovery-details th,.recovery-details td{padding:1.35mm 2mm}.recovery-details td small{display:block;margin-top:.45mm;color:#667785;font-size:5.7pt}.cause-list{display:grid;gap:1mm}.cause-row{display:grid;grid-template-columns:55mm 1fr 23mm;gap:3mm;align-items:start;border:1px solid #b8c5ce;padding:2.1mm 3mm;min-height:8.5mm}.cause-row strong,.cause-row small{display:block}.cause-row strong{font-size:7.2pt}.cause-row small{color:#667785;font-size:6.1pt;margin-top:.6mm}.status{text-align:center;color:#486477;font-weight:800;font-size:6.2pt}.policy-note{margin:1.5mm 0 0;color:#667785;font-size:6.1pt}.timeline th,.timeline td{padding:1.5mm 2mm}.timeline th:nth-child(1){width:27mm}.timeline th:nth-child(2){width:25mm}.timeline th:nth-child(4){width:20mm}.timeline th:nth-child(5){width:26mm}.timeline td small{display:block;color:#667785;font-size:5.7pt}.chain-list{display:grid;gap:.8mm}.chain-row{display:grid;grid-template-columns:20mm 1fr;gap:2mm;align-items:start}.chain-time{padding-top:2.5mm;text-align:center;color:#667785;font-size:5.9pt}.chain-card{position:relative;border:1px solid #b8c5ce;padding:1.7mm 27mm 1.7mm 3mm;min-height:12.5mm}.chain-card>b,.chain-card>strong,.chain-card>small{display:block}.chain-card>strong{margin-top:.55mm}.chain-card>small{margin-top:.5mm;color:#667785;font-size:5.8pt}.chain-card>.status{position:absolute;right:3mm;top:2mm}.rule-box{display:grid;grid-template-columns:27mm 1fr;border:1px solid #b8c5ce;background:#f7f9fa}.rule-box>*{padding:1.2mm 2.5mm;border-bottom:1px solid #d8e1e7}.rule-box>*:nth-last-child(-n+2){border-bottom:0}.recommendations th:first-child{width:45mm}.recommendations th:last-child{width:22mm}.evidence{font-size:6.2pt}.evidence th:nth-child(1){width:21mm}.evidence th:nth-child(2){width:18mm}.evidence th:nth-child(3){width:50mm}.evidence th:nth-child(5){width:31mm}.evidence th:nth-child(6){width:20mm}.evidence code,.tag-example code{font-family:"Noto Sans Mono","Malgun Gothic",monospace;white-space:normal;overflow-wrap:anywhere}.tag-example{display:grid;grid-template-columns:27mm 1fr;border:1px solid #b8c5ce;background:#f7f9fa}.tag-example>*{padding:1.7mm 3mm;border-bottom:1px solid #d8e1e7}.tag-example>*:nth-last-child(-n+2){border-bottom:0}.report-rules{margin:0;padding:3mm 7mm;border:1px solid #b8c5ce;background:#f7f9fa}.report-rules li{margin:1mm 0}.timeline.detailed{font-size:6.2pt}.timeline.detailed th:nth-child(1){width:12mm}.timeline.detailed th:nth-child(2){width:26mm}.timeline.detailed th:nth-child(3){width:19mm}.timeline.detailed th:nth-child(4){width:38mm}.timeline.detailed th:nth-child(6){width:19mm}.timeline.detailed th:nth-child(7){width:23mm}.source-note{margin-top:5mm;padding:4mm;border:1px solid #b8c5ce;background:#f7f9fa}.source-note p{color:#667785;margin:1.5mm 0 0}.page-footer{position:absolute;left:10mm;right:10mm;bottom:8mm;border-top:1px solid #d8e1e7;padding-top:2mm;display:flex;justify-content:space-between;color:#667785;font-size:6pt}
 @media print{html,body{width:210mm;background:#fff;padding:0;height:auto}.report-page{margin:0;height:297mm!important;min-height:297mm!important;max-height:297mm!important;overflow:hidden!important}}
 </style></head><body>${pageOne}${pageTwo}${pageThree}${pageFour}<script>
-function fitReportPages(){document.querySelectorAll('.page-body').forEach(function(body){const content=body.querySelector('.page-content');if(!content)return;content.style.transform='none';content.style.width='100%';const available=Math.max(1,body.clientHeight);let scale=Math.min(1,available/Math.max(1,content.scrollHeight));for(let pass=0;pass<3;pass+=1){content.style.width=(100/scale)+'%';scale=Math.min(1,available/Math.max(1,content.scrollHeight));}content.style.width=(100/scale)+'%';content.style.transform='scale('+scale+')';content.dataset.fitScale=scale.toFixed(4);});}
+function fitReportPages(){document.querySelectorAll('.page-body').forEach(function(body){const content=body.querySelector('.page-content');if(!content)return;content.style.transform='none';content.style.width='100%';const available=Math.max(1,body.clientHeight);let scale=Math.min(1,available/Math.max(1,content.scrollHeight));for(let pass=0;pass<3;pass+=1){content.style.width=(100/scale)+'%';scale=Math.min(1,available/Math.max(1,content.scrollHeight));}content.style.width=(100/scale)+'%';content.style.transform='scale('+scale+')';const bodyRect=body.getBoundingClientRect();const contentRect=content.getBoundingClientRect();const safeHeight=Math.max(1,bodyRect.bottom-contentRect.top-.5);if(contentRect.height>safeHeight){scale*=safeHeight/Math.max(1,contentRect.height);content.style.transform='scale('+scale+')';}content.dataset.fitScale=scale.toFixed(4);});}
 window.TripLensFitReport=fitReportPages;requestAnimationFrame(function(){fitReportPages();requestAnimationFrame(fitReportPages);});
 </script></body></html>`;
   }
