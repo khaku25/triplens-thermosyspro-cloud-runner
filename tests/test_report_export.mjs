@@ -503,6 +503,116 @@ test('Blind Test 2 scenario 07 preserves distinct FLOW_LOW and FLOW_LOW_LOW prop
   assert.doesNotMatch(html,/HP 터빈 증기유량 LOW-LOW → HP 터빈 증기유량 LOW-LOW/);
 });
 
+test('Blind Test 2 scenario 02 repairs appositive particles and keeps paired alarm prose', () => {
+  const criticalClaim='47.92초(RAW:21:vppExternalSTTripCommandNative, 0.0)와 49.0초(RAW:22:vppExternalSTTripCommandNative, 1.0) 사이에 외부 ST 트립 명령 신호인 vppExternalSTTripCommandNative가 활성화 전환되었습니다.';
+  const html=exporter.buildReportHtml({
+    ...report,
+    incident_summary:criticalClaim,
+    critical_events:[{claim:criticalClaim,status:'CANDIDATE',evidence_ids:['RAW:21:vppExternalSTTripCommandNative','RAW:22:vppExternalSTTripCommandNative'],related_tags:['vppExternalSTTripCommandNative']}],
+    propagation:[
+      {
+        claim:'ST 트립 래치 작동에 따라 47.92초와 49.0초 사이에 52ST 차단기 트립 명령인 vpp52STTripCmd가 0.0(RAW:21:vpp52STTripCmd)에서 1.0(RAW:22:vpp52STTripCmd)으로 출력되었고, 차단기 폐로 상태인 vpp52STClosed가 1.0(RAW:21:vpp52STClosed)에서 0.0(RAW:22:vpp52STClosed)으로 개방되었습니다.',
+        stage:'propagation',status:'OBSERVED',evidence_ids:['R1','R2'],related_tags:['vpp52STTripCmd','vpp52STClosed'],
+      },
+      {
+        claim:'ST 트립 후 47.92초와 49.0초 사이에 HP 터빈 가감 밸브 개도인 vppHPAdmissionPos와 IP 터빈 가감 밸브 개도인 vppIPAdmissionPos가 0.8에서 약 0.245로 급격히 폐쇄 동작하였습니다(RAW:21:vppHPAdmissionPos, RAW:22:vppHPAdmissionPos, RAW:21:vppIPAdmissionPos, RAW:22:vppIPAdmissionPos).',
+        stage:'propagation',status:'OBSERVED',evidence_ids:['R3','R4'],related_tags:['vppHPAdmissionPos','vppIPAdmissionPos'],
+      },
+      {
+        claim:'터빈 증기 밸브 급폐쇄로 인해 모델 시간 49.2초에 HP 터빈 증기 유량 저하 알람(vppHPTurbineSteamFlowTH, 402.27 t/h, SESSION_20260915_145853-00003)이 발생하였고, 49.8초에는 극저 알람(126.25 t/h, SESSION_20260915_145853-00005)이 뒤이어 발생하였습니다.',
+        stage:'propagation',status:'OBSERVED',evidence_ids:['E-LOW','E-LOW-LOW'],related_tags:['vppHPTurbineSteamFlowTH'],original_tags:['FLOW_LOW','FLOW_LOW_LOW'],
+      },
+    ],
+    report_rows:[],
+  });
+  const operatorPage=html.split('</main>')[0];
+  assert.match(operatorPage,/외부 ST 트립 명령 신호가 활성 상태로 전환됨/);
+  assert.match(operatorPage,/52ST 차단기 트립 명령이 0\.0.*차단기 폐로 상태가 1\.0/);
+  assert.match(operatorPage,/HP 터빈 가감 밸브 개도와 IP 터빈 가감 밸브 개도가/);
+  assert.match(operatorPage,/HP 터빈 증기 유량 저하 알람\(402\.27 t\/h.*49\.8초에는 극저 알람\(126\.25 t\/h/);
+  assert.doesNotMatch(operatorPage,/명령인이|상태인이|개도인[과가]|\(신호, 신호\)|HP 터빈 증기유량 LOW-LOW/);
+});
+
+test('Blind Test 2 scenario 03 keeps a one-signal LOW and LOW-LOW narrative intact', () => {
+  const pairedClaim='49.32초 및 49.92초에 가스터빈 트립의 후속 영향으로 배기가스 질량유량(vppGTExhaustMassFlowTH)의 Low 및 Low-Low 경보가 순차적으로 발생하였습니다.';
+  const html=exporter.buildReportHtml({
+    ...report,
+    propagation:[{
+      claim:pairedClaim,stage:'propagation',status:'OBSERVED',evidence_ids:['E-LOW','E-LOW-LOW'],
+      related_tags:['vppGTExhaustMassFlowTH'],
+    }],
+    report_rows:[],
+  });
+  const operatorPage=html.split('</main>')[0];
+  assert.match(operatorPage,/배기가스 질량유량의 Low 및 Low-Low 경보가 순차적으로 발생하였습니다/);
+  assert.doesNotMatch(operatorPage,/GT 배기유량 LOW-LOW/);
+});
+
+test('Blind Test 2 scenario 04 uses a grammatical completed activation phrase', () => {
+  const activationClaim='차단기 개방에 따른 펌프 감속으로 인해 50.033242초에 회전속도 검증 상실(SESSION_20260915_152523-00005, vppIPFWPSpeedProven)이 발생하였고, 이어 50.28초에 중압 급수 유량이 저하되어 저유량 경보(SESSION_20260915_152523-00006, vppIPFWPMassFlowTH)가 활성화되었습니다.';
+  const html=exporter.buildReportHtml({
+    ...report,
+    propagation:[{claim:activationClaim,stage:'propagation',status:'OBSERVED',evidence_ids:['E-SPEED','E-FLOW'],related_tags:['vppIPFWPSpeedProven','vppIPFWPMassFlowTH']}],
+    report_rows:[],
+  });
+  assert.match(html,/저유량 경보\(SESSION_20260915_152523-00006\)가 활성화됨/);
+  assert.doesNotMatch(html,/경보\(SESSION_20260915_152523-00006\)가 활성(?:[.<]|\s*→)/);
+});
+
+test('Blind Test 2 scenario 07 restores interval subjects and translates turbine alarm codes', () => {
+  const criticalClaim='48.04 s와 49.04 s 사이 구간에서 vppIPDrumInventoryDisturbanceMassFlowTH가 0.0에서 900.0 t/h로, vppIPDrumInventoryFaultFlowCommand.signal이 0.0에서 250.0으로 급증하여 IP 드럼 내 비정상적 유체 유입이 시작되었습니다.';
+  const html=exporter.buildReportHtml({
+    ...report,
+    incident_summary:criticalClaim,
+    critical_events:[{claim:criticalClaim,status:'OBSERVED',evidence_ids:['R1','R2'],related_tags:['vppIPDrumInventoryDisturbanceMassFlowTH','vppIPDrumInventoryFaultFlowCommand.signal']}],
+    propagation:[
+      {
+        claim:'72.92 s 및 73.24 s에 증기터빈 정지에 따라 고압터빈 증기 유량(vppHPTurbineSteamFlowTH)이 급감하며 HP TURBINE::FLOW_LOW(346.06 t/h) 및 HP TURBINE::FLOW_LOW_LOW(191.36 t/h) 경보가 발생했습니다.',
+        stage:'propagation',status:'OBSERVED',evidence_ids:['E-HP-L','E-HP-LL'],related_tags:['HP TURBINE::FLOW_LOW','HP TURBINE::FLOW_LOW_LOW','vppHPTurbineSteamFlowTH'],original_tags:['FLOW_LOW','FLOW_LOW_LOW'],
+      },
+      {
+        claim:'73.44 s, 73.72 s, 74.16 s에 걸쳐 저압터빈 유량(vppLPTurbineSteamFlowTH) 및 중압터빈 유량(vppIPTurbineSteamFlowTH)이 급감하여 LP TURBINE::FLOW_LOW, LP TURBINE::FLOW_LOW_LOW, IP TURBINE::FLOW_LOW, IP TURBINE::FLOW_LOW_LOW 경보가 순차적으로 활성화되었습니다.',
+        stage:'propagation',status:'OBSERVED',evidence_ids:['E-LP-L','E-LP-LL','E-IP-L','E-IP-LL'],related_tags:['vppLPTurbineSteamFlowTH','vppIPTurbineSteamFlowTH'],original_tags:['FLOW_LOW','FLOW_LOW_LOW'],
+      },
+    ],
+    report_rows:[],
+  });
+  const operatorPage=html.split('</main>')[0];
+  assert.match(operatorPage,/사이 구간에서 IP 드럼 외란 유량이 0\.0에서 900\.0 t\/h로/);
+  for(const phrase of [
+    'HP 터빈 증기유량 LOW(346.06 t/h)','HP 터빈 증기유량 LOW-LOW(191.36 t/h)',
+    'LP 터빈 증기유량 LOW','LP 터빈 증기유량 LOW-LOW','IP 터빈 증기유량 LOW','IP 터빈 증기유량 LOW-LOW',
+  ]) assert.match(operatorPage,new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  assert.match(operatorPage,/경보가 순차적으로 활성화됨/);
+  assert.doesNotMatch(operatorPage,/사이 구간에서가|(?:HP|IP|LP) TURBINE::FLOW|순차적으로 활성(?:[.<]|\s*→)/);
+});
+
+test('Blind Test 2 scenario 10 retains labels for standalone technical-tag lists', () => {
+  const directClaim='48.92초에 등록 로직 CMD-FWP-LP-TRIP에 따라 생성된 vppLPFWPTripCommandNative, vppLPFWPTripLatchNative 및 차단기 트립 지령 vppVCBA02TripCommandNative가 LP BFP 정지 및 VCB-A02 개로의 직접적 트리거로 작용했습니다.';
+  const html=exporter.buildReportHtml({
+    ...report,
+    incident_summary:directClaim,
+    direct_trigger:{claim:directClaim,status:'CANDIDATE',evidence_ids:['R1','R2','R3'],related_tags:['vppLPFWPTripCommandNative','vppLPFWPTripLatchNative','vppVCBA02TripCommandNative']},
+    report_rows:[],
+  });
+  const operatorPage=html.split('</main>')[0];
+  assert.match(operatorPage,/생성된 LP BFP 트립 명령, LP BFP 트립 래치 및 차단기 트립 지령이/);
+  assert.doesNotMatch(operatorPage,/생성된\s*(?:,\s*)?및|생성된 vppLPFWP/);
+});
+
+test('standalone tag labels stay outside parentheses while parenthetical tag lists disappear', () => {
+  const directClaim='등록 로직에 따라 생성된 vppLPFWPTripCommandNative, vppLPFWPTripLatchNative 및 확인 목록(vppLPFWPTripCommandNative, vppLPFWPTripLatchNative)과 계측값(vppLPDrumInventoryFaultFlowCommand.signal: 0.0 -> 160.0)이 기록되었습니다.';
+  const html=exporter.buildReportHtml({
+    ...report,
+    direct_trigger:{claim:directClaim,status:'CANDIDATE',evidence_ids:['R1'],related_tags:['vppLPFWPTripCommandNative','vppLPFWPTripLatchNative','vppLPDrumInventoryFaultFlowCommand.signal']},
+    report_rows:[],
+  });
+  const operatorPage=html.split('</main>')[0];
+  assert.match(operatorPage,/생성된 LP BFP 트립 명령, LP BFP 트립 래치 및 확인 목록/);
+  assert.match(operatorPage,/계측값\(LP 드럼 외란 유입 지령: 0\.0 -&gt; 160\.0\)/);
+  assert.doesNotMatch(operatorPage,/확인 목록\((?:신호|LP BFP)/);
+});
+
 test('report prose removes tag citations without leaving punctuation or detached Korean particles', () => {
   const html=exporter.buildReportHtml({
     ...report,
