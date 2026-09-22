@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import vm from 'node:vm';
 
 const require = createRequire(import.meta.url);
 const exporter = require('../webapp/triplens_report_export.js');
@@ -51,6 +52,37 @@ test('PDF report uses the approved four-page Figma V2 shell', () => {
 test('PDF approval grid row stays inside the fixed report header box', () => {
   const html=exporter.buildReportHtml(report);
   assert.match(html,/\.report-head\{[^}]*grid-template-rows:minmax\(0,1fr\)/);
+});
+
+test('PDF fitter contains width-sensitive reflow instead of clipping the final section', () => {
+  const html=exporter.buildReportHtml(report);
+  const script=html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || '';
+  const style={transform:'none',width:'100%'};
+  const layoutHeight=()=>parseFloat(style.width) >= 102 ? 937 : 951;
+  const transformScale=()=>Number(style.transform.match(/scale\(([^)]+)\)/)?.[1] || 1);
+  const content={
+    style,
+    dataset:{},
+    get scrollHeight(){return layoutHeight();},
+    getBoundingClientRect(){
+      const height=layoutHeight()*transformScale();
+      return {top:0,bottom:height,height};
+    },
+  };
+  const body={
+    clientHeight:926,
+    querySelector:selector=>selector==='.page-content'?content:null,
+    getBoundingClientRect:()=>({top:0,bottom:926,height:926}),
+  };
+  const sandbox={
+    document:{querySelectorAll:selector=>selector==='.page-body'?[body]:[]},
+    window:{},
+    requestAnimationFrame:callback=>callback(),
+  };
+  vm.runInNewContext(script,sandbox);
+  sandbox.window.TripLensFitReport();
+  const overflow=content.getBoundingClientRect().bottom-body.getBoundingClientRect().bottom;
+  assert.ok(overflow <= 1,`report content exceeds its page body by ${overflow.toFixed(3)}px`);
 });
 
 test('four-page PDF bounds large timelines and discloses CSV continuation', () => {
@@ -293,4 +325,109 @@ test('operator report removes conversational AI endings from generated conclusio
   assert.match(html,/외부 (?:GT )?Trip Command 입력/);
   assert.match(html,/GT·ST Trip Latch 동시 동작/);
   for(const text of ['활성화되었습니다','관측되었습니다','확인할 수 있습니다','확정할 수 없습니다'])assert.doesNotMatch(html,new RegExp(text));
+});
+
+test('production report derives specific equipment from claim evidence instead of stage labels', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    incident_summary:'IP BFP trip sequence',
+    critical_events:[{
+      claim:'IP BFP 트립 푸시버튼 입력이 관측되었습니다.',
+      status:'OBSERVED',evidence_ids:['E-IP'],related_tags:['vppIPFWPTripPushbuttonNative'],
+      evidence:[{event_id:'E-IP',equipment:'IP BFP',event_tag:'IP_BFP_TRIP_PB'}],
+    }],
+    primary_cause:{claim:'IP BFP 수동 트립 입력',status:'CANDIDATE',evidence_ids:['R-IP'],related_tags:['vppIPFWPTripPushbuttonNative']},
+    direct_trigger:{
+      claim:'VCB-B01 차단기가 개로되었습니다.',status:'CANDIDATE',evidence_ids:['E-VCB'],related_tags:['vppECMSVCBB01Closed'],
+      evidence:[{event_id:'E-VCB',equipment:'VCB-B01',event_tag:'BREAKER_OPEN'}],
+    },
+    propagation:[{
+      claim:'IP 급수 유량 저하가 관측되었습니다.',status:'OBSERVED',evidence_ids:['E-FW'],related_tags:['vppIPFWPMassFlowTH'],
+      evidence:[{event_id:'E-FW',equipment:'IP FEEDWATER',event_tag:'FLOW_LOW'}],
+    }],
+    chronological_events:[
+      {model_time_s:31.84,equipment:'IP BFP',claim:'IP BFP TRIP PB PRESSED',category:'OPERATOR_ACTION',evidence_ids:['E-IP'],related_tags:['vppIPFWPTripPushbuttonNative']},
+      {model_time_s:48.96,equipment:'VCB-B01',claim:'VCB-B01 OPEN',category:'PROTECTION',evidence_ids:['E-VCB'],related_tags:['vppECMSVCBB01Closed']},
+      {model_time_s:50.28,equipment:'IP FEEDWATER',claim:'IP FW FLOW LOW ALARM',category:'ALARM',evidence_ids:['E-FW'],related_tags:['vppIPFWPMassFlowTH']},
+    ],
+    report_rows:[],
+  });
+  assert.match(html,/대상 설비<\/th><td>IP BFP · VCB-B01 · IP FEEDWATER<\/td>/);
+  assert.doesNotMatch(html,/설비 CRITICAL_EVENT|대상 설비<\/th><td>ST|대상 설비<\/th><td>HRSG/);
+});
+
+test('production report prioritizes drum equipment over generic turbine and stage labels', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    incident_summary:'HP drum disturbance',
+    critical_events:[{
+      claim:'48.04초에서 49.04초 사이에 고압 드럼 외란 유량이 급증했습니다.',
+      status:'OBSERVED',evidence_ids:['R-HP'],related_tags:['vppHPDrumInventoryDisturbanceMassFlowTH'],
+    }],
+    primary_cause:{claim:'HP 드럼 인벤토리 외란',status:'CANDIDATE',evidence_ids:['R-HP'],related_tags:['vppHPDrumInventoryDisturbanceMassFlowTH']},
+    direct_trigger:{claim:'ST Trip Latch 동작',status:'CANDIDATE',evidence_ids:['E-ST'],related_tags:['vppSTTripLatchPublished']},
+    chronological_events:[
+      {model_time_s:50.56,equipment:'HP FEEDWATER',claim:'HP FW FLOW LOW ALARM',category:'ALARM',evidence_ids:['E-FW']},
+      {model_time_s:60.52,equipment:'HP DRUM',claim:'HP DRUM LEVEL HIGH ALARM',category:'ALARM',evidence_ids:['E-DRUM']},
+      {model_time_s:72.64,equipment:'ST',claim:'ST TRIP LATCH ACTIVE',category:'PROTECTION',evidence_ids:['E-ST'],related_tags:['vppSTTripLatchPublished']},
+    ],
+    report_rows:[],
+  });
+  assert.match(html,/대상 설비<\/th><td>HP DRUM/);
+  assert.doesNotMatch(html,/대상 설비<\/th><td>(?:ST|GT|HRSG|CRITICAL_EVENT)(?: ·|<)/);
+});
+
+test('empty model narratives fall back to the first observed protection event', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    incident_summary:'설명 미제공',
+    critical_events:[{claim:'설명 미제공',status:'UNKNOWN',evidence_ids:[],related_tags:[]}],
+    primary_cause:{},direct_trigger:{},propagation:[],
+    chronological_events:[
+      {model_time_s:48.6,equipment:'ST',category:'PROTECTION',claim:'ST TRIP LATCH ACTIVE',state:'ACTIVE',value:1,evidence_ids:['E-ST'],related_tags:['vppSTTripLatchPublished']},
+      {model_time_s:48.7,equipment:'52ST',category:'PROTECTION',claim:'52ST BREAKER OPEN',state:'OPEN',value:0,evidence_ids:['E-52'],related_tags:['vpp52STClosed']},
+    ],
+    report_rows:[],
+  });
+  assert.match(html,/대상 설비<\/th><td>ST/);
+  assert.match(html,/장애 요약<\/th><td>ST Trip Latch 동작<\/td>/);
+  assert.match(html,/직접 Trip 원인 \(Direct Trigger\)[\s\S]*?ST Trip Latch 동작/);
+  assert.doesNotMatch(html,/설명 미제공/);
+});
+
+test('operator narrative keeps interval beginnings and removes tag-stripping punctuation holes', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    incident_summary:'47.12초에서 48.12초 사이 HP 드럼 외란',
+    critical_events:[{
+      claim:'47.12초에서 48.12초 사이에 HP 드럼 손실 외란(vppHPDrumInventoryDisturbanceMassFlowTH 급감)이 시작되었습니다.',
+      status:'OBSERVED',evidence_ids:['R1','R2'],related_tags:['vppHPDrumInventoryDisturbanceMassFlowTH'],time_interval_s:[47.12,48.12],
+    }],
+    primary_cause:{
+      claim:'47.12초에서 48.12초 사이에 외란 유출(vppHPDrumInventoryFaultFlowCommand.signal = -160.0, vppHPDrumInventoryDisturbanceMassFlowTH = -576.0 t/h)이 발생했습니다.',
+      status:'CANDIDATE',evidence_ids:['R1','R2'],related_tags:['vppHPDrumInventoryFaultFlowCommand.signal','vppHPDrumInventoryDisturbanceMassFlowTH'],time_interval_s:[47.12,48.12],
+    },
+    direct_trigger:report.direct_trigger,
+    propagation:[{
+      claim:'저-저 경보(vppHPTurbineSteamFlowTH, 191.36 t/h)가 발생했습니다.',
+      status:'OBSERVED',evidence_ids:['E-LL'],related_tags:['vppHPTurbineSteamFlowTH'],
+    }],
+    report_rows:[],
+  });
+  assert.match(html,/47\.12초에서 48\.12초 사이/);
+  assert.doesNotMatch(html,/(?:^|>)서 48\.12초|\(\s*(?:,|=)|,\s*=/);
+  assert.match(html,/외란 유출\(-160\.0, -576\.0 t\/h\)/);
+  assert.match(html,/저-저 경보\(191\.36 t\/h\)/);
+});
+
+test('LOW-LOW evidence is not collapsed to LOW in report wording', () => {
+  const html=exporter.buildReportHtml({
+    ...report,
+    propagation:[{
+      claim:'HP TURBINE STEAM FLOW LOW-LOW ALARM',status:'OBSERVED',state:'ACTIVE',
+      evidence_ids:['E-LL'],related_tags:['vppHPTurbineSteamFlowTH'],
+    }],
+    report_rows:[],
+  });
+  assert.match(html,/HP 터빈 증기유량 LOW-LOW/);
 });
