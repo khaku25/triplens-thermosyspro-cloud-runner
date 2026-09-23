@@ -43,6 +43,7 @@ export default function PlantDrawingMaster(){
   const [selected,setSelected]=useState(null);
   const [screen,setScreen]=useState('ecms-overview');
   const [manualFocus,setManualFocus]=useState('');
+  const [eventLabel,setEventLabel]=useState('');
 
   const filtered=useMemo(()=>{
     const q=query.trim().toLowerCase();
@@ -52,6 +53,8 @@ export default function PlantDrawingMaster(){
   useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
     const equipment=params.get('equipment')||params.get('eq');
+    const event=params.get('event')||params.get('tag')||'';
+    setEventLabel(event?('EVENT · '+event):'');
     if(!equipment)return;
     const row=resolveEquipmentDrawing(equipment);
     if(!row)return;
@@ -67,6 +70,7 @@ export default function PlantDrawingMaster(){
   function goEquipment(row){
     setSelected(row);
     setManualFocus('');
+    setEventLabel('');
     if(row.ecms_page==='ECMS_6P9KV')setScreen('ecms-detail');
     else if(row.ecms_page==='ECMS_VPP')setScreen('ecms-overview');
     else if(row.plant_location_id)setScreen('plant');
@@ -77,13 +81,14 @@ export default function PlantDrawingMaster(){
     if(view==='BUS-A'||view==='BUS-B'){
       setSelected(resolveEquipmentDrawing(view));
       setManualFocus(view);
+      setEventLabel('');
       setScreen('ecms-detail');
     }
   }
 
   function equipmentClicked(id){
     const row=resolveEquipmentDrawing(id);
-    if(row)setSelected(row);
+    if(row){setSelected(row);setEventLabel('');}
   }
 
   const overviewHighlight=screen==='ecms-overview'&&selected?.ecms_page==='ECMS_VPP'?selected.ecms_location_id:'';
@@ -121,8 +126,8 @@ export default function PlantDrawingMaster(){
           </div>
         </div>
 
-        {screen==='ecms-overview'?<div style={canvas}><InlineSvgNavigator src="/drawing/ecms-overview.svg" title="ECMS Overview" highlight={overviewHighlight} onView={overviewNavigate} onEquipment={equipmentClicked}/></div>:null}
-        {screen==='ecms-detail'?<><div style={selectionBar}><b>Direct detail</b><span>{detailHighlight||'BUS를 선택하세요'}</span></div><div style={canvas}><InlineSvgNavigator src="/drawing/ecms-6p9kv.svg" title="6.9 kV SWGR Detail" highlight={detailHighlight} onEquipment={equipmentClicked}/></div></>:null}
+        {screen==='ecms-overview'?<div style={canvas}><InlineSvgNavigator src="/drawing/ecms-overview-matlab.svg" pageId="ECMS_VPP" title="ECMS Overview" highlight={overviewHighlight} eventLabel={eventLabel} onView={overviewNavigate} onEquipment={equipmentClicked}/></div>:null}
+        {screen==='ecms-detail'?<><div style={selectionBar}><b>Direct detail</b><span>{detailHighlight||'BUS를 선택하세요'}</span></div><div style={canvas}><InlineSvgNavigator src="/drawing/ecms-6p9kv-matlab.svg" pageId="ECMS_6P9KV" title="6.9 kV SWGR Detail" highlight={detailHighlight} eventLabel={eventLabel} onEquipment={equipmentClicked}/></div></>:null}
         {screen==='plant'?<PlantOverview equipment={selected}/>:null}
         {screen==='detail'?<DetailAsset row={selected}/>:null}
 
