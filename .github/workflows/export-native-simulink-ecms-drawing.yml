@@ -18,9 +18,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Export actual Simulink model drawing
-        shell: cmd
+        shell: powershell
         run: |
-          "C:\Program Files\MATLAB\R2025b\bin\matlab.exe" -batch "addpath(fullfile(pwd,'scripts')); export_native_simulink_ecms_drawing"
+          & 'C:\Program Files\MATLAB\R2025b\bin\matlab.exe' -batch "addpath(fullfile(pwd,'scripts')); export_native_simulink_ecms_drawing"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:
           name: native-simulink-ecms-drawing
