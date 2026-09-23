@@ -55,6 +55,10 @@ function setLegendText(element, value) {
 }
 
 function scrubViewer(document) {
+  setText(document.querySelector('#equipment-view'), '설비별 로직');
+  setText(document.querySelector('#tab-screens'), '설비 로직');
+  const equipmentGroup = [...document.querySelectorAll('#page-select optgroup')].find(group => group.label === '설비 화면');
+  if (equipmentGroup) equipmentGroup.label = '설비별 로직';
   const headerCopy = document.querySelector('.top p');
   setText(headerCopy, '태그 · 로직 · Drawing Master 도면 검색 · 상세 정보');
 

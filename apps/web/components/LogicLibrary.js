@@ -34,7 +34,7 @@ export function LogicLibraryDialog({analysisMode = false}) {
   if (selection?.rule) query.set('rule', selection.rule);
   else if (selection?.tag) query.set('tag', selection.tag);
   const src = `/logic-assets/viewer.html${query.toString() ? '#' + query : ''}`;
-  const title = analysisMode ? (selection?.rule ? '운전조건·룰 기준 도면' : selection?.tag ? '태그 기준 도면' : '태그·운전조건·룰 기준 도면') : '태그·로직 상세보기';
+  const title = analysisMode ? 'Logic / TAG Master · 로직 도면' : '태그·로직 상세보기';
   return (
     <dialog ref={ref} aria-label={title} onCancel={close}
       onClick={event => { if (event.target === ref.current) close(); }}
@@ -43,7 +43,7 @@ export function LogicLibraryDialog({analysisMode = false}) {
         <header style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: '#17364d', color: 'white', minHeight: 48 }}>
           <strong>{analysisMode ? `TripLens · ${title}` : 'TripLens · 로직 상세보기'}</strong>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
-            <a href={`/logic${query.toString() ? '?' + query : ''}`} target="_blank" rel="noreferrer" style={{ color: 'white' }}>별도 화면</a>
+            <a href="/drawing?view=plant" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '7px 12px', borderRadius: 6, background: '#ddf3f5', color: '#17364d', fontWeight: 700, textDecoration: 'none' }}>Plant Process View 열기</a>
             <button type="button" onClick={close} style={{ background: 'white', color: '#17364d', border: 0, borderRadius: 6, padding: '7px 12px', cursor: 'pointer' }}>분석 화면으로 돌아가기 ×</button>
             <button type="button" onClick={close} style={{ background: 'transparent', color: 'white', border: '1px solid #b5c8d5', borderRadius: 6, padding: '7px 12px', cursor: 'pointer' }}>닫기</button>
           </div>

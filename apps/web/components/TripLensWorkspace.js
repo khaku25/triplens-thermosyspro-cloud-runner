@@ -3,6 +3,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {LogicLibraryDialog,openLogicLibrary} from './LogicLibrary';
 import {resolveEquipmentDrawing} from '../lib/equipmentDrawingMaster.mjs';
+import {PLANT_PROCESS} from '../lib/plantHotspots.mjs';
 import RecoveryForm from './RecoveryForm';
 import RecoveryReadiness from './RecoveryReadiness';
 import {WORKSPACE_TABS} from '../lib/contracts';
@@ -131,8 +132,10 @@ function AnalysisList({items,stage,onOpen,limit=5}){
 
 function DrawingLocationLink({equipment,eventTag}){
   const value=String(equipment||'').trim();
-  if(!resolveEquipmentDrawing(value))return null;
+  const row=resolveEquipmentDrawing(value);
+  if(!row)return null;
   const qs=new URLSearchParams({equipment:value});
+  if(PLANT_PROCESS.hotspots[row.plant_location_id])qs.set('view','plant');
   const tag=String(eventTag||'').trim();
   if(tag)qs.set('event',tag);
   return <a href={'/drawing?'+qs.toString()} target="_blank" rel="noreferrer" className="tag-link" title={value+' 설비 도면 위치 열기'}>도면 위치 보기</a>;

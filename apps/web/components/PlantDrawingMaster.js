@@ -27,12 +27,13 @@ export default function PlantDrawingMaster(){
     const params=new URLSearchParams(window.location.search);
     const equipment=params.get('equipment')||params.get('eq');
     const event=params.get('event')||params.get('tag')||'';
+    const requested=params.get('view');
     setEventLabel(event?('EVENT · '+event):'');
+    if(requested==='plant') {setScreen('plant');}
     if(!equipment)return;
     const row=resolveEquipmentDrawing(equipment);
     if(!row)return;
     setSelected(row);
-    const requested=params.get('view');
     if(requested==='plant'&&PLANT_PROCESS.hotspots[row.plant_location_id]){setScreen('plant');return;}
     if(requested!=='ecms'&&requested!=='sld'&&requested!=='vpp'&&PLANT_PROCESS.hotspots[row.plant_location_id]){setScreen('plant');return;}
     if(row.ecms_page==='ECMS_6P9KV'){setScreen('ecms-detail');setManualFocus('');return;}

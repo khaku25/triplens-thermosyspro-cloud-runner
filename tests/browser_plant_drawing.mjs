@@ -68,3 +68,19 @@ test('existing MATLAB ECMS bus and breaker navigation and Plant mobile focus',as
     await page.screenshot({path:'/workspace/scratch/dcbbc7676ae2/plant-mobile-preview.png'});
   }finally{await browser.close();}
 });
+
+test('mobile Logic Master opens a distinct Plant Process View instead of a second logic screen',async()=>{
+  const browser=await playwright.chromium.launch({headless:true,executablePath,args:['--no-sandbox']});
+  try{
+    const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+    await page.goto(base);
+    await page.locator('.side-links button').click();
+    const dialog=page.getByRole('dialog',{name:'Logic / TAG Master · 로직 도면'});
+    await dialog.waitFor();
+    assert.equal(await page.frameLocator('dialog iframe').locator('#equipment-view').innerText(),'설비별 로직');
+    await dialog.getByRole('link',{name:'Plant Process View 열기'}).click();
+    await page.getByRole('heading',{name:'Plant Process View'}).waitFor();
+    assert.match(page.url(),/\/drawing\?view=plant$/);
+    assert.equal(await page.locator('.drawing-hotspot').count(),19);
+  }finally{await browser.close();}
+});

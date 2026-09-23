@@ -97,7 +97,7 @@ def main():
             expect(logic_button).to_contain_text('52GT 차단기 상태 로직 보기')
             expect(logic_button).to_contain_text('관련 로직')
             logic_button.click()
-            dialog=page.get_by_role('dialog',name='태그 기준 도면')
+            dialog=page.get_by_role('dialog',name='Logic / TAG Master · 로직 도면')
             expect(dialog).to_be_visible()
             expect(dialog.locator('iframe')).to_have_attribute('src',re.compile(r'tag=vpp52GTClosed'))
             dialog.get_by_role('button',name='닫기',exact=True).click()
@@ -110,7 +110,7 @@ def main():
             page.get_by_role('button',name='이전 화면',exact=True).click()
             if width>640:
                 page.locator('.side-links button').click()
-                logic_dialog=page.get_by_role('dialog',name='태그·운전조건·룰 기준 도면')
+                logic_dialog=page.get_by_role('dialog',name='Logic / TAG Master · 로직 도면')
                 expect(logic_dialog).to_be_visible()
                 viewer=page.frame_locator('dialog iframe')
                 expect(viewer.get_by_role('banner').get_by_text('태그 · 로직 · Drawing Master 도면 검색 · 상세 정보',exact=True)).to_be_visible()
@@ -159,6 +159,14 @@ def main():
             expect(page.get_by_role('dialog',name='태그·로직 상세보기')).to_be_visible()
             page.get_by_role('dialog',name='태그·로직 상세보기').get_by_role('button',name='닫기',exact=True).click()
             page.screenshot(path=str(OUT/f'{name}-testbench.png'),full_page=True)
+            page.goto(os.getenv('TRIPLENS_UI_URL','http://localhost:3000/'))
+            page.locator('.side-links button').click()
+            drawing_link=page.get_by_role('dialog',name='Logic / TAG Master · 로직 도면').get_by_role('link',name='Plant Process View 열기')
+            expect(drawing_link).to_have_attribute('href','/drawing?view=plant')
+            drawing_link.click()
+            expect(page.get_by_role('heading',name='Plant Process View',exact=True)).to_be_visible()
+            expect(page.locator('.drawing-hotspot')).to_have_count(19)
+            assert page.url.endswith('/drawing?view=plant'),page.url
             assert not errors,errors
             checks.append({'viewport':name,'width':width,'checks':'PASS','analysis_requests':counts['analyze'],'bootstrap_requests':counts['bootstrap'],'page_errors':errors,'live_gemini':False})
             context.close()
