@@ -6,9 +6,21 @@ import ProcessViewCanvas from './ProcessViewCanvas';
 import {EQUIPMENT_DRAWING_MASTER,resolveEquipmentDrawing} from '../lib/equipmentDrawingMaster.mjs';
 import {PLANT_PROCESS} from '../lib/plantHotspots.mjs';
 
-function DetailAsset({row}){
+const detailOnlyValves=EQUIPMENT_DRAWING_MASTER.filter(row=>
+  row.equipment_type==='VALVE'&&row.detail_asset&&!PLANT_PROCESS.hotspots[row.plant_location_id]);
+
+function DetailAsset({row,eventLabel}){
   if(!row?.detail_asset)return <Empty text="등록된 상세도면이 없습니다."/>;
-  return <div style={{padding:12,background:'#f5f8fa',overflow:'auto'}}><object data={'/'+row.detail_asset} type="image/svg+xml" aria-label={row.event_equipment+' 상세도면'} style={{display:'block',width:'100%',minHeight:620,border:0,background:'#fff',borderRadius:10}}><img src={'/'+row.detail_asset} alt={row.event_equipment}/></object></div>;
+  const valveAsset=row.detail_asset.startsWith('topology/valves/');
+  const src='/'+row.detail_asset;
+  return <div style={{padding:12,background:'#f5f8fa'}}>
+    {eventLabel?<div className="valve-event-focus" role="status" style={{padding:'10px 12px',marginBottom:10,border:'2px solid #e65b31',borderRadius:8,background:'#fff0e8',color:'#9b2c19',fontWeight:800}}>{eventLabel} · {row.event_equipment}</div>:null}
+    {valveAsset&&!PLANT_PROCESS.hotspots[row.plant_location_id]?<p style={{margin:'0 0 10px',fontSize:13,color:'#496476'}}>v36 전체 공정도에 개별 심볼이 없어 등록된 밸브 상세도면을 표시합니다.</p>:null}
+    <div style={{overflowX:'auto',maxWidth:'100%'}}><div style={{position:'relative',width:valveAsset?1000:512,height:valveAsset?700:512,background:'#fff'}}>
+      <object data={src} type="image/svg+xml" aria-label={row.event_equipment+' 상세도면'} style={{display:'block',width:'100%',height:'100%',border:0}}><img src={src} alt={row.event_equipment}/></object>
+      {valveAsset?<div aria-hidden="true" style={{position:'absolute',left:375,top:135,width:250,height:100,pointerEvents:'none',border:`3px solid ${eventLabel?'#e65b31':'#147c92'}`,borderRadius:12,background:eventLabel?'#ff794520':'#50b9bd16',boxShadow:eventLabel?'0 0 0 9px #ff92362e':'0 0 0 6px #52b4c323'}}/>:null}
+    </div></div>
+  </div>;
 }
 
 export default function PlantDrawingMaster(){
@@ -34,12 +46,13 @@ export default function PlantDrawingMaster(){
     const row=resolveEquipmentDrawing(equipment);
     if(!row)return;
     setSelected(row);
+    if(requested==='detail'&&row.detail_asset){setScreen('detail');return;}
     if(requested==='plant'&&PLANT_PROCESS.hotspots[row.plant_location_id]){setScreen('plant');return;}
     if(requested!=='ecms'&&requested!=='sld'&&requested!=='vpp'&&PLANT_PROCESS.hotspots[row.plant_location_id]){setScreen('plant');return;}
     if(row.ecms_page==='ECMS_6P9KV'){setScreen('ecms-detail');setManualFocus('');return;}
     if(row.ecms_page==='ECMS_VPP'){setScreen('ecms-overview');setManualFocus('');return;}
-    if(row.plant_location_id){setScreen('plant');return;}
-    if(row.detail_asset)setScreen('detail');
+    if(row.detail_asset){setScreen('detail');return;}
+    if(row.plant_location_id)setScreen('plant');
   },[]);
 
   function goEquipment(row){
@@ -49,8 +62,8 @@ export default function PlantDrawingMaster(){
     if(PLANT_PROCESS.hotspots[row.plant_location_id])setScreen('plant');
     else if(row.ecms_page==='ECMS_6P9KV')setScreen('ecms-detail');
     else if(row.ecms_page==='ECMS_VPP')setScreen('ecms-overview');
-    else if(row.plant_location_id)setScreen('plant');
     else if(row.detail_asset)setScreen('detail');
+    else if(row.plant_location_id)setScreen('plant');
   }
 
   function overviewNavigate(view){
@@ -112,8 +125,13 @@ export default function PlantDrawingMaster(){
 
         {screen==='ecms-overview'?<div style={canvas}><InlineSvgNavigator src="/drawing/ecms-overview-matlab.svg" pageId="ECMS_VPP" title="ECMS Overview" highlight={overviewHighlight} eventLabel={eventLabel} onView={overviewNavigate} onEquipment={equipmentClicked}/></div>:null}
         {screen==='ecms-detail'?<><div style={selectionBar}><b>Direct detail</b><span>{detailHighlight||'BUS를 선택하세요'}</span></div><div style={canvas}><InlineSvgNavigator src="/drawing/ecms-6p9kv-matlab.svg" pageId="ECMS_6P9KV" title="6.9 kV SWGR Detail" highlight={detailHighlight} eventLabel={eventLabel} onEquipment={equipmentClicked}/></div></>:null}
-        {screen==='plant'?<ProcessViewCanvas locationId={selected?.plant_location_id} eventLabel={eventLabel} onSelect={processClicked}/>:null}
-        {screen==='detail'?<DetailAsset row={selected}/>:null}
+        {screen==='plant'?<><ProcessViewCanvas locationId={selected?.plant_location_id} eventLabel={eventLabel} onSelect={processClicked}/>
+          <section aria-label="추가 밸브 상세도면" style={{padding:'12px 14px',borderTop:'1px solid #d7e1e7'}}>
+            <h3 style={{fontSize:15,margin:'0 0 4px'}}>추가 밸브 상세도면</h3>
+            <p style={{...muted,margin:'0 0 10px'}}>v36 전체 도면에 개별 심볼이 없는 등록 밸브입니다.</p>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:7}}>{detailOnlyValves.map(row=><button key={row.equipment_id} type="button" onClick={()=>goEquipment(row)} style={{...smallButton,minHeight:44,textAlign:'left'}}>{row.event_equipment}</button>)}</div>
+          </section></>:null}
+        {screen==='detail'?<DetailAsset row={selected} eventLabel={eventLabel}/>:null}
 
         {selected?<div style={{padding:14,display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:8,borderTop:'1px solid #e1e8ed'}}>
           <Info label="Equipment ID" value={selected.equipment_id}/><Info label="Plant" value={selected.plant_location_id}/><Info label="ECMS page" value={selected.ecms_page}/><Info label="ECMS location" value={selected.ecms_location_id}/><Info label="Detail" value={selected.detail_asset}/>

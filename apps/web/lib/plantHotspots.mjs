@@ -6,6 +6,8 @@ const plant = {
   LP_DRUM: ['LP Drum',[196,-110,228,-67]],
   HP_TURBINE: ['HP Turbine',[-76,58,-44,90]], IP_TURBINE: ['IP Turbine',[116,58,148,90]],
   LP_TURBINE: ['LP Turbine',[186,58,218,90]],
+  HP_TURB_ADM_VLV: ['HP Turbine Admission Valve',[-114,62,-84,86]],
+  IP_TURB_ADM_VLV: ['IP Turbine Admission Valve',[78,62,108,86]],
   HP_BYPASS_VLV: ['HP Bypass',[-112,22,-86,42]], LP_BYPASS_VLV: ['LP Bypass',[76,22,102,42]],
   HP_SPRAY: ['HP Spray',[-74,22,-48,42]], LP_SPRAY: ['LP Spray',[114,22,140,42]],
   HP_BFP: ['HP BFP',[-194,-88,-170,-64]], IP_BFP: ['IP BFP',[-41,-88,-17,-64]],

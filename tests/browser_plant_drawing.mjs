@@ -41,7 +41,7 @@ test('Plant direct jump highlights exact pumps, bypass valves, condenser and EVE
       assert.match(await page.locator('.drawing-callout').innerText(),/EVENT/);
       assert.equal(await page.locator('.drawing-canvas img').evaluate(image=>image.naturalWidth),2044);
     }
-    assert.equal(await page.locator('.drawing-hotspot').count(),19);
+    assert.equal(await page.locator('.drawing-hotspot').count(),21);
     assert.deepEqual(errors,[]);
     await page.screenshot({path:'/workspace/scratch/dcbbc7676ae2/plant-preview.png'});
   }finally{await browser.close();}
@@ -81,6 +81,23 @@ test('mobile Logic Master opens a distinct Plant Process View instead of a secon
     await dialog.getByRole('link',{name:'Plant Process View 열기'}).click();
     await page.getByRole('heading',{name:'Plant Process View'}).waitFor();
     assert.match(page.url(),/\/drawing\?view=plant$/);
-    assert.equal(await page.locator('.drawing-hotspot').count(),19);
+    assert.equal(await page.locator('.drawing-hotspot').count(),21);
+  }finally{await browser.close();}
+});
+
+test('registered valves missing from v36 overview open their exact SVG and EVENT focus',async()=>{
+  const browser=await playwright.chromium.launch({headless:true,executablePath,args:['--no-sandbox']});
+  try{
+    const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+    for(const [equipment,asset] of [['HP FWCV','hp-fwcv.svg'],['COND EXTRACTION VALVE','cond-extraction-vlv.svg']]){
+      await page.goto(`${base}/drawing?equipment=${encodeURIComponent(equipment)}&view=plant&event=TRIP`);
+      await page.getByRole('heading',{name:'Equipment Detail'}).waitFor();
+      assert.match(await page.locator('.valve-event-focus').innerText(),new RegExp(equipment));
+      assert.match(await page.locator('object[type="image/svg+xml"]').getAttribute('data'),new RegExp(asset+'$'));
+      assert.equal((await page.request.get(`${base}/topology/valves/${asset}`)).status(),200);
+    }
+    await page.goto(`${base}/drawing?equipment=HP%20TURB%20ADM%20VALVE&view=plant&event=TRIP`);
+    await page.locator('.drawing-hotspot.is-active').waitFor();
+    assert.equal(await page.locator('.drawing-hotspot.is-active').getAttribute('title'),'HP Turbine Admission Valve');
   }finally{await browser.close();}
 });

@@ -6,6 +6,7 @@ import {EQUIPMENT_DRAWING_MASTER,resolveEquipmentDrawing} from '../apps/web/lib/
 import {ECMS_HOTSPOT_PAGES} from '../apps/web/lib/ecmsHotspots.mjs';
 
 const required=['GT','GTG','HP_DRUM','IP_DRUM','LP_DRUM','HP_TURBINE','IP_TURBINE','LP_TURBINE',
+  'HP_TURB_ADM_VLV','IP_TURB_ADM_VLV',
   'HP_BYPASS_VLV','LP_BYPASS_VLV','HP_SPRAY','LP_SPRAY','HP_BFP','IP_BFP','LP_BFP',
   'HP_BFP_NRV','IP_BFP_NRV','LP_BFP_NRV','CONDENSER'];
 
@@ -19,8 +20,11 @@ test('v36 source symbols have exact boxes, no drawn ST generator, and valid over
   }
   assert.deepEqual(PLANT_PROCESS.hotspots.LP_BFP.box,[140,-88,164,-64]);
   assert.deepEqual(PLANT_PROCESS.hotspots.HP_BYPASS_VLV.box,[-112,22,-86,42]);
+  assert.deepEqual(PLANT_PROCESS.hotspots.HP_TURB_ADM_VLV.box,[-114,62,-84,86]);
+  assert.deepEqual(PLANT_PROCESS.hotspots.IP_TURB_ADM_VLV.box,[78,62,108,86]);
   assert.deepEqual(PLANT_PROCESS.hotspots.CONDENSER.box,[180,-48,228,-10]);
   assert.equal(PLANT_PROCESS.hotspots.ST,undefined);
+  assert.equal(PLANT_PROCESS.hotspots.HP_FWCV,undefined,'v36 has no separate FWCV symbol');
 });
 
 test('existing equipment master exactly maps required EVENT and operator names into v36',()=>{
