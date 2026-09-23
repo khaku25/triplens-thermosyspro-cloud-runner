@@ -7,13 +7,17 @@ on:
       - 'apps/web/components/PlantDrawingMaster.js'
       - 'apps/web/components/InlineSvgNavigator.js'
       - 'apps/web/public/drawing/**'
+      - 'apps/web/lib/ecmsHotspots.mjs'
       - 'tests/test_ecms_drawing_navigation.mjs'
+      - 'tests/test_ecms_hotspot_overlay.mjs'
   pull_request:
     paths:
       - 'apps/web/components/PlantDrawingMaster.js'
       - 'apps/web/components/InlineSvgNavigator.js'
       - 'apps/web/public/drawing/**'
+      - 'apps/web/lib/ecmsHotspots.mjs'
       - 'tests/test_ecms_drawing_navigation.mjs'
+      - 'tests/test_ecms_hotspot_overlay.mjs'
 
 permissions:
   contents: read
@@ -26,4 +30,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/test_ecms_drawing_navigation.mjs
+      - run: node --test tests/test_ecms_drawing_navigation.mjs tests/test_ecms_hotspot_overlay.mjs
