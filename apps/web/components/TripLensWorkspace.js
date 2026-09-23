@@ -2,6 +2,7 @@
 
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {LogicLibraryDialog,openLogicLibrary} from './LogicLibrary';
+import {drawingHref,resolveEquipment} from '../lib/equipmentMaster.mjs';
 import RecoveryForm from './RecoveryForm';
 import RecoveryReadiness from './RecoveryReadiness';
 import {WORKSPACE_TABS} from '../lib/contracts';
@@ -129,12 +130,17 @@ function AnalysisList({items,stage,onOpen,limit=5}){
 }
 
 function EventTable({events,onOpen}){
-  return <div className="scroll-table"><table><thead><tr><th>시간</th><th>설비</th><th>사건</th><th>원천</th><th>근거</th></tr></thead><tbody>{events.map((event,index)=>{const time=displayEventTime(event);return <tr key={event.event_id||index}><td><b>{time.primary}</b>{time.secondary?<small>{time.secondary}</small>:null}</td><td>{event.equipment||'—'}</td><td>{operatorSummary(event)||event.message||friendlyTag(event.tag)}</td><td>{event.source||'—'}</td><td><EvidenceLinks ids={[event.evidence_id||event.event_id]} onOpen={onOpen} named/></td></tr>;})}</tbody></table></div>;
+  return <div className="scroll-table"><table><thead><tr><th>시간</th><th>설비</th><th>사건</th><th>원천</th><th>근거</th><th>도면</th></tr></thead><tbody>{events.map((event,index)=>{const time=displayEventTime(event);return <tr key={event.event_id||index}><td><b>{time.primary}</b>{time.secondary?<small>{time.secondary}</small>:null}</td><td>{event.equipment||'—'}</td><td>{operatorSummary(event)||event.message||friendlyTag(event.tag)}</td><td>{event.source||'—'}</td><td><EvidenceLinks ids={[event.evidence_id||event.event_id]} onOpen={onOpen} named/></td><td><EventDrawingLink equipment={event.equipment}/></td></tr>;})}</tbody></table></div>;
+}
+
+function EventDrawingLink({equipment}){
+  if(!resolveEquipment(equipment))return null;
+  return <a className="event-drawing-link" href={drawingHref(equipment)} target="_blank" rel="noopener noreferrer">도면 위치 보기</a>;
 }
 
 function OperatorTimeline({events,onOpen}){
   const timeline=compactTimeline(events,7);
-  return <div className="operator-timeline">{timeline.visible.map((event,index)=>{const time=displayEventTime(event);const summary=conciseClaim(operatorSummary(event)||event.message||friendlyTag(event.tag),140).summary;return <article key={event.event_id||index}><time><b>{time.primary}</b>{time.secondary?<small>{time.secondary}</small>:null}</time><div><span>{event.equipment||event.event_class||'PLANT'}</span><strong>{summary}</strong></div><EvidenceLinks ids={[event.evidence_id||event.event_id]} onOpen={onOpen} named/></article>;})}{timeline.hiddenCount?<p>후속 기록 {timeline.hiddenCount}건은 전체 사건 기록에서 확인</p>:null}</div>;
+  return <div className="operator-timeline">{timeline.visible.map((event,index)=>{const time=displayEventTime(event);const summary=conciseClaim(operatorSummary(event)||event.message||friendlyTag(event.tag),140).summary;return <article key={event.event_id||index}><time><b>{time.primary}</b>{time.secondary?<small>{time.secondary}</small>:null}</time><div><span>{event.equipment||event.event_class||'PLANT'}</span><strong>{summary}</strong><EventDrawingLink equipment={event.equipment}/></div><EvidenceLinks ids={[event.evidence_id||event.event_id]} onOpen={onOpen} named/></article>;})}{timeline.hiddenCount?<p>후속 기록 {timeline.hiddenCount}건은 전체 사건 기록에서 확인</p>:null}</div>;
 }
 
 function OperatorReportPreview({analysis,events,recovery}){
@@ -373,7 +379,7 @@ export default function TripLensWorkspace({mode='blind'}){
       <aside className="sidebar">
         <div className="side-title">ANALYSIS WORKSPACE</div>
         <nav>{WORKSPACE_TABS.map(tab=><button disabled={!result} className={`nav-item ${activeTab===tab.id?'active':''}`} key={tab.id} onClick={()=>{setActiveTab(tab.id);setDetail(null);}}><span className="nav-no">{tab.no}</span><span><b>{tab.label}</b><em>{tab.sub}</em></span></button>)}</nav>
-        <div className="side-links"><button onClick={()=>openLogicLibrary()}><b>DM</b><span>Logic / TAG / Drawing Master<em>{logic?`${logic.live_rules} Logic · ${logic.protection} Protection · 도면 검색`:'태그 · 로직 · 도면 검색'}</em></span></button></div>
+        <div className="side-links"><button onClick={()=>openLogicLibrary()}><b>DM</b><span>Logic / TAG / Drawing Master<em>{logic?`${logic.live_rules} Logic · ${logic.protection} Protection · 도면 검색`:'태그 · 로직 · 도면 검색'}</em></span></button><a className="drawing-entry" href="/drawing">Plant · ECMS 도면 보기 →</a></div>
         <div className="boundary"><b>READ-ONLY</b><span>분석 및 보고서 전용</span></div>
       </aside>
       <section className="main-area">
