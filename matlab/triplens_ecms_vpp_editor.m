@@ -268,10 +268,99 @@ end
             otherwise
                 scatter(ax,n.x,n.y,150,[0.14 0.25 0.31],"s","filled","ButtonDownFcn",callback);
         end
-        text(ax,n.x,n.y+36,n.label,"HorizontalAlignment","center","FontWeight","bold","FontSize",10, ...
+
+        % Keep text clear of orthogonal wiring.  Only label placement is
+        % automatic; electrical topology and node geometry stay untouched.
+        [labelX,labelY,tagX,tagY,hAlign] = labelPlacement(k);
+        text(ax,labelX,labelY,n.label,"HorizontalAlignment",hAlign,"FontWeight","bold","FontSize",10, ...
+            "BackgroundColor",[0.98 0.99 0.995],"Margin",1.2, ...
             "ButtonDownFcn",callback,"PickableParts","all");
-        text(ax,n.x,n.y-38,n.tag,"HorizontalAlignment","center","FontSize",8.5,"Color",[0.38 0.46 0.49], ...
+        text(ax,tagX,tagY,n.tag,"HorizontalAlignment",hAlign,"FontSize",8.5,"Color",[0.38 0.46 0.49], ...
+            "BackgroundColor",[0.98 0.99 0.995],"Margin",1.0, ...
             "ButtonDownFcn",callback,"PickableParts","all");
+    end
+
+    function [labelX,labelY,tagX,tagY,hAlign] = labelPlacement(k)
+        n = nodes(k);
+        labelWidth = min(220,max(70,6.6*strlength(string(n.label))));
+        tagWidth = min(240,max(70,5.4*strlength(string(n.tag))));
+        boxWidth = max(labelWidth,tagWidth);
+        boxHeight = 34;
+
+        % [centerX centerY labelX labelY tagX tagY alignment preference]
+        candidates = [ ...
+            n.x,    n.y+48, n.x,    n.y+56, n.x,    n.y+38, 1; ...
+            n.x,    n.y-48, n.x,    n.y-38, n.x,    n.y-56, 2; ...
+            n.x+62, n.y,    n.x+42, n.y+9,  n.x+42, n.y-10, 3; ...
+            n.x-62, n.y,    n.x-42, n.y+9,  n.x-42, n.y-10, 4];
+
+        if startsWith(n.id,"BUS_")
+            candidates = candidates(1:2,:);
+        end
+
+        bestScore = inf; best = 1;
+        for q=1:size(candidates,1)
+            cx=candidates(q,1); cy=candidates(q,2);
+            rect=[cx-boxWidth/2,cy-boxHeight/2,boxWidth,boxHeight];
+            score = candidates(q,7)*0.05;
+
+            if rect(1)<5 || rect(2)<5 || rect(1)+rect(3)>1395 || rect(2)+rect(4)>795
+                score = score + 1000;
+            end
+
+            for e=1:numel(edges)
+                [x,y]=edgePolyline(edges(e));
+                for s=1:numel(x)-1
+                    if segmentHitsRect(x(s),y(s),x(s+1),y(s+1),rect,8)
+                        score = score + 120;
+                    end
+                end
+            end
+
+            for other=1:numel(nodes)
+                if other==k, continue; end
+                m=nodes(other);
+                nodeRect=[m.x-34,m.y-30,68,60];
+                if rectOverlap(rect,nodeRect)
+                    score = score + 45;
+                end
+            end
+
+            if score<bestScore
+                bestScore=score; best=q;
+            end
+        end
+
+        labelX=candidates(best,3); labelY=candidates(best,4);
+        tagX=candidates(best,5); tagY=candidates(best,6);
+        if best==3
+            hAlign="left";
+        elseif best==4
+            hAlign="right";
+        else
+            hAlign="center";
+        end
+    end
+
+    function hit = segmentHitsRect(x1,y1,x2,y2,rect,pad)
+        left=rect(1)-pad; right=rect(1)+rect(3)+pad;
+        bottom=rect(2)-pad; top=rect(2)+rect(4)+pad;
+        if abs(x1-x2)<1e-9
+            lo=min(y1,y2); hi=max(y1,y2);
+            hit=(x1>=left && x1<=right && hi>=bottom && lo<=top);
+        elseif abs(y1-y2)<1e-9
+            lo=min(x1,x2); hi=max(x1,x2);
+            hit=(y1>=bottom && y1<=top && hi>=left && lo<=right);
+        else
+            % Current editor routes are orthogonal; keep a conservative
+            % fallback if a future route adds a diagonal segment.
+            hit=~(max(x1,x2)<left || min(x1,x2)>right || max(y1,y2)<bottom || min(y1,y2)>top);
+        end
+    end
+
+    function yes = rectOverlap(a,b)
+        yes = a(1)<b(1)+b(3) && a(1)+a(3)>b(1) && ...
+              a(2)<b(2)+b(4) && a(2)+a(4)>b(2);
     end
 
     function beginNodeDrag(k), dragNode = k; statusLabel.Text = "설비 이동: " + string(nodes(k).tag); end
