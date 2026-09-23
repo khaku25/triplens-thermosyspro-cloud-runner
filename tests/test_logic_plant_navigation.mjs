@@ -8,10 +8,12 @@ const drawing=readFileSync(new URL('../apps/web/components/PlantDrawingMaster.js
 const workspace=readFileSync(new URL('../apps/web/components/TripLensWorkspace.js',import.meta.url),'utf8');
 
 test('Logic Master links to the actual Plant drawing and identifies its own equipment diagrams as logic',()=>{
-  assert.match(dialog,/href="\/drawing\?view=plant"/);
+  assert.match(dialog,/href=\{logicDrawingHref\(equipmentPage\)\}/);
   assert.match(dialog,/Plant Process View 열기/);
+  assert.match(dialog,/도면에서.*위치 보기/);
   assert.doesNotMatch(dialog,/>별도 화면</);
   assert.match(frame,/setText\(document\.querySelector\('#equipment-view'\), '설비별 로직'\)/);
+  assert.match(frame,/onEquipmentPage\?\.\(nextPage\)/);
 });
 
 test('Plant overview opens from its direct URL without an equipment selection',()=>{
