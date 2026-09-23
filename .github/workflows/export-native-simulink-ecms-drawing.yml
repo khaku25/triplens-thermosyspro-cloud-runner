@@ -1,0 +1,29 @@
+name: Export Native Simulink ECMS Drawing
+
+on:
+  push:
+    branches: [codex/restore-drawing-master-20260922]
+    paths:
+      - 'scripts/export_native_simulink_ecms_drawing.m'
+      - '.github/workflows/export-native-simulink-ecms-drawing.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export actual Simulink model drawing
+        shell: cmd
+        run: |
+          "C:\Program Files\MATLAB\R2025b\bin\matlab.exe" -batch "addpath(fullfile(pwd,'scripts')); export_native_simulink_ecms_drawing"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-simulink-ecms-drawing
+          path: outputs/native_simulink_drawing/
+          if-no-files-found: error
+          retention-days: 30
