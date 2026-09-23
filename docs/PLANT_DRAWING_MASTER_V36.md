@@ -5,7 +5,7 @@
 - Visual source: uploaded `TripLens_CombinedCycle_TripTAC_ProcessView_v36(2).mo` Diagram annotation, SHA-256 `6d27dbd43efaf778859bcf26a88265e57323db565a791735c261e2dab03355da`.
 - Web background: its 2044 × 1285 captured Process View at `apps/web/public/drawing/plant-process-v36.png`. The web background is a static snapshot; its numeric values are **not** live.
 - Coordinate frame: `{{-240,-165},{240,140}}`, with upward positive Y. `plantHotspots.mjs` converts source symbol bounds to percentages in the rendered image.
-- Existing ECMS sources: `topology/triplens_ecms_vpp.svg` and `topology/triplens_ecms_6p9kv.svg`, copied unchanged into public assets. ECMS overview bus areas lead to the 6.9 kV detail.
+- Existing ECMS sources: `ecms-overview-matlab.svg` and `ecms-6p9kv-matlab.svg`, retained with their existing `InlineSvgNavigator` highlight and BUS-A/B drill down.
 - Modelica `equation`, `connect()`, simulation settings and OPC UA publication are outside this web change.
 
 ## Hotspot mapping
@@ -29,7 +29,7 @@ HP/IP/LP drums are highlighted at the feedwater and level vessels in the lower r
 
 ## EVENT navigation and limitations
 
-`equipmentMaster.mjs` resolves explicit names to `equipment_id`, `plant_location_id` and `ecms_location_id`. It uses the existing `FWP-HP/IP/LP` identifiers and explicitly maps the operator names HP/IP/LP BFP to those pumps. Unknown names have no inferred location or misleading link. EVENT timeline and table links open `/drawing?equipment=...` in another tab to preserve the active analysis. A view parameter can request the electrical location for a pump, e.g. `/drawing?equipment=LP%20BFP&view=ecms` highlights VCB-A02.
+The existing `equipmentDrawingMaster.mjs` and `config/equipment_drawing_master_v1.csv` resolve explicit names to `equipment_id`, `plant_location_id` and `ecms_location_id`. They retain the `FWP-HP/IP/LP` identifiers and explicitly map HP/IP/LP BFP to those pumps. Six v36 symbols were added to the same registry, with ST kept on the ECMS generator view. EVENT timeline and table links open `/drawing?equipment=...` in another tab to preserve the active analysis; known Plant equipment opens the v36 page by default. An explicit electrical view, e.g. `/drawing?equipment=LP%20BFP&view=ecms`, highlights VCB-A02. Unknown names have no inferred location.
 
 RAW and OPC UA value overlays are a separate phase. The image labels show the capture time only; do not interpret the displayed zero values as the uploaded EVENT/RAW measurement.
 

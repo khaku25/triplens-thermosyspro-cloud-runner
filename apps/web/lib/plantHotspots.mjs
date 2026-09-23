@@ -24,43 +24,10 @@ export const PLANT_PROCESS = Object.freeze({
   hotspots: Object.freeze(Object.fromEntries(Object.entries(plant).map(([id,[label,box]]) => [id,{label,box}]))),
 });
 
-// ECMS uses the repository's existing SVGs without altering their symbols or lines.
-export const ECMS_VIEWS = Object.freeze({
-  overview: {
-    image: '/drawing/triplens_ecms_vpp.svg', imageSize: [1400,900],
-    hotspots: {
-      'BUS-A': {label:'6.9 kV BUS-A',box:[145,615,620,695],drill:'detail'},
-      'BUS-B': {label:'6.9 kV BUS-B',box:[780,615,1255,695],drill:'detail'},
-      '52GT': {label:'52GT',box:[211,332,249,370]},
-      '52ST': {label:'52ST',box:[1151,332,1189,370]},
-      GTG: {label:'GTG',box:[90,317,150,379]},
-      STG: {label:'STG',box:[1250,317,1310,379]},
-      'CB-TIE-AB': {label:'CB-TIE-AB',box:[660,630,740,670],drill:'detail'},
-    },
-  },
-  detail: {
-    image: '/drawing/triplens_ecms_6p9kv.svg', imageSize: [1500,900],
-    hotspots: {
-      'BUS-A': {label:'6.9 kV BUS-A',box:[95,225,675,270]},
-      'BUS-B': {label:'6.9 kV BUS-B',box:[825,225,1405,270]},
-      'CB-TIE-AB': {label:'CB-TIE-AB',box:[710,225,790,265]},
-      'VCB-A01': {label:'VCB-A01 · HP BFP',box:[136,310,174,352]},
-      'VCB-A02': {label:'VCB-A02 · LP BFP',box:[286,310,324,352]},
-      'VCB-B01': {label:'VCB-B01 · IP BFP',box:[876,310,914,352]},
-    },
-  },
-});
-
 export function modelBoxStyle(box, viewBox = PLANT_PROCESS.viewBox) {
   const [left,bottom,right,top] = box;
   const [minX,minY,maxX,maxY] = viewBox;
   const pct = n => `${Number((n * 100).toFixed(5))}%`;
   return {left:pct((left-minX)/(maxX-minX)),top:pct((maxY-top)/(maxY-minY)),
     width:pct((right-left)/(maxX-minX)),height:pct((top-bottom)/(maxY-minY))};
-}
-
-export function pixelBoxStyle(box, imageSize) {
-  const [left,top,right,bottom] = box;
-  return {left:`${left/imageSize[0]*100}%`,top:`${top/imageSize[1]*100}%`,
-    width:`${(right-left)/imageSize[0]*100}%`,height:`${(bottom-top)/imageSize[1]*100}%`};
 }

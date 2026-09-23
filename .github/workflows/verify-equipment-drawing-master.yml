@@ -1,0 +1,28 @@
+name: Verify Equipment Drawing Master
+
+on:
+  push:
+    branches: [codex/restore-drawing-master-20260922]
+    paths:
+      - 'config/equipment_drawing_master_v1.csv'
+      - 'apps/web/lib/equipmentDrawingMaster.mjs'
+      - 'tests/test_equipment_drawing_master.mjs'
+      - '.github/workflows/verify-equipment-drawing-master.yml'
+  pull_request:
+    paths:
+      - 'config/equipment_drawing_master_v1.csv'
+      - 'apps/web/lib/equipmentDrawingMaster.mjs'
+      - 'tests/test_equipment_drawing_master.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/test_equipment_drawing_master.mjs

@@ -27,12 +27,12 @@ test('each evidence card has one grouped logic-master entry',()=>{
 
 test('report preview defaults to concise operator summary and keeps editing collapsed',()=>{
   assert.match(source,/operator-report-preview/);
-  assert.match(source,/4페이지 운전 고장상보 형식/);
+  assert.match(source,/1~2페이지 운전 고장상보 형식/);
   assert.match(source,/report-editor/);
 });
 
 test('Drawing Master is named and remains reachable from the mobile workspace',()=>{
-  assert.match(source,/Logic \/ TAG \/ Drawing Master/);
+  assert.match(source,/href="\/drawing"[^>]*>Drawing Master/);
   assert.doesNotMatch(integrationCss,/\.app-shell \.side-links\s*,\s*\.app-shell \.boundary\s*\{display:none\}/);
 });
 

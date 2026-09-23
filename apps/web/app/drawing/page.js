@@ -1,13 +1,5 @@
-import DrawingMaster from '../../components/DrawingMaster';
+import PlantDrawingMaster from '../../components/PlantDrawingMaster';
 import './drawing.css';
 
-export const metadata = { title: 'TripLens | Drawing Master' };
-
-export default async function DrawingPage({ searchParams }) {
-  const params = await searchParams;
-  return <DrawingMaster initialQuery={{
-    equipment: typeof params?.equipment === 'string' ? params.equipment : '',
-    view: typeof params?.view === 'string' ? params.view : '',
-    page: typeof params?.page === 'string' ? params.page : '',
-  }}/>
-}
+export const metadata = {title:'TripLens | Drawing Master',description:'ThermoSysPro plant and equipment drawing master'};
+export default function DrawingPage(){return <PlantDrawingMaster/>;}

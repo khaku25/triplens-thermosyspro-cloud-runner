@@ -10,6 +10,7 @@ def make_repository(tags, rules, census, *, layout_xml=None):
     index=create_index(model,xml)
     drawing_master=create_drawing_master(
         xml,
+        canonical_tags={tag: row['canonical_tag'] for tag,row in model['tags'].items() if row.get('canonical_tag')},
         file_path='logic_diagrams/TripLens_Logic_Master_Current_V8.drawio',
         aliases=[
             'generated/logic/TripLens_Logic_Master_Current_V8.drawio',
