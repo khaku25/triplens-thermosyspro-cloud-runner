@@ -269,30 +269,34 @@ end
                 scatter(ax,n.x,n.y,150,[0.14 0.25 0.31],"s","filled","ButtonDownFcn",callback);
         end
 
-        % Keep text clear of orthogonal wiring.  Only label placement is
-        % automatic; electrical topology and node geometry stay untouched.
-        [labelX,labelY,tagX,tagY,hAlign] = labelPlacement(k);
-        text(ax,labelX,labelY,n.label,"HorizontalAlignment",hAlign,"FontWeight","bold","FontSize",10, ...
-            "BackgroundColor",[0.98 0.99 0.995],"Margin",1.2, ...
+        % Treat label + tag as one compact annotation block.  The block
+        % moves as a unit to a clear side of the equipment so the label and
+        % tag never split across different sides of the wiring.
+        [box,labelX,labelY,tagX,tagY,hAlign] = labelPlacement(k);
+        rectangle(ax,"Position",box,"Curvature",[0.12 0.12], ...
+            "FaceColor",[0.98 0.99 0.995],"EdgeColor",[0.84 0.88 0.91], ...
+            "LineWidth",0.7,"HitTest","off","PickableParts","none");
+        text(ax,labelX,labelY,n.label,"HorizontalAlignment",hAlign, ...
+            "FontWeight","bold","FontSize",9.8,"Color",[0.14 0.22 0.29], ...
             "ButtonDownFcn",callback,"PickableParts","all");
-        text(ax,tagX,tagY,n.tag,"HorizontalAlignment",hAlign,"FontSize",8.5,"Color",[0.38 0.46 0.49], ...
-            "BackgroundColor",[0.98 0.99 0.995],"Margin",1.0, ...
+        text(ax,tagX,tagY,n.tag,"HorizontalAlignment",hAlign, ...
+            "FontSize",8.2,"Color",[0.38 0.46 0.49], ...
             "ButtonDownFcn",callback,"PickableParts","all");
     end
 
-    function [labelX,labelY,tagX,tagY,hAlign] = labelPlacement(k)
+    function [box,labelX,labelY,tagX,tagY,hAlign] = labelPlacement(k)
         n = nodes(k);
-        labelWidth = min(220,max(70,6.6*strlength(string(n.label))));
-        tagWidth = min(240,max(70,5.4*strlength(string(n.tag))));
-        boxWidth = max(labelWidth,tagWidth);
-        boxHeight = 34;
+        labelWidth = min(220,max(72,6.4*strlength(string(n.label))));
+        tagWidth = min(240,max(72,5.2*strlength(string(n.tag))));
+        boxWidth = max(labelWidth,tagWidth) + 14;
+        boxHeight = 39;
 
-        % [centerX centerY labelX labelY tagX tagY alignment preference]
+        % Candidate block centres: top, bottom, right, left.
         candidates = [ ...
-            n.x,    n.y+48, n.x,    n.y+56, n.x,    n.y+38, 1; ...
-            n.x,    n.y-48, n.x,    n.y-38, n.x,    n.y-56, 2; ...
-            n.x+62, n.y,    n.x+42, n.y+9,  n.x+42, n.y-10, 3; ...
-            n.x-62, n.y,    n.x-42, n.y+9,  n.x-42, n.y-10, 4];
+            n.x,    n.y+55, 1; ...
+            n.x,    n.y-55, 2; ...
+            n.x+78, n.y,    3; ...
+            n.x-78, n.y,    4];
 
         if startsWith(n.id,"BUS_")
             candidates = candidates(1:2,:);
@@ -302,7 +306,7 @@ end
         for q=1:size(candidates,1)
             cx=candidates(q,1); cy=candidates(q,2);
             rect=[cx-boxWidth/2,cy-boxHeight/2,boxWidth,boxHeight];
-            score = candidates(q,7)*0.05;
+            score = candidates(q,3)*0.05;
 
             if rect(1)<5 || rect(2)<5 || rect(1)+rect(3)>1395 || rect(2)+rect(4)>795
                 score = score + 1000;
@@ -311,8 +315,8 @@ end
             for e=1:numel(edges)
                 [x,y]=edgePolyline(edges(e));
                 for s=1:numel(x)-1
-                    if segmentHitsRect(x(s),y(s),x(s+1),y(s+1),rect,8)
-                        score = score + 120;
+                    if segmentHitsRect(x(s),y(s),x(s+1),y(s+1),rect,10)
+                        score = score + 140;
                     end
                 end
             end
@@ -320,9 +324,9 @@ end
             for other=1:numel(nodes)
                 if other==k, continue; end
                 m=nodes(other);
-                nodeRect=[m.x-34,m.y-30,68,60];
+                nodeRect=[m.x-36,m.y-32,72,64];
                 if rectOverlap(rect,nodeRect)
-                    score = score + 45;
+                    score = score + 55;
                 end
             end
 
@@ -331,15 +335,21 @@ end
             end
         end
 
-        labelX=candidates(best,3); labelY=candidates(best,4);
-        tagX=candidates(best,5); tagY=candidates(best,6);
+        cx=candidates(best,1); cy=candidates(best,2);
+        box=[cx-boxWidth/2,cy-boxHeight/2,boxWidth,boxHeight];
+
         if best==3
             hAlign="left";
+            labelX=box(1)+7; tagX=box(1)+7;
         elseif best==4
             hAlign="right";
+            labelX=box(1)+box(3)-7; tagX=box(1)+box(3)-7;
         else
             hAlign="center";
+            labelX=cx; tagX=cx;
         end
+        labelY=cy+8;
+        tagY=cy-9;
     end
 
     function hit = segmentHitsRect(x1,y1,x2,y2,rect,pad)
@@ -352,8 +362,6 @@ end
             lo=min(x1,x2); hi=max(x1,x2);
             hit=(y1>=bottom && y1<=top && hi>=left && lo<=right);
         else
-            % Current editor routes are orthogonal; keep a conservative
-            % fallback if a future route adds a diagonal segment.
             hit=~(max(x1,x2)<left || min(x1,x2)>right || max(y1,y2)<bottom || min(y1,y2)>top);
         end
     end
