@@ -16,5 +16,6 @@ test('Logic Master links to the actual Plant drawing and identifies its own equi
 
 test('Plant overview opens from its direct URL without an equipment selection',()=>{
   assert.match(drawing,/if\(requested==='plant'\)\s*\{setScreen\('plant'\)/);
+  assert.match(workspace,/if\(resolvePlantFocus\(row\)\)qs\.set\('view','plant'\)/);
   assert.match(workspace,/qs\.set\('view','plant'\)/);
 });

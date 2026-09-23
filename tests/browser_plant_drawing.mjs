@@ -89,8 +89,13 @@ test('registered valves missing from v36 overview open their exact SVG and EVENT
   const browser=await playwright.chromium.launch({headless:true,executablePath,args:['--no-sandbox']});
   try{
     const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
-    for(const [equipment,asset] of [['HP FWCV','hp-fwcv.svg'],['COND EXTRACTION VALVE','cond-extraction-vlv.svg']]){
+    for(const [equipment,asset,related] of [['HP FWCV','hp-fwcv.svg','HP Drum'],['COND EXTRACTION VALVE','cond-extraction-vlv.svg','Condenser']]){
       await page.goto(`${base}/drawing?equipment=${encodeURIComponent(equipment)}&view=plant&event=TRIP`);
+      await page.locator('.drawing-hotspot.is-active').waitFor();
+      assert.equal(await page.locator('.drawing-hotspot.is-active').getAttribute('title'),related);
+      assert.match(await page.locator('.drawing-caption').innerText(),/관련 설비/);
+      assert.equal(await page.locator('.drawing-detail-zoom').count(),1);
+      await page.getByRole('button',{name:'선택 설비 상세도면'}).first().click();
       await page.getByRole('heading',{name:'Equipment Detail'}).waitFor();
       assert.match(await page.locator('.valve-event-focus').innerText(),new RegExp(equipment));
       assert.match(await page.locator('object[type="image/svg+xml"]').getAttribute('data'),new RegExp(asset+'$'));
@@ -99,5 +104,9 @@ test('registered valves missing from v36 overview open their exact SVG and EVENT
     await page.goto(`${base}/drawing?equipment=HP%20TURB%20ADM%20VALVE&view=plant&event=TRIP`);
     await page.locator('.drawing-hotspot.is-active').waitFor();
     assert.equal(await page.locator('.drawing-hotspot.is-active').getAttribute('title'),'HP Turbine Admission Valve');
+    await page.goto(`${base}/drawing?equipment=GT%20EXHAUST&view=plant&event=TRIP`);
+    await page.locator('.drawing-hotspot.is-active').waitFor();
+    assert.equal(await page.locator('.drawing-hotspot.is-active').getAttribute('title'),'GT');
+    assert.match(await page.getByRole('region',{name:'설비 상세 정보'}).innerText(),/개별 상세도면 미등록/);
   }finally{await browser.close();}
 });

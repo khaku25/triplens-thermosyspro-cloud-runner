@@ -5,6 +5,7 @@ import InlineSvgNavigator from './InlineSvgNavigator';
 import ProcessViewCanvas from './ProcessViewCanvas';
 import {EQUIPMENT_DRAWING_MASTER,resolveEquipmentDrawing} from '../lib/equipmentDrawingMaster.mjs';
 import {PLANT_PROCESS} from '../lib/plantHotspots.mjs';
+import {resolvePlantFocus} from '../lib/plantDrawingFocus.mjs';
 
 const detailOnlyValves=EQUIPMENT_DRAWING_MASTER.filter(row=>
   row.equipment_type==='VALVE'&&row.detail_asset&&!PLANT_PROCESS.hotspots[row.plant_location_id]);
@@ -47,23 +48,21 @@ export default function PlantDrawingMaster(){
     if(!row)return;
     setSelected(row);
     if(requested==='detail'&&row.detail_asset){setScreen('detail');return;}
-    if(requested==='plant'&&PLANT_PROCESS.hotspots[row.plant_location_id]){setScreen('plant');return;}
-    if(requested!=='ecms'&&requested!=='sld'&&requested!=='vpp'&&PLANT_PROCESS.hotspots[row.plant_location_id]){setScreen('plant');return;}
+    if(requested!=='ecms'&&requested!=='sld'&&requested!=='vpp'&&resolvePlantFocus(row)){setScreen('plant');return;}
     if(row.ecms_page==='ECMS_6P9KV'){setScreen('ecms-detail');setManualFocus('');return;}
     if(row.ecms_page==='ECMS_VPP'){setScreen('ecms-overview');setManualFocus('');return;}
     if(row.detail_asset){setScreen('detail');return;}
-    if(row.plant_location_id)setScreen('plant');
+    if(resolvePlantFocus(row))setScreen('plant');
   },[]);
 
   function goEquipment(row){
     setSelected(row);
     setManualFocus('');
     setEventLabel('');
-    if(PLANT_PROCESS.hotspots[row.plant_location_id])setScreen('plant');
+    if(resolvePlantFocus(row))setScreen('plant');
     else if(row.ecms_page==='ECMS_6P9KV')setScreen('ecms-detail');
     else if(row.ecms_page==='ECMS_VPP')setScreen('ecms-overview');
     else if(row.detail_asset)setScreen('detail');
-    else if(row.plant_location_id)setScreen('plant');
   }
 
   function overviewNavigate(view){
@@ -90,6 +89,8 @@ export default function PlantDrawingMaster(){
 
   const overviewHighlight=screen==='ecms-overview'&&selected?.ecms_page==='ECMS_VPP'?selected.ecms_location_id:'';
   const detailHighlight=screen==='ecms-detail'?(manualFocus||(selected?.ecms_page==='ECMS_6P9KV'?selected.ecms_location_id:'')):'';
+  const selectedFocus=resolvePlantFocus(selected);
+  const relatedEquipment=selectedFocus?.kind==='related'?selected.event_equipment:'';
 
   return <main style={{minHeight:'100dvh',background:'#eef3f7',color:'#17324a'}}>
     <header style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',alignItems:'center',gap:12,padding:'12px 18px',background:'#17364d',color:'#fff'}}>
@@ -118,14 +119,15 @@ export default function PlantDrawingMaster(){
           </div>
           <div style={{display:'flex',gap:7,flexWrap:'wrap'}}>
             {screen==='ecms-detail'?<button type="button" onClick={()=>{setScreen('ecms-overview');setManualFocus('')}} style={smallButton}>← ECMS Overview</button>:null}
-            {PLANT_PROCESS.hotspots[selected?.plant_location_id]&&screen!=='plant'?<button type="button" onClick={()=>setScreen('plant')} style={smallButton}>Plant 위치</button>:null}
+            {selectedFocus&&screen!=='plant'?<button type="button" onClick={()=>setScreen('plant')} style={smallButton}>{relatedEquipment?'← Plant 관련 영역':'← Plant 위치'}</button>:null}
+            {selected?.detail_asset&&screen==='plant'?<button type="button" onClick={()=>setScreen('detail')} style={smallButton}>선택 설비 상세도면</button>:null}
             {selected?.ecms_location_id&&screen==='plant'?<button type="button" onClick={()=>selected.ecms_page==='ECMS_6P9KV'?setScreen('ecms-detail'):setScreen('ecms-overview')} style={smallButton}>ECMS 위치</button>:null}
           </div>
         </div>
 
         {screen==='ecms-overview'?<div style={canvas}><InlineSvgNavigator src="/drawing/ecms-overview-matlab.svg" pageId="ECMS_VPP" title="ECMS Overview" highlight={overviewHighlight} eventLabel={eventLabel} onView={overviewNavigate} onEquipment={equipmentClicked}/></div>:null}
         {screen==='ecms-detail'?<><div style={selectionBar}><b>Direct detail</b><span>{detailHighlight||'BUS를 선택하세요'}</span></div><div style={canvas}><InlineSvgNavigator src="/drawing/ecms-6p9kv-matlab.svg" pageId="ECMS_6P9KV" title="6.9 kV SWGR Detail" highlight={detailHighlight} eventLabel={eventLabel} onEquipment={equipmentClicked}/></div></>:null}
-        {screen==='plant'?<><ProcessViewCanvas locationId={selected?.plant_location_id} eventLabel={eventLabel} onSelect={processClicked}/>
+        {screen==='plant'?<><ProcessViewCanvas locationId={selectedFocus?.locationId} relatedEquipment={relatedEquipment} eventLabel={eventLabel} onSelect={processClicked}/>
           <section aria-label="추가 밸브 상세도면" style={{padding:'12px 14px',borderTop:'1px solid #d7e1e7'}}>
             <h3 style={{fontSize:15,margin:'0 0 4px'}}>추가 밸브 상세도면</h3>
             <p style={{...muted,margin:'0 0 10px'}}>v36 전체 도면에 개별 심볼이 없는 등록 밸브입니다.</p>
@@ -133,9 +135,13 @@ export default function PlantDrawingMaster(){
           </section></>:null}
         {screen==='detail'?<DetailAsset row={selected} eventLabel={eventLabel}/>:null}
 
-        {selected?<div style={{padding:14,display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:8,borderTop:'1px solid #e1e8ed'}}>
-          <Info label="Equipment ID" value={selected.equipment_id}/><Info label="Plant" value={selected.plant_location_id}/><Info label="ECMS page" value={selected.ecms_page}/><Info label="ECMS location" value={selected.ecms_location_id}/><Info label="Detail" value={selected.detail_asset}/>
-        </div>:null}
+        {selected?<section aria-label="설비 상세 정보" style={{padding:14,borderTop:'1px solid #e1e8ed'}}>
+          <h3 style={{fontSize:15,margin:'0 0 6px'}}>설비 상세 · {selected.event_equipment}</h3>
+          <p style={{...muted,margin:'0 0 10px',lineHeight:1.5}}>{selectedFocus?.kind==='related'?`v36에 개별 심볼 없음 · 관련 설비 ${PLANT_PROCESS.hotspots[selectedFocus.locationId].label} 강조`:selectedFocus?'v36 원본 도면의 개별 심볼 강조':'ECMS 원본 도면의 설비 위치 강조'} · {selected.detail_asset?'등록된 개별 상세도면 보기 가능':'개별 상세도면 미등록'}</p>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:8}}>
+            <Info label="Equipment ID" value={selected.equipment_id}/><Info label="Plant" value={selected.plant_location_id}/><Info label="ECMS page" value={selected.ecms_page}/><Info label="ECMS location" value={selected.ecms_location_id}/><Info label="Detail" value={selected.detail_asset}/>
+          </div>
+        </section>:null}
       </section>
     </section>
     <footer style={{maxWidth:1680,margin:'0 auto',padding:'0 16px 18px',fontSize:12,color:'#617685'}}>읽기 전용 도면 · 사고 설비를 선택해 위치를 확인합니다.</footer>

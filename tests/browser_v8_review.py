@@ -168,16 +168,30 @@ def main():
             expect(page.locator('.drawing-hotspot')).to_have_count(21)
             assert page.url.endswith('/drawing?view=plant'),page.url
             page.get_by_role('region',name='추가 밸브 상세도면').get_by_role('button',name='IP FWCV').click()
+            expect(page.locator('.drawing-hotspot.is-active')).to_have_attribute('title','IP Drum')
+            page.get_by_role('button',name='선택 설비 상세도면').first.click()
             expect(page.get_by_role('heading',name='Equipment Detail')).to_be_visible()
             expect(page.locator('object[type="image/svg+xml"]')).to_have_attribute('data','/topology/valves/ip-fwcv.svg')
             for equipment,asset in [('HP FWCV','hp-fwcv.svg'),('COND EXTRACTION VALVE','cond-extraction-vlv.svg')]:
                 page.goto(os.getenv('TRIPLENS_UI_URL','http://localhost:3000/').rstrip('/')+'/drawing?equipment='+equipment.replace(' ','%20')+'&view=plant&event=TRIP')
+                expect(page.locator('.drawing-hotspot.is-active')).to_have_count(1)
+                expect(page.locator('.drawing-caption')).to_contain_text('관련 설비')
+                expect(page.locator('.drawing-detail-zoom')).to_be_visible()
+                page.get_by_role('button',name='선택 설비 상세도면').first.click()
                 expect(page.get_by_role('heading',name='Equipment Detail')).to_be_visible()
                 expect(page.locator('.valve-event-focus')).to_contain_text(equipment)
                 expect(page.locator('object[type="image/svg+xml"]')).to_have_attribute('data',re.compile(asset+'$'))
                 assert page.request.get('http://localhost:3000/topology/valves/'+asset).status==200
             page.goto(os.getenv('TRIPLENS_UI_URL','http://localhost:3000/').rstrip('/')+'/drawing?equipment=HP%20TURB%20ADM%20VALVE&view=plant&event=TRIP')
             expect(page.locator('.drawing-hotspot.is-active')).to_have_attribute('title','HP Turbine Admission Valve')
+            for equipment,related in [('HP FEEDWATER','HP BFP'),('GT EXHAUST','GT')]:
+                page.goto(os.getenv('TRIPLENS_UI_URL','http://localhost:3000/').rstrip('/')+'/drawing?equipment='+equipment.replace(' ','%20')+'&view=plant&event=TRIP')
+                expect(page.locator('.drawing-hotspot.is-active')).to_have_attribute('title',related)
+                expect(page.get_by_role('region',name='설비 상세 정보')).to_contain_text('개별 상세도면 미등록')
+                expect(page.locator('.drawing-detail-zoom')).to_be_visible()
+            page.goto(os.getenv('TRIPLENS_UI_URL','http://localhost:3000/').rstrip('/')+'/drawing?equipment=ST&view=ecms&event=TRIP')
+            expect(page.locator('.triplens-highlight-layer')).to_be_visible()
+            expect(page.get_by_role('region',name='설비 상세 정보')).to_contain_text('ECMS 원본 도면')
             assert not errors,errors
             checks.append({'viewport':name,'width':width,'checks':'PASS','analysis_requests':counts['analyze'],'bootstrap_requests':counts['bootstrap'],'page_errors':errors,'live_gemini':False})
             context.close()
