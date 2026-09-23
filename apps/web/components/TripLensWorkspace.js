@@ -128,14 +128,17 @@ function AnalysisList({items,stage,onOpen,limit=5}){
   return <div className="analysis-list">{visible.map(renderItem)}{hidden.length?<details className="hidden-analysis-items"><summary>후속 분석 {hidden.length}건 보기</summary><div>{hidden.map((item,index)=>renderItem(item,index+limit))}</div></details>:null}</div>;
 }
 
-function DrawingLocationLink({equipment}){
+function DrawingLocationLink({equipment,eventTag}){
   const value=String(equipment||'').trim();
   if(!value)return null;
-  return <a href={'/drawing?equipment='+encodeURIComponent(value)} target="_blank" rel="noreferrer" className="tag-link" title={value+' 설비 도면 위치 열기'}>도면 위치 보기</a>;
+  const qs=new URLSearchParams({equipment:value});
+  const tag=String(eventTag||'').trim();
+  if(tag)qs.set('event',tag);
+  return <a href={'/drawing?'+qs.toString()} target="_blank" rel="noreferrer" className="tag-link" title={value+' 설비 도면 위치 열기'}>도면 위치 보기</a>;
 }
 
 function EventTable({events,onOpen}){
-  return <div className="scroll-table"><table><thead><tr><th>시간</th><th>설비</th><th>사건</th><th>원천</th><th>근거</th></tr></thead><tbody>{events.map((event,index)=>{const time=displayEventTime(event);return <tr key={event.event_id||index}><td><b>{time.primary}</b>{time.secondary?<small>{time.secondary}</small>:null}</td><td>{event.equipment||'—'}</td><td>{operatorSummary(event)||event.message||friendlyTag(event.tag)}</td><td>{event.source||'—'}</td><td><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><EvidenceLinks ids={[event.evidence_id||event.event_id]} onOpen={onOpen} named/><DrawingLocationLink equipment={event.equipment}/></div></td></tr>;})}</tbody></table></div>;
+  return <div className="scroll-table"><table><thead><tr><th>시간</th><th>설비</th><th>사건</th><th>원천</th><th>근거</th></tr></thead><tbody>{events.map((event,index)=>{const time=displayEventTime(event);return <tr key={event.event_id||index}><td><b>{time.primary}</b>{time.secondary?<small>{time.secondary}</small>:null}</td><td>{event.equipment||'—'}</td><td>{operatorSummary(event)||event.message||friendlyTag(event.tag)}</td><td>{event.source||'—'}</td><td><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><EvidenceLinks ids={[event.evidence_id||event.event_id]} onOpen={onOpen} named/><DrawingLocationLink equipment={event.equipment} eventTag={event.tag}/></div></td></tr>;})}</tbody></table></div>;
 }
 
 function OperatorTimeline({events,onOpen}){
