@@ -1,0 +1,29 @@
+name: Verify ECMS Drawing Navigation
+
+on:
+  push:
+    branches: [codex/restore-drawing-master-20260922]
+    paths:
+      - 'apps/web/components/PlantDrawingMaster.js'
+      - 'apps/web/components/InlineSvgNavigator.js'
+      - 'apps/web/public/drawing/**'
+      - 'tests/test_ecms_drawing_navigation.mjs'
+  pull_request:
+    paths:
+      - 'apps/web/components/PlantDrawingMaster.js'
+      - 'apps/web/components/InlineSvgNavigator.js'
+      - 'apps/web/public/drawing/**'
+      - 'tests/test_ecms_drawing_navigation.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/test_ecms_drawing_navigation.mjs
