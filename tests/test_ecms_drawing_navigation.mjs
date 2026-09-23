@@ -28,7 +28,7 @@ test('Drawing Master supports overview navigation and URL equipment direct jump'
   assert.match(ui,/Direct Jump/);
   assert.match(inline,/data-view/);
   assert.match(inline,/data-equipment/);
-  assert.match(inline,/triplens-highlight-ring/);
+  assert.match(inline,/triplens-highlight-layer/);
 });
 
 // Workflow trigger: verifies the committed clickable ECMS assets and direct-jump contract.
