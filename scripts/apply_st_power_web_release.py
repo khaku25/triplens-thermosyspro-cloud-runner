@@ -1,165 +1,96 @@
 #!/usr/bin/env python3
-"""Apply the reviewed ST master artifact delta and regenerate web assets.
-
-The payload was produced from the exact existing 06/07 workbooks using
-artifact_tool. This is a guarded byte-level ZIP delta, not a second spreadsheet
-editor. No physical model, OPC UA client, or Plant Control file is written.
-"""
+"""Validate the separated ST source evidence and run the existing asset pipeline."""
 from __future__ import annotations
-import base64
-import csv
+
 import hashlib
-import io
 import json
 from pathlib import Path
 import subprocess
 import sys
-import zipfile
-import zlib
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT=Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+    sys.path.insert(0,str(ROOT))
+BASELINE={
+    'data/current_v8/live_opcua_census.csv':'1f9dafddc23eb356e2854708d440be3385607df3548b967baa780553b33c8254',
+    'data/current_v8/live_tag_allowlist.csv':'ba5610fdc32ff22c9171bcaf016066bccea6682a5ec5dfcfbd34c0fd3c3a6f3e',
+    'data/current_v8/live_tag_master.csv':'f2277cc3d10cc317cffaf0ecf5cf74cd0ef1e46f4fd3db3a9e5fe1a189ad25b8',
+    'data/current_v8/live_logic_runtime.csv':'d79505193ef88a0f54f8d7370ed157313df079ebae9ef090ce98f148f6841ecb',
+    'data/current_v8/live_tag_logic_links.csv':'d6521353d58355a4267b76dfa9db4caef3359708673a22f2fb3bd5a1b05c4963',
+    'data/current_v8/live_validation_manifest.json':'4b793085e8f12a7e16eb1cae7d52d5acf23dce809f1802c116b3e9911d8124e7',
+}
 
+def sha(path:Path)->str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
-def digest(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
+def main()->int:
+    from scripts.logic_assets.xmlio import read_table
 
+    proof=json.loads((ROOT/'data/current_v8/live_census_provenance.json').read_text(encoding='utf-8-sig'))
+    census=ROOT/'data/current_v8/live_opcua_census.csv'
+    if sha(census)!=proof.get('census_sha256') or sha(census)!=BASELINE['data/current_v8/live_opcua_census.csv']:
+        raise ValueError('Run 54 census changed or its provenance does not match')
+    census_rows=read_table(census,key='browse_name')
+    names={row['browse_name'] for row in census_rows if row['browse_name'].startswith('vpp')}
+    if len(names)!=603 or {'vppSTGeneratorPowerMW','vppSTGridPowerMW'} & names:
+        raise ValueError('ST source observations must remain outside the historical census')
+    if 'vpp52STClosed' not in names:
+        raise ValueError('52ST closed feedback is not present in the preserved census')
 
-def archive_digest(z: zipfile.ZipFile) -> str:
-    h = hashlib.sha256()
-    for name in sorted(z.namelist()):
-        h.update(name.encode() + b'\0' + hashlib.sha256(z.read(name)).digest())
-    return h.hexdigest()
+    tags=read_table(ROOT/'data/current_v8/masters/06_TAG_MASTER_CURRENT_V8_VERIFIED.xlsx',
+                    '01_Live_OPCUA_Tag_Master','raw_tag_id')
+    source_tags=read_table(ROOT/'data/current_v8/masters/06_TAG_MASTER_CURRENT_V8_VERIFIED.xlsx',
+                           '11_Model_Source_Observed','raw_tag_id')
+    rules=read_table(ROOT/'data/current_v8/masters/07_LOGIC_MASTER_CURRENT_V8_VERIFIED.xlsx',
+                     '01_Logic_Master_Current','rule_id')
+    source_rules=read_table(ROOT/'data/current_v8/masters/07_LOGIC_MASTER_CURRENT_V8_VERIFIED.xlsx',
+                            '06_Model_Source_Observed','rule_id')
+    expected_tags={'vppSTGeneratorPowerMW','vppSTGridPowerMW'}
+    if len(tags)!=603 or expected_tags & {r['raw_tag_id'] for r in tags}:
+        raise ValueError('Source-observed tags leaked into the live Tag Master')
+    if {r['raw_tag_id'] for r in source_tags}!=expected_tags:
+        raise ValueError('Model-source Tag Master sheet must contain the two ST MW tags')
+    for row in source_tags:
+        if row.get('runtime_inclusion')!='SEARCH_ONLY' or row.get('open_behavior_test_status')!='NOT_TESTED':
+            raise ValueError(f"Unsafe source tag scope/status: {row['raw_tag_id']}")
+        if row.get('live_node_id') or row.get('live_variant_type'):
+            raise ValueError(f"Model-source tag claims missing OPC UA identity: {row['raw_tag_id']}")
+    if len(rules)!=53 or 'RESP-ST-GRID-POWER' in {r['rule_id'] for r in rules}:
+        raise ValueError('Source-mapped response rule leaked into the live Logic Master')
+    if len(source_rules)!=1 or source_rules[0]['rule_id']!='RESP-ST-GRID-POWER':
+        raise ValueError('Expected one source-mapped ST response rule')
+    response=source_rules[0]
+    inputs=set(response['input_nodes'].replace(';','|').split('|'))
+    outputs=set(response['output_nodes_or_tags'].replace(';','|').split('|'))
+    if not {'vppSTGeneratorPowerMW','vpp52STClosed'} <= {x.strip() for x in inputs}:
+        raise ValueError('RESP-ST-GRID-POWER is missing a verified input')
+    if 'vppSTGridPowerMW' not in {x.strip() for x in outputs}:
+        raise ValueError('RESP-ST-GRID-POWER output does not match the source equation')
+    if response.get('validation_status')!='PARTIAL' or response.get('open_behavior_test_status')!='NOT_TESTED':
+        raise ValueError('52ST OPEN behavior must remain NOT_TESTED / PARTIAL')
 
+    evidence=json.loads((ROOT/'data/current_v8/st_power_evidence_20260924.json').read_text(encoding='utf-8'))
+    if evidence.get('source_sha256')!='055f8a21b8f586feafaa6fe6705cfca05b4f1e833713991a0cac1f0e94ad6fd9':
+        raise ValueError('Latest RAW session hash mismatch')
+    if evidence.get('rows')!=282 or evidence.get('closed_breaker_samples')!=282 or evidence.get('open_breaker_samples')!=0:
+        raise ValueError('Unexpected RAW session observation counts')
+    if evidence.get('behavior_validation')!='PARTIAL' or evidence.get('model_source',{}).get('package_sha256')!='6c616330ad80e4b5aad377fd5c4875a2aba7fb15d2366bb1a239eb6dd92231c4':
+        raise ValueError('Source or behavior evidence status mismatch')
 
-def apply_workbook_delta(spec: dict) -> bytes | None:
-    path = ROOT / spec['path']
-    raw = path.read_bytes()
-    with zipfile.ZipFile(io.BytesIO(raw)) as old:
-        if archive_digest(old) == spec['after_content']:
-            return None
-        if digest(raw) != spec['before']:
-            raise ValueError('Authoring workbook changed; refusing to overwrite: ' + spec['path'])
-        out = io.BytesIO()
-        with zipfile.ZipFile(out, 'w') as new:
-            for info in old.infolist():
-                value = old.read(info.filename)
-                entry = spec['entries'].get(info.filename)
-                if entry:
-                    if digest(value) != entry['before']:
-                        raise ValueError('ZIP source part mismatch: ' + info.filename)
-                    for start, end, replacement in reversed(entry['edits']):
-                        if not 0 <= start <= end <= len(value):
-                            raise ValueError('Invalid artifact byte range')
-                        value = value[:start] + replacement.encode('utf-8') + value[end:]
-                    if digest(value) != entry['after']:
-                        raise ValueError('ZIP output part mismatch: ' + info.filename)
-                new.writestr(info, value)
-        result = out.getvalue()
-        with zipfile.ZipFile(io.BytesIO(result)) as check:
-            if archive_digest(check) != spec['after_content']:
-                raise ValueError('Reconstructed artifact content mismatch')
-        return result
+    for path,digest in BASELINE.items():
+        if sha(ROOT/path)!=digest:
+            raise ValueError(f'Protected Run 54 runtime artifact changed: {path}')
+    for root in ('data/current_v8','services/agent-api/triplens/current_v8'):
+        for name in ('live_tag_allowlist.csv','live_tag_master.csv','live_logic_runtime.csv',
+                     'live_tag_logic_links.csv','live_validation_manifest.json'):
+            if sha(ROOT/root/name)!=sha(ROOT/'data/current_v8'/name):
+                raise ValueError(f'Runtime mirror mismatch: {root}/{name}')
 
+    command=[sys.executable,str(ROOT/'scripts/update_triplens_logic.py')]
+    subprocess.run(command,cwd=ROOT,check=True)
+    subprocess.run(command+['--check'],cwd=ROOT,check=True)
+    print('ST_SOURCE_EVIDENCE_AND_WEB_ASSETS_READY; census=603; runtime_rules=53; searchable_tags=605; searchable_rules=54; OPEN=NOT_TESTED')
+    return 0
 
-def replace_exact(path: str, old: str, new: str) -> None:
-    p = ROOT / path
-    text = p.read_text(encoding='utf-8')
-    if new in text:
-        return
-    if text.count(old) != 1:
-        raise ValueError('Code contract changed; inspect before updating: ' + path)
-    p.write_text(text.replace(old, new), encoding='utf-8')
-
-
-def main() -> None:
-    encoded = (ROOT / 'data/migrations/st_power_masters_20260924.b64').read_text()
-    payload = json.loads(zlib.decompress(base64.b64decode(encoded, validate=False)))
-    if payload['schema'] != 1:
-        raise ValueError('Unsupported artifact delta schema')
-    # Validate both source workbooks before replacing either one.
-    prepared = [(s['path'], apply_workbook_delta(s)) for s in payload['workbooks']]
-    for name, data in prepared:
-        if data is not None:
-            p = ROOT / name
-            tmp = p.with_suffix('.tmp.xlsx')
-            tmp.write_bytes(data)
-            tmp.replace(p)
-
-    evidence = payload['evidence']
-    if evidence['behavior_validation'] != 'PARTIAL' or evidence['open_breaker_samples'] != 0:
-        raise ValueError('Unexpected evidence scope')
-    evidence_name = 'st_power_evidence_20260924.json'
-    evidence_path = ROOT / 'data/current_v8' / evidence_name
-    evidence_path.write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    census = ROOT / 'data/current_v8/live_opcua_census.csv'
-    proof_path = ROOT / 'data/current_v8/live_census_provenance.json'
-    proof = json.loads(proof_path.read_text(encoding='utf-8-sig'))
-    if digest(census.read_bytes()) != proof['census_sha256']:
-        raise ValueError('Existing census proof mismatch')
-    with census.open(encoding='utf-8-sig', newline='') as stream:
-        reader = csv.DictReader(stream)
-        fields = list(reader.fieldnames or [])
-        rows = list(reader)
-    existing = {r['browse_name']: r for r in rows}
-    tags = ['vppSTGeneratorPowerMW', 'vppSTGridPowerMW']
-    missing = [tag for tag in tags if tag not in existing]
-    if missing:
-        if len(missing) != 2:
-            raise ValueError('Partially registered ST signals; reconcile explicitly')
-        baseline_hash = proof['census_sha256']
-        fields += [f for f in ('evidence_kind', 'evidence_ref') if f not in fields]
-        for tag in tags:
-            stats = evidence['signals'][tag]
-            if stats['finite_samples'] != evidence['rows']:
-                raise ValueError('Non-finite RAW evidence: ' + tag)
-            row = dict.fromkeys(fields, '')
-            row.update(browse_name=tag,
-                       current_value=str(evidence['observations'][0][tag]),
-                       numeric='Y', finite='Y', live_validated='Y',
-                       evidence_kind='RAW_SESSION_OBSERVED',
-                       evidence_ref='data/current_v8/' + evidence_name)
-            rows.append(row)
-        with census.open('w', encoding='utf-8-sig', newline='') as stream:
-            writer = csv.DictWriter(stream, fieldnames=fields)
-            writer.writeheader(); writer.writerows(rows)
-        proof.update(census_sha256=digest(census.read_bytes()),
-                     baseline_census_sha256=baseline_hash,
-                     expected_vpp_count=sum(r['browse_name'].startswith('vpp') for r in rows),
-                     scope='Unchanged Run 54 browse/read baseline plus two separately identified later RAW-session signals. No new plant/protection behavioral validation.',
-                     supplemental_evidence=dict(file='data/current_v8/' + evidence_name,
-                         sha256=digest(evidence_path.read_bytes()), source_sha256=evidence['source_sha256'],
-                         tags=tags, session_id=evidence['session_id'], rows=evidence['rows'],
-                         behavior_validation='PARTIAL', node_id_and_variant_type='NOT_CAPTURED'))
-        proof_path.write_text(json.dumps(proof, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-
-    # Preserve the distinction between a native browse census and recorded RAW evidence.
-    replace_exact('scripts/logic_assets/model.py',
-        "live_existence='CENSUS_OBSERVED',",
-        "live_existence=text(live[tag].get('evidence_kind')) or 'CENSUS_OBSERVED',")
-    replace_exact('scripts/logic_assets/pipeline.py',
-        "source_existence_status='LIVE_CENSUS_RESOLVED',",
-        "source_existence_status=('RAW_SESSION_AND_CENSUS_RESOLVED' if any(model['tags'].get(t,{}).get('live_existence')=='RAW_SESSION_OBSERVED' for t in inputs+outputs) else 'LIVE_CENSUS_RESOLVED'),")
-    replace_exact('tests/test_logic_pipeline.py',
-        "self.assertEqual(len(model['model']['tags']),603)",
-        "self.assertEqual(len(model['model']['tags']),605)")
-    replace_exact('tests/test_logic_pipeline.py',
-        "self.assertEqual(len(model['model']['rules']),53)",
-        "self.assertEqual(len(model['model']['rules']),54)")
-    replace_exact('tests/test_logic_update_command.py',
-        "self.assertEqual(summary['counts']['rules'],53)",
-        "self.assertEqual(summary['counts']['rules'],54)")
-    replace_exact('tests/test_logic_viewer.py',
-        "self.assertIn('603',self.page.locator('#stats').inner_text())",
-        "self.assertIn('605',self.page.locator('#stats').inner_text())")
-    replace_exact('tests/test_logic_viewer.py',
-        "self.assertIn('53',self.page.locator('#stats').inner_text())",
-        "self.assertIn('54',self.page.locator('#stats').inner_text())")
-    subprocess.run([sys.executable, str(ROOT / 'scripts/update_triplens_logic.py')], check=True)
-    subprocess.run([sys.executable, str(ROOT / 'scripts/update_triplens_logic.py'), '--check'], check=True)
-    print('ST_POWER_MASTERS_AND_WEB_ASSETS_READY; physical_runtime_changed=False')
-
-
-if __name__ == '__main__':
-    main()
+if __name__=='__main__':
+    raise SystemExit(main())

@@ -195,7 +195,7 @@ RESP-GT-SPEED,condition:RESP-GT-SPEED,CONDITION,"if 52GT opens, speed decays fro
 RESP-GT-SPEED,operation:RESP-GT-SPEED,OPERATION,"GT speed coastdown after breaker open
 PHYSICAL_RESPONSE",,,,
 RESP-GT-SPEED,additional:RESP-GT-SPEED,ADDITIONAL_INFO,ADDITIONAL INFO,dynamic,-,PASS,RAW_NODE
-RESP-ST-GRID-POWER,condition:RESP-ST-GRID-POWER,CONDITION,if 52ST not closed then ST grid power = 0; otherwise ST grid power = ST generator power,,,,
+RESP-ST-GRID-POWER,condition:RESP-ST-GRID-POWER,CONDITION,vppSTGridPowerMW = if not vpp52STClosed then 0 else vppSTGeneratorPowerMW,,,,
 RESP-ST-GRID-POWER,operation:RESP-ST-GRID-POWER,OPERATION,"ST grid power response after 52ST opens
 PHYSICAL_RESPONSE",,,,
 RESP-ST-GRID-POWER,additional:RESP-ST-GRID-POWER,ADDITIONAL_INFO,ADDITIONAL INFO,immediate model relation,follows 52ST closed feedback,PARTIAL,RAW_NODE

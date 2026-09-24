@@ -208,8 +208,10 @@ def build_document(model: dict, layout_xml: str | None = None) -> str:
         page=Page(root,page_id,name,rule_ids,layout,model['semantic_sha256'],scope)
         page.vertex('title','title',f'TripLens  /  {name}\n태그·로직 연결도',32,24,1480,78)
         if scope=='overview':
+            live_tag_count=sum(not row.get('model_source_only') for row in model['tags'].values())
+            live_rule_count=sum(not rule.get('source_mapped') for rule in model['rules'])
             page.vertex('overview-policy','group_label',
-                f"{len(model['tags'])}개 태그  ·  {len(model['rules'])}개 로직  ·  {len(groups)}개 입력 그룹\n"
+                f"Run 54 census {live_tag_count}개 태그 · 검색 {len(model['tags'])}개 태그  /  live {live_rule_count}개 로직 · 검색 {len(model['rules'])}개 로직\n"
                 '태그 검색 · 설비별 분류 · 로직 연결 · 상세 정보',
                 32,126,1480,118)
             for i,(screen,_) in enumerate(sorted(screens.items())):
@@ -219,7 +221,9 @@ def build_document(model: dict, layout_xml: str | None = None) -> str:
         y=130
         for gid,rules in subgroups:
             inputs=rules[0]['inputs']
-            height=max(len(inputs)*120,sum(max(250,len(r['outputs'])*114+24) for r in rules))+114
+            branch_heights=[max(280 if r.get('source_mapped') else 250,
+                                len(r['outputs'])*114+24) for r in rules]
+            height=max(len(inputs)*120,sum(branch_heights))+114
             page.vertex('group:'+gid,'group_label',f'{gid}  ·  공유 입력 {len(inputs)}개  /  분기 {len(rules)}개',
                         32,y,1480,42,group_id=gid)
             for name,x,width in [('INPUT',40,320),('CONDITION',410,320),('OPERATION',780,320),('OUTPUT',1150,360)]:
@@ -230,30 +234,42 @@ def build_document(model: dict, layout_xml: str | None = None) -> str:
                 t=model['tags'].get(tag,{})
                 is_native=tag in model['tags']
                 desc=t.get('description_ko') or t.get('description_en') or '등록된 파생 로직 출력'
+                if t.get('model_source_only'):
+                    desc += '\n모델 소스 확인 · RAW 관측 · OPC UA 신원 미확인'
                 label=('입력 태그' if is_native else '파생 입력')+'\n'+lines(tag,42)+'\n'+lines(desc,42)
                 if t.get('unit'):
                     label+='\n단위: '+t['unit']
                 sid=page.vertex('source:'+gid+':'+digest(tag)[:16],'source' if is_native else 'derived',
-                    label,40,sy+i*120,320,108,tag_id=tag,group_id=gid,is_native=str(is_native).lower())
+                    label,40,sy+i*120,320,108,tag_id=tag,group_id=gid,is_native=str(is_native).lower(),
+                    source_kind='MODEL_SOURCE_RAW_OBSERVED' if t.get('model_source_only') else 'LIVE_OPCUA_CENSUS')
                 source_ids.append((sid,tag))
             by=sy
-            for r in rules:
-                rid=r['rule_id']; branch_h=max(250,len(r['outputs'])*114+24)
+            for r,branch_h in zip(rules,branch_heights):
+                rid=r['rule_id']
                 condition=page.vertex('condition:'+rid,'condition',rid+'\n'+lines(r['condition'],38),
                     410,by,320,108,rule_id=rid,condition=r['condition'],group_id=gid)
                 operation=page.vertex('operation:'+rid,'operation',rid+'\n'+lines(r['logic_name'],38)+'\n'+r['logic_type'],
                     780,by,320,108,rule_id=rid,logic_type=r['logic_type'],group_id=gid)
                 info='상세 정보\n'+lines('지연: '+(r['delay'] or '미기재'),38)
                 info+='\n'+lines('복귀/히스테리시스: '+(r['reset_hysteresis'] or '미기재'),38)
-                page.vertex('additional:'+rid,'additional',info,780,by+120,320,110,
+                info_h=110
+                if r.get('source_mapped'):
+                    info+='\nMODEL_SOURCE_CONFIRMED · RAW closed-only'
+                    info+='\nRAW: 282 closed / 0 open'
+                    info+='\n52ST OPEN: NOT_TESTED · 전체 상태: PARTIAL'
+                    info_h=160
+                page.vertex('additional:'+rid,'additional',info,780,by+120,320,info_h,
                     rule_id=rid,delay=r['delay'],reset_hysteresis=r['reset_hysteresis'],
-                    validation_status=r['validation_status'],output_class=r['output_class'],group_id=gid)
+                    validation_status=r['validation_status'],output_class=r['output_class'],group_id=gid,
+                    source_kind=r.get('source_kind','LIVE_OPCUA_CENSUS'),runtime_inclusion=r.get('runtime_inclusion','LIVE_RUNTIME'))
                 for sid,tag in source_ids:
                     page.edge(sid,condition,'reset_input' if 'Reset' in tag else 'input')
                 page.edge(condition,operation,'condition')
                 for j,tag in enumerate(r['outputs']):
                     is_native=tag in model['tags']; t=model['tags'].get(tag,{})
                     desc=t.get('description_ko') or ('연결된 파생 알람 출력' if not is_native else '')
+                    if t.get('model_source_only'):
+                        desc += '\n모델 소스 확인 · RAW 관측 · OPC UA 신원 미확인'
                     label=('출력 태그' if is_native else '파생 출력')+'\n'+lines(tag,45)
                     if desc:
                         label+='\n'+lines(desc,45)
@@ -268,7 +284,7 @@ def build_document(model: dict, layout_xml: str | None = None) -> str:
     return '<?xml version="1.0" encoding="utf-8"?>\n'+xml+'\n'
 
 
-def create_index(model: dict, xml: str) -> dict:
+def create_index(model: dict, xml: str, *, live_model: dict | None = None) -> dict:
     """Index actual XML pages/cells; metadata from one validated source revision."""
     pages={}; entities={}; tags=copy.deepcopy(model['tags']); rules={}
     for tag,row in tags.items():
@@ -287,11 +303,21 @@ def create_index(model: dict, xml: str) -> dict:
     for r in model['rules']:
         rid=r['rule_id']; row=dict(r)
         row.update(rule_page='rule:'+rid,group_page=r['input_group_id'],
-                   equipment_page='screen:'+digest(r['screen'])[:12],source_existence_status='REGISTERED_SOURCE_RESOLVED')
+                   equipment_page='screen:'+digest(r['screen'])[:12],
+                   source_existence_status=r.get('source_existence_status','REGISTERED_SOURCE_RESOLVED'))
         rules[rid]=row
     native_inputs={t for r in model['rules'] for t in r['inputs'] if t in tags}
     native_outputs={t for r in model['rules'] for t in r['outputs'] if t in tags}
-    counts={'source_tags':len(tags),'rules':len(rules),'input_groups':len(model['groups']),
+    live=live_model or model
+    live_tags=set(live['tags'])
+    live_rules={r['rule_id'] for r in live['rules']}
+    source_tags={tag for tag,row in tags.items() if row.get('model_source_only')}
+    source_rules={rid for rid,row in rules.items() if row.get('source_mapped')}
+    live_groups={r['input_group_id'] for r in live['rules']}
+    counts={'source_tags':len(live_tags),'live_tags':len(live_tags),'searchable_tags':len(tags),
+            'model_source_raw_observed_tags':len(source_tags),
+            'rules':len(rules),'live_rules':len(live_rules),'source_mapped_rules':len(source_rules),
+            'input_groups':len(model['groups']),'live_input_groups':len(live_groups),
             'equipment_pages':sum(p['scope']=='equipment' for p in pages.values()),'pages':len(pages),
             'native_inputs':len(native_inputs),'native_outputs':len(native_outputs),'derived_outputs':len(model['derived'])}
     return {'schema_version':2,'semantic_sha256':model['semantic_sha256'],

@@ -434,8 +434,6 @@ vppLPSpraySource.IMassFlow.signal
 vppLPSpraySource.P
 vppLPSpraySource.Q
 vppLPTurbineSteamFlowTH
-vppSTGeneratorPowerMW
-vppSTGridPowerMW
 vppSTTripAssertTime
 vppSTTripLatch
 vppSTTripLatchPublished

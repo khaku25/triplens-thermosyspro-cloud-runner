@@ -26,8 +26,10 @@ class ViewerTest(unittest.TestCase):
         masters=ROOT/'data/current_v8/masters'
         tags=read_table(masters/'06_TAG_MASTER_CURRENT_V8_VERIFIED.xlsx','01_Live_OPCUA_Tag_Master','raw_tag_id')
         rules=read_table(masters/'07_LOGIC_MASTER_CURRENT_V8_VERIFIED.xlsx','01_Logic_Master_Current','rule_id')
+        source_tags=read_table(masters/'06_TAG_MASTER_CURRENT_V8_VERIFIED.xlsx','11_Model_Source_Observed','raw_tag_id')
+        source_rules=read_table(masters/'07_LOGIC_MASTER_CURRENT_V8_VERIFIED.xlsx','06_Model_Source_Observed','rule_id')
         census=read_table(ROOT/'data/current_v8/live_opcua_census.csv',key='browse_name')
-        cls.output=publish_repository(make_repository(tags,rules,census),Path(cls.temp.name)/'release')
+        cls.output=publish_repository(make_repository(tags,rules,census,source_tags=source_tags,source_rules=source_rules),Path(cls.temp.name)/'release')
         cls.server=ThreadingHTTPServer(('127.0.0.1',0),partial(SimpleHTTPRequestHandler,directory=str(cls.output)))
         cls.thread=Thread(target=cls.server.serve_forever,daemon=True);cls.thread.start()
         cls.url=f'http://127.0.0.1:{cls.server.server_port}/viewer.html'
@@ -50,9 +52,38 @@ class ViewerTest(unittest.TestCase):
             self.page.close()
 
     def test_default_counts_and_no_external_network(self):
+        self.assertIn('603',self.page.locator('#stats').inner_text())
         self.assertIn('605',self.page.locator('#stats').inner_text())
+        self.assertIn('53',self.page.locator('#stats').inner_text())
         self.assertIn('54',self.page.locator('#stats').inner_text())
         self.assertEqual(self.page.evaluate('performance.getEntriesByType("resource").filter(x=>/^https?:/.test(x.name) && !x.name.startsWith(location.origin)).length'),0)
+
+    def test_st_source_tags_rule_io_and_drawing_navigation(self):
+        self.page.get_by_role('button',name='태그',exact=True).click()
+        self.page.locator('#search').fill('vppSTGeneratorPowerMW')
+        self.page.locator('#results button').first.click()
+        inspector=self.page.locator('#inspector').inner_text()
+        self.assertIn('MODEL_SOURCE_CONFIRMED',inspector)
+        self.assertIn('282행',inspector)
+        self.assertIn('Run 54 census에 없음',inspector)
+        self.page.locator('#related-rules button[data-rule="RESP-ST-GRID-POWER"]').click()
+        self.assertEqual(self.page.locator('#page-select').input_value(),'IG-036')
+        self.assertEqual(self.page.locator('#diagram [data-tag="vppSTGeneratorPowerMW"]').count(),1)
+        rule_text=self.page.locator('#inspector').inner_text()
+        for marker in ('MODEL_SOURCE_CONFIRMED','RAW_SESSION_OBSERVED_CLOSED_ONLY','52ST OPEN: NOT_TESTED','PARTIAL'):
+            self.assertIn(marker,rule_text)
+        self.assertIn('if not vpp52STClosed then 0 else vppSTGeneratorPowerMW',rule_text)
+        self.assertEqual(self.page.locator('#inspector .related button').filter(has_text='vppSTGeneratorPowerMW').count(),1)
+        self.assertEqual(self.page.locator('#inspector .related button').filter(has_text='vpp52STClosed').count(),1)
+        self.assertEqual(self.page.locator('#inspector .related button').filter(has_text='vppSTGridPowerMW').count(),1)
+        self.page.evaluate("TripLensLogic.openTag('vppSTGridPowerMW')")
+        self.page.get_by_role('button',name='Drawing Master',exact=True).click()
+        self.page.locator('#search').fill('vppSTGridPowerMW')
+        target=self.page.locator('#results button').filter(has_text='ST Protection').first
+        self.assertGreater(self.page.locator('#results button').filter(has_text='ST Protection').count(),0)
+        target.click()
+        self.assertIn('ST Protection',self.page.locator('#page-title').inner_text())
+        self.assertEqual(self.page.locator('#diagram [data-tag="vppSTGridPowerMW"].selected').count(),1)
 
     def test_http_startup_fits_available_canvas(self):
         for suffix in ('', '#rule=AL-HP-LEVEL-HH'):
