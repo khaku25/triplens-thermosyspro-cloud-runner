@@ -93,7 +93,8 @@ jobs:
         run: |
           python scripts/update_triplens_logic.py --check
           git diff --exit-code -- modelica matlab ECMSVPP.m ECMS_BFP_ALARMS.m scripts/native_ecms_opcua_client.py
-          git diff --check
+          # CSV/TSV terminators and empty last fields are data, not code whitespace.
+          git -c core.whitespace=cr-at-eol diff --check -- . ':!*.csv' ':!*.tsv'
       - name: Commit verified generated masters and assets to this preview branch
         shell: bash
         run: |
@@ -101,7 +102,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -- data/current_v8 logic_diagrams generated/logic apps/web/lib/current-logic-summary.json apps/web/public/logic-assets services/agent-api/triplens/current_v8 scripts/logic_assets/model.py scripts/logic_assets/pipeline.py tests/test_logic_pipeline.py tests/test_logic_update_command.py tests/test_logic_viewer.py
-          git diff --cached --check
+          git -c core.whitespace=cr-at-eol diff --cached --check -- . ':!*.csv' ':!*.tsv'
           if ! git diff --cached --quiet; then
             git commit -m 'fix: publish observed ST generator and grid MW masters with exact response diagram'
             git push origin HEAD:"${GITHUB_REF_NAME}"
