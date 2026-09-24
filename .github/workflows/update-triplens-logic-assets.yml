@@ -2,7 +2,7 @@ name: Update TripLens Logic Assets
 
 on:
   push:
-    branches: [integration/logic-review-rc-20260918]
+    branches: [integration/logic-review-rc-20260918, codex/st-grid-power-web-20260924]
   pull_request:
     paths:
       - 'scripts/logic_assets/**'
