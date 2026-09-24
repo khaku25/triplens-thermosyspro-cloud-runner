@@ -32,15 +32,20 @@ def summarize_usage(usages,model_name):
             pricing={'input':float(input_override or (pricing or {}).get('input')),'output':float(output_override or (pricing or {}).get('output')),'valid_through':'ENV_OVERRIDE'}
         except (TypeError,ValueError):pricing=None
     estimated_cost_usd=None
+    estimated_cost_krw=None
+    usd_krw=float(os.getenv('TRIPLENS_COST_USD_KRW','1400'))
     if pricing:
         billable_output=totals['total_output_tokens']+totals['total_thought_tokens']
         estimated_cost_usd=round((totals['total_input_tokens']*pricing['input']+billable_output*pricing['output'])/1_000_000,6)
+        estimated_cost_krw=round(estimated_cost_usd*usd_krw,1)
     return {**totals,
         'billable_output_tokens':totals['total_output_tokens']+totals['total_thought_tokens'],
         'estimated_cost_usd':estimated_cost_usd,
+        'estimated_cost_krw':estimated_cost_krw,
+        'usd_krw_assumption':usd_krw,
         'pricing_usd_per_m':pricing,
         'request_count':len(usages or []),
-        'estimate_note':'Estimate from Gemini usage; actual billing can differ for caching, promotions, taxes, or provider adjustments.'}
+        'estimate_note':'Estimate from Gemini usage; actual billing can differ for caching, promotions, taxes, FX, or provider adjustments.'}
 
 def declaration(name,description,properties,required=()):return {'type':'function','name':name,'description':description,'parameters':{'type':'object','properties':properties,'required':list(required)}}
 STR={'type':'string'};NUM={'type':'number'};INT={'type':'integer'};TAGS={'type':'array','items':STR}
