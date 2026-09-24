@@ -2,14 +2,14 @@
   "counts": {
     "derived_outputs": 28,
     "equipment_pages": 9,
-    "input_groups": 35,
-    "native_inputs": 44,
-    "native_outputs": 28,
-    "pages": 98,
-    "rules": 53,
-    "source_tags": 603
+    "input_groups": 36,
+    "native_inputs": 45,
+    "native_outputs": 29,
+    "pages": 100,
+    "rules": 54,
+    "source_tags": 604
   },
-  "drawio_sha256": "b8beeafffdcfc4f6a9ee831bb35fab83077a70e12558055ff08ddf8ce497b616",
+  "drawio_sha256": "efdf64b76d7eda8650c7343a48ee31a7b458cd80986fde4b3facf5eac1cfa124",
   "entities": {
     "GT.EXHAUST.FLOW.L": {
       "description_ko": "등록된 파생 알람 출력",
@@ -362,6 +362,7 @@
       "local_display_alias": "52ST.CLOSED",
       "raw_tag_id": "vpp52STClosed",
       "rule_ids": [
+        "RESP-ST-GRID-POWER",
         "SEQ-52ST-OPEN"
       ],
       "scenario_lab_role": "",
@@ -11307,6 +11308,33 @@
       "source_url": "https://github.com/khaku25/triplens-thermosyspro-cloud-runner/blob/9c8545dbcc595c7f80f1e71bf141c7180f32fd86/scripts/native_ecms_opcua_client.py; https://github.com/khaku25/triplens-thermosyspro-cloud-runner/blob/9c8545dbcc595c7f80f1e71bf141c7180f32fd86/modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo",
       "system": "ST",
       "unit": "t/h",
+      "unit_status": "CONFIRMED_OR_DETERMINISTIC",
+      "writable": "N"
+    },
+    "vppSTGridPowerMW": {
+      "analysis_policy": "RAW_EVIDENCE_ALLOWED",
+      "canonical_tag": "",
+      "data_type": "REAL",
+      "description_en": "ST grid-connected active power after 52ST",
+      "description_ko": "52ST 이후 ST 계통 송출 유효전력",
+      "equipment_id": "STG",
+      "interpretation_method": "EXACT_MODELICA_EQUATION_AND_RAW_READBACK",
+      "is_native": true,
+      "live_existence": "CENSUS_OBSERVED",
+      "live_node_id": "",
+      "live_variant_type": "Variant",
+      "local_display_alias": "ST_OUTPUT_MW",
+      "raw_tag_id": "vppSTGridPowerMW",
+      "rule_ids": [
+        "RESP-ST-GRID-POWER"
+      ],
+      "scenario_lab_role": "",
+      "scope_class": "CURRENT_OPERATIONAL_EVIDENCE",
+      "signal_role": "PHYSICAL_OR_PROCESS",
+      "source_commit": "",
+      "source_url": "",
+      "system": "ST",
+      "unit": "MW",
       "unit_status": "CONFIRMED_OR_DETERMINISTIC",
       "writable": "N"
     },
@@ -16228,6 +16256,22 @@
         ]
       }
     },
+    "IG-036": {
+      "id": "IG-036",
+      "name": "IG-036 · ST Protection",
+      "rule_ids": [
+        "RESP-ST-GRID-POWER"
+      ],
+      "scope": "input_group",
+      "tag_cells": {
+        "vpp52STClosed": [
+          "source:IG-036:1da1755111e660ae"
+        ],
+        "vppSTGridPowerMW": [
+          "output:RESP-ST-GRID-POWER:b3642eedc8db7ae4"
+        ]
+      }
+    },
     "overview": {
       "id": "overview",
       "name": "00 · Logic Master",
@@ -17082,6 +17126,22 @@
         ]
       }
     },
+    "rule:RESP-ST-GRID-POWER": {
+      "id": "rule:RESP-ST-GRID-POWER",
+      "name": "RESP-ST-GRID-POWER",
+      "rule_ids": [
+        "RESP-ST-GRID-POWER"
+      ],
+      "scope": "rule",
+      "tag_cells": {
+        "vpp52STClosed": [
+          "source:IG-036:1da1755111e660ae"
+        ],
+        "vppSTGridPowerMW": [
+          "output:RESP-ST-GRID-POWER:b3642eedc8db7ae4"
+        ]
+      }
+    },
     "rule:SEQ-52GT-OPEN": {
       "id": "rule:SEQ-52GT-OPEN",
       "name": "SEQ-52GT-OPEN",
@@ -17191,12 +17251,14 @@
         "PROT-ST-REQUEST",
         "PROT-ST-LATCH",
         "SEQ-52ST-TRIPCMD",
-        "SEQ-52ST-OPEN"
+        "SEQ-52ST-OPEN",
+        "RESP-ST-GRID-POWER"
       ],
       "scope": "equipment",
       "tag_cells": {
         "vpp52STClosed": [
-          "output:SEQ-52ST-OPEN:1da1755111e660ae"
+          "output:SEQ-52ST-OPEN:1da1755111e660ae",
+          "source:IG-036:1da1755111e660ae"
         ],
         "vpp52STTripCmd": [
           "output:SEQ-52ST-TRIPCMD:9adba1960f4af93c"
@@ -17234,6 +17296,9 @@
         ],
         "vppExternalSTTripCommandNative": [
           "source:IG-013:40ebf6c321ee6d27"
+        ],
+        "vppSTGridPowerMW": [
+          "output:RESP-ST-GRID-POWER:b3642eedc8db7ae4"
         ],
         "vppSTTripLatchPublished": [
           "output:PROT-ST-LATCH:7443466954db9a51",
@@ -18987,6 +19052,34 @@
       "source_existence_status": "REGISTERED_SOURCE_RESOLVED",
       "validation_status": "PASS"
     },
+    "RESP-ST-GRID-POWER": {
+      "condition": "if 52ST not closed then ST grid power = 0; otherwise ST grid power = ST generator power",
+      "delay": "immediate model relation",
+      "equipment_page": "screen:09254a48d627",
+      "group": "ST Protection",
+      "group_page": "IG-036",
+      "input_group_id": "IG-036",
+      "input_nodes": "vpp52STClosed",
+      "input_signature": "vpp52STClosed",
+      "inputs": [
+        "vpp52STClosed"
+      ],
+      "logic_name": "ST grid power response after 52ST opens",
+      "logic_type": "PHYSICAL_RESPONSE",
+      "notes": "Current RAW session confirms closed-breaker readback; open-breaker zero response requires a matching trip capture.",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppSTGridPowerMW",
+      "outputs": [
+        "vppSTGridPowerMW"
+      ],
+      "reset_hysteresis": "follows 52ST closed feedback",
+      "rule_id": "RESP-ST-GRID-POWER",
+      "rule_page": "rule:RESP-ST-GRID-POWER",
+      "screen": "ST Protection",
+      "source_basis": "Exact Modelica equation + private local RAW readback hash; behavior verification remains PARTIAL",
+      "source_existence_status": "REGISTERED_SOURCE_RESOLVED",
+      "validation_status": "PARTIAL"
+    },
     "SEQ-52GT-OPEN": {
       "condition": "GT latch active -> breaker opens",
       "delay": "0.080 s",
@@ -19103,7 +19196,7 @@
     }
   },
   "schema_version": 2,
-  "semantic_sha256": "3f5398d2a9efc176d365a313ba7a3c7c9156135a9fc9ae6d8eef7d885ee87c12",
+  "semantic_sha256": "6523330fb73d65fa76387622994ddf05946d9c2c25edd78b5a0148eb242e95df",
   "tags": {
     "vpp52GTClosed": {
       "analysis_policy": "RAW_EVIDENCE_ALLOWED",
@@ -19176,6 +19269,7 @@
       "local_display_alias": "52ST.CLOSED",
       "raw_tag_id": "vpp52STClosed",
       "rule_ids": [
+        "RESP-ST-GRID-POWER",
         "SEQ-52ST-OPEN"
       ],
       "scenario_lab_role": "",
@@ -30121,6 +30215,33 @@
       "source_url": "https://github.com/khaku25/triplens-thermosyspro-cloud-runner/blob/9c8545dbcc595c7f80f1e71bf141c7180f32fd86/scripts/native_ecms_opcua_client.py; https://github.com/khaku25/triplens-thermosyspro-cloud-runner/blob/9c8545dbcc595c7f80f1e71bf141c7180f32fd86/modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo",
       "system": "ST",
       "unit": "t/h",
+      "unit_status": "CONFIRMED_OR_DETERMINISTIC",
+      "writable": "N"
+    },
+    "vppSTGridPowerMW": {
+      "analysis_policy": "RAW_EVIDENCE_ALLOWED",
+      "canonical_tag": "",
+      "data_type": "REAL",
+      "description_en": "ST grid-connected active power after 52ST",
+      "description_ko": "52ST 이후 ST 계통 송출 유효전력",
+      "equipment_id": "STG",
+      "interpretation_method": "EXACT_MODELICA_EQUATION_AND_RAW_READBACK",
+      "is_native": true,
+      "live_existence": "CENSUS_OBSERVED",
+      "live_node_id": "",
+      "live_variant_type": "Variant",
+      "local_display_alias": "ST_OUTPUT_MW",
+      "raw_tag_id": "vppSTGridPowerMW",
+      "rule_ids": [
+        "RESP-ST-GRID-POWER"
+      ],
+      "scenario_lab_role": "",
+      "scope_class": "CURRENT_OPERATIONAL_EVIDENCE",
+      "signal_role": "PHYSICAL_OR_PROCESS",
+      "source_commit": "",
+      "source_url": "",
+      "system": "ST",
+      "unit": "MW",
       "unit_status": "CONFIRMED_OR_DETERMINISTIC",
       "writable": "N"
     },
