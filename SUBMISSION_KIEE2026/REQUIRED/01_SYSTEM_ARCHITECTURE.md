@@ -1,145 +1,167 @@
 # TripLens System Architecture
-## KIEE 2026 Agentic AI 제출용
+## KIEE 2026 Agentic AI 제출용 · Current Validation Baseline
 
 ## 1. 출품작 본체
 
 ```mermaid
 flowchart TD
-    A["EVENT.csv - 전체 발생 Event Stream"] --> C["Input Validation"]
-    B["RAW.csv - 시계열 Evidence"] --> C
-    C --> D["Time Alignment / Normalization"]
-    D --> E["Event Index / Evidence Access"]
-    E --> F["Tag · Equipment · Logic Context Tools"]
-    F --> G["Gemini Agent - Evidence Navigation"]
-    G --> H["Critical Event Selection"]
-    G --> I["Cause Hypothesis / Primary Cause"]
-    G --> J["AI-generated Causal Chain"]
-    G --> K["Affected Equipment / Recovery Check"]
-    H --> L["Verification / Fail-Closed"]
-    I --> L
-    J --> L
-    K --> L
-    L --> M["Incident Brief / Dashboard"]
+    A["EVENT.csv - full incident event stream"] --> C["Input / Session / Time Validation"]
+    B["RAW.csv - historian/process/state evidence"] --> C
+    C --> D["Evidence Store"]
+    D --> E["search_events / get_event_window"]
+    D --> F["get_raw_window / get_tag_series"]
+    D --> G["get_logic_context / get_equipment_state"]
+    E --> H["Gemini Agent"]
+    F --> H
+    G --> H
+    H --> I["Critical Events"]
+    H --> J["Primary Cause / Candidate"]
+    H --> K["Direct Trigger / Propagation"]
+    H --> L["AI-generated Causal Chain"]
+    H --> M["Counter Evidence / Additional Evidence"]
+    I --> N["Citation Check / Verification Gate"]
+    J --> N
+    K --> N
+    L --> N
+    M --> N
+    N --> O["Dashboard / Evidence Navigation / Failure Report"]
 ```
 
-## 2. 핵심 계층과 역할
+## 2. 역할 분리
 
 | 계층 | 역할 |
 |---|---|
-| Input Layer | 발생한 EVENT 전체와 RAW 시계열을 수용 |
-| Engineering Layer | 입력검증, 시간정렬, Source/Tag 정규화, Event/RAW 인덱싱 |
-| Context / Tool Layer | Tag 의미, 설비관계, Protection/Logic 관계, 구간별 RAW/Event 조회 제공 |
-| Agent Layer | Gemini가 필요한 Evidence를 탐색하여 핵심 Event, 원인 후보, 인과 Chain을 생성 |
-| Verification Layer | AI의 주장과 Causal Edge가 실제 Evidence에 의해 지지되는지 확인하고 Fail-Closed 적용 |
-| Output Layer | All Events와 AI가 선별한 Critical Events, Causal Timeline, Evidence, Recovery Check를 함께 제공 |
+| Input Layer | EVENT/RAW 파일의 세션·사고·시간·형식 검증 |
+| Evidence Store | 전체 Event Stream과 RAW 시계열을 원본 참조 가능한 상태로 저장·정렬 |
+| Tool Layer | 필요한 Event, 시간창, Tag trend, Logic, 설비상태를 제한적으로 조회 |
+| Gemini Agent | Critical Event 선정, 원인 후보, Direct Trigger, Propagation, Causal Chain, 반대 근거 판단 |
+| Verification Layer | 실제 조회된 Evidence ID, Tag, 형식, 시간관계가 주장과 연결되는지 검사 |
+| Human | 최종 공학적 원인 확정, 보고서 승인, 운전·복구 판단 |
 
-## 3. EVENT와 RAW의 역할
+Python/Engineering Layer가 최종 Primary Cause나 Causal Chain을 미리 결정하지 않는다.
 
-- `EVENT.csv`: 사고 중 실제 발생한 Alarm, Protection Event, 상태변화, Operator Action 등의 전체 Event Stream
-- `RAW.csv`: Event 전후를 교차검증하는 수치·상태·Command·Logic·Historian Evidence
+## 3. 실제 Evidence Tools
 
-TripLens는 EVENT를 제출 전에 사람이 정답에 맞게 잘라내는 것을 목표로 하지 않는다. 발생한 Event Stream을 입력으로 유지하고, **어떤 Event가 사고 원인과 파급을 설명하는 데 중요한지는 Agent가 Evidence를 조회해 판단**한다.
+현재 분석구조는 다음 6종의 Evidence Tool을 사용한다.
 
-따라서 Dashboard는 두 층을 구분한다.
+- `search_events()`
+- `get_event_window()`
+- `get_raw_window()`
+- `get_tag_series()`
+- `get_logic_context()`
+- `get_equipment_state()`
 
-```text
-ALL EVENTS
-- 사고 중 발생한 전체 Event Stream
+분석당 Tool Call 합계는 제한되며, 모든 도구를 고정 순서로 한 번씩 호출하는 구조가 아니다.
 
-TRIPLENS ANALYSIS
-- Critical Events selected by Agent
-- Cause / Cause Candidate
-- AI-generated Causal Chain
-- Key Evidence
-- Affected Equipment
-- Recovery Check
-```
+## 4. EVENT와 RAW
 
-## 4. Agentic AI 역할
+### EVENT.csv
 
-Gemini Agent는 단순히 EVENT 전체를 한 번에 요약하는 역할이 아니다. TripLens가 제공하는 Evidence 조회 수단을 사용해 필요한 근거를 단계적으로 탐색하고 이번 사고의 구조를 생성한다.
+- Alarm / Return
+- Protection Event
+- Breaker / Equipment State Change
+- Operator Action
+- System Event
 
-Agent의 주요 판단 대상:
+EVENT는 사람이 정답에 맞춰 사전에 몇 줄로 잘라주는 입력이 아니라 사고 중 기록된 Event Stream이다.
 
-- 수많은 Event 중 Critical Event 선정
-- Origin / Direct Trigger / Propagation 구분
-- 원인 후보 비교 및 Primary Cause 판단
-- Event와 RAW 상태변화의 교차확인
-- **Causal Chain 생성**
-- 상충·누락된 근거 탐지
-- 추가 확인 Tag/Event 및 Recovery Check 제시
+### RAW.csv
 
-중요하게, Logic Master나 Engineering Layer는 이번 사고의 Causal Chain 정답을 미리 만들어 Agent에게 제공하지 않는다.
+- Pressure / Temperature / Flow / Level
+- Speed / Power
+- Command / Request
+- Latch / Logic state
+- Breaker / Motor / Valve state
+- Quality / model time
 
-- Logic/Tag Master: "이 Tag와 설비가 무엇을 의미하고 어떤 관계를 가질 수 있는가" 제공
-- EVENT/RAW: "이번 사고에서 실제로 무엇이 언제 발생했는가" 제공
-- Gemini Agent: "이번 사고의 실제 인과 흐름은 무엇인가" 판단
+EVENT와 RAW는 동일 사고의 서로 다른 Evidence Source이며, Agent는 필요한 근거를 Tool로 조회한다.
 
-## 5. Verification의 역할
+## 5. Evidence Policy
 
-Verification Layer는 Causal Chain을 대신 생성하지 않는다. Agent가 생성한 결과를 검증한다.
-
-예를 들어 AI가 다음 Edge를 생성했다면:
-
-```text
-LP Drum LL Condition
-      ↓
-GT/ST Trip Request
-      ↓
-Breaker Open
-```
-
-Verification은 각 Edge에 대해 실제 EVENT/RAW/Logic Evidence가 존재하는지를 확인한다.
-
-근거가 충분하지 않으면 다음 상태를 허용한다.
-
-- `UNKNOWN`
-- `INCONCLUSIVE`
-- `REVIEW REQUIRED`
-- `ADDITIONAL EVIDENCE REQUIRED`
-
-## 6. AI Evidence 경계
-
-Blind Validation에서도 실제 운전환경에서 관측 가능한 정보는 Agent Evidence로 사용할 수 있다.
-
-허용 대상 예:
-- Process measurement
+Agent Evidence로 허용:
+- 실제 관측 Process measurement
 - Alarm / Event
 - Protection condition
 - Trip request / latch
-- Breaker / equipment state
+- Breaker / Equipment state
 - Operator action
 - Runtime logic state
 
-반대로 시뮬레이션 시험자가 알고 있는 정답 또는 고장주입 내부정보는 Agent 판단근거로 사용하지 않는다.
+Agent 판단에서 차단:
+- Scenario ID / Name
+- Expected Cause
+- Ground Truth / Answer Label
+- 시뮬레이터 시험자만 아는 Fault Injection 내부 metadata
 
-차단 대상 예:
-- Scenario ID
-- Expected Cause / Ground Truth
-- Fault Injector internal variable
-- Simulation-only fault injection command / metadata
+실제 운전환경에서 관측 가능한 Protection/Logic 상태는 이름에 `Cause`가 포함된다는 이유만으로 자동 차단하지 않는다.
 
-현재 제출 전에는 이 Evidence Policy가 실제 Runtime에서 어떻게 강제되는지 최종 RC 기준으로 확인해 기술한다.
+## 6. 시간·인과 경계
 
-## 7. 안전 경계
+- 인과 정렬은 `model_time_s` 사용
+- `wall_time_utc`는 감사·전송 시각
+- 표본 사이 디지털 변화는 정확한 단일 시각으로 조작하지 않고 관측구간으로 유지
+- 동시 GT/ST Latch를 근거 없이 GT→ST intertrip으로 단정하지 않음
+- Logic 등록 확인과 실제 사고의 공학적 인과 확정을 구분
 
-- READ-ONLY
-- OT Write 없음
-- 자동복전 없음
-- Breaker 자동조작 없음
-- Ground Truth 분석 입력 미제공
-- 근거 부족 시 확정판정 강제하지 않음
+## 7. Output
 
-## 8. 검증환경과의 경계
+- All Events
+- Incident Summary
+- Critical Events
+- Primary Cause / Candidate
+- Direct Trigger
+- Propagation
+- Causal Chain
+- Counter Evidence
+- Additional Evidence Required
+- Affected Equipment
+- Operator Check / Recovery Check
+- Evidence IDs
+- Failure Report
+
+분석 화면에서는 Evidence → Tag → Logic → Drawing/Equipment로 추적하고 다시 분석화면으로 복귀할 수 있도록 연결한다.
+
+## 8. Verification / Fail-Closed
+
+Verification은 Causal Chain을 대신 생성하지 않는다.
+
+검사 대상:
+- Evidence ID 실제 존재 여부
+- Claim-local Tag 연결
+- 구조화 출력 형식
+- 시간관계 모순
+- 금지 정답 Metadata 사용 여부
+
+근거가 부족하면 `UNKNOWN / HOLD / REVIEW_REQUIRED`를 유지한다.
+
+## 9. 현재 반복 검증
+
+동일 V8 합성환경에서 다음 12개 distinct scenarios의 사이트 실분석 결과가 존재한다.
+
+```text
+Direct GT / Direct ST / GT Breaker
+IP BFP / HP BFP / LP BFP
+HP Drum LL / IP Drum LL / LP Drum LL
+HP Drum HH / IP Drum HH / LP Drum HH
+```
+
+- 시나리오별 A01~A20, 동일 20개 Engineering Inspection
+- 재검증 포함 누적 분석 실행 21회(프로젝트 실행기록 기준)
+- 12개 시나리오의 사이트 실분석 최종 고장상보 생성
+- HP BFP RAW 결측 사례에서 일부 인과관계를 확정하지 않고 후보/미검증 상태 유지
+
+이 결과는 **Synthetic Environment 내 반복 검증**이며 실제 발전소 Field Validation 또는 전 제조사 실설비 호환성 검증이 아니다.
+
+## 10. 검증환경과의 경계
 
 ```mermaid
 flowchart LR
-    V["Virtual Plant / Local V8 Test Harness"] --> E["EVENT.csv + RAW.csv"]
-    E --> T["Same TripLens Engine"]
-    T --> R["AI-generated Result"]
-    G["Ground Truth - separate"] --> X["External Validator"]
+    V["Windows Local V8 / ThermoSysPro / OPC UA / ECMS"] --> E["EVENT.csv + RAW.csv"]
+    E --> T["Same TripLens Analysis Architecture"]
+    T --> R["AI Analysis + Evidence-linked Report"]
+    G["Scenario Oracle / Inspection Criteria - separate"] --> X["External / Human Inspection"]
     R --> X
-    X --> S["Critical Event F1 / Causal Chain / Grounding / Fail-Closed"]
+    X --> S["20-item Engineering Inspection"]
 ```
 
-Virtual Plant, OPC UA, ECMS, Protection Matrix, Alarm Rule 수 등은 **TripLens 자체가 아니라 재현 가능한 사고입력을 생성하는 Test Harness**다. 세부사항은 `APPENDIX/09_VIRTUAL_PLANT_TEST_ENVIRONMENT.md`에서 다룬다.
+Virtual Plant와 보호/알람 Runtime은 사고입력을 생성하는 Test Harness다. 세부 구현은 `APPENDIX/09_VIRTUAL_PLANT_TEST_ENVIRONMENT.md`에서 다룬다.
