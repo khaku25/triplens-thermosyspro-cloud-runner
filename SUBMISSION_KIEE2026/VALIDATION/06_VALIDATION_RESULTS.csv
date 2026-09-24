@@ -1,5 +1,14 @@
-Run ID,Incident Family,Blind,RC Version,Engine Code Changed,Input Hash,Critical Precision,Critical Recall,Critical F1,Causal Accuracy,Evidence Grounding,Unsupported Claims,Fail-Closed,Input Events,Selected Critical Events,Analysis Time s,Human Time s,Result,Notes
-TL_GT_001,GT Trip,YES,TBD_RC1,NO,,,,,,,,,,,,,NOT_TESTED,
-TL_FD_001,6.6 kV Feeder Fault,YES,TBD_RC1,NO,,,,,,,,,,,,,NOT_TESTED,
-TL_TC_001,Third Case,YES,TBD_RC1,NO,,,,,,,,,,,,,NOT_TESTED,
-TL_CORRUPT_001,Missing Evidence,YES,TBD_RC1,NO,,,,,,,,,,,,,NOT_TESTED,
+Scenario_ID,Scenario,Category,Distinct_Scenario,Inspection_Items,Engineering_Inspection_Score_20260921,Final_Site_Report,Fail_Closed_Note,Field_Validated,Notes
+01,Direct GT Trip,Turbine/Protection,YES,20,88.0,YES,,NO,Actual site analysis and final report stored
+02,Direct ST Trip,Turbine/Protection,YES,20,88.0,YES,,NO,Actual site analysis and final report stored
+03,GT Breaker,Electrical/Breaker,YES,20,88.0,YES,,NO,Revalidated report stored
+04,IP BFP,BFP/Motor/VCB,YES,20,88.0,YES,,NO,VCB and motor/flow propagation inspected
+05,HP Drum LL,HRSG/Drum Low,YES,20,90.5,YES,,NO,GT/ST protection and propagation inspected
+06,IP Drum LL,HRSG/Drum Low,YES,20,90.5,YES,,NO,GT/ST protection and propagation inspected
+07,IP Drum HH,HRSG/Drum High,YES,20,88.0,YES,,NO,ST protection and propagation inspected
+08,HP Drum HH,HRSG/Drum High,YES,20,88.0,YES,,NO,ST protection and propagation inspected
+09,HP BFP,BFP/Missing Evidence,YES,20,80.5,YES,RAW missing interval preserved as uncertainty,NO,Representative fail-closed case
+10,LP BFP,BFP/Motor/VCB,YES,20,88.0,YES,,NO,VCB-A02 motor/speed/flow propagation inspected
+11,LP Drum HH,HRSG/Drum High,YES,20,88.0,YES,,NO,ST protection and propagation inspected
+12,LP Drum LL,HRSG/Drum Low,YES,20,90.5,YES,,NO,GT/ST protection and propagation inspected
+SUMMARY,12 distinct scenarios,Current V8 synthetic validation,YES,240,88.0,12 reports,21 cumulative analysis executions including re-validation,NO,Score is internal composite engineering inspection baseline, not AI accuracy
