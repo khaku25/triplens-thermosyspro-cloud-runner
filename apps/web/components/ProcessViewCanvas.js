@@ -1,7 +1,7 @@
 'use client';
 
 import {useEffect,useRef} from 'react';
-import {PLANT_PROCESS,modelBoxStyle} from '../lib/plantHotspots.mjs';
+import {PLANT_PROCESS,PLANT_REGISTERED_SIGNALS,modelBoxStyle} from '../lib/plantHotspots.mjs';
 
 function sourceFocus(box){
   const [left,bottom,right,top]=box;
@@ -48,6 +48,10 @@ export default function ProcessViewCanvas({locationId='',eventLabel='',relatedEq
       </div>
     </div>
     <p className="drawing-caption">{relatedEquipment&&selected?`${relatedEquipment} 개별 심볼은 v36에 없습니다. 빨간 테두리는 관련 설비 ${selected.label}의 위치입니다.`:'Process View v36 기준 화면 · 표시값은 캡처 시점의 정적 값입니다.'}</p>
+    <p className="drawing-signal-row">
+      <span>등록 신호</span>
+      {PLANT_REGISTERED_SIGNALS.map(signal=><a key={signal.tag} href={signal.href}>{signal.label} · {signal.tag} · {signal.unit} · {signal.access}</a>)}
+    </p>
     {detail?<figure className="drawing-detail-figure">
       <figcaption>선택 위치 확대 · {relatedEquipment?`${relatedEquipment} 관련 영역 (${selected.label})`:selected.label}</figcaption>
       <svg className="drawing-detail-zoom" role="img" aria-label={`${selected.label} 원본 도면 확대`}

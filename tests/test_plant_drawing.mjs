@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {PLANT_PROCESS,modelBoxStyle} from '../apps/web/lib/plantHotspots.mjs';
+import {PLANT_PROCESS,PLANT_REGISTERED_SIGNALS,modelBoxStyle} from '../apps/web/lib/plantHotspots.mjs';
 import {EQUIPMENT_DRAWING_MASTER,resolveEquipmentDrawing} from '../apps/web/lib/equipmentDrawingMaster.mjs';
 import {ECMS_HOTSPOT_PAGES} from '../apps/web/lib/ecmsHotspots.mjs';
 
@@ -52,6 +52,17 @@ test('current ECMS MATLAB overlays remain registered separately',()=>{
   assert.ok(ECMS_HOTSPOT_PAGES.ECMS_6P9KV.hotspots['VCB-A01']);
   assert.ok(ECMS_HOTSPOT_PAGES.ECMS_6P9KV.hotspots['VCB-A02']);
   assert.ok(ECMS_HOTSPOT_PAGES.ECMS_6P9KV.hotspots['VCB-B01']);
+});
+
+test('Plant view publishes ST grid-power navigation without a fabricated snapshot value',()=>{
+  assert.deepEqual(PLANT_REGISTERED_SIGNALS,[{
+    label:'ST GRID POWER',
+    tag:'vppSTGridPowerMW',
+    unit:'MW',
+    access:'READ-ONLY',
+    href:'/logic?tag=vppSTGridPowerMW',
+  }]);
+  assert.equal('value' in PLANT_REGISTERED_SIGNALS[0],false);
 });
 
 test('web image is the 2044 x 1285 source capture; Modelica remains unmodified',()=>{

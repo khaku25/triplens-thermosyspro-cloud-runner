@@ -9,6 +9,10 @@
 .drawing-hotspot.is-active,.drawing-hotspot.is-active:hover{z-index:2;border:3px solid #e34227;background:rgba(255,91,40,.12);box-shadow:0 0 0 6px rgba(236,77,32,.24),0 0 19px 6px rgba(220,57,22,.25)}
 .drawing-callout{position:absolute;top:calc(100% + 9px);left:50%;transform:translateX(-50%);white-space:nowrap;background:#a82d20;color:#fff;font:700 13px Pretendard,"Malgun Gothic",sans-serif;border-radius:5px;padding:5px 7px;box-shadow:0 2px 6px #3346;pointer-events:none}
 .drawing-caption{margin:10px 0 0;font-size:12px;color:#5a6f7f}
+.drawing-signal-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 0;font-size:12px;color:#617685}
+.drawing-signal-row>span{font-weight:700;color:#496476}
+.drawing-signal-row>a{display:inline-flex;align-items:center;min-height:30px;box-sizing:border-box;border:1px solid #8fb8c5;border-radius:7px;padding:5px 9px;background:#eef8fa;color:#125f75;font-weight:800;text-decoration:none}
+.drawing-signal-row>a:hover,.drawing-signal-row>a:focus-visible{border-color:#087c96;background:#dff3f6;outline:2px solid #86d6e5;outline-offset:2px}
 .drawing-detail-figure{margin:12px 0 0;padding:10px;border:1px solid #c9d6df;border-radius:9px;background:#fff;max-width:590px}
 .drawing-detail-figure figcaption{font-size:13px;font-weight:700;color:#17364d;margin-bottom:8px}
 .drawing-detail-zoom{display:block;width:100%;height:auto;background:#fff;border-radius:6px}

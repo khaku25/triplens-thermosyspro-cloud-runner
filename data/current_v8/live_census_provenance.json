@@ -1,11 +1,25 @@
 {
   "schema_version": 1,
-  "census_sha256": "1f9dafddc23eb356e2854708d440be3385607df3548b967baa780553b33c8254",
+  "census_sha256": "b69d517addd89224d2e71c8b5acb16a22b9fa66098458ea919a0d209a4ecdb5b",
   "validation_run": {
     "number": 54,
     "id": 35309650110,
     "url": "https://github.com/khaku25/triplens-thermosyspro-cloud-runner/actions/runs/35309650110"
   },
-  "scope": "Recorded OPC UA browse/read census. This asset update does not rerun or revalidate plant behaviour.",
-  "expected_vpp_count": 603
+  "scope": "Run #54 OPC UA browse/read census plus one supplemental private local RAW-session observation; the raw session is not published and no plant/protection behavior is revalidated by this asset update.",
+  "expected_vpp_count": 604,
+  "supplemental_evidence": {
+    "session_id": "SESSION_20260924_191347",
+    "file": "RAW_SESSION_20260924_191347.csv",
+    "published": false,
+    "publication_status": "WITHHELD_RAW_PLANT_TELEMETRY",
+    "sha256": "055f8a21b8f586feafaa6fe6705cfca05b4f1e833713991a0cac1f0e94ad6fd9",
+    "tag": "vppSTGridPowerMW",
+    "rows": 282,
+    "model_time_range_s": [
+      0.36,
+      407.48
+    ],
+    "evidence_scope": "BrowseName presence and finite numeric readback only; node_id and 52ST-open response were not captured."
+  }
 }

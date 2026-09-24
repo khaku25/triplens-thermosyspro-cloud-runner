@@ -26,6 +26,16 @@ export const PLANT_PROCESS = Object.freeze({
   hotspots: Object.freeze(Object.fromEntries(Object.entries(plant).map(([id,[label,box]]) => [id,{label,box}]))),
 });
 
+export const PLANT_REGISTERED_SIGNALS = Object.freeze([
+  Object.freeze({
+    label: 'ST GRID POWER',
+    tag: 'vppSTGridPowerMW',
+    unit: 'MW',
+    access: 'READ-ONLY',
+    href: '/logic?tag=vppSTGridPowerMW',
+  }),
+]);
+
 export function modelBoxStyle(box, viewBox = PLANT_PROCESS.viewBox) {
   const [left,bottom,right,top] = box;
   const [minX,minY,maxX,maxY] = viewBox;

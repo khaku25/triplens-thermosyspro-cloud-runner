@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "python ../../scripts/update_triplens_logic.py --project-root ../..",
     "build": "next build",
     "start": "next start"
   },
