@@ -1,0 +1,124 @@
+name: Publish ST Power Web Masters
+on:
+  push:
+    branches: [codex/plant-process-drawing-master-20260923]
+    paths:
+      - scripts/apply_st_power_web_release.py
+      - data/migrations/st_power_masters_20260924.b64
+      - tests/test_st_power_web_release.py
+      - .github/workflows/publish-st-power-web.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: st-power-web-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref_name == 'codex/plant-process-drawing-master-20260923'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply guarded authoring delta and generate assets
+        run: python scripts/apply_st_power_web_release.py
+      - name: Install browser test dependency
+        run: |
+          python -m pip install playwright==1.57.0
+          python -m playwright install --with-deps chromium
+      - name: Test exact ST binding and existing logic and drawing behavior
+        run: |
+          python -m unittest discover -s tests -p 'test_st_power_web_release.py' -v
+          python -m unittest discover -s tests -p 'test_logic_*.py' -v
+          python -m unittest discover -s tests -p 'test_drawing_master.py' -v
+          node --test tests/test_*.mjs
+      - name: Build existing Next application without changing control runtime
+        run: |
+          npm ci --prefix apps/web
+          npm run build --prefix apps/web
+      - name: Verify actual Next pages and ST deep links in Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run start --prefix apps/web -- --hostname 127.0.0.1 --port 3000 > "$RUNNER_TEMP/st-next.log" 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          python - <<'PY'
+          import os,time,urllib.request,json
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          for attempt in range(60):
+              try:
+                  urllib.request.urlopen('http://127.0.0.1:3000',timeout=2).close();break
+              except Exception: time.sleep(1)
+          else: raise SystemExit('Next server unavailable')
+          with sync_playwright() as p:
+              browser=p.chromium.launch(headless=True)
+              page=browser.new_page(viewport={'width':1440,'height':1000})
+              errors=[]
+              page.on('pageerror',lambda error:errors.append(str(error)))
+              for tag in ('vppSTGeneratorPowerMW','vppSTGridPowerMW'):
+                  page.goto('http://127.0.0.1:3000/logic?tag='+tag)
+                  frame=page.frame_locator('iframe')
+                  frame.locator('body[data-ready="true"]').wait_for()
+                  frame.locator('#related-rules button[data-rule="RESP-ST-GRID-POWER"]').wait_for()
+                  frame.locator('#related-rules button[data-rule="RESP-ST-GRID-POWER"]').click()
+                  assert frame.locator('#page-select').input_value()=='IG-036'
+                  assert frame.locator('#diagram [data-tag="vppSTGeneratorPowerMW"]').count()==1
+                  assert frame.locator('#diagram [data-tag="vppSTGridPowerMW"]').count()==1
+              page.screenshot(path=os.path.join(os.environ['RUNNER_TEMP'],'st-logic-next.png'),full_page=True)
+              page.goto('http://127.0.0.1:3000/logic?rule=RESP-ST-GRID-POWER')
+              frame=page.frame_locator('iframe')
+              frame.locator('body[data-ready="true"]').wait_for()
+              frame.locator('#diagram [data-tag="vppSTGridPowerMW"]').wait_for()
+              repository=json.loads(frame.locator('#repository-data').text_content())
+              assert repository['index']['rules']['RESP-ST-GRID-POWER']['validation_status']=='PARTIAL'
+              assert repository['index']['counts']['source_tags']==605
+              page.goto('http://127.0.0.1:3000/drawing?view=plant')
+              page.get_by_role('heading',name='설비 위치 도면',exact=True).wait_for()
+              page.screenshot(path=os.path.join(os.environ['RUNNER_TEMP'],'st-plant-next.png'),full_page=True)
+              assert not errors,errors
+              browser.close()
+          print('NEXT_ST_TAGS_RULE_AND_EXISTING_PLANT_PAGE_PASS')
+          PY
+      - name: Verify consistency and preserve all physical and control files
+        run: |
+          python scripts/update_triplens_logic.py --check
+          git diff --exit-code -- modelica matlab ECMSVPP.m ECMS_BFP_ALARMS.m scripts/native_ecms_opcua_client.py
+          git diff --check
+      - name: Commit verified generated masters and assets to this preview branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- data/current_v8 logic_diagrams generated/logic apps/web/lib/current-logic-summary.json apps/web/public/logic-assets services/agent-api/triplens/current_v8 scripts/logic_assets/model.py scripts/logic_assets/pipeline.py tests/test_logic_pipeline.py tests/test_logic_update_command.py tests/test_logic_viewer.py
+          git diff --cached --check
+          if ! git diff --cached --quiet; then
+            git commit -m 'fix: publish observed ST generator and grid MW masters with exact response diagram'
+            git push origin HEAD:"${GITHUB_REF_NAME}"
+          fi
+          git rev-parse HEAD | tee "$RUNNER_TEMP/st-release-sha.txt"
+          echo "Verified source release: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          echo '605 tags; 54 rules; exact ST generator + 52ST -> grid MW. Behavior PARTIAL; no physical/runtime writes.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve browser and release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: st-power-web-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/st-next.log
+            ${{ runner.temp }}/st-logic-next.png
+            ${{ runner.temp }}/st-plant-next.png
+            ${{ runner.temp }}/st-release-sha.txt
+            data/current_v8/st_power_evidence_20260924.json
+            apps/web/lib/current-logic-summary.json
+          if-no-files-found: warn
