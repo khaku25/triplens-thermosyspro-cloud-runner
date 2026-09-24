@@ -40,14 +40,14 @@ class BridgeTest(unittest.TestCase):
         contract = bridge.public_contract()
         self.assertEqual(contract["python_role"], "EVIDENCE_PROVIDER_AND_VERIFIER")
         self.assertEqual(contract["decision_authority"], "GEMINI_AGENT")
-        self.assertEqual(contract["logic_summary"]["live_rules"], 53)
+        self.assertEqual(contract["logic_summary"]["live_rules"], 54)
         self.assertEqual(contract["logic_summary"]["alarm"], 28)
         self.assertEqual(contract["logic_summary"]["protection"], 17)
         self.assertEqual(contract["logic_summary"]["commands"], 6)
-        self.assertEqual(contract["logic_summary"]["physical_response"], 2)
-        self.assertEqual(contract["live_tag_allowlist_count"], 603)
-        self.assertEqual(contract["current_v8_counts"]["live_tags"], 603)
-        self.assertEqual(contract["current_v8_counts"]["logic_rules"], 53)
+        self.assertEqual(contract["logic_summary"]["physical_response"], 3)
+        self.assertEqual(contract["live_tag_allowlist_count"], 604)
+        self.assertEqual(contract["current_v8_counts"]["live_tags"], 604)
+        self.assertEqual(contract["current_v8_counts"]["logic_rules"], 54)
         self.assertEqual(contract["version"], "CURRENT_V8_LIVE_SOT_V1")
         self.assertEqual(contract["evidence_readiness_version"], "GENERIC_DUAL_LOG_EVIDENCE_V2")
         self.assertEqual(
@@ -60,9 +60,9 @@ class BridgeTest(unittest.TestCase):
 
     def test_runtime_logic_is_fail_closed_against_live_allowlist(self):
         rows = bridge.runtime_logic_rows()
-        self.assertEqual(len(rows), 53)
+        self.assertEqual(len(rows), 54)
         allow = bridge.live_tag_allowlist()
-        self.assertEqual(len(allow), 603)
+        self.assertEqual(len(allow), 604)
         for row in rows:
             linked = [
                 part.strip()
