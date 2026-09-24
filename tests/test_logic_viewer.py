@@ -79,7 +79,7 @@ class ViewerTest(unittest.TestCase):
         self.page.evaluate("TripLensLogic.openTag('vppSTGridPowerMW')")
         self.page.get_by_role('button',name='Drawing Master',exact=True).click()
         self.page.locator('#search').fill('vppSTGridPowerMW')
-        target=self.page.locator('#results button').filter(has_text='ST Protection').first
+        target=self.page.locator('#results button').filter(has_text='ST Protection').filter(has_text='output:RESP-ST-GRID-POWER').first
         self.assertGreater(self.page.locator('#results button').filter(has_text='ST Protection').count(),0)
         target.click()
         self.assertIn('ST Protection',self.page.locator('#page-title').inner_text())
