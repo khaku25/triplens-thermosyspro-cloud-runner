@@ -55,6 +55,10 @@ function setLegendText(element, value) {
 }
 
 function scrubViewer(document) {
+  setText(document.querySelector('#equipment-view'), '설비별 로직');
+  setText(document.querySelector('#tab-screens'), '설비 로직');
+  const equipmentGroup = [...document.querySelectorAll('#page-select optgroup')].find(group => group.label === '설비 화면');
+  if (equipmentGroup) equipmentGroup.label = '설비별 로직';
   const headerCopy = document.querySelector('.top p');
   setText(headerCopy, '태그 · 로직 · Drawing Master 도면 검색 · 상세 정보');
 
@@ -120,7 +124,7 @@ function scrubViewer(document) {
   });
 }
 
-export default function LogicViewerFrame({ src = '/logic-assets/viewer.html', title, tag = '', rule = '', style }) {
+export default function LogicViewerFrame({ src = '/logic-assets/viewer.html', title, tag = '', rule = '', style, onEquipmentPage }) {
   const frameRef = useRef(null);
   const observerRef = useRef(null);
 
@@ -133,8 +137,19 @@ export default function LogicViewerFrame({ src = '/logic-assets/viewer.html', ti
     if (!document || !viewer) return;
 
     observerRef.current?.disconnect();
-    scrubViewer(document);
-    const observer = new MutationObserver(() => scrubViewer(document));
+    let currentPage;
+    const update = () => {
+      scrubViewer(document);
+      const selectedOption = document.querySelector('#page-select option:checked');
+      const nextPage = selectedOption?.parentElement?.label === '설비별 로직'
+        ? document.querySelector('#page-title')?.textContent?.trim() || '' : '';
+      if (nextPage !== currentPage) {
+        currentPage = nextPage;
+        onEquipmentPage?.(nextPage);
+      }
+    };
+    update();
+    const observer = new MutationObserver(update);
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
     observerRef.current = observer;
 

@@ -3,7 +3,8 @@
   "git": {
     "deploymentEnabled": {
       "**": false,
-      "main": true
+      "main": true,
+      "codex/restore-drawing-master-20260922": true
     }
   }
 }

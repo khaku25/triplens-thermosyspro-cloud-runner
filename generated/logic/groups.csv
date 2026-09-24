@@ -34,3 +34,4 @@ IG-032,vppIPFWPTripPushbuttonNative,1,CMD-FWP-IP-TRIP,vppIPFWPTripCommandNative;
 IG-033,vppIPFWPResetPushbuttonNative,1,CMD-FWP-IP-RESET,vppIPFWPTripLatchNative,IG-033
 IG-034,vppLPFWPTripPushbuttonNative,1,CMD-FWP-LP-TRIP,vppLPFWPTripCommandNative; vppLPFWPTripLatchNative; vppVCBA02TripCommandNative,IG-034
 IG-035,vppLPFWPResetPushbuttonNative,1,CMD-FWP-LP-RESET,vppLPFWPTripLatchNative,IG-035
+IG-036,vpp52STClosed,1,RESP-ST-GRID-POWER,vppSTGridPowerMW,IG-036

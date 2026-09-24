@@ -2,6 +2,8 @@
 
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {LogicLibraryDialog,openLogicLibrary} from './LogicLibrary';
+import {resolveEquipmentDrawing} from '../lib/equipmentDrawingMaster.mjs';
+import {resolvePlantFocus} from '../lib/plantDrawingFocus.mjs';
 import RecoveryForm from './RecoveryForm';
 import RecoveryReadiness from './RecoveryReadiness';
 import {WORKSPACE_TABS} from '../lib/contracts';
@@ -128,13 +130,24 @@ function AnalysisList({items,stage,onOpen,limit=5}){
   return <div className="analysis-list">{visible.map(renderItem)}{hidden.length?<details className="hidden-analysis-items"><summary>후속 분석 {hidden.length}건 보기</summary><div>{hidden.map((item,index)=>renderItem(item,index+limit))}</div></details>:null}</div>;
 }
 
+function DrawingLocationLink({equipment,eventTag}){
+  const value=String(equipment||'').trim();
+  const row=resolveEquipmentDrawing(value);
+  if(!row)return null;
+  const qs=new URLSearchParams({equipment:value});
+  if(resolvePlantFocus(row))qs.set('view','plant');
+  const tag=String(eventTag||'').trim();
+  if(tag)qs.set('event',tag);
+  return <a href={'/drawing?'+qs.toString()} target="_blank" rel="noreferrer" className="tag-link" title={value+' 설비 도면 위치 열기'}>도면 위치 보기</a>;
+}
+
 function EventTable({events,onOpen}){
-  return <div className="scroll-table"><table><thead><tr><th>시간</th><th>설비</th><th>사건</th><th>원천</th><th>근거</th></tr></thead><tbody>{events.map((event,index)=>{const time=displayEventTime(event);return <tr key={event.event_id||index}><td><b>{time.primary}</b>{time.secondary?<small>{time.secondary}</small>:null}</td><td>{event.equipment||'—'}</td><td>{operatorSummary(event)||event.message||friendlyTag(event.tag)}</td><td>{event.source||'—'}</td><td><EvidenceLinks ids={[event.evidence_id||event.event_id]} onOpen={onOpen} named/></td></tr>;})}</tbody></table></div>;
+  return <div className="scroll-table"><table><thead><tr><th>시간</th><th>설비</th><th>사건</th><th>원천</th><th>근거</th></tr></thead><tbody>{events.map((event,index)=>{const time=displayEventTime(event);return <tr key={event.event_id||index}><td><b>{time.primary}</b>{time.secondary?<small>{time.secondary}</small>:null}</td><td>{event.equipment||'—'}</td><td>{operatorSummary(event)||event.message||friendlyTag(event.tag)}</td><td>{event.source||'—'}</td><td><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><EvidenceLinks ids={[event.evidence_id||event.event_id]} onOpen={onOpen} named/><DrawingLocationLink equipment={event.equipment} eventTag={event.tag}/></div></td></tr>;})}</tbody></table></div>;
 }
 
 function OperatorTimeline({events,onOpen}){
   const timeline=compactTimeline(events,7);
-  return <div className="operator-timeline">{timeline.visible.map((event,index)=>{const time=displayEventTime(event);const summary=conciseClaim(operatorSummary(event)||event.message||friendlyTag(event.tag),140).summary;return <article key={event.event_id||index}><time><b>{time.primary}</b>{time.secondary?<small>{time.secondary}</small>:null}</time><div><span>{event.equipment||event.event_class||'PLANT'}</span><strong>{summary}</strong></div><EvidenceLinks ids={[event.evidence_id||event.event_id]} onOpen={onOpen} named/></article>;})}{timeline.hiddenCount?<p>후속 기록 {timeline.hiddenCount}건은 전체 사건 기록에서 확인</p>:null}</div>;
+  return <div className="operator-timeline">{timeline.visible.map((event,index)=>{const time=displayEventTime(event);const summary=conciseClaim(operatorSummary(event)||event.message||friendlyTag(event.tag),140).summary;return <article key={event.event_id||index}><time><b>{time.primary}</b>{time.secondary?<small>{time.secondary}</small>:null}</time><div><span>{event.equipment||event.event_class||'PLANT'}</span><strong>{summary}</strong></div><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><EvidenceLinks ids={[event.evidence_id||event.event_id]} onOpen={onOpen} named/><DrawingLocationLink equipment={event.equipment}/></div></article>;})}{timeline.hiddenCount?<p>후속 기록 {timeline.hiddenCount}건은 전체 사건 기록에서 확인</p>:null}</div>;
 }
 
 function OperatorReportPreview({analysis,events,recovery}){
@@ -373,7 +386,7 @@ export default function TripLensWorkspace({mode='blind'}){
       <aside className="sidebar">
         <div className="side-title">ANALYSIS WORKSPACE</div>
         <nav>{WORKSPACE_TABS.map(tab=><button disabled={!result} className={`nav-item ${activeTab===tab.id?'active':''}`} key={tab.id} onClick={()=>{setActiveTab(tab.id);setDetail(null);}}><span className="nav-no">{tab.no}</span><span><b>{tab.label}</b><em>{tab.sub}</em></span></button>)}</nav>
-        <div className="side-links"><button onClick={()=>openLogicLibrary()}><b>DM</b><span>Logic / TAG / Drawing Master<em>{logic?`${logic.live_rules} Logic · ${logic.protection} Protection · 도면 검색`:'태그 · 로직 · 도면 검색'}</em></span></button></div>
+        <div className="side-links"><button onClick={()=>openLogicLibrary()}><b>LM</b><span>Logic / TAG Master<em>{logic?`${logic.live_rules} Logic · ${logic.protection} Protection`:'태그 검색 · 로직 연결'}</em></span></button><a className="drawing-entry" href="/drawing">Drawing Master · ECMS / Plant →</a></div>
         <div className="boundary"><b>READ-ONLY</b><span>분석 및 보고서 전용</span></div>
       </aside>
       <section className="main-area">
@@ -400,7 +413,7 @@ export default function TripLensWorkspace({mode='blind'}){
             <button className="export-button" disabled={exportBlocked} onClick={exportPDF}>보고서 PDF 저장</button>
             <details className="export-menu"><summary>내보내기</summary><div><button className="export-button" disabled={exportBlocked} onClick={exportCSV}>보고서 CSV</button><button className="export-button" disabled={exportBlocked} onClick={exportDetailedCSV}>상세 분석 데이터 CSV</button></div></details>
           </div>
-          <p className="report-help">핵심 사고 경위를 4페이지 운전 고장상보 형식으로 저장합니다.</p>
+          <p className="report-help">핵심 사고 경위를 1~2페이지 운전 고장상보 형식으로 저장합니다.</p>
           <OperatorReportPreview analysis={analysis} events={events} recovery={recovery}/>
           <details className="report-editor"><summary>보고서 세부 항목 편집</summary><div className="scroll-table"><table className="editable-report"><thead><tr>{REPORT_COLUMNS.map(column=><th key={column}>{column}</th>)}</tr></thead><tbody>{displayReportRows.map((row,index)=>{
             const recoveryRow=row.row_id?.startsWith('RECOVERY-');

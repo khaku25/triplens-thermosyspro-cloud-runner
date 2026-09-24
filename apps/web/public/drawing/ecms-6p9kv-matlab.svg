@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="900" viewBox="0 0 1500 900" role="img">
+<defs><style>.bg{fill:#f4f7fa}.panel{fill:#fff;stroke:#d8e1e8;stroke-width:2}.title{font:700 28px Arial,sans-serif;fill:#16324a}.sub{font:14px Arial,sans-serif;fill:#607384}.bus{stroke:#2862bb;stroke-width:16;stroke-linecap:round}.wire{stroke:#376fc7;stroke-width:4;fill:none}.closed{fill:#e04f47;stroke:#9e2925;stroke-width:2}.open{fill:#fff;stroke:#7b8994;stroke-width:3}.label{font:700 13px Arial,sans-serif;fill:#243746;text-anchor:middle}.tag{font:11px Arial,sans-serif;fill:#617584;text-anchor:middle}.small{font:8px Arial,sans-serif;fill:#617584;text-anchor:middle}.m{fill:#e8f5ee;stroke:#3b9464;stroke-width:2}.a{fill:#fff5df;stroke:#d79a2b;stroke-width:2}.note{font:12px Arial,sans-serif;fill:#5d7080}</style></defs>
+<rect class="bg" width="1500" height="900"/><rect class="panel" x="25" y="24" width="1450" height="835" rx="18"/>
+<text class="title" x="55" y="67">TripLens ECMS VPP Editor 3.1 — 6.9 kV SWGR</text>
+<text class="sub" x="55" y="94">현재 A 설비표와 잠긴 M 연결표에서 동적으로 생성됨</text>
+<text class="label" x="380" y="135">UAT-A</text><path class="wire" d="M380 150 V245"/>
+<rect class="closed" x="365" y="185" width="30" height="32" rx="3"/><text class="tag" x="445" y="207">IN-A · 인커밍</text>
+<line class="bus" x1="80" y1="245" x2="680" y2="245"/><text class="label" x="380" y="275">6.9 kV BUS-A</text>
+<path class="wire" d="M150 245 V390"/><rect class="closed" x="135" y="315" width="30" height="32" rx="3"/>
+<text class="tag" x="150" y="305">VCB-A01</text><rect class="a" x="78" y="390" width="145" height="76" rx="8"/>
+<text class="label" x="150" y="414">HP 급수펌프</text><text class="tag" x="150" y="436">FWP-HP · A</text><text class="small" x="150" y="456">6.9 kV · CLOSED · 정격 미입력</text>
+<rect class="m" x="78" y="480" width="145" height="66" rx="8"/><text class="label" x="150" y="505">M LOCKED · 1</text><text class="small" x="150" y="530">TSP.DRUM.HP.FW_FLOW</text>
+<path class="wire" d="M610 245 V390"/><rect class="closed" x="595" y="315" width="30" height="32" rx="3"/>
+<text class="tag" x="610" y="305">VCB-A02</text><rect class="a" x="538" y="390" width="145" height="76" rx="8"/>
+<text class="label" x="610" y="414">LP 급수펌프</text><text class="tag" x="610" y="436">FWP-LP · A</text><text class="small" x="610" y="456">6.9 kV · CLOSED · 정격 미입력</text>
+<rect class="m" x="538" y="480" width="145" height="66" rx="8"/><text class="label" x="610" y="505">M LOCKED · 1</text><text class="small" x="610" y="530">TSP.DRUM.LP.FW_FLOW</text>
+<text class="label" x="1120" y="135">UAT-B</text><path class="wire" d="M1120 150 V245"/>
+<rect class="closed" x="1105" y="185" width="30" height="32" rx="3"/><text class="tag" x="1185" y="207">IN-B · 인커밍</text>
+<line class="bus" x1="820" y1="245" x2="1420" y2="245"/><text class="label" x="1120" y="275">6.9 kV BUS-B</text>
+<path class="wire" d="M1350 245 V390"/><rect class="closed" x="1335" y="315" width="30" height="32" rx="3"/>
+<text class="tag" x="1350" y="305">VCB-B01</text><rect class="a" x="1278" y="390" width="145" height="76" rx="8"/>
+<text class="label" x="1350" y="414">IP 급수펌프</text><text class="tag" x="1350" y="436">FWP-IP · A</text><text class="small" x="1350" y="456">6.9 kV · CLOSED · 정격 미입력</text>
+<rect class="m" x="1278" y="480" width="145" height="66" rx="8"/><text class="label" x="1350" y="505">M LOCKED · 1</text><text class="small" x="1350" y="530">TSP.DRUM.IP.FW_FLOW</text>
+<path class="wire" d="M680 245 H710"/><rect class="open" x="710" y="230" width="80" height="30" rx="3"/><path class="wire" d="M790 245 H820"/><text class="tag" x="750" y="292">TIE-AB · OPEN</text>
+<rect class="m" x="80" y="615" width="1340" height="175" rx="10"/><text class="label" x="750" y="642">현재 상세도에 연결된 잠긴 M 목록 · 3개</text>
+<text class="note" x="105" y="670">M-LINK-003 · FWP-HP ← TSP.DRUM.HP.FW_FLOW</text>
+<text class="note" x="105" y="692">M-LINK-004 · FWP-IP ← TSP.DRUM.IP.FW_FLOW</text>
+<text class="note" x="760" y="670">M-LINK-005 · FWP-LP ← TSP.DRUM.LP.FW_FLOW</text>
+<text class="note" x="55" y="835">Editor 3.1 dynamic export · 가상 설계 기준도 · 운전/정비/LOTO용 아님</text></svg>

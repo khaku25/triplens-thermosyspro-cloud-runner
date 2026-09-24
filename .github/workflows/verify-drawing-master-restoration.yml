@@ -1,0 +1,127 @@
+name: Verify Drawing Master Restoration
+
+on:
+  push:
+    branches: [codex/restore-drawing-master-20260922]
+    paths:
+      - 'scripts/logic_assets/**'
+      - 'tests/test_drawing_master*.py'
+      - 'apps/web/public/logic-assets/**'
+      - '.github/workflows/verify-drawing-master-restoration.yml'
+  pull_request:
+    paths:
+      - 'scripts/logic_assets/**'
+      - 'tests/test_drawing_master*.py'
+      - 'apps/web/public/logic-assets/**'
+      - '.github/workflows/verify-drawing-master-restoration.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: drawing-master-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE_SHA: 0a57ecfeea8b34f1328a2df6b6e825aae562d055
+      DRAWING_MASTER_SCREENSHOTS: outputs/drawing-master-review/screenshots
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify committed generated assets match their authoring sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p outputs/drawing-master-review
+          python scripts/update_triplens_logic.py --check | tee outputs/drawing-master-review/consistency.json
+      - name: Install browser test dependencies
+        run: |
+          python -m pip install playwright==1.57.0
+          python -m playwright install --with-deps chromium
+      - name: Existing logic regression suite including HTTP navigation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_logic_*.py' -v 2>&1 | tee outputs/drawing-master-review/logic-tests.log
+      - name: Drawing Master exact cell and desktop mobile browser tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_drawing_master*.py' -v 2>&1 | tee outputs/drawing-master-review/drawing-tests.log
+      - name: Broad Node baseline comparison (known failures remain reported)
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_DIR=$(mktemp -d)
+          git archive "$BASE_SHA" | tar -x -C "$BASE_DIR"
+          export BASE_DIR
+          python - <<'PY'
+          import json, os, pathlib, re, subprocess
+          out=pathlib.Path('outputs/drawing-master-review')
+          results={}
+          for name,cwd in [('baseline',os.environ['BASE_DIR']),('restored','.')]:
+              tests=sorted(str(p.relative_to(cwd)) for p in pathlib.Path(cwd).glob('tests/test*.mjs'))
+              run=subprocess.run(['node','--test',*tests],cwd=cwd,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+              (out/f'node-{name}.log').write_text(run.stdout)
+              failures=re.findall(r'^not ok \d+ - (.+)$',run.stdout,re.M)
+              total=re.search(r'^# tests (\d+)$',run.stdout,re.M)
+              assert total is not None, 'Node test runner did not complete'
+              results[name]={'exit_code':run.returncode,'total':int(total[1]),'failed_tests':failures}
+          (out/'node-baseline-comparison.json').write_text(json.dumps(results,ensure_ascii=False,indent=2))
+          print(json.dumps(results,ensure_ascii=False,indent=2))
+          assert not set(results['restored']['failed_tests'])-set(results['baseline']['failed_tests']), 'New Node regression introduced'
+          assert results['restored']['total']>=results['baseline']['total'], 'Node test coverage decreased'
+          print('BASELINE_REGRESSION_PASS; baseline failures and added tests are reported above')
+          PY
+          rm -rf "$BASE_DIR"
+      - name: Build Next.js application with both Drawing Master pages
+        working-directory: apps/web
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Verify physical and runtime implementation sources are byte unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code "$BASE_SHA" -- \
+            modelica scripts/native_ecms_opcua_client.py ECMSVPP.m \
+            services/agent-api \
+            ':(exclude)services/agent-api/tests/**' \
+            ':(exclude)services/agent-api/triplens/current_v8/**'
+          python - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path('.')
+          dm=json.loads((root/'logic_diagrams/drawing_master_index.json').read_text())
+          xml=(root/'logic_diagrams/TripLens_Logic_Master_Current_V8.drawio').read_bytes()
+          assert dm['source_sha256']==hashlib.sha256(xml).hexdigest()
+          data={'counts':dm['counts'],'source_sha256':dm['source_sha256']}
+          print(json.dumps(data,indent=2))
+          (root/'outputs/drawing-master-review/counts.json').write_text(json.dumps(data,indent=2))
+          PY
+      - name: Preserve exact tested revision and offline preview
+        shell: bash
+        run: |
+          git rev-parse HEAD > outputs/drawing-master-review/tested-sha.txt
+          git diff --stat "$BASE_SHA" > outputs/drawing-master-review/changed-files.txt
+          git archive HEAD | gzip > outputs/drawing-master-review/source.tar.gz
+          cp apps/web/public/logic-assets/viewer.html outputs/drawing-master-review/drawing-master-preview.html
+      - name: Preserve successes and failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drawing-master-review-${{ github.run_id }}
+          path: outputs/drawing-master-review/
+          retention-days: 7
+          if-no-files-found: error

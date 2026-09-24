@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"
+  role="img" aria-labelledby="title" data-protocol="OPC UA" data-endpoint="opc.tcp://127.0.0.1:4841"
+  data-equipment-id="FWP-IP-DISCHARGE-NRV">
+  <title id="title">IP FWP DISCHARGE CHECK VALVE</title>
+  <style>
+  .bg{fill:#07111f}.panel{fill:#0d1b2d;stroke:#31445d;stroke-width:2}
+  .title{fill:#f4f8ff;font:700 24px Arial,sans-serif}.sub{fill:#9fb2c9;font:14px Arial,sans-serif}
+  .label{fill:#eef5ff;font:700 14px Arial,sans-serif}.small{fill:#b7c7da;font:12px Arial,sans-serif}
+  .mono{fill:#d9e8ff;font:11px Consolas,monospace}.muted{fill:#8397ad;font:11px Arial,sans-serif}
+  .equip{fill:#14283e;stroke:#5c7998;stroke-width:2}.pump{fill:#153c52;stroke:#40c4ff;stroke-width:3}
+  .nrv{fill:#173b2b;stroke:#4dd599;stroke-width:3}.water{fill:none;stroke:#4da3ff;stroke-width:6}
+  .io{fill:#12283a;stroke:#4bb8d8;stroke-width:1.5}.passive{fill:#3a2e17;stroke:#ffd166;stroke-width:1.5}
+  .badge{fill:#173b2b;stroke:#4dd599;stroke-width:1.5}.badgeText{fill:#87efbd;font:700 10px Arial,sans-serif}
+</style>
+  <g data-component="vppIPFWPCheckValve" data-symbol-type="SPRING_CHECK_VALVE"
+    data-symbol-convention="ISO-10628-style" data-opcua-access="READ_ONLY"
+    data-opcua-open="vppIPFWPCheckValveOpen" data-opcua-opening="vppIPFWPCheckValveOpening"
+    data-opcua-flow="vppIPFWPCheckValveMassFlowTH" data-opcua-delta-p="vppIPFWPCheckValveDeltaPPa"
+    data-opcua-inlet-p="vppIPFWPCheckValveInletPressurePa" data-opcua-outlet-p="vppIPFWPCheckValveOutletPressurePa"
+    data-opcua-resistance="vppIPFWPCheckValveResistancePaSPerKg" aria-label="Spring-loaded non-return valve">
+    <path class="water" d="M40 280H190M300 280H472"/>
+    <polygon class="nrv" points="190,225 290,280 190,335"/>
+    <line x1="290" y1="205" x2="290" y2="355" stroke="#87efbd" stroke-width="10"/>
+    <polyline points="290,205 272,185 308,163 272,141 290,115" fill="none"
+      stroke="#87efbd" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

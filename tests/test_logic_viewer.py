@@ -50,8 +50,8 @@ class ViewerTest(unittest.TestCase):
             self.page.close()
 
     def test_default_counts_and_no_external_network(self):
-        self.assertIn('603',self.page.locator('#stats').inner_text())
-        self.assertIn('53',self.page.locator('#stats').inner_text())
+        self.assertIn('604',self.page.locator('#stats').inner_text())
+        self.assertIn('54',self.page.locator('#stats').inner_text())
         self.assertEqual(self.page.evaluate('performance.getEntriesByType("resource").filter(x=>/^https?:/.test(x.name) && !x.name.startsWith(location.origin)).length'),0)
 
     def test_http_startup_fits_available_canvas(self):

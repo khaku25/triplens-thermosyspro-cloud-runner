@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="800" viewBox="0 0 1400 800">
+<rect width="1400" height="800" fill="#f4f7fa"/><text x="25" y="32" font-family="Arial" font-size="22" font-weight="700">TripLens ECMS VPP Editor 3.1 — M locked / A editable / CommandBus</text>
+<path d="M 330 120 L 330 235 L 330 235" fill="none" stroke="#c94540" stroke-width="4"/>
+<path d="M 330 235 L 330 335 L 330 335" fill="none" stroke="#385a70" stroke-width="4"/>
+<path d="M 330 335 L 190 335 L 190 335" fill="none" stroke="#385a70" stroke-width="4"/>
+<path d="M 190 335 L 70 335 L 70 335" fill="none" stroke="#385a70" stroke-width="4"/>
+<path d="M 330 335 L 330 445 L 330 445" fill="none" stroke="#376fc7" stroke-width="4"/>
+<path d="M 330 445 L 330 550 L 330 550" fill="none" stroke="#376fc7" stroke-width="4"/>
+<path d="M 330 550 L 330 685 L 330 685" fill="none" stroke="#376fc7" stroke-width="4"/>
+<path d="M 330 685 L 700 685 L 700 685" fill="none" stroke="#385a70" stroke-width="4"/>
+<path d="M 700 685 L 1070 685 L 1070 685" fill="none" stroke="#385a70" stroke-width="4"/>
+<path d="M 1070 550 L 1070 685 L 1070 685" fill="none" stroke="#376fc7" stroke-width="4"/>
+<path d="M 1070 445 L 1070 550 L 1070 550" fill="none" stroke="#376fc7" stroke-width="4"/>
+<path d="M 1070 335 L 1070 445 L 1070 445" fill="none" stroke="#376fc7" stroke-width="4"/>
+<path d="M 1210 335 L 1070 335 L 1070 335" fill="none" stroke="#385a70" stroke-width="4"/>
+<path d="M 1330 335 L 1210 335 L 1210 335" fill="none" stroke="#385a70" stroke-width="4"/>
+<path d="M 1070 235 L 1070 335 L 1070 335" fill="none" stroke="#385a70" stroke-width="4"/>
+<path d="M 1070 120 L 1070 235 L 1070 235" fill="none" stroke="#c94540" stroke-width="4"/>
+<path d="M 330 120 L 700 120 L 700 120" fill="none" stroke="#c94540" stroke-width="4"/>
+<path d="M 700 120 L 1070 120 L 1070 120" fill="none" stroke="#c94540" stroke-width="4"/>
+<line x1="270" y1="120" x2="390" y2="120" stroke="#c94540" stroke-width="11"/>
+<text x="330" y="90" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">154 kV BUS-A</text><text x="330" y="158" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">GRID-BUS-A</text>
+<line x1="1010" y1="120" x2="1130" y2="120" stroke="#c94540" stroke-width="11"/>
+<text x="1070" y="90" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">154 kV BUS-B</text><text x="1070" y="158" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">GRID-BUS-B</text>
+<rect x="685" y="106" width="30" height="28" fill="white" stroke="#7b3030" stroke-width="2"/>
+<text x="700" y="90" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">154 kV Bus Section</text><text x="700" y="158" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">CB-154-TIE</text>
+<circle cx="321" cy="235" r="15" fill="white" stroke="#5947a8" stroke-width="3"/><circle cx="339" cy="235" r="15" fill="white" stroke="#5947a8" stroke-width="3"/>
+<text x="330" y="205" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">GT Main TR ↕</text><text x="330" y="273" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">TR-GT</text>
+<line x1="270" y1="335" x2="390" y2="335" stroke="#2862bb" stroke-width="11"/>
+<text x="330" y="305" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">GT 13.8 kV TAP</text><text x="330" y="373" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">GT-TAP</text>
+<rect x="175" y="321" width="30" height="28" fill="#e04f47" stroke="#7b3030" stroke-width="2"/>
+<text x="190" y="305" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">52GT</text><text x="190" y="373" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">CB-52GT</text>
+<circle cx="70" cy="335" r="22" fill="white" stroke="#1d64a5" stroke-width="4"/><text x="70" y="340" text-anchor="middle" font-family="Arial" font-weight="700">G</text>
+<text x="70" y="305" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">GT Generator</text><text x="70" y="373" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">GTG</text>
+<circle cx="321" cy="445" r="15" fill="white" stroke="#5947a8" stroke-width="3"/><circle cx="339" cy="445" r="15" fill="white" stroke="#5947a8" stroke-width="3"/>
+<text x="330" y="415" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">UAT-A</text><text x="330" y="483" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">UAT-A</text>
+<rect x="315" y="536" width="30" height="28" fill="#e04f47" stroke="#7b3030" stroke-width="2"/>
+<text x="330" y="520" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">A Incoming</text><text x="330" y="588" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">CB-IN-A</text>
+<line x1="270" y1="685" x2="390" y2="685" stroke="#2862bb" stroke-width="11"/>
+<text x="330" y="655" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">6.9 kV BUS-A</text><text x="330" y="723" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">BUS-A</text>
+<rect x="685" y="671" width="30" height="28" fill="white" stroke="#7b3030" stroke-width="2"/>
+<text x="700" y="655" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">6.9 kV Bus Tie</text><text x="700" y="723" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">CB-TIE-AB</text>
+<line x1="1010" y1="685" x2="1130" y2="685" stroke="#2862bb" stroke-width="11"/>
+<text x="1070" y="655" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">6.9 kV BUS-B</text><text x="1070" y="723" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">BUS-B</text>
+<rect x="1055" y="536" width="30" height="28" fill="#e04f47" stroke="#7b3030" stroke-width="2"/>
+<text x="1070" y="520" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">B Incoming</text><text x="1070" y="588" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">CB-IN-B</text>
+<circle cx="1061" cy="445" r="15" fill="white" stroke="#5947a8" stroke-width="3"/><circle cx="1079" cy="445" r="15" fill="white" stroke="#5947a8" stroke-width="3"/>
+<text x="1070" y="415" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">UAT-B</text><text x="1070" y="483" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">UAT-B</text>
+<line x1="1010" y1="335" x2="1130" y2="335" stroke="#2862bb" stroke-width="11"/>
+<text x="1070" y="305" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">ST 13.8 kV TAP</text><text x="1070" y="373" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">ST-TAP</text>
+<rect x="1195" y="321" width="30" height="28" fill="#e04f47" stroke="#7b3030" stroke-width="2"/>
+<text x="1210" y="305" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">52ST</text><text x="1210" y="373" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">CB-52ST</text>
+<circle cx="1330" cy="335" r="22" fill="white" stroke="#1d64a5" stroke-width="4"/><text x="1330" y="340" text-anchor="middle" font-family="Arial" font-weight="700">G</text>
+<text x="1330" y="305" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">ST Generator · M</text><text x="1330" y="373" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">STG</text>
+<circle cx="1061" cy="235" r="15" fill="white" stroke="#5947a8" stroke-width="3"/><circle cx="1079" cy="235" r="15" fill="white" stroke="#5947a8" stroke-width="3"/>
+<text x="1070" y="205" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700">ST Main TR ↕</text><text x="1070" y="273" text-anchor="middle" font-family="Arial" font-size="10" fill="#657784">TR-ST</text>
+<text x="25" y="780" font-family="Arial" font-size="11" fill="#687985">Virtual design reference · no SST · not for operation, maintenance or LOTO</text></svg>

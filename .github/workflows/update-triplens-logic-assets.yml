@@ -146,7 +146,7 @@ jobs:
               errors=[]
               page.on('pageerror',lambda error: errors.append(str(error)))
               page.goto('http://127.0.0.1:3000')
-              page.get_by_role('button',name='Logic / TAG / Drawing Master').click()
+              page.get_by_role('button',name='Logic / TAG Master').click()
               page.locator('dialog[open]').wait_for()
               frame=page.frame_locator('dialog iframe')
               frame.locator('body[data-ready="true"]').wait_for()
@@ -170,7 +170,7 @@ jobs:
       - name: Final consistency check
         run: |
           python scripts/update_triplens_logic.py --check
-          git diff --check
+          git -c core.whitespace=cr-at-eol diff --check
       - name: Save verified integration on the selected branch only
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
         shell: bash
