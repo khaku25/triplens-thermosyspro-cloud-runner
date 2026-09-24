@@ -1,5 +1,15 @@
 # FMU native valve control contract v1
 
+> **Build retired — 2026-09-24.** The legacy FMU binary build workflow, FMI
+> adapter patcher, FMU post-processor, physical smoke runner, two build scripts,
+> two smoke models and their adapter-only unit test have been removed.
+> This document and its recorded validation links describe the historical FMU
+> implementation, not a currently supported build or a new validation result.
+> The port CSVs, their catalogue generator/checks and valve SVG assets are kept
+> because the drawing generator still consumes them; those checks do not build
+> or run an FMU. Native OPC UA build/run, current plant models and protection
+> logic are unchanged. See [the current native visualization contract](OPCUA_NATIVE_VISUAL_CONTRACT_V1.md).
+
 ## Scope
 
 This contract covers exactly the twelve
