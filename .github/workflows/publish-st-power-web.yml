@@ -86,7 +86,7 @@ jobs:
               page.goto('http://127.0.0.1:3000/logic?tag=vppSTGridPowerMW')
               frame.get_by_role('button',name='Drawing Master',exact=True).click()
               frame.locator('#search').fill('vppSTGridPowerMW')
-              result=frame.locator('#results button').filter(has_text='ST Protection').first
+              result=frame.locator('#results button').filter(has_text='ST Protection').filter(has_text='output:RESP-ST-GRID-POWER').first
               result.wait_for()
               result.click()
               assert 'ST Protection' in frame.locator('#page-title').inner_text()
