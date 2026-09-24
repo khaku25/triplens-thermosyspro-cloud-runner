@@ -41,7 +41,7 @@ def runtime_assets(repository):
         rows.append(dict(logic_id=r['rule_id'],logic_type=r['logic_type'],group=r['group'],logic_name=r['logic_name'],
             tag_id=first,event_tag=first,source_node=inputs[0] if len(inputs)==1 else '',condition=r['condition'],
             delay=r['delay'],reset_hysteresis=r['reset_hysteresis'],status='ACTIVE',
-            verification_status=r['validation_status'] or 'UNVERIFIED',source_existence_status='LIVE_CENSUS_RESOLVED',
+            verification_status=r['validation_status'] or 'UNVERIFIED',source_existence_status=('RAW_SESSION_AND_CENSUS_RESOLVED' if any(model['tags'].get(t,{}).get('live_existence')=='RAW_SESSION_OBSERVED' for t in inputs+outputs) else 'LIVE_CENSUS_RESOLVED'),
             linked_tag_ids=';'.join(dict.fromkeys(inputs+outputs)),input_nodes='|'.join(inputs),
             output_nodes_or_tags='|'.join(outputs),output_class=r['output_class'],input_group_id=r['input_group_id'],
             source_basis=r['source_basis']))

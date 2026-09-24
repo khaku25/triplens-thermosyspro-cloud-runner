@@ -1,11 +1,25 @@
 {
   "schema_version": 1,
-  "census_sha256": "1f9dafddc23eb356e2854708d440be3385607df3548b967baa780553b33c8254",
+  "census_sha256": "66f03e782e4c935acb533091544cb5ce71a849b437cd83f3bcdf05dd804e10c5",
   "validation_run": {
     "number": 54,
     "id": 35309650110,
     "url": "https://github.com/khaku25/triplens-thermosyspro-cloud-runner/actions/runs/35309650110"
   },
-  "scope": "Recorded OPC UA browse/read census. This asset update does not rerun or revalidate plant behaviour.",
-  "expected_vpp_count": 603
+  "scope": "Unchanged Run 54 browse/read baseline plus two separately identified later RAW-session signals. No new plant/protection behavioral validation.",
+  "expected_vpp_count": 605,
+  "baseline_census_sha256": "1f9dafddc23eb356e2854708d440be3385607df3548b967baa780553b33c8254",
+  "supplemental_evidence": {
+    "file": "data/current_v8/st_power_evidence_20260924.json",
+    "sha256": "df846fcaf2413e9e528a90b178721c0474b568fb81aedf8d0e42ad3821b0697a",
+    "source_sha256": "055f8a21b8f586feafaa6fe6705cfca05b4f1e833713991a0cac1f0e94ad6fd9",
+    "tags": [
+      "vppSTGeneratorPowerMW",
+      "vppSTGridPowerMW"
+    ],
+    "session_id": "SESSION_20260924_191347",
+    "rows": 282,
+    "behavior_validation": "PARTIAL",
+    "node_id_and_variant_type": "NOT_CAPTURED"
+  }
 }

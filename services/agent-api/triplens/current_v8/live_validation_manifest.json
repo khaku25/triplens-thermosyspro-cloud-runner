@@ -1,10 +1,24 @@
 {
   "baseline": "Current V8 Live OPC UA Verified",
   "census_provenance": {
-    "census_sha256": "1f9dafddc23eb356e2854708d440be3385607df3548b967baa780553b33c8254",
-    "expected_vpp_count": 603,
+    "baseline_census_sha256": "1f9dafddc23eb356e2854708d440be3385607df3548b967baa780553b33c8254",
+    "census_sha256": "66f03e782e4c935acb533091544cb5ce71a849b437cd83f3bcdf05dd804e10c5",
+    "expected_vpp_count": 605,
     "schema_version": 1,
-    "scope": "Recorded OPC UA browse/read census. This asset update does not rerun or revalidate plant behaviour.",
+    "scope": "Unchanged Run 54 browse/read baseline plus two separately identified later RAW-session signals. No new plant/protection behavioral validation.",
+    "supplemental_evidence": {
+      "behavior_validation": "PARTIAL",
+      "file": "data/current_v8/st_power_evidence_20260924.json",
+      "node_id_and_variant_type": "NOT_CAPTURED",
+      "rows": 282,
+      "session_id": "SESSION_20260924_191347",
+      "sha256": "df846fcaf2413e9e528a90b178721c0474b568fb81aedf8d0e42ad3821b0697a",
+      "source_sha256": "055f8a21b8f586feafaa6fe6705cfca05b4f1e833713991a0cac1f0e94ad6fd9",
+      "tags": [
+        "vppSTGeneratorPowerMW",
+        "vppSTGridPowerMW"
+      ]
+    },
     "validation_run": {
       "id": 35309650110,
       "number": 54,
@@ -13,28 +27,28 @@
   },
   "counts": {
     "derived_alarm_outputs": 28,
-    "input_groups": 35,
-    "live_tags": 603,
-    "logic_inputs_live": 44,
-    "logic_rules": 53,
-    "vpp_outputs_live": 28
+    "input_groups": 36,
+    "live_tags": 605,
+    "logic_inputs_live": 46,
+    "logic_rules": 54,
+    "vpp_outputs_live": 29
   },
   "files": {
     "live_logic_runtime.csv": {
-      "bytes": 20338,
-      "sha256": "d79505193ef88a0f54f8d7370ed157313df079ebae9ef090ce98f148f6841ecb"
+      "bytes": 20895,
+      "sha256": "6373acdbf4ef8d0bc5431806861df7e728d5c64bb108e3954f3b1cd227ccd152"
     },
     "live_tag_allowlist.csv": {
-      "bytes": 15109,
-      "sha256": "ba5610fdc32ff22c9171bcaf016066bccea6682a5ec5dfcfbd34c0fd3c3a6f3e"
+      "bytes": 15150,
+      "sha256": "45db1123a8718fc52f9439d04465aff68a9c916f3fd1f291fb61ff606d10f9ec"
     },
     "live_tag_logic_links.csv": {
-      "bytes": 7247,
-      "sha256": "d6521353d58355a4267b76dfa9db4caef3359708673a22f2fb3bd5a1b05c4963"
+      "bytes": 7389,
+      "sha256": "bf7fd34bc01d7371aefa16496e243e1007961c295c8c116c3c6df0265f86778a"
     },
     "live_tag_master.csv": {
-      "bytes": 349154,
-      "sha256": "f2277cc3d10cc317cffaf0ecf5cf74cd0ef1e46f4fd3db3a9e5fe1a189ad25b8"
+      "bytes": 349879,
+      "sha256": "954cf72e4341f359893779be5ac7fbfea8eef22f4d28df8d9522d066ee79e139"
     }
   },
   "policy": {
@@ -44,7 +58,7 @@
     "verification_scope": "Census resolves source identities; unchanged semantic status is not behavioural revalidation"
   },
   "schema_version": 2,
-  "semantic_sha256": "3f5398d2a9efc176d365a313ba7a3c7c9156135a9fc9ae6d8eef7d885ee87c12",
+  "semantic_sha256": "0070fc898a1294fec6831621b49d27b312b0c7a218cc36e5d18c1f7407cf517c",
   "validation_run": {
     "id": 35309650110,
     "number": 54,

@@ -1471,6 +1471,36 @@
       "validation_status": "PASS"
     },
     {
+      "block_id": "condition:RESP-ST-GRID-POWER",
+      "block_type": "CONDITION",
+      "condition_or_label": "if 52ST not closed then ST grid power = 0; otherwise ST grid power = ST generator power",
+      "delay": "",
+      "output_class": "",
+      "reset_hysteresis": "",
+      "rule_id": "RESP-ST-GRID-POWER",
+      "validation_status": ""
+    },
+    {
+      "block_id": "operation:RESP-ST-GRID-POWER",
+      "block_type": "OPERATION",
+      "condition_or_label": "ST grid power response after 52ST opens\nPHYSICAL_RESPONSE",
+      "delay": "",
+      "output_class": "",
+      "reset_hysteresis": "",
+      "rule_id": "RESP-ST-GRID-POWER",
+      "validation_status": ""
+    },
+    {
+      "block_id": "additional:RESP-ST-GRID-POWER",
+      "block_type": "ADDITIONAL_INFO",
+      "condition_or_label": "ADDITIONAL INFO",
+      "delay": "immediate model relation",
+      "output_class": "RAW_NODE",
+      "reset_hysteresis": "follows 52ST closed feedback",
+      "rule_id": "RESP-ST-GRID-POWER",
+      "validation_status": "PARTIAL"
+    },
+    {
       "block_id": "condition:SEQ-52GT-OPEN",
       "block_type": "CONDITION",
       "condition_or_label": "GT latch active -> breaker opens",
@@ -2326,6 +2356,21 @@
       "rule_id": "RESP-GT-SPEED",
       "source_basis": "Exact model equation",
       "validation_status": "PASS"
+    },
+    {
+      "condition": "if 52ST not closed then ST grid power = 0; otherwise ST grid power = ST generator power",
+      "delay": "immediate model relation",
+      "group": "ST Protection",
+      "input_group_id": "IG-036",
+      "input_nodes": "vpp52STClosed | vppSTGeneratorPowerMW",
+      "logic_name": "ST grid power response after 52ST opens",
+      "logic_type": "PHYSICAL_RESPONSE",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppSTGridPowerMW",
+      "reset_hysteresis": "follows 52ST closed feedback",
+      "rule_id": "RESP-ST-GRID-POWER",
+      "source_basis": "Local PlantControlV2 exact equation and supplemental RAW observations; data/current_v8/st_power_evidence_20260924.json",
+      "validation_status": "PARTIAL"
     },
     {
       "condition": "GT latch active -> breaker opens",
@@ -3400,6 +3445,30 @@
     {
       "edge_role": "INPUT",
       "from_id": "PORT:IN-01",
+      "rule_id": "RESP-ST-GRID-POWER",
+      "to_id": "condition:RESP-ST-GRID-POWER"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-02",
+      "rule_id": "RESP-ST-GRID-POWER",
+      "to_id": "condition:RESP-ST-GRID-POWER"
+    },
+    {
+      "edge_role": "CONDITION",
+      "from_id": "condition:RESP-ST-GRID-POWER",
+      "rule_id": "RESP-ST-GRID-POWER",
+      "to_id": "operation:RESP-ST-GRID-POWER"
+    },
+    {
+      "edge_role": "OUTPUT",
+      "from_id": "operation:RESP-ST-GRID-POWER",
+      "rule_id": "RESP-ST-GRID-POWER",
+      "to_id": "PORT:OUT-01"
+    },
+    {
+      "edge_role": "INPUT",
+      "from_id": "PORT:IN-01",
       "rule_id": "SEQ-52GT-OPEN",
       "to_id": "condition:SEQ-52GT-OPEN"
     },
@@ -3762,6 +3831,14 @@
       "outputs": "vppLPFWPTripLatchNative",
       "page_id": "IG-035",
       "rule_ids": "CMD-FWP-LP-RESET"
+    },
+    {
+      "branch_count": 1,
+      "input_group_id": "IG-036",
+      "input_signature": "vpp52STClosed | vppSTGeneratorPowerMW",
+      "outputs": "vppSTGridPowerMW",
+      "page_id": "IG-036",
+      "rule_ids": "RESP-ST-GRID-POWER"
     }
   ],
   "links": [
@@ -4352,6 +4429,18 @@
       "rule_id": "RESP-GT-SPEED",
       "source_existence": "LIVE_CENSUS_RESOLVED",
       "source_outputs": "vppGTGSpeedRPM"
+    },
+    {
+      "behaviour_status": "PARTIAL",
+      "derived_outputs": "",
+      "input_group_id": "IG-036",
+      "input_nodes": "vpp52STClosed | vppSTGeneratorPowerMW",
+      "link_status": "EXACT_REGISTERED_IDENTITIES",
+      "missing_inputs": "",
+      "missing_outputs": "",
+      "rule_id": "RESP-ST-GRID-POWER",
+      "source_existence": "LIVE_CENSUS_RESOLVED",
+      "source_outputs": "vppSTGridPowerMW"
     },
     {
       "behaviour_status": "PASS",
@@ -5235,6 +5324,27 @@
       "port_id": "OUT-01",
       "relation": "OUTPUT",
       "rule_id": "RESP-GT-SPEED"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vpp52STClosed",
+      "port_id": "IN-01",
+      "relation": "INPUT",
+      "rule_id": "RESP-ST-GRID-POWER"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppSTGeneratorPowerMW",
+      "port_id": "IN-02",
+      "relation": "INPUT",
+      "rule_id": "RESP-ST-GRID-POWER"
+    },
+    {
+      "kind": "RAW_NODE",
+      "node_or_tag": "vppSTGridPowerMW",
+      "port_id": "OUT-01",
+      "relation": "OUTPUT",
+      "rule_id": "RESP-ST-GRID-POWER"
     },
     {
       "kind": "RAW_NODE",
