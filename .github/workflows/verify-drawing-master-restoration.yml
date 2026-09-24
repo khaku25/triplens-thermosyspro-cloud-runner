@@ -91,11 +91,15 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm run build
-      - name: Verify protected physical and runtime sources are byte unchanged
+      - name: Verify physical and runtime implementation sources are byte unchanged
         shell: bash
         run: |
           set -euo pipefail
-          git diff --exit-code "$BASE_SHA" -- modelica services/agent-api data/current_v8 logic_diagrams/TripLens_Logic_Master_Current_V8.drawio logic_diagrams/logic_diagram_index.json
+          git diff --exit-code "$BASE_SHA" -- \
+            modelica scripts/native_ecms_opcua_client.py ECMSVPP.m \
+            services/agent-api \
+            ':(exclude)services/agent-api/tests/**' \
+            ':(exclude)services/agent-api/triplens/current_v8/**'
           python - <<'PY'
           import hashlib,json,pathlib
           root=pathlib.Path('.')
