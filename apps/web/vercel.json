@@ -4,7 +4,8 @@
     "deploymentEnabled": {
       "**": false,
       "main": true,
-      "codex/restore-drawing-master-20260922": true
+      "codex/restore-drawing-master-20260922": true,
+      "codex/plant-process-drawing-master-20260923": true
     }
   }
 }
