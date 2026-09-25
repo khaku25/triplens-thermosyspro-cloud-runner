@@ -1,11 +1,16 @@
 {
-  "active_logic_core": 54,
+  "active_logic_core": 53,
   "alarm": 28,
   "commands": 6,
-  "live_rules": 54,
-  "live_tags": 604,
-  "physical_response": 3,
+  "live_rules": 53,
+  "live_tags": 603,
+  "model_source_raw_observed_tags": 2,
+  "physical_response": 2,
   "protection": 17,
-  "semantic_sha256": "6523330fb73d65fa76387622994ddf05946d9c2c25edd78b5a0148eb242e95df",
-  "source": "Generated Current V8 master snapshot"
+  "searchable_physical_response": 3,
+  "searchable_rules": 54,
+  "searchable_tags": 605,
+  "semantic_sha256": "f367ff77b7416781f2904e3ab4976d98203fb16ad5e8b2955f7ce2c0f6448f21",
+  "source": "Generated Current V8 master snapshot",
+  "source_mapped_rules": 1
 }
