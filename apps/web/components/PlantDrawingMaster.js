@@ -6,6 +6,7 @@ import ProcessViewCanvas from './ProcessViewCanvas';
 import {EQUIPMENT_DRAWING_MASTER,resolveEquipmentDrawing} from '../lib/equipmentDrawingMaster.mjs';
 import {PLANT_PROCESS} from '../lib/plantHotspots.mjs';
 import {resolvePlantFocus} from '../lib/plantDrawingFocus.mjs';
+import {ST_POWER_DISPLAY} from '../lib/stPowerDisplay.mjs';
 
 const detailOnlyValves=EQUIPMENT_DRAWING_MASTER.filter(row=>
   row.equipment_type==='VALVE'&&row.detail_asset&&!PLANT_PROCESS.hotspots[row.plant_location_id]);
@@ -127,7 +128,9 @@ export default function PlantDrawingMaster(){
 
         {screen==='ecms-overview'?<div style={canvas}><InlineSvgNavigator src="/drawing/ecms-overview-matlab.svg" pageId="ECMS_VPP" title="ECMS Overview" highlight={overviewHighlight} eventLabel={eventLabel} onView={overviewNavigate} onEquipment={equipmentClicked}/></div>:null}
         {screen==='ecms-detail'?<><div style={selectionBar}><b>Direct detail</b><span>{detailHighlight||'BUS를 선택하세요'}</span></div><div style={canvas}><InlineSvgNavigator src="/drawing/ecms-6p9kv-matlab.svg" pageId="ECMS_6P9KV" title="6.9 kV SWGR Detail" highlight={detailHighlight} eventLabel={eventLabel} onEquipment={equipmentClicked}/></div></>:null}
-        {screen==='plant'?<><ProcessViewCanvas locationId={selectedFocus?.locationId} relatedEquipment={relatedEquipment} eventLabel={eventLabel} onSelect={processClicked}/>
+        {screen==='plant'?<><section aria-label={ST_POWER_DISPLAY.label} style={stPowerPanel}>
+            <div style={stPowerIdentity}><div><span style={stPowerEyebrow}>{ST_POWER_DISPLAY.label}</span><b>{ST_POWER_DISPLAY.tag}</b><span style={stPowerUnit}>{ST_POWER_DISPLAY.unit}</span></div><a href={ST_POWER_DISPLAY.href} style={stPowerLink}>로직 연결 보기 →</a></div>
+          </section><ProcessViewCanvas locationId={selectedFocus?.locationId} relatedEquipment={relatedEquipment} eventLabel={eventLabel} onSelect={processClicked}/>
           <section aria-label="추가 밸브 상세도면" style={{padding:'12px 14px',borderTop:'1px solid #d7e1e7'}}>
             <h3 style={{fontSize:15,margin:'0 0 4px'}}>추가 밸브 상세도면</h3>
             <p style={{...muted,margin:'0 0 10px'}}>v36 전체 도면에 개별 심볼이 없는 등록 밸브입니다.</p>
@@ -153,6 +156,11 @@ function Empty({text}){return <div style={{padding:30,color:'#617685'}}>{text}</
 function Info({label,value}){return <div style={{border:'1px solid #d7e1e7',borderRadius:8,padding:'9px 10px'}}><span style={{display:'block',fontSize:11,color:'#718490'}}>{label}</span><b style={{fontSize:12,overflowWrap:'anywhere'}}>{value||'—'}</b></div>}
 const panel={background:'#fff',border:'1px solid #c9d6df',borderRadius:12,minWidth:0,padding:12};
 const canvas={padding:12,background:'#f5f8fa',overflow:'auto'};
+const stPowerPanel={margin:'12px 12px 0',padding:'10px 12px',border:'1px solid #8ebac6',borderRadius:10,background:'#eff9fb'};
+const stPowerIdentity={display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'};
+const stPowerEyebrow={display:'block',fontSize:11,fontWeight:800,letterSpacing:'.08em',color:'#1b6878'};
+const stPowerUnit={marginLeft:8,fontSize:12,color:'#55717d'};
+const stPowerLink={color:'#126176',fontWeight:700,fontSize:12,textDecoration:'underline',textUnderlineOffset:3};
 const h2={fontSize:16,margin:'0 0 8px'}; const muted={fontSize:12,color:'#617685'}; const tiny={fontSize:11,color:'#7a8c98'}; const hr={border:0,borderTop:'1px solid #dde5eb',margin:'14px 0'};
 const searchStyle={boxSizing:'border-box',width:'100%',margin:'9px 0',padding:'10px 11px',border:'1px solid #b9cad5',borderRadius:8,fontSize:14};
 const topLink={color:'#fff',border:'1px solid rgba(255,255,255,.45)',borderRadius:7,padding:'7px 10px',textDecoration:'none',fontSize:13};
