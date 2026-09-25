@@ -22,9 +22,18 @@ def load_authoring(master_dir:Path,census_path:Path,layout_path:Path|None=None):
     master_dir=Path(master_dir)
     tags=read_table(master_dir/TAG_FILE,'01_Live_OPCUA_Tag_Master','raw_tag_id')
     rules=read_table(master_dir/LOGIC_FILE,'01_Logic_Master_Current','rule_id')
+    def optional_table(path,sheet,key):
+        try:
+            return read_table(path,sheet,key)
+        except ValueError as exc:
+            if str(exc).startswith('Missing worksheet '):
+                return []
+            raise
+    source_tags=optional_table(master_dir/TAG_FILE,'11_Model_Source_Observed','raw_tag_id')
+    source_rules=optional_table(master_dir/LOGIC_FILE,'06_Model_Source_Observed','rule_id')
     census=read_table(Path(census_path),key='browse_name')
     xml=Path(layout_path).read_text(encoding='utf-8') if layout_path and Path(layout_path).exists() else None
-    return make_repository(tags,rules,census,layout_xml=xml)
+    return make_repository(tags,rules,census,source_tags=source_tags,source_rules=source_rules,layout_xml=xml)
 
 def csv_bytes(rows,fields):
     stream=io.StringIO(newline='');writer=csv.DictWriter(stream,fieldnames=fields,extrasaction='ignore')
@@ -36,12 +45,18 @@ def json_bytes(value):
 
 def runtime_assets(repository):
     model=repository['model']; index=repository['index']; counts=index['counts']; rows=[]
+    views=repository.get('runtime_derived',repository['derived'])
+    live_inputs={t for r in model['rules'] for t in r['inputs'] if t in model['tags']}
+    live_outputs={t for r in model['rules'] for t in r['outputs'] if t in model['tags']}
+    live_counts={'source_tags':len(model['tags']),'rules':len(model['rules']),
+        'input_groups':len(model['groups']),'native_inputs':len(live_inputs),
+        'native_outputs':len(live_outputs),'derived_outputs':len(model['derived'])}
     for r in model['rules']:
         outputs=r['outputs']; inputs=r['inputs']; first=outputs[0]
         rows.append(dict(logic_id=r['rule_id'],logic_type=r['logic_type'],group=r['group'],logic_name=r['logic_name'],
             tag_id=first,event_tag=first,source_node=inputs[0] if len(inputs)==1 else '',condition=r['condition'],
             delay=r['delay'],reset_hysteresis=r['reset_hysteresis'],status='ACTIVE',
-            verification_status=r['validation_status'] or 'UNVERIFIED',source_existence_status='LIVE_CENSUS_RESOLVED',
+            verification_status=r['validation_status'] or 'UNVERIFIED',source_existence_status=('RAW_SESSION_AND_CENSUS_RESOLVED' if any(model['tags'].get(t,{}).get('live_existence')=='RAW_SESSION_OBSERVED' for t in inputs+outputs) else 'LIVE_CENSUS_RESOLVED'),
             linked_tag_ids=';'.join(dict.fromkeys(inputs+outputs)),input_nodes='|'.join(inputs),
             output_nodes_or_tags='|'.join(outputs),output_class=r['output_class'],input_group_id=r['input_group_id'],
             source_basis=r['source_basis']))
@@ -50,12 +65,12 @@ def runtime_assets(repository):
         'live_logic_runtime.csv':csv_bytes(rows,list(rows[0])),
     }
     assets['live_tag_master.csv']=csv_bytes([model['tags'][tag] for tag in sorted(model['tags'])],list(next(iter(model['tags'].values()))))
-    assets['live_tag_logic_links.csv']=csv_bytes(repository['derived']['links'],list(repository['derived']['links'][0]))
+    assets['live_tag_logic_links.csv']=csv_bytes(views['links'],list(views['links'][0]))
     manifest=dict(baseline='Current V8 Live OPC UA Verified',schema_version=2,
         semantic_sha256=model['semantic_sha256'],validation_run=repository.get('provenance',{}).get('validation_run',{}),
         census_provenance=repository.get('provenance',{}),
-        counts=dict(live_tags=counts['source_tags'],logic_rules=counts['rules'],logic_inputs_live=counts['native_inputs'],
-            vpp_outputs_live=counts['native_outputs'],derived_alarm_outputs=counts['derived_outputs'],input_groups=counts['input_groups']),
+        counts=dict(live_tags=live_counts['source_tags'],logic_rules=live_counts['rules'],logic_inputs_live=live_counts['native_inputs'],
+            vpp_outputs_live=live_counts['native_outputs'],derived_alarm_outputs=live_counts['derived_outputs'],input_groups=live_counts['input_groups']),
         policy=dict(source_identity='exact live OPC UA BrowseName',logic_context='exact registered rule only',
             verification_scope='Census resolves source identities; unchanged semantic status is not behavioural revalidation',
             scenario_metadata_to_agent='forbidden'),
@@ -80,8 +95,19 @@ def project_files(repository):
         for name,data in runtime.items(): files[prefix+'/'+name]=data
     files['data/current_v8/logic_definition.json']=json_bytes(repository['derived'])
     rules=repository['model']['rules']
+    searchable=repository['search_model']['rules']
     protection={'PROTECTION_CAUSE','TRIP_REQUEST','LATCH','BREAKER_SEQUENCE'}
-    files['apps/web/lib/current-logic-summary.json']=json_bytes(dict(live_rules=len(rules),alarm=sum(r['logic_type']=='ALARM' for r in rules),protection=sum(r['logic_type'] in protection for r in rules),commands=sum(r['logic_type']=='COMMAND_INTERFACE' for r in rules),physical_response=sum(r['logic_type']=='PHYSICAL_RESPONSE' for r in rules),active_logic_core=len(rules),live_tags=len(repository['model']['tags']),source='Generated Current V8 master snapshot',semantic_sha256=repository['model']['semantic_sha256']))
+    files['apps/web/lib/current-logic-summary.json']=json_bytes(dict(
+        live_rules=len(rules),searchable_rules=len(searchable),source_mapped_rules=sum(bool(r.get('source_mapped')) for r in searchable),
+        alarm=sum(r['logic_type']=='ALARM' for r in rules),
+        protection=sum(r['logic_type'] in protection for r in rules),
+        commands=sum(r['logic_type']=='COMMAND_INTERFACE' for r in rules),
+        physical_response=sum(r['logic_type']=='PHYSICAL_RESPONSE' for r in rules),
+        searchable_physical_response=sum(r['logic_type']=='PHYSICAL_RESPONSE' for r in searchable),
+        active_logic_core=len(rules),live_tags=len(repository['model']['tags']),
+        searchable_tags=len(repository['search_model']['tags']),
+        model_source_raw_observed_tags=sum(bool(r.get('model_source_only')) for r in repository['search_model']['tags'].values()),
+        source='Generated Current V8 master snapshot',semantic_sha256=repository['index']['semantic_sha256']))
     return files
 
 def publish_project(repository,root:Path):
@@ -108,7 +134,7 @@ def publish_project(repository,root:Path):
                 if existed: (backup/rel).replace(root/rel)
                 else: (root/rel).unlink(missing_ok=True)
             raise
-    return {'semantic_sha256':repository['model']['semantic_sha256'],'counts':repository['index']['counts'],
+    return {'semantic_sha256':repository['index']['semantic_sha256'],'counts':repository['index']['counts'],
             'changed_files':[rel for rel,_ in changed]}
 
 def check_project(repository,root:Path):
