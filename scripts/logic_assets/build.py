@@ -17,15 +17,18 @@ def derive_views(model,index):
     for r in model['rules']:
         rid=r['rule_id']; native_outputs=[n for n in r['outputs'] if n in model['tags']]
         derived=[n for n in r['outputs'] if n not in model['tags']]
+        mapped=bool(r.get('source_mapped'))
         links.append(dict(rule_id=rid,input_group_id=r['input_group_id'],input_nodes=' | '.join(r['inputs']),
             source_outputs=' | '.join(native_outputs),derived_outputs=' | '.join(derived),
-            missing_inputs='',missing_outputs='',link_status='EXACT_REGISTERED_IDENTITIES',
-            source_existence='LIVE_CENSUS_RESOLVED',behaviour_status=r['validation_status']))
+            missing_inputs='',missing_outputs='',link_status='SOURCE_MAPPED_ONLY' if mapped else 'EXACT_REGISTERED_IDENTITIES',
+            source_existence=r.get('source_existence_status','LIVE_CENSUS_RESOLVED'),
+            behaviour_status=r['validation_status']))
         for relation,nodes in [('INPUT',r['inputs']),('OUTPUT',r['outputs'])]:
             for n,tag in enumerate(nodes,1):
                 pid=('IN' if relation=='INPUT' else 'OUT')+f'-{n:02}'
                 ports.append(dict(rule_id=rid,port_id=pid,relation=relation,node_or_tag=tag,
-                    kind='RAW_NODE' if tag in model['tags'] else 'DERIVED_TAG'))
+                    kind=('MODEL_SOURCE_RAW_OBSERVED' if model['tags'].get(tag,{}).get('model_source_only')
+                          else 'RAW_NODE' if tag in model['tags'] else 'DERIVED_TAG')))
         for kind,label in [('condition',r['condition']),('operation',r['logic_name']+'\n'+r['logic_type']),
                            ('additional','ADDITIONAL INFO')]:
             additional=kind=='additional'
@@ -38,8 +41,17 @@ def derive_views(model,index):
         edges.append(dict(rule_id=rid,from_id='condition:'+rid,to_id='operation:'+rid,edge_role='CONDITION'))
         for n,_ in enumerate(r['outputs'],1):
             edges.append(dict(rule_id=rid,from_id='operation:'+rid,to_id=f'PORT:OUT-{n:02}',edge_role='OUTPUT'))
-        definitions.append({k:r[k] for k in ('rule_id','group','logic_name','logic_type','input_nodes','condition',
-            'delay','reset_hysteresis','output_nodes_or_tags','output_class','input_group_id','validation_status','source_basis')})
+        definitions.append({**{k:r[k] for k in ('rule_id','group','logic_name','logic_type','input_nodes','condition',
+            'delay','reset_hysteresis','output_nodes_or_tags','output_class','input_group_id','validation_status','source_basis')},
+            'source_kind':r.get('source_kind','LIVE_OPCUA_CENSUS'),
+            'source_mapped':'Y' if mapped else 'N',
+            'runtime_inclusion':r.get('runtime_inclusion','LIVE_RUNTIME'),
+            'model_source_status':r.get('model_source_status',''),
+            'raw_session_status':r.get('raw_session_status',''),
+            'raw_rows':r.get('raw_rows',''),
+            'raw_closed_samples':r.get('raw_closed_samples',''),
+            'raw_open_samples':r.get('raw_open_samples',''),
+            'open_behavior_test_status':r.get('open_behavior_test_status','')})
     for gid,rs in model['groups'].items():
         groups.append(dict(input_group_id=gid,input_signature=rs[0]['input_signature'],branch_count=len(rs),
                            rule_ids='; '.join(r['rule_id'] for r in rs),outputs='; '.join(dict.fromkeys(t for r in rs for t in r['outputs'])),

@@ -121,7 +121,7 @@ def validate_model(tags: list[dict], rules: list[dict], census: list[dict]) -> d
         groups[group_id].append(r)
     normal_tags = {tag:{k:text(row.get(k)) for k in TAG_FIELDS} for tag,row in tag_by.items()}
     for tag,row in normal_tags.items():
-        row.update(is_native=True, live_existence='CENSUS_OBSERVED',
+        row.update(is_native=True, live_existence=text(live[tag].get('evidence_kind')) or 'CENSUS_OBSERVED',
                    live_variant_type=text(live[tag].get('variant_type')),
                    live_node_id=text(live[tag].get('node_id')))
     normalized.sort(key=lambda r:r['rule_id'])
