@@ -17,11 +17,14 @@ import {
   REPORT_COLUMNS,
   displayError,
   clearSession,
+  loadSession,
+  saveSession,
 } from '../lib/analysisClient.mjs';
+import {buildWorkspaceSession,canRestoreWorkspaceSession} from '../lib/workspaceSession.mjs';
 import {buildEvidenceLogicTargets} from '../lib/integrationTestbench.mjs';
 import {mergeEvents,mergeEvidenceCatalog} from '../lib/reportIntegrity.mjs';
 import {EMPTY_RECOVERY,normalizeRecovery,recoveryStatusLabel} from '../lib/recoveryModel.mjs';
-import {applyRecoveryRows,buildWorkspaceExportReport} from '../lib/reportAdapter.mjs';
+import {applyRecoveryRows,buildWorkspaceExportReport,restoreWorkspaceReportRows,WORKSPACE_REPORT_VERSION} from '../lib/reportAdapter.mjs';
 import {
   analysisDisplayData,
   compactTimeline,
@@ -180,7 +183,9 @@ export default function TripLensWorkspace({mode='blind'}){
   const [reportRows,setReportRows]=useState([]);
   const [evidenceQuery,setEvidenceQuery]=useState('');
   const [recovery,setRecovery]=useState(()=>normalizeRecovery(EMPTY_RECOVERY));
+  const [restored,setRestored]=useState(false);
   const version=useRef(0);
+  const clearRequested=useRef(false);
 
   const analysis=useMemo(()=>normalizeDisplayAnalysis(result?.analysis||{}),[result]);
   const currentData=useMemo(()=>analysisDisplayData({result}),[result]);
@@ -199,11 +204,58 @@ export default function TripLensWorkspace({mode='blind'}){
   const logic=contract?.logic_summary;
 
   useEffect(()=>{
-    clearSession().catch(()=>{});
     let active=true;
     request('/contract').then(value=>{if(active)setContract(value);}).catch(()=>{});
     return()=>{active=false;};
   },[]);
+
+  useEffect(()=>{
+    let active=true;
+    (async()=>{
+      try{
+        const saved=await loadSession();
+        if(!active||!canRestoreWorkspaceSession(saved,mode))return;
+        const savedEvents=saved.eventData||(saved.eventFile?parseCSV(await saved.eventFile.text()):null);
+        const savedRaw=saved.rawData||(saved.rawFile?parseCSV(await saved.rawFile.text()):null);
+        if(!active)return;
+        setEventFile(saved.eventFile||null);
+        setRawFile(saved.rawFile||null);
+        setEventData(savedEvents);
+        setRawData(savedRaw);
+        setResult(saved.result||null);
+        setReportRows(restoreWorkspaceReportRows({
+          result:saved.result||{},
+          uploadedEvents:savedEvents?.records||[],
+          reportRows:saved.reportRows||[],
+          recovery:saved.recovery||EMPTY_RECOVERY,
+          reportVersion:saved.reportVersion,
+        }));
+        setRecovery(normalizeRecovery(saved.recovery||EMPTY_RECOVERY));
+        setActiveTab(saved.activeTab||'timeline');
+        if(saved.result||saved.eventFile||saved.rawFile)setStatusText('브라우저에 보관된 분석을 복원했습니다.');
+      }catch{
+        if(active)setStatusText('이 브라우저에서 이전 분석을 복원하지 못했습니다. 파일을 다시 선택해 주세요.');
+      }finally{
+        if(active)setRestored(true);
+      }
+    })();
+    return()=>{active=false;};
+  },[mode]);
+
+  useEffect(()=>{
+    if(!restored)return;
+    if(clearRequested.current){
+      clearRequested.current=false;
+      return;
+    }
+    if(!eventFile&&!rawFile&&!result&&!reportRows.length)return;
+    const timer=setTimeout(()=>saveSession(buildWorkspaceSession({
+      mode,eventFile,rawFile,eventData,rawData,result,reportRows,
+      reportVersion:WORKSPACE_REPORT_VERSION,recovery,activeTab,
+    })).catch(()=>setStatusText('브라우저 저장 공간에 분석을 보관하지 못했습니다.')),
+    250);
+    return()=>clearTimeout(timer);
+  },[restored,mode,eventFile,rawFile,eventData,rawData,result,reportRows,recovery,activeTab]);
 
   function resetAnalysisState(){
     setResult(null);
@@ -272,6 +324,7 @@ export default function TripLensWorkspace({mode='blind'}){
 
   function clear(){
     version.current+=1;
+    clearRequested.current=true;
     setEventFile(null);
     setRawFile(null);
     setEventData(null);
