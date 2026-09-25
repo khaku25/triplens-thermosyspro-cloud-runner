@@ -180,6 +180,7 @@ export default function TripLensWorkspace({mode='blind'}){
   const [reportRows,setReportRows]=useState([]);
   const [evidenceQuery,setEvidenceQuery]=useState('');
   const [recovery,setRecovery]=useState(()=>normalizeRecovery(EMPTY_RECOVERY));
+  const [costHistory,setCostHistory]=useState([]);
   const version=useRef(0);
 
   const analysis=useMemo(()=>normalizeDisplayAnalysis(result?.analysis||{}),[result]);
@@ -197,6 +198,24 @@ export default function TripLensWorkspace({mode='blind'}){
   const ready=Boolean(eventFile&&rawFile&&eventData&&rawData);
   const status=inputStatus({ready,busy,complete:Boolean(result),eventRows:eventData?.records.length||0,rawTagCount:rawTagCount(rawData)});
   const logic=contract?.logic_summary;
+  const usageSummary=result?.analysis?.agent_execution?.usage_summary||null;
+
+  useEffect(()=>{
+    try{
+      const saved=JSON.parse(window.localStorage.getItem('triplens-cost-history-v1')||'[]');
+      if(Array.isArray(saved))setCostHistory(saved.slice(0,50));
+    }catch{}
+  },[]);
+
+  useEffect(()=>{
+    if(!result?.run_id||!usageSummary)return;
+    const entry={run_id:result.run_id,completed_at:new Date().toISOString(),model:result.analysis?.agent_execution?.model||'',...usageSummary};
+    setCostHistory(previous=>{
+      const next=[entry,...previous.filter(item=>item?.run_id!==entry.run_id)].slice(0,50);
+      try{window.localStorage.setItem('triplens-cost-history-v1',JSON.stringify(next));}catch{}
+      return next;
+    });
+  },[result?.run_id,usageSummary]);
 
   useEffect(()=>{
     clearSession().catch(()=>{});
@@ -396,12 +415,13 @@ export default function TripLensWorkspace({mode='blind'}){
             ['event',eventFile,eventData],
             ['raw',rawFile,rawData],
           ].map(([kind,file,data])=><label className={`file-card ${file?'ready':''}`} key={kind}><span>{kind.toUpperCase()}.csv</span><b>{file?.name||'파일 선택'}</b><em>{file?`${(file.size/1024).toFixed(1)} KB · ${data?.records.length??'확인 중'}${kind==='event'?'건':'행'}${kind==='raw'&&data?` · ${rawTagCount(data)}개 태그`:''}`:''}</em><input disabled={busy} type="file" accept=".csv,text/csv" aria-label={`${kind.toUpperCase()} 파일`} onClick={event=>{event.currentTarget.value='';}} onChange={event=>selectFile(kind,event.target.files?.[0])}/></label>)}</div>
-          <div className="analysis-status" aria-live="polite"><b>{status.title}</b>{status.detail?<span>{status.detail}</span>:null}{statusText?<em role="alert">{statusText}</em>:null}</div>
+          <div className="analysis-status" aria-live="polite"><b>{status.title}</b>{status.detail?<span>{status.detail}</span>:null}{usageSummary?<span>Gemini API 추정 비용 {usageSummary.estimated_cost_krw!=null?`약 ₩${Math.round(usageSummary.estimated_cost_krw).toLocaleString()}`:usageSummary.estimated_cost_usd!=null?`$${usageSummary.estimated_cost_usd.toFixed(4)}`:'계산 불가'} · 입력 {(usageSummary.total_input_tokens||0).toLocaleString()} · 출력 {(usageSummary.total_output_tokens||0).toLocaleString()} · thinking {(usageSummary.total_thought_tokens||0).toLocaleString()} token</span>:null}{statusText?<em role="alert">{statusText}</em>:null}</div>
           <div className="intake-actions">
             <button disabled={!ready||busy||Boolean(result)} onClick={analyze}>{busy?'분석 중…':result?'분석 완료':'이 Dual Log 분석하기'}</button>
             <button disabled={!result} className="secondary" onClick={()=>{setReportOpen(!reportOpen);setDetail(null);}}>고장분석 보고서 보기</button>
             <button disabled={busy} className="secondary" onClick={clear}>입력·분석 지우기</button>
           </div>
+          {costHistory.length?<details className="analysis-details"><summary>최근 Gemini API 비용 이력 · {costHistory.length}건</summary><div className="scroll-table"><table><thead><tr><th>Run</th><th>모델</th><th>입력</th><th>출력</th><th>Thinking</th><th>추정 비용</th></tr></thead><tbody>{costHistory.map(item=><tr key={item.run_id}><td>{item.run_id}</td><td>{item.model||'—'}</td><td>{(item.total_input_tokens||0).toLocaleString()}</td><td>{(item.total_output_tokens||0).toLocaleString()}</td><td>{(item.total_thought_tokens||0).toLocaleString()}</td><td>{item.estimated_cost_krw!=null?`약 ₩${Math.round(item.estimated_cost_krw).toLocaleString()}`:item.estimated_cost_usd!=null?`$${Number(item.estimated_cost_usd).toFixed(4)}`:'—'}</td></tr>)}</tbody></table></div></details>:null}
         </section>
 
         {result&&exportBlocked?<p className="warning-box" role="alert">일부 근거 연결을 확인한 후 내보낼 수 있습니다: {missingEvidence.length}건</p>:null}

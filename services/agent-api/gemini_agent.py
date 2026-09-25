@@ -11,6 +11,42 @@ from triplens.citation_support import citation_feedback, REPAIR_INSTRUCTION
 SERVICE_ROOT=Path(__file__).resolve().parent
 DEFAULT_MODEL='gemini-3.8-flash'
 
+# Pricing snapshot for per-run estimation. Environment overrides keep this safe if pricing changes.
+MODEL_PRICING_USD_PER_M={
+    'gemini-3.8-flash': {'input':0.75,'output':3.75,'valid_through':'2026-12-31'},
+}
+USAGE_KEYS=('total_input_tokens','total_output_tokens','total_thought_tokens','total_cached_tokens','total_tool_use_tokens','total_tokens')
+
+def summarize_usage(usages,model_name):
+    totals={key:0 for key in USAGE_KEYS}
+    for item in usages or []:
+        if not isinstance(item,dict):continue
+        for key in USAGE_KEYS:
+            value=item.get(key,0)
+            if isinstance(value,(int,float)) and not isinstance(value,bool):totals[key]+=int(value)
+    pricing=MODEL_PRICING_USD_PER_M.get(model_name)
+    input_override=os.getenv('TRIPLENS_GEMINI_INPUT_USD_PER_M','').strip()
+    output_override=os.getenv('TRIPLENS_GEMINI_OUTPUT_USD_PER_M','').strip()
+    if input_override or output_override:
+        try:
+            pricing={'input':float(input_override or (pricing or {}).get('input')),'output':float(output_override or (pricing or {}).get('output')),'valid_through':'ENV_OVERRIDE'}
+        except (TypeError,ValueError):pricing=None
+    estimated_cost_usd=None
+    estimated_cost_krw=None
+    usd_krw=float(os.getenv('TRIPLENS_COST_USD_KRW','1400'))
+    if pricing:
+        billable_output=totals['total_output_tokens']+totals['total_thought_tokens']
+        estimated_cost_usd=round((totals['total_input_tokens']*pricing['input']+billable_output*pricing['output'])/1_000_000,6)
+        estimated_cost_krw=round(estimated_cost_usd*usd_krw,1)
+    return {**totals,
+        'billable_output_tokens':totals['total_output_tokens']+totals['total_thought_tokens'],
+        'estimated_cost_usd':estimated_cost_usd,
+        'estimated_cost_krw':estimated_cost_krw,
+        'usd_krw_assumption':usd_krw,
+        'pricing_usd_per_m':pricing,
+        'request_count':len(usages or []),
+        'estimate_note':'Estimate from Gemini usage; actual billing can differ for caching, promotions, taxes, FX, or provider adjustments.'}
+
 def declaration(name,description,properties,required=()):return {'type':'function','name':name,'description':description,'parameters':{'type':'object','properties':properties,'required':list(required)}}
 STR={'type':'string'};NUM={'type':'number'};INT={'type':'integer'};TAGS={'type':'array','items':STR}
 TOOL_DECLARATIONS=[
@@ -94,7 +130,7 @@ def run_gemini_analysis(store,*,run_id,data_digest,model=None,client=None):
                 repair['remaining_issue_count']=len(citation_feedback(raw,store))
             output=normalize_analysis(raw,store,trace)
             output['citation_repair']=repair
-            output['agent_execution']={'model':model_name,'tool_calls_used':session.calls_used,'tool_budget':8,'model_turns':model_turns,'duration_ms':round((time.monotonic()-started)*1000),'usage':usage,'causal_decision_author':'GEMINI','reference_verifier':'PYTHON'}
+            output['agent_execution']={'model':model_name,'tool_calls_used':session.calls_used,'tool_budget':8,'model_turns':model_turns,'duration_ms':round((time.monotonic()-started)*1000),'usage':usage,'usage_summary':summarize_usage(usage,model_name),'causal_decision_author':'GEMINI','reference_verifier':'PYTHON'}
             return output
         for call in calls:
             arguments=dict(call.arguments or {});t0=time.monotonic();executed=False
@@ -111,5 +147,5 @@ def run_gemini_analysis(store,*,run_id,data_digest,model=None,client=None):
             trace.append({'name':call.name,'arguments':arguments,'status':status,'executed':executed,'evidence_ids':ids,'evidence_count':len(ids),'raw_evidence_count':sum(eid.startswith('RAW:') for eid in ids),'duration_ms':round((time.monotonic()-t0)*1000)})
             history.append({'type':'function_result','name':call.name,'call_id':call.id,'result':[{'type':'text','text':json.dumps(value,ensure_ascii=False,allow_nan=False)}]})
     output=normalize_analysis({'additional_evidence_required':['모델 왕복 횟수 한도에 도달했습니다.']},store,trace)
-    output['agent_execution']={'model':model_name,'tool_calls_used':session.calls_used,'tool_budget':8,'model_turns':10,'causal_decision_author':'GEMINI'}
+    output['agent_execution']={'model':model_name,'tool_calls_used':session.calls_used,'tool_budget':8,'model_turns':10,'usage':usage,'usage_summary':summarize_usage(usage,model_name),'causal_decision_author':'GEMINI'}
     return output
