@@ -6,7 +6,7 @@
 
 **Architecture:** Keep ST POWER as a presentation link to the existing verified tag/logic asset; do not invent a live numeric value in the static Plant View. Re-enable the existing IndexedDB session mechanism for the analysis workspace, with a versioned payload and explicit clearing only when the user presses the clear button.
 
-**Tech Stack:** Next.js 16, React 19, browser IndexedDB, ECMAScript modules, Node test runner, pytest source-contract tests.
+**Tech Stack:** Next.js 16, React 19, browser IndexedDB, ECMAScript modules, Node test runner, standard-library unittest source-contract tests.
 
 **Spec:** Current user request and clarification: show `ST POWER · vppSTGridPowerMW · MW` in Plant View without a prominent “실시간 아님” label; preserve analysis state after Drawing Master navigation.
 
@@ -77,7 +77,7 @@
 
 - [ ] **Step 5: Write the failing integration contract test**
 
-  Add pytest assertions that `TripLensWorkspace.js` imports `loadSession` and `saveSession`, calls `loadSession` during restoration, persists `buildWorkspaceSession`, and does not clear the session in the initial mount effect.
+  Add standard-library `unittest` assertions that `TripLensWorkspace.js` imports `loadSession` and `saveSession`, calls `loadSession` during restoration, persists `buildWorkspaceSession`, and does not clear the session in the initial mount effect.
 
 - [ ] **Step 6: Run the integration contract test and verify it fails against the current implementation**
 
@@ -124,7 +124,7 @@
 
 - [ ] **Step 1: Write the failing ST display tests**
 
-  Add Node assertions for `ST_POWER_DISPLAY.label === 'ST POWER'`, `tag === 'vppSTGridPowerMW'`, `unit === 'MW'`, and `href === '/logic?tag=vppSTGridPowerMW'`. Add pytest source assertions that PlantDrawingMaster imports the descriptor, renders the label/tag/unit, links to the exact route, and contains neither a fabricated numeric value nor the phrase `실시간 아님` in the visible card.
+  Add Node assertions for `ST_POWER_DISPLAY.label === 'ST POWER'`, `tag === 'vppSTGridPowerMW'`, `unit === 'MW'`, and `href === '/logic?tag=vppSTGridPowerMW'`. Add standard-library `unittest` source assertions that PlantDrawingMaster imports the descriptor, renders the label/tag/unit, links to the exact route, and contains neither a fabricated numeric value nor the phrase `실시간 아님` in the visible card.
 
 - [ ] **Step 2: Run the focused ST tests and verify they fail**
 
@@ -155,9 +155,9 @@
 - No additional production files.
 - Verify: Task 1 and Task 2 files, existing Drawing Master and ST release tests, and the Next build.
 
-- [ ] **Step 1: Run focused Node and pytest tests together**
+- [ ] **Step 1: Run focused Node and unittest tests together**
 
-  Run `node --test apps/web/lib/workspaceSession.test.mjs apps/web/lib/stPowerDisplay.test.mjs && python tests/test_workspace_persistence_contract.py && python tests/test_st_power_plant_display.py && python -m unittest tests.test_st_power_web_release tests.test_drawing_master_restoration`.
+  Run `node --test apps/web/lib/workspaceSession.test.mjs apps/web/lib/stPowerDisplay.test.mjs && python tests/test_workspace_persistence_contract.py && python tests/test_st_power_plant_display.py && PYTHONPATH=tests python -m unittest tests.test_st_power_web_release tests.test_drawing_master_restoration`.
 
 - [ ] **Step 2: Run the web build**
 
