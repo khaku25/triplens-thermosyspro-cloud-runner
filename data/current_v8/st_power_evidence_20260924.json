@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "session_id": "SESSION_20260924_191347",
+  "source_file": "RAW_SESSION_20260924_191347.csv",
+  "source_sha256": "055f8a21b8f586feafaa6fe6705cfca05b4f1e833713991a0cac1f0e94ad6fd9",
+  "rows": 282,
+  "model_time_range_s": [
+    0.36,
+    407.48
+  ],
+  "signals": {
+    "vppSTGeneratorPowerMW": {
+      "samples": 282,
+      "finite_samples": 282,
+      "minimum": 262.1237160052867,
+      "maximum": 263.7730669332735
+    },
+    "vppSTGridPowerMW": {
+      "samples": 282,
+      "finite_samples": 282,
+      "minimum": 262.1237160052867,
+      "maximum": 263.7730669332735
+    }
+  },
+  "observations": [
+    {
+      "session_id": "SESSION_20260924_191347",
+      "model_time_s": 0.36,
+      "vpp52STClosed": 1.0,
+      "vppSTGeneratorPowerMW": 263.1082202105902,
+      "vppSTGridPowerMW": 263.1082202105902,
+      "ST_OUTPUT_MW": 263.1082202105902,
+      "collector_quality": "GOOD"
+    },
+    {
+      "session_id": "SESSION_20260924_191347",
+      "model_time_s": 1.36,
+      "vpp52STClosed": 1.0,
+      "vppSTGeneratorPowerMW": 263.04055172010953,
+      "vppSTGridPowerMW": 263.04055172010953,
+      "ST_OUTPUT_MW": 263.04055172010953,
+      "collector_quality": "GOOD"
+    },
+    {
+      "session_id": "SESSION_20260924_191347",
+      "model_time_s": 407.48,
+      "vpp52STClosed": 1.0,
+      "vppSTGeneratorPowerMW": 263.3159507193399,
+      "vppSTGridPowerMW": 263.3159507193399,
+      "ST_OUTPUT_MW": 263.3159507193399,
+      "collector_quality": "GOOD"
+    }
+  ],
+  "closed_breaker_samples": 282,
+  "open_breaker_samples": 0,
+  "max_abs_generator_grid_difference_mw": 0.0,
+  "max_abs_grid_alias_difference_mw": 0.0,
+  "behavior_validation": "PARTIAL",
+  "limitations": [
+    "No 52ST-open sample; zero-export branch is source-defined but not behaviorally tested.",
+    "OPC UA NodeId, native VariantType and StatusCode were not captured for these two supplemental signals.",
+    "collector_quality is row health, not an OPC UA StatusCode.",
+    "Run 54 remains a separate 603-tag baseline; these two signals were observed in a later local RAW session."
+  ],
+  "model_source": {
+    "package": "TripLens_PlantControlV2_ST_GRID_LAYOUT_20260924_ALARM_DISPLAY_ONLY_BUNDLE(2).zip",
+    "package_sha256": "6c616330ad80e4b5aad377fd5c4875a2aba7fb15d2366bb1a239eb6dd92231c4",
+    "file": "modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo",
+    "file_sha256": "cd454995656af9a8747efe8930d2aa0b92f98e1083acadc858eaa7959ea6d2c5",
+    "line_range": [
+      1136,
+      1137
+    ],
+    "equations": [
+      "vppSTGeneratorPowerMW = Alternateur.Welec/1e6;",
+      "vppSTGridPowerMW = if not vpp52STClosed then 0 else vppSTGeneratorPowerMW;"
+    ],
+    "source_scope": "User-provided local runtime package; not a claim that the preview Git branch contains the updated physical model."
+  }
+}
