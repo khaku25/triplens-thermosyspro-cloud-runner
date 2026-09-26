@@ -172,7 +172,7 @@ jobs:
           python scripts/update_triplens_logic.py --check
           git -c core.whitespace=cr-at-eol diff --check
       - name: Save verified integration on the selected branch only
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
         shell: bash
         run: |
           set -euo pipefail
