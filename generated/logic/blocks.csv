@@ -179,12 +179,16 @@ PROT-LP-DRUM-LL,condition:PROT-LP-DRUM-LL,CONDITION,raw LL state == 1,,,,
 PROT-LP-DRUM-LL,operation:PROT-LP-DRUM-LL,OPERATION,"LP drum LL protection cause
 PROTECTION_CAUSE",,,,
 PROT-LP-DRUM-LL,additional:PROT-LP-DRUM-LL,ADDITIONAL_INFO,ADDITIONAL INFO,runtime-defined,reset/return per runtime,PARTIAL,RAW_NODE
+PROT-ST-BRK-OPEN,condition:PROT-ST-BRK-OPEN,CONDITION,52ST close command < 0.5 -> breaker-open cause latch,,,,
+PROT-ST-BRK-OPEN,operation:PROT-ST-BRK-OPEN,OPERATION,"52ST breaker open protection cause
+PROTECTION_CAUSE",,,,
+PROT-ST-BRK-OPEN,additional:PROT-ST-BRK-OPEN,ADDITIONAL_INFO,ADDITIONAL INFO,event-driven,ST reset with active trip causes clear and 52ST command open,PASS,RAW_NODE
 PROT-ST-LATCH,condition:PROT-ST-LATCH,CONDITION,request=1 AND reset<0.5 -> latch; reset clears,,,,
 PROT-ST-LATCH,operation:PROT-ST-LATCH,OPERATION,"ST trip latch
 LATCH",,,,
 PROT-ST-LATCH,additional:PROT-ST-LATCH,ADDITIONAL_INFO,ADDITIONAL INFO,event-driven,reset input,PASS,RAW_NODE
-PROT-ST-REQUEST,condition:PROT-ST-REQUEST,CONDITION,OR(all 9 causes),,,,
-PROT-ST-REQUEST,operation:PROT-ST-REQUEST,OPERATION,"ST trip request common-trip matrix
+PROT-ST-REQUEST,condition:PROT-ST-REQUEST,CONDITION,OR(registered ST trip inputs),,,,
+PROT-ST-REQUEST,operation:PROT-ST-REQUEST,OPERATION,"ST trip request
 TRIP_REQUEST",,,,
 PROT-ST-REQUEST,additional:PROT-ST-REQUEST,ADDITIONAL_INFO,ADDITIONAL INFO,0 s,ST reset,PASS,RAW_NODE
 RESP-GT-POWER,condition:RESP-GT-POWER,CONDITION,if 52GT not closed then GT generator power = 0,,,,
@@ -195,10 +199,10 @@ RESP-GT-SPEED,condition:RESP-GT-SPEED,CONDITION,"if 52GT opens, speed decays fro
 RESP-GT-SPEED,operation:RESP-GT-SPEED,OPERATION,"GT speed coastdown after breaker open
 PHYSICAL_RESPONSE",,,,
 RESP-GT-SPEED,additional:RESP-GT-SPEED,ADDITIONAL_INFO,ADDITIONAL INFO,dynamic,-,PASS,RAW_NODE
-RESP-ST-GRID-POWER,condition:RESP-ST-GRID-POWER,CONDITION,if 52ST not closed then ST grid power = 0; otherwise ST grid power = ST generator power,,,,
+RESP-ST-GRID-POWER,condition:RESP-ST-GRID-POWER,CONDITION,vppSTGridPowerMW = if not vpp52STClosed then 0 else vppSTGeneratorPowerMW,,,,
 RESP-ST-GRID-POWER,operation:RESP-ST-GRID-POWER,OPERATION,"ST grid power response after 52ST opens
 PHYSICAL_RESPONSE",,,,
-RESP-ST-GRID-POWER,additional:RESP-ST-GRID-POWER,ADDITIONAL_INFO,ADDITIONAL INFO,immediate model relation,follows 52ST closed feedback,PARTIAL,RAW_NODE
+RESP-ST-GRID-POWER,additional:RESP-ST-GRID-POWER,ADDITIONAL_INFO,ADDITIONAL INFO,immediate model relation,follows 52ST closed feedback,PASS,RAW_NODE
 SEQ-52GT-OPEN,condition:SEQ-52GT-OPEN,CONDITION,GT latch active -> breaker opens,,,,
 SEQ-52GT-OPEN,operation:SEQ-52GT-OPEN,OPERATION,"52GT breaker open timing
 BREAKER_SEQUENCE",,,,

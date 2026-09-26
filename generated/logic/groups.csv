@@ -20,7 +20,7 @@ IG-018,vppIPDrumLLRaw,1,PROT-IP-DRUM-LL,vppCauseIPDrumLL,IG-018
 IG-019,vppLPDrumHHRaw,1,PROT-LP-DRUM-HH,vppCauseLPDrumHH,IG-019
 IG-020,vppLPDrumLLRaw,1,PROT-LP-DRUM-LL,vppCauseLPDrumLL,IG-020
 IG-021,vppCauseDirectGTTrip | vppCauseGTBreakerOpenWhileRunning | vppCauseHPDrumLL | vppCauseIPDrumLL | vppCauseLPDrumLL,1,PROT-GT-REQUEST,vppGTTripRequest,IG-021
-IG-022,vppCauseDirectGTTrip | vppCauseDirectSTTrip | vppCauseGTBreakerOpenWhileRunning | vppCauseHPDrumHH | vppCauseHPDrumLL | vppCauseIPDrumHH | vppCauseIPDrumLL | vppCauseLPDrumHH | vppCauseLPDrumLL,1,PROT-ST-REQUEST,vppSTTripRequest,IG-022
+IG-022,vppCauseDirectSTTrip | vppCauseHPDrumHH | vppCauseIPDrumHH | vppCauseLPDrumHH | vppCauseSTBreakerOpenWhileRunning | vppGTTripRequest,1,PROT-ST-REQUEST,vppSTTripRequest,IG-022
 IG-023,vppGTTripRequest | vppGTTripResetNative,1,PROT-GT-LATCH,vppGTTripLatch,IG-023
 IG-024,vppSTTripRequest | vppSTTripResetNative,1,PROT-ST-LATCH,vppSTTripLatchPublished,IG-024
 IG-025,vppGTTripLatch,1,SEQ-52GT-TRIPCMD,vpp52GTTripCmd,IG-025
@@ -34,4 +34,5 @@ IG-032,vppIPFWPTripPushbuttonNative,1,CMD-FWP-IP-TRIP,vppIPFWPTripCommandNative;
 IG-033,vppIPFWPResetPushbuttonNative,1,CMD-FWP-IP-RESET,vppIPFWPTripLatchNative,IG-033
 IG-034,vppLPFWPTripPushbuttonNative,1,CMD-FWP-LP-TRIP,vppLPFWPTripCommandNative; vppLPFWPTripLatchNative; vppVCBA02TripCommandNative,IG-034
 IG-035,vppLPFWPResetPushbuttonNative,1,CMD-FWP-LP-RESET,vppLPFWPTripLatchNative,IG-035
-IG-036,vpp52STClosed,1,RESP-ST-GRID-POWER,vppSTGridPowerMW,IG-036
+IG-036,vpp52STClosed | vppSTGeneratorPowerMW,1,RESP-ST-GRID-POWER,vppSTGridPowerMW,IG-036
+IG-037,vppECMS52STClosedCommandNative,1,PROT-ST-BRK-OPEN,vppCauseSTBreakerOpenWhileRunning,IG-037

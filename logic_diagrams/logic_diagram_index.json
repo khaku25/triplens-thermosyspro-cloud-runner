@@ -2,14 +2,20 @@
   "counts": {
     "derived_outputs": 28,
     "equipment_pages": 9,
-    "input_groups": 36,
-    "native_inputs": 45,
-    "native_outputs": 29,
-    "pages": 100,
-    "rules": 54,
-    "source_tags": 604
+    "input_groups": 37,
+    "live_input_groups": 35,
+    "live_rules": 53,
+    "live_tags": 603,
+    "model_source_raw_observed_tags": 3,
+    "native_inputs": 47,
+    "native_outputs": 30,
+    "pages": 102,
+    "rules": 55,
+    "searchable_tags": 606,
+    "source_mapped_rules": 3,
+    "source_tags": 603
   },
-  "drawio_sha256": "efdf64b76d7eda8650c7343a48ee31a7b458cd80986fde4b3facf5eac1cfa124",
+  "drawio_sha256": "ba4f983f286e61a445f9c6f44fe9b3eef73663bac58c79ef9e6bd6f15410c9a3",
   "entities": {
     "GT.EXHAUST.FLOW.L": {
       "description_ko": "등록된 파생 알람 출력",
@@ -418,8 +424,7 @@
       "raw_tag_id": "vppCauseDirectGTTrip",
       "rule_ids": [
         "PROT-DIRECT-GT",
-        "PROT-GT-REQUEST",
-        "PROT-ST-REQUEST"
+        "PROT-GT-REQUEST"
       ],
       "scenario_lab_role": "",
       "scope_class": "CURRENT_OPERATIONAL_EVIDENCE",
@@ -475,8 +480,7 @@
       "raw_tag_id": "vppCauseGTBreakerOpenWhileRunning",
       "rule_ids": [
         "PROT-GT-BRK-OPEN",
-        "PROT-GT-REQUEST",
-        "PROT-ST-REQUEST"
+        "PROT-GT-REQUEST"
       ],
       "scenario_lab_role": "",
       "scope_class": "CURRENT_OPERATIONAL_EVIDENCE",
@@ -532,8 +536,7 @@
       "raw_tag_id": "vppCauseHPDrumLL",
       "rule_ids": [
         "PROT-GT-REQUEST",
-        "PROT-HP-DRUM-LL",
-        "PROT-ST-REQUEST"
+        "PROT-HP-DRUM-LL"
       ],
       "scenario_lab_role": "",
       "scope_class": "CURRENT_OPERATIONAL_EVIDENCE",
@@ -589,8 +592,7 @@
       "raw_tag_id": "vppCauseIPDrumLL",
       "rule_ids": [
         "PROT-GT-REQUEST",
-        "PROT-IP-DRUM-LL",
-        "PROT-ST-REQUEST"
+        "PROT-IP-DRUM-LL"
       ],
       "scenario_lab_role": "",
       "scope_class": "CURRENT_OPERATIONAL_EVIDENCE",
@@ -646,8 +648,7 @@
       "raw_tag_id": "vppCauseLPDrumLL",
       "rule_ids": [
         "PROT-GT-REQUEST",
-        "PROT-LP-DRUM-LL",
-        "PROT-ST-REQUEST"
+        "PROT-LP-DRUM-LL"
       ],
       "scenario_lab_role": "",
       "scope_class": "CURRENT_OPERATIONAL_EVIDENCE",
@@ -657,6 +658,42 @@
       "system": "PROTECTION",
       "unit": "CAUSE",
       "unit_status": "CONFIRMED_OR_DETERMINISTIC",
+      "writable": "N"
+    },
+    "vppCauseSTBreakerOpenWhileRunning": {
+      "analysis_policy": "RAW_EVIDENCE_ALLOWED",
+      "canonical_tag": "",
+      "data_type": "BOOL",
+      "description_en": "52ST breaker-open protection cause state",
+      "description_ko": "52ST 수동 개방 보호 원인 상태",
+      "equipment_id": "52ST",
+      "interpretation_method": "EXACT_MODELICA_EQUATION_AND_USER_RUNTIME_PROOF",
+      "is_native": true,
+      "live_existence": "MODEL_SOURCE_RAW_OBSERVED",
+      "live_node_id": "",
+      "live_variant_type": "",
+      "local_display_alias": "CAUSE.ST_BREAKER_OPEN",
+      "model_source_only": true,
+      "model_source_status": "MODEL_SOURCE_CONFIRMED",
+      "notes": "2026-09-26 PlantControlV2 104046 runtime proof: manual 52ST OPEN asserted this cause, ST trip request/latch, bypass opening, admission closure, and ST output 0 MW.",
+      "open_behavior_test_status": "RUNTIME_VERIFIED",
+      "raw_tag_id": "vppCauseSTBreakerOpenWhileRunning",
+      "rule_ids": [
+        "PROT-ST-BRK-OPEN",
+        "PROT-ST-REQUEST"
+      ],
+      "runtime_inclusion": "SEARCH_ONLY",
+      "scenario_lab_role": "",
+      "scope_class": "MODEL_SOURCE_RUNTIME_VERIFIED",
+      "signal_role": "PROTECTION_CAUSE",
+      "source_commit": "",
+      "source_identity_status": "MODEL_SOURCE_AND_RUNTIME_OBSERVED",
+      "source_kind": "MODEL_SOURCE_RAW_OBSERVED",
+      "source_url": "modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo",
+      "system": "PROTECTION",
+      "unit": "CAUSE",
+      "unit_status": "CONFIRMED_OR_DETERMINISTIC",
+      "verification_status": "USER_RUNTIME_VERIFIED",
       "writable": "N"
     },
     "vppCondenserLevel": {
@@ -1752,6 +1789,7 @@
       "local_display_alias": "",
       "raw_tag_id": "vppECMS52STClosedCommandNative",
       "rule_ids": [
+        "PROT-ST-BRK-OPEN",
         "SEQ-52ST-OPEN"
       ],
       "scenario_lab_role": "BREAKER_CONTROL",
@@ -2450,7 +2488,8 @@
       "raw_tag_id": "vppGTTripRequest",
       "rule_ids": [
         "PROT-GT-LATCH",
-        "PROT-GT-REQUEST"
+        "PROT-GT-REQUEST",
+        "PROT-ST-REQUEST"
       ],
       "scenario_lab_role": "",
       "scope_class": "CURRENT_OPERATIONAL_EVIDENCE",
@@ -11311,31 +11350,148 @@
       "unit_status": "CONFIRMED_OR_DETERMINISTIC",
       "writable": "N"
     },
+    "vppSTGeneratorPowerMW": {
+      "analysis_policy": "RAW_EVIDENCE_ALLOWED",
+      "canonical_provenance": "USER_MODEL_SOURCE_AND_RAW_SESSION",
+      "canonical_status": "LOCAL_DISPLAY_ALIAS_NOT_SOURCE_CANONICAL",
+      "canonical_tag": "",
+      "changed_in_run": "Y",
+      "component_path": "vppSTGeneratorPowerMW",
+      "data_type": "REAL",
+      "description_en": "ST generator active power before 52ST gating",
+      "description_ko": "ST 발전기 내부 유효전력 (52ST 상태 적용 전)",
+      "equipment_id": "STG",
+      "hallucination_audit_status": "PASS_EXACT_RAW_IDENTITY",
+      "interpretation_method": "EXACT_MODELICA_EQUATION_AND_RAW_READBACK",
+      "is_native": true,
+      "leaf_signal": "vppSTGeneratorPowerMW",
+      "live_existence": "MODEL_SOURCE_RAW_OBSERVED",
+      "live_node_id": "",
+      "live_validation_run": "NOT_RUN",
+      "live_validation_status": "NOT_TESTED_NO_OPCUA_IDENTITY",
+      "live_value": "",
+      "live_variant_type": "",
+      "local_display_alias": "ST_GENERATOR_MW",
+      "max_value": "263.7730669332735",
+      "min_value": "262.1237160052867",
+      "model_file": "modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo",
+      "model_file_sha256": "cd454995656af9a8747efe8930d2aa0b92f98e1083acadc858eaa7959ea6d2c5",
+      "model_line_range": "1136-1137",
+      "model_package": "TripLens_PlantControlV2_ST_GRID_LAYOUT_20260924_ALARM_DISPLAY_ONLY_BUNDLE(2).zip",
+      "model_package_sha256": "6c616330ad80e4b5aad377fd5c4875a2aba7fb15d2366bb1a239eb6dd92231c4",
+      "model_source_only": true,
+      "model_source_status": "MODEL_SOURCE_CONFIRMED",
+      "notes": "RAW session SESSION_20260924_191347: 282 observations; 52ST closed 282, open 0; source package equation confirmed; not a Run 54 census tag. 2026-09-26 build 104046 runtime proof: 52ST OPEN asserted ST trip and ST grid output reached 0 MW.",
+      "opcua_evidence": "NOT_CAPTURED",
+      "open_behavior_test_status": "RUNTIME_VERIFIED",
+      "operational_core": "Y",
+      "quality_policy": "collector_quality=GOOD describes collector row health; not OPC UA StatusCode.",
+      "raw_closed_samples": "282",
+      "raw_observed": "Y",
+      "raw_open_samples": "0",
+      "raw_rows": "282",
+      "raw_session_id": "SESSION_20260924_191347",
+      "raw_session_sha256": "055f8a21b8f586feafaa6fe6705cfca05b4f1e833713991a0cac1f0e94ad6fd9",
+      "raw_tag_id": "vppSTGeneratorPowerMW",
+      "review_reason": "2026-09-26 PlantControlV2 104046 runtime proof verified 52ST OPEN response.",
+      "review_required": "N",
+      "rule_ids": [
+        "RESP-ST-GRID-POWER"
+      ],
+      "run41_evidence": "Added from current session RAW evidence.",
+      "run41_tag_status": "NOT_IN_RUN41",
+      "runtime_inclusion": "SEARCH_ONLY",
+      "runtime_presence": "SEARCH_ONLY",
+      "sample_count": "282",
+      "scenario_lab_role": "",
+      "scope_class": "MODEL_SOURCE_RAW_OBSERVED",
+      "signal_role": "PHYSICAL_OR_PROCESS",
+      "source_commit": "",
+      "source_equation": "vppSTGeneratorPowerMW = Alternateur.Welec/1e6;",
+      "source_file": "data/current_v8/st_power_evidence_20260924.json",
+      "source_identity_status": "RAW_SESSION_OBSERVED_NO_OPCUA_IDENTITY",
+      "source_kind": "MODEL_SOURCE_RAW_OBSERVED",
+      "source_repo": "khaku25/triplens-thermosyspro-cloud-runner",
+      "source_sha256": "055f8a21b8f586feafaa6fe6705cfca05b4f1e833713991a0cac1f0e94ad6fd9",
+      "source_url": "data/current_v8/st_power_evidence_20260924.json",
+      "system": "ST",
+      "time_policy": "model_time_s = causal/order clock; wall_time_utc = audit/transport only.",
+      "unique_count": "282",
+      "unit": "MW",
+      "unit_status": "CONFIRMED_OR_DETERMINISTIC",
+      "verification_status": "USER_RUNTIME_VERIFIED",
+      "writable": "N"
+    },
     "vppSTGridPowerMW": {
       "analysis_policy": "RAW_EVIDENCE_ALLOWED",
+      "canonical_provenance": "USER_MODEL_SOURCE_AND_RAW_SESSION",
+      "canonical_status": "LOCAL_DISPLAY_ALIAS_NOT_SOURCE_CANONICAL",
       "canonical_tag": "",
+      "changed_in_run": "Y",
+      "component_path": "vppSTGridPowerMW",
       "data_type": "REAL",
       "description_en": "ST grid-connected active power after 52ST",
       "description_ko": "52ST 이후 ST 계통 송출 유효전력",
       "equipment_id": "STG",
+      "hallucination_audit_status": "PASS_EXACT_RAW_IDENTITY",
       "interpretation_method": "EXACT_MODELICA_EQUATION_AND_RAW_READBACK",
       "is_native": true,
-      "live_existence": "CENSUS_OBSERVED",
+      "leaf_signal": "vppSTGridPowerMW",
+      "live_existence": "MODEL_SOURCE_RAW_OBSERVED",
       "live_node_id": "",
-      "live_variant_type": "Variant",
+      "live_validation_run": "NOT_RUN",
+      "live_validation_status": "NOT_TESTED_NO_OPCUA_IDENTITY",
+      "live_value": "",
+      "live_variant_type": "",
       "local_display_alias": "ST_OUTPUT_MW",
+      "max_value": "263.7730669332735",
+      "min_value": "262.1237160052867",
+      "model_file": "modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo",
+      "model_file_sha256": "cd454995656af9a8747efe8930d2aa0b92f98e1083acadc858eaa7959ea6d2c5",
+      "model_line_range": "1136-1137",
+      "model_package": "TripLens_PlantControlV2_ST_GRID_LAYOUT_20260924_ALARM_DISPLAY_ONLY_BUNDLE(2).zip",
+      "model_package_sha256": "6c616330ad80e4b5aad377fd5c4875a2aba7fb15d2366bb1a239eb6dd92231c4",
+      "model_source_only": true,
+      "model_source_status": "MODEL_SOURCE_CONFIRMED",
+      "notes": "RAW session SESSION_20260924_191347: 282 observations; 52ST closed 282, open 0; source package equation confirmed; not a Run 54 census tag. 2026-09-26 build 104046 runtime proof: 52ST OPEN asserted ST trip and ST grid output reached 0 MW.",
+      "opcua_evidence": "NOT_CAPTURED",
+      "open_behavior_test_status": "RUNTIME_VERIFIED",
+      "operational_core": "Y",
+      "quality_policy": "collector_quality=GOOD describes collector row health; not OPC UA StatusCode.",
+      "raw_closed_samples": "282",
+      "raw_observed": "Y",
+      "raw_open_samples": "0",
+      "raw_rows": "282",
+      "raw_session_id": "SESSION_20260924_191347",
+      "raw_session_sha256": "055f8a21b8f586feafaa6fe6705cfca05b4f1e833713991a0cac1f0e94ad6fd9",
       "raw_tag_id": "vppSTGridPowerMW",
+      "review_reason": "2026-09-26 PlantControlV2 104046 runtime proof verified 52ST OPEN response.",
+      "review_required": "N",
       "rule_ids": [
         "RESP-ST-GRID-POWER"
       ],
+      "run41_evidence": "Added from current session RAW evidence.",
+      "run41_tag_status": "NOT_IN_RUN41",
+      "runtime_inclusion": "SEARCH_ONLY",
+      "runtime_presence": "SEARCH_ONLY",
+      "sample_count": "282",
       "scenario_lab_role": "",
-      "scope_class": "CURRENT_OPERATIONAL_EVIDENCE",
+      "scope_class": "MODEL_SOURCE_RAW_OBSERVED",
       "signal_role": "PHYSICAL_OR_PROCESS",
       "source_commit": "",
-      "source_url": "",
+      "source_equation": "vppSTGridPowerMW = if not vpp52STClosed then 0 else vppSTGeneratorPowerMW;",
+      "source_file": "data/current_v8/st_power_evidence_20260924.json",
+      "source_identity_status": "RAW_SESSION_OBSERVED_NO_OPCUA_IDENTITY",
+      "source_kind": "MODEL_SOURCE_RAW_OBSERVED",
+      "source_repo": "khaku25/triplens-thermosyspro-cloud-runner",
+      "source_sha256": "055f8a21b8f586feafaa6fe6705cfca05b4f1e833713991a0cac1f0e94ad6fd9",
+      "source_url": "data/current_v8/st_power_evidence_20260924.json",
       "system": "ST",
+      "time_policy": "model_time_s = causal/order clock; wall_time_utc = audit/transport only.",
+      "unique_count": "282",
       "unit": "MW",
       "unit_status": "CONFIRMED_OR_DETERMINISTIC",
+      "verification_status": "USER_RUNTIME_VERIFIED",
       "writable": "N"
     },
     "vppSTTripAssertTime": {
@@ -15982,32 +16138,23 @@
       ],
       "scope": "input_group",
       "tag_cells": {
-        "vppCauseDirectGTTrip": [
-          "source:IG-022:c3e9527d866c7a9a"
-        ],
         "vppCauseDirectSTTrip": [
           "source:IG-022:4041eaac09261f86"
-        ],
-        "vppCauseGTBreakerOpenWhileRunning": [
-          "source:IG-022:406b682cc1a41f13"
         ],
         "vppCauseHPDrumHH": [
           "source:IG-022:de764cc6c2420470"
         ],
-        "vppCauseHPDrumLL": [
-          "source:IG-022:511cd35b54bdac9a"
-        ],
         "vppCauseIPDrumHH": [
           "source:IG-022:509350d58d9f9930"
-        ],
-        "vppCauseIPDrumLL": [
-          "source:IG-022:466eea7bec0599c2"
         ],
         "vppCauseLPDrumHH": [
           "source:IG-022:f4678b9b2486d888"
         ],
-        "vppCauseLPDrumLL": [
-          "source:IG-022:e69d10af90420cb8"
+        "vppCauseSTBreakerOpenWhileRunning": [
+          "source:IG-022:42ccfcf648e2aa3e"
+        ],
+        "vppGTTripRequest": [
+          "source:IG-022:79ad4c2f523cc9f1"
         ],
         "vppSTTripRequest": [
           "output:PROT-ST-REQUEST:9fa1c346ad1258bc"
@@ -16267,8 +16414,27 @@
         "vpp52STClosed": [
           "source:IG-036:1da1755111e660ae"
         ],
+        "vppSTGeneratorPowerMW": [
+          "source:IG-036:003d416fdd7f2672"
+        ],
         "vppSTGridPowerMW": [
           "output:RESP-ST-GRID-POWER:b3642eedc8db7ae4"
+        ]
+      }
+    },
+    "IG-037": {
+      "id": "IG-037",
+      "name": "IG-037 · ST Protection",
+      "rule_ids": [
+        "PROT-ST-BRK-OPEN"
+      ],
+      "scope": "input_group",
+      "tag_cells": {
+        "vppCauseSTBreakerOpenWhileRunning": [
+          "output:PROT-ST-BRK-OPEN:42ccfcf648e2aa3e"
+        ],
+        "vppECMS52STClosedCommandNative": [
+          "source:IG-037:b53f671f8e827e7d"
         ]
       }
     },
@@ -17035,6 +17201,22 @@
         ]
       }
     },
+    "rule:PROT-ST-BRK-OPEN": {
+      "id": "rule:PROT-ST-BRK-OPEN",
+      "name": "PROT-ST-BRK-OPEN",
+      "rule_ids": [
+        "PROT-ST-BRK-OPEN"
+      ],
+      "scope": "rule",
+      "tag_cells": {
+        "vppCauseSTBreakerOpenWhileRunning": [
+          "output:PROT-ST-BRK-OPEN:42ccfcf648e2aa3e"
+        ],
+        "vppECMS52STClosedCommandNative": [
+          "source:IG-037:b53f671f8e827e7d"
+        ]
+      }
+    },
     "rule:PROT-ST-LATCH": {
       "id": "rule:PROT-ST-LATCH",
       "name": "PROT-ST-LATCH",
@@ -17062,32 +17244,23 @@
       ],
       "scope": "rule",
       "tag_cells": {
-        "vppCauseDirectGTTrip": [
-          "source:IG-022:c3e9527d866c7a9a"
-        ],
         "vppCauseDirectSTTrip": [
           "source:IG-022:4041eaac09261f86"
-        ],
-        "vppCauseGTBreakerOpenWhileRunning": [
-          "source:IG-022:406b682cc1a41f13"
         ],
         "vppCauseHPDrumHH": [
           "source:IG-022:de764cc6c2420470"
         ],
-        "vppCauseHPDrumLL": [
-          "source:IG-022:511cd35b54bdac9a"
-        ],
         "vppCauseIPDrumHH": [
           "source:IG-022:509350d58d9f9930"
-        ],
-        "vppCauseIPDrumLL": [
-          "source:IG-022:466eea7bec0599c2"
         ],
         "vppCauseLPDrumHH": [
           "source:IG-022:f4678b9b2486d888"
         ],
-        "vppCauseLPDrumLL": [
-          "source:IG-022:e69d10af90420cb8"
+        "vppCauseSTBreakerOpenWhileRunning": [
+          "source:IG-022:42ccfcf648e2aa3e"
+        ],
+        "vppGTTripRequest": [
+          "source:IG-022:79ad4c2f523cc9f1"
         ],
         "vppSTTripRequest": [
           "output:PROT-ST-REQUEST:9fa1c346ad1258bc"
@@ -17136,6 +17309,9 @@
       "tag_cells": {
         "vpp52STClosed": [
           "source:IG-036:1da1755111e660ae"
+        ],
+        "vppSTGeneratorPowerMW": [
+          "source:IG-036:003d416fdd7f2672"
         ],
         "vppSTGridPowerMW": [
           "output:RESP-ST-GRID-POWER:b3642eedc8db7ae4"
@@ -17252,7 +17428,8 @@
         "PROT-ST-LATCH",
         "SEQ-52ST-TRIPCMD",
         "SEQ-52ST-OPEN",
-        "RESP-ST-GRID-POWER"
+        "RESP-ST-GRID-POWER",
+        "PROT-ST-BRK-OPEN"
       ],
       "scope": "equipment",
       "tag_cells": {
@@ -17263,39 +17440,35 @@
         "vpp52STTripCmd": [
           "output:SEQ-52ST-TRIPCMD:9adba1960f4af93c"
         ],
-        "vppCauseDirectGTTrip": [
-          "source:IG-022:c3e9527d866c7a9a"
-        ],
         "vppCauseDirectSTTrip": [
           "output:PROT-DIRECT-ST:4041eaac09261f86",
           "source:IG-022:4041eaac09261f86"
         ],
-        "vppCauseGTBreakerOpenWhileRunning": [
-          "source:IG-022:406b682cc1a41f13"
-        ],
         "vppCauseHPDrumHH": [
           "source:IG-022:de764cc6c2420470"
-        ],
-        "vppCauseHPDrumLL": [
-          "source:IG-022:511cd35b54bdac9a"
         ],
         "vppCauseIPDrumHH": [
           "source:IG-022:509350d58d9f9930"
         ],
-        "vppCauseIPDrumLL": [
-          "source:IG-022:466eea7bec0599c2"
-        ],
         "vppCauseLPDrumHH": [
           "source:IG-022:f4678b9b2486d888"
         ],
-        "vppCauseLPDrumLL": [
-          "source:IG-022:e69d10af90420cb8"
+        "vppCauseSTBreakerOpenWhileRunning": [
+          "source:IG-022:42ccfcf648e2aa3e",
+          "output:PROT-ST-BRK-OPEN:42ccfcf648e2aa3e"
         ],
         "vppECMS52STClosedCommandNative": [
-          "source:IG-028:b53f671f8e827e7d"
+          "source:IG-028:b53f671f8e827e7d",
+          "source:IG-037:b53f671f8e827e7d"
         ],
         "vppExternalSTTripCommandNative": [
           "source:IG-013:40ebf6c321ee6d27"
+        ],
+        "vppGTTripRequest": [
+          "source:IG-022:79ad4c2f523cc9f1"
+        ],
+        "vppSTGeneratorPowerMW": [
+          "source:IG-036:003d416fdd7f2672"
         ],
         "vppSTGridPowerMW": [
           "output:RESP-ST-GRID-POWER:b3642eedc8db7ae4"
@@ -18931,6 +19104,42 @@
       "source_existence_status": "REGISTERED_SOURCE_RESOLVED",
       "validation_status": "PARTIAL"
     },
+    "PROT-ST-BRK-OPEN": {
+      "behavior_validation": "PASS",
+      "condition": "52ST close command < 0.5 -> breaker-open cause latch",
+      "delay": "event-driven",
+      "equipment_page": "screen:09254a48d627",
+      "group": "ST Protection",
+      "group_page": "IG-037",
+      "input_group_id": "IG-037",
+      "input_nodes": "vppECMS52STClosedCommandNative",
+      "input_signature": "vppECMS52STClosedCommandNative",
+      "inputs": [
+        "vppECMS52STClosedCommandNative"
+      ],
+      "logic_name": "52ST breaker open protection cause",
+      "logic_type": "PROTECTION_CAUSE",
+      "model_source_status": "MODEL_SOURCE_CONFIRMED",
+      "notes": "Manual 52ST OPEN is a trip cause. Keep separate from SEQ-52ST-OPEN, which is the post-trip breaker-opening sequence.",
+      "open_behavior_test_status": "RUNTIME_VERIFIED",
+      "output_class": "RAW_NODE",
+      "output_nodes_or_tags": "vppCauseSTBreakerOpenWhileRunning",
+      "outputs": [
+        "vppCauseSTBreakerOpenWhileRunning"
+      ],
+      "raw_session_status": "USER_RUNTIME_VERIFIED",
+      "release_status": "RUNTIME_VERIFIED",
+      "reset_hysteresis": "ST reset with active trip causes clear and 52ST command open",
+      "rule_id": "PROT-ST-BRK-OPEN",
+      "rule_page": "rule:PROT-ST-BRK-OPEN",
+      "runtime_inclusion": "SEARCH_ONLY",
+      "screen": "ST Protection",
+      "source_basis": "TRIPLENS_ST_BREAKER_OPEN_TRIP_V1; 2026-09-26 PlantControlV2 build 104046 runtime proof",
+      "source_existence_status": "MODEL_SOURCE_RUNTIME_VERIFIED",
+      "source_kind": "MODEL_SOURCE_RAW_OBSERVED",
+      "source_mapped": true,
+      "validation_status": "PASS"
+    },
     "PROT-ST-LATCH": {
       "condition": "request=1 AND reset<0.5 -> latch; reset clears",
       "delay": "event-driven",
@@ -18961,26 +19170,23 @@
       "validation_status": "PASS"
     },
     "PROT-ST-REQUEST": {
-      "condition": "OR(all 9 causes)",
+      "condition": "OR(registered ST trip inputs)",
       "delay": "0 s",
       "equipment_page": "screen:09254a48d627",
       "group": "ST Protection",
       "group_page": "IG-022",
       "input_group_id": "IG-022",
-      "input_nodes": "vppCauseDirectGTTrip | vppCauseDirectSTTrip | vppCauseGTBreakerOpenWhileRunning | vppCauseHPDrumHH | vppCauseIPDrumHH | vppCauseLPDrumHH | vppCauseHPDrumLL | vppCauseIPDrumLL | vppCauseLPDrumLL",
-      "input_signature": "vppCauseDirectGTTrip | vppCauseDirectSTTrip | vppCauseGTBreakerOpenWhileRunning | vppCauseHPDrumHH | vppCauseHPDrumLL | vppCauseIPDrumHH | vppCauseIPDrumLL | vppCauseLPDrumHH | vppCauseLPDrumLL",
+      "input_nodes": "vppGTTripRequest | vppCauseDirectSTTrip | vppCauseSTBreakerOpenWhileRunning | vppCauseHPDrumHH | vppCauseIPDrumHH | vppCauseLPDrumHH",
+      "input_signature": "vppCauseDirectSTTrip | vppCauseHPDrumHH | vppCauseIPDrumHH | vppCauseLPDrumHH | vppCauseSTBreakerOpenWhileRunning | vppGTTripRequest",
       "inputs": [
-        "vppCauseDirectGTTrip",
+        "vppGTTripRequest",
         "vppCauseDirectSTTrip",
-        "vppCauseGTBreakerOpenWhileRunning",
+        "vppCauseSTBreakerOpenWhileRunning",
         "vppCauseHPDrumHH",
         "vppCauseIPDrumHH",
-        "vppCauseLPDrumHH",
-        "vppCauseHPDrumLL",
-        "vppCauseIPDrumLL",
-        "vppCauseLPDrumLL"
+        "vppCauseLPDrumHH"
       ],
-      "logic_name": "ST trip request common-trip matrix",
+      "logic_name": "ST trip request",
       "logic_type": "TRIP_REQUEST",
       "notes": "",
       "output_class": "RAW_NODE",
@@ -18992,8 +19198,9 @@
       "rule_id": "PROT-ST-REQUEST",
       "rule_page": "rule:PROT-ST-REQUEST",
       "screen": "ST Protection",
-      "source_basis": "9-cause common-trip matrix + RAW nodes",
-      "source_existence_status": "REGISTERED_SOURCE_RESOLVED",
+      "source_basis": "Current PlantControlV2 ST request equation; cause-count wording retired; 52ST breaker-open cause included.",
+      "source_existence_status": "MODEL_SOURCE_RUNTIME_VERIFIED",
+      "source_mapped": true,
       "validation_status": "PASS"
     },
     "RESP-GT-POWER": {
@@ -19053,32 +19260,66 @@
       "validation_status": "PASS"
     },
     "RESP-ST-GRID-POWER": {
-      "condition": "if 52ST not closed then ST grid power = 0; otherwise ST grid power = ST generator power",
+      "behavior_validation": "PASS",
+      "branch_count": "1",
+      "branch_index": "1",
+      "condition": "vppSTGridPowerMW = if not vpp52STClosed then 0 else vppSTGeneratorPowerMW",
       "delay": "immediate model relation",
       "equipment_page": "screen:09254a48d627",
       "group": "ST Protection",
       "group_page": "IG-036",
+      "hallucination_audit_status": "PASS_NO_INVENTED_INPUT_NODE",
       "input_group_id": "IG-036",
-      "input_nodes": "vpp52STClosed",
-      "input_signature": "vpp52STClosed",
+      "input_identity_status": "MODEL_SOURCE_RAW_OBSERVED",
+      "input_nodes": "vppSTGeneratorPowerMW | vpp52STClosed",
+      "input_signature": "vpp52STClosed | vppSTGeneratorPowerMW",
       "inputs": [
+        "vppSTGeneratorPowerMW",
         "vpp52STClosed"
       ],
+      "live_input_status": "NOT_PROMOTED_TO_LIVE_RULE",
+      "live_output_status": "NOT_PROMOTED_TO_LIVE_RULE",
+      "live_validation_note": "Model source confirmed; RAW observed closed only (282/282); OPC UA identity not captured; OPEN behavior NOT_TESTED.",
+      "live_validation_run": "NOT_RUN",
       "logic_name": "ST grid power response after 52ST opens",
       "logic_type": "PHYSICAL_RESPONSE",
-      "notes": "Current RAW session confirms closed-breaker readback; open-breaker zero response requires a matching trip capture.",
+      "model_file": "modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo",
+      "model_file_sha256": "cd454995656af9a8747efe8930d2aa0b92f98e1083acadc858eaa7959ea6d2c5",
+      "model_line_range": "1136-1137",
+      "model_package": "TripLens_PlantControlV2_ST_GRID_LAYOUT_20260924_ALARM_DISPLAY_ONLY_BUNDLE(2).zip",
+      "model_package_sha256": "6c616330ad80e4b5aad377fd5c4875a2aba7fb15d2366bb1a239eb6dd92231c4",
+      "model_source_status": "MODEL_SOURCE_CONFIRMED",
+      "notes": "52ST OPEN behavior verified on PlantControlV2 build 104046; historical closed-only RAW metadata is retained as provenance.",
+      "open_behavior_test_status": "RUNTIME_VERIFIED",
       "output_class": "RAW_NODE",
+      "output_identity_status": "MODEL_SOURCE_RAW_OBSERVED",
       "output_nodes_or_tags": "vppSTGridPowerMW",
       "outputs": [
         "vppSTGridPowerMW"
       ],
+      "raw_closed_samples": "282",
+      "raw_inputs_exist": "Y",
+      "raw_open_samples": "0",
+      "raw_outputs_exist": "Y",
+      "raw_rows": "282",
+      "raw_session_id": "SESSION_20260924_191347",
+      "raw_session_sha256": "055f8a21b8f586feafaa6fe6705cfca05b4f1e833713991a0cac1f0e94ad6fd9",
+      "raw_session_status": "USER_RUNTIME_VERIFIED",
+      "release_status": "RUNTIME_VERIFIED",
       "reset_hysteresis": "follows 52ST closed feedback",
       "rule_id": "RESP-ST-GRID-POWER",
       "rule_page": "rule:RESP-ST-GRID-POWER",
+      "run41_evidence_note": "Confirmed from user-provided model source and later RAW session; not a historical census record.",
+      "run41_evidence_scenarios": "",
+      "run41_status": "NOT_IN_RUN41",
+      "runtime_inclusion": "SEARCH_ONLY",
       "screen": "ST Protection",
-      "source_basis": "Exact Modelica equation + private local RAW readback hash; behavior verification remains PARTIAL",
-      "source_existence_status": "REGISTERED_SOURCE_RESOLVED",
-      "validation_status": "PARTIAL"
+      "source_basis": "Model source modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo lines 1136-1137 (cd454995656af9a8747efe8930d2aa0b92f98e1083acadc858eaa7959ea6d2c5); RAW RAW_SESSION_20260924_191347.csv (055f8a21b8f586feafaa6fe6705cfca05b4f1e833713991a0cac1f0e94ad6fd9).; 2026-09-26 PlantControlV2 104046 runtime proof verified 52ST OPEN -> vppSTGridPowerMW = 0 MW.",
+      "source_equation": "vppSTGridPowerMW = if not vpp52STClosed then 0 else vppSTGeneratorPowerMW;",
+      "source_existence_status": "MODEL_SOURCE_RUNTIME_VERIFIED",
+      "source_kind": "MODEL_SOURCE_RAW_OBSERVED",
+      "source_mapped": true,
+      "validation_status": "PASS"
     },
     "SEQ-52GT-OPEN": {
       "condition": "GT latch active -> breaker opens",
@@ -19196,7 +19437,7 @@
     }
   },
   "schema_version": 2,
-  "semantic_sha256": "6523330fb73d65fa76387622994ddf05946d9c2c25edd78b5a0148eb242e95df",
+  "semantic_sha256": "9583cab00e89238712d42ff17ec9fed108f63e82484948b1125b0fddbcf6155d",
   "tags": {
     "vpp52GTClosed": {
       "analysis_policy": "RAW_EVIDENCE_ALLOWED",
@@ -19325,8 +19566,7 @@
       "raw_tag_id": "vppCauseDirectGTTrip",
       "rule_ids": [
         "PROT-DIRECT-GT",
-        "PROT-GT-REQUEST",
-        "PROT-ST-REQUEST"
+        "PROT-GT-REQUEST"
       ],
       "scenario_lab_role": "",
       "scope_class": "CURRENT_OPERATIONAL_EVIDENCE",
@@ -19382,8 +19622,7 @@
       "raw_tag_id": "vppCauseGTBreakerOpenWhileRunning",
       "rule_ids": [
         "PROT-GT-BRK-OPEN",
-        "PROT-GT-REQUEST",
-        "PROT-ST-REQUEST"
+        "PROT-GT-REQUEST"
       ],
       "scenario_lab_role": "",
       "scope_class": "CURRENT_OPERATIONAL_EVIDENCE",
@@ -19439,8 +19678,7 @@
       "raw_tag_id": "vppCauseHPDrumLL",
       "rule_ids": [
         "PROT-GT-REQUEST",
-        "PROT-HP-DRUM-LL",
-        "PROT-ST-REQUEST"
+        "PROT-HP-DRUM-LL"
       ],
       "scenario_lab_role": "",
       "scope_class": "CURRENT_OPERATIONAL_EVIDENCE",
@@ -19496,8 +19734,7 @@
       "raw_tag_id": "vppCauseIPDrumLL",
       "rule_ids": [
         "PROT-GT-REQUEST",
-        "PROT-IP-DRUM-LL",
-        "PROT-ST-REQUEST"
+        "PROT-IP-DRUM-LL"
       ],
       "scenario_lab_role": "",
       "scope_class": "CURRENT_OPERATIONAL_EVIDENCE",
@@ -19553,8 +19790,7 @@
       "raw_tag_id": "vppCauseLPDrumLL",
       "rule_ids": [
         "PROT-GT-REQUEST",
-        "PROT-LP-DRUM-LL",
-        "PROT-ST-REQUEST"
+        "PROT-LP-DRUM-LL"
       ],
       "scenario_lab_role": "",
       "scope_class": "CURRENT_OPERATIONAL_EVIDENCE",
@@ -19564,6 +19800,42 @@
       "system": "PROTECTION",
       "unit": "CAUSE",
       "unit_status": "CONFIRMED_OR_DETERMINISTIC",
+      "writable": "N"
+    },
+    "vppCauseSTBreakerOpenWhileRunning": {
+      "analysis_policy": "RAW_EVIDENCE_ALLOWED",
+      "canonical_tag": "",
+      "data_type": "BOOL",
+      "description_en": "52ST breaker-open protection cause state",
+      "description_ko": "52ST 수동 개방 보호 원인 상태",
+      "equipment_id": "52ST",
+      "interpretation_method": "EXACT_MODELICA_EQUATION_AND_USER_RUNTIME_PROOF",
+      "is_native": true,
+      "live_existence": "MODEL_SOURCE_RAW_OBSERVED",
+      "live_node_id": "",
+      "live_variant_type": "",
+      "local_display_alias": "CAUSE.ST_BREAKER_OPEN",
+      "model_source_only": true,
+      "model_source_status": "MODEL_SOURCE_CONFIRMED",
+      "notes": "2026-09-26 PlantControlV2 104046 runtime proof: manual 52ST OPEN asserted this cause, ST trip request/latch, bypass opening, admission closure, and ST output 0 MW.",
+      "open_behavior_test_status": "RUNTIME_VERIFIED",
+      "raw_tag_id": "vppCauseSTBreakerOpenWhileRunning",
+      "rule_ids": [
+        "PROT-ST-BRK-OPEN",
+        "PROT-ST-REQUEST"
+      ],
+      "runtime_inclusion": "SEARCH_ONLY",
+      "scenario_lab_role": "",
+      "scope_class": "MODEL_SOURCE_RUNTIME_VERIFIED",
+      "signal_role": "PROTECTION_CAUSE",
+      "source_commit": "",
+      "source_identity_status": "MODEL_SOURCE_AND_RUNTIME_OBSERVED",
+      "source_kind": "MODEL_SOURCE_RAW_OBSERVED",
+      "source_url": "modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo",
+      "system": "PROTECTION",
+      "unit": "CAUSE",
+      "unit_status": "CONFIRMED_OR_DETERMINISTIC",
+      "verification_status": "USER_RUNTIME_VERIFIED",
       "writable": "N"
     },
     "vppCondenserLevel": {
@@ -20659,6 +20931,7 @@
       "local_display_alias": "",
       "raw_tag_id": "vppECMS52STClosedCommandNative",
       "rule_ids": [
+        "PROT-ST-BRK-OPEN",
         "SEQ-52ST-OPEN"
       ],
       "scenario_lab_role": "BREAKER_CONTROL",
@@ -21357,7 +21630,8 @@
       "raw_tag_id": "vppGTTripRequest",
       "rule_ids": [
         "PROT-GT-LATCH",
-        "PROT-GT-REQUEST"
+        "PROT-GT-REQUEST",
+        "PROT-ST-REQUEST"
       ],
       "scenario_lab_role": "",
       "scope_class": "CURRENT_OPERATIONAL_EVIDENCE",
@@ -30218,31 +30492,148 @@
       "unit_status": "CONFIRMED_OR_DETERMINISTIC",
       "writable": "N"
     },
+    "vppSTGeneratorPowerMW": {
+      "analysis_policy": "RAW_EVIDENCE_ALLOWED",
+      "canonical_provenance": "USER_MODEL_SOURCE_AND_RAW_SESSION",
+      "canonical_status": "LOCAL_DISPLAY_ALIAS_NOT_SOURCE_CANONICAL",
+      "canonical_tag": "",
+      "changed_in_run": "Y",
+      "component_path": "vppSTGeneratorPowerMW",
+      "data_type": "REAL",
+      "description_en": "ST generator active power before 52ST gating",
+      "description_ko": "ST 발전기 내부 유효전력 (52ST 상태 적용 전)",
+      "equipment_id": "STG",
+      "hallucination_audit_status": "PASS_EXACT_RAW_IDENTITY",
+      "interpretation_method": "EXACT_MODELICA_EQUATION_AND_RAW_READBACK",
+      "is_native": true,
+      "leaf_signal": "vppSTGeneratorPowerMW",
+      "live_existence": "MODEL_SOURCE_RAW_OBSERVED",
+      "live_node_id": "",
+      "live_validation_run": "NOT_RUN",
+      "live_validation_status": "NOT_TESTED_NO_OPCUA_IDENTITY",
+      "live_value": "",
+      "live_variant_type": "",
+      "local_display_alias": "ST_GENERATOR_MW",
+      "max_value": "263.7730669332735",
+      "min_value": "262.1237160052867",
+      "model_file": "modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo",
+      "model_file_sha256": "cd454995656af9a8747efe8930d2aa0b92f98e1083acadc858eaa7959ea6d2c5",
+      "model_line_range": "1136-1137",
+      "model_package": "TripLens_PlantControlV2_ST_GRID_LAYOUT_20260924_ALARM_DISPLAY_ONLY_BUNDLE(2).zip",
+      "model_package_sha256": "6c616330ad80e4b5aad377fd5c4875a2aba7fb15d2366bb1a239eb6dd92231c4",
+      "model_source_only": true,
+      "model_source_status": "MODEL_SOURCE_CONFIRMED",
+      "notes": "RAW session SESSION_20260924_191347: 282 observations; 52ST closed 282, open 0; source package equation confirmed; not a Run 54 census tag. 2026-09-26 build 104046 runtime proof: 52ST OPEN asserted ST trip and ST grid output reached 0 MW.",
+      "opcua_evidence": "NOT_CAPTURED",
+      "open_behavior_test_status": "RUNTIME_VERIFIED",
+      "operational_core": "Y",
+      "quality_policy": "collector_quality=GOOD describes collector row health; not OPC UA StatusCode.",
+      "raw_closed_samples": "282",
+      "raw_observed": "Y",
+      "raw_open_samples": "0",
+      "raw_rows": "282",
+      "raw_session_id": "SESSION_20260924_191347",
+      "raw_session_sha256": "055f8a21b8f586feafaa6fe6705cfca05b4f1e833713991a0cac1f0e94ad6fd9",
+      "raw_tag_id": "vppSTGeneratorPowerMW",
+      "review_reason": "2026-09-26 PlantControlV2 104046 runtime proof verified 52ST OPEN response.",
+      "review_required": "N",
+      "rule_ids": [
+        "RESP-ST-GRID-POWER"
+      ],
+      "run41_evidence": "Added from current session RAW evidence.",
+      "run41_tag_status": "NOT_IN_RUN41",
+      "runtime_inclusion": "SEARCH_ONLY",
+      "runtime_presence": "SEARCH_ONLY",
+      "sample_count": "282",
+      "scenario_lab_role": "",
+      "scope_class": "MODEL_SOURCE_RAW_OBSERVED",
+      "signal_role": "PHYSICAL_OR_PROCESS",
+      "source_commit": "",
+      "source_equation": "vppSTGeneratorPowerMW = Alternateur.Welec/1e6;",
+      "source_file": "data/current_v8/st_power_evidence_20260924.json",
+      "source_identity_status": "RAW_SESSION_OBSERVED_NO_OPCUA_IDENTITY",
+      "source_kind": "MODEL_SOURCE_RAW_OBSERVED",
+      "source_repo": "khaku25/triplens-thermosyspro-cloud-runner",
+      "source_sha256": "055f8a21b8f586feafaa6fe6705cfca05b4f1e833713991a0cac1f0e94ad6fd9",
+      "source_url": "data/current_v8/st_power_evidence_20260924.json",
+      "system": "ST",
+      "time_policy": "model_time_s = causal/order clock; wall_time_utc = audit/transport only.",
+      "unique_count": "282",
+      "unit": "MW",
+      "unit_status": "CONFIRMED_OR_DETERMINISTIC",
+      "verification_status": "USER_RUNTIME_VERIFIED",
+      "writable": "N"
+    },
     "vppSTGridPowerMW": {
       "analysis_policy": "RAW_EVIDENCE_ALLOWED",
+      "canonical_provenance": "USER_MODEL_SOURCE_AND_RAW_SESSION",
+      "canonical_status": "LOCAL_DISPLAY_ALIAS_NOT_SOURCE_CANONICAL",
       "canonical_tag": "",
+      "changed_in_run": "Y",
+      "component_path": "vppSTGridPowerMW",
       "data_type": "REAL",
       "description_en": "ST grid-connected active power after 52ST",
       "description_ko": "52ST 이후 ST 계통 송출 유효전력",
       "equipment_id": "STG",
+      "hallucination_audit_status": "PASS_EXACT_RAW_IDENTITY",
       "interpretation_method": "EXACT_MODELICA_EQUATION_AND_RAW_READBACK",
       "is_native": true,
-      "live_existence": "CENSUS_OBSERVED",
+      "leaf_signal": "vppSTGridPowerMW",
+      "live_existence": "MODEL_SOURCE_RAW_OBSERVED",
       "live_node_id": "",
-      "live_variant_type": "Variant",
+      "live_validation_run": "NOT_RUN",
+      "live_validation_status": "NOT_TESTED_NO_OPCUA_IDENTITY",
+      "live_value": "",
+      "live_variant_type": "",
       "local_display_alias": "ST_OUTPUT_MW",
+      "max_value": "263.7730669332735",
+      "min_value": "262.1237160052867",
+      "model_file": "modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo",
+      "model_file_sha256": "cd454995656af9a8747efe8930d2aa0b92f98e1083acadc858eaa7959ea6d2c5",
+      "model_line_range": "1136-1137",
+      "model_package": "TripLens_PlantControlV2_ST_GRID_LAYOUT_20260924_ALARM_DISPLAY_ONLY_BUNDLE(2).zip",
+      "model_package_sha256": "6c616330ad80e4b5aad377fd5c4875a2aba7fb15d2366bb1a239eb6dd92231c4",
+      "model_source_only": true,
+      "model_source_status": "MODEL_SOURCE_CONFIRMED",
+      "notes": "RAW session SESSION_20260924_191347: 282 observations; 52ST closed 282, open 0; source package equation confirmed; not a Run 54 census tag. 2026-09-26 build 104046 runtime proof: 52ST OPEN asserted ST trip and ST grid output reached 0 MW.",
+      "opcua_evidence": "NOT_CAPTURED",
+      "open_behavior_test_status": "RUNTIME_VERIFIED",
+      "operational_core": "Y",
+      "quality_policy": "collector_quality=GOOD describes collector row health; not OPC UA StatusCode.",
+      "raw_closed_samples": "282",
+      "raw_observed": "Y",
+      "raw_open_samples": "0",
+      "raw_rows": "282",
+      "raw_session_id": "SESSION_20260924_191347",
+      "raw_session_sha256": "055f8a21b8f586feafaa6fe6705cfca05b4f1e833713991a0cac1f0e94ad6fd9",
       "raw_tag_id": "vppSTGridPowerMW",
+      "review_reason": "2026-09-26 PlantControlV2 104046 runtime proof verified 52ST OPEN response.",
+      "review_required": "N",
       "rule_ids": [
         "RESP-ST-GRID-POWER"
       ],
+      "run41_evidence": "Added from current session RAW evidence.",
+      "run41_tag_status": "NOT_IN_RUN41",
+      "runtime_inclusion": "SEARCH_ONLY",
+      "runtime_presence": "SEARCH_ONLY",
+      "sample_count": "282",
       "scenario_lab_role": "",
-      "scope_class": "CURRENT_OPERATIONAL_EVIDENCE",
+      "scope_class": "MODEL_SOURCE_RAW_OBSERVED",
       "signal_role": "PHYSICAL_OR_PROCESS",
       "source_commit": "",
-      "source_url": "",
+      "source_equation": "vppSTGridPowerMW = if not vpp52STClosed then 0 else vppSTGeneratorPowerMW;",
+      "source_file": "data/current_v8/st_power_evidence_20260924.json",
+      "source_identity_status": "RAW_SESSION_OBSERVED_NO_OPCUA_IDENTITY",
+      "source_kind": "MODEL_SOURCE_RAW_OBSERVED",
+      "source_repo": "khaku25/triplens-thermosyspro-cloud-runner",
+      "source_sha256": "055f8a21b8f586feafaa6fe6705cfca05b4f1e833713991a0cac1f0e94ad6fd9",
+      "source_url": "data/current_v8/st_power_evidence_20260924.json",
       "system": "ST",
+      "time_policy": "model_time_s = causal/order clock; wall_time_utc = audit/transport only.",
+      "unique_count": "282",
       "unit": "MW",
       "unit_status": "CONFIRMED_OR_DETERMINISTIC",
+      "verification_status": "USER_RUNTIME_VERIFIED",
       "writable": "N"
     },
     "vppSTTripAssertTime": {

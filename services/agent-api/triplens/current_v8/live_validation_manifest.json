@@ -27,28 +27,28 @@
   },
   "counts": {
     "derived_alarm_outputs": 28,
-    "input_groups": 36,
-    "live_tags": 604,
-    "logic_inputs_live": 45,
-    "logic_rules": 54,
-    "vpp_outputs_live": 29
+    "input_groups": 35,
+    "live_tags": 603,
+    "logic_inputs_live": 44,
+    "logic_rules": 53,
+    "vpp_outputs_live": 28
   },
   "files": {
     "live_logic_runtime.csv": {
-      "bytes": 20831,
-      "sha256": "4b8d4de4aba4aae9114eb0a0b2382d6cdf054d3a0e17f3ef3090666932f4dfb1"
+      "bytes": 20338,
+      "sha256": "d79505193ef88a0f54f8d7370ed157313df079ebae9ef090ce98f148f6841ecb"
     },
     "live_tag_allowlist.csv": {
-      "bytes": 15127,
-      "sha256": "c940a325a42e4193336d08a1ffeb7dc7d9986dd8f32f130283244c5f856f428d"
+      "bytes": 15109,
+      "sha256": "ba5610fdc32ff22c9171bcaf016066bccea6682a5ec5dfcfbd34c0fd3c3a6f3e"
     },
     "live_tag_logic_links.csv": {
-      "bytes": 7365,
-      "sha256": "a8c893ccd7f16f1e2743fbfd2531eaa2dcf4a989c060cfbfae2fe4308516aba4"
+      "bytes": 7247,
+      "sha256": "d6521353d58355a4267b76dfa9db4caef3359708673a22f2fb3bd5a1b05c4963"
     },
     "live_tag_master.csv": {
-      "bytes": 349458,
-      "sha256": "ef8773ae905e1b91f7440d77aec8028546cbf787177675081bda8fda546c4b45"
+      "bytes": 349154,
+      "sha256": "f2277cc3d10cc317cffaf0ecf5cf74cd0ef1e46f4fd3db3a9e5fe1a189ad25b8"
     }
   },
   "policy": {
@@ -58,7 +58,7 @@
     "verification_scope": "Census resolves source identities; unchanged semantic status is not behavioural revalidation"
   },
   "schema_version": 2,
-  "semantic_sha256": "6523330fb73d65fa76387622994ddf05946d9c2c25edd78b5a0148eb242e95df",
+  "semantic_sha256": "3f5398d2a9efc176d365a313ba7a3c7c9156135a9fc9ae6d8eef7d885ee87c12",
   "validation_run": {
     "id": 35309650110,
     "number": 54,
