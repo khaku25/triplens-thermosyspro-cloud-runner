@@ -2,7 +2,7 @@ export const DEFAULT_ANALYSIS_PROVIDER='gemini';
 
 const FALLBACK_PROVIDERS=[
   {id:'gemini',label:'Gemini Flash',model:'gemini-3.8-flash'},
-  {id:'openai',label:'GPT-5.6 Luna',model:'gpt-5.6-luna'},
+  {id:'openai',label:'GPT-6 Luna',model:'gpt-6-luna'},
 ];
 
 export function normalizeAnalysisProvider(value){

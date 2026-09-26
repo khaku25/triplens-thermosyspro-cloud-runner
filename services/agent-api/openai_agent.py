@@ -18,7 +18,7 @@ from triplens.agent_tools import AgentToolSession
 from triplens.analysis_contract import ANALYSIS_SCHEMA,normalize_analysis
 from triplens.citation_support import citation_feedback,REPAIR_INSTRUCTION
 
-DEFAULT_MODEL='gpt-5.6-luna'
+DEFAULT_MODEL='gpt-6-luna'
 RESPONSES_URL='https://api.openai.com/v1/responses'
 
 
