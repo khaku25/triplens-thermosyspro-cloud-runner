@@ -26,7 +26,7 @@
     {
       "session_id": "SESSION_20260924_191347",
       "model_time_s": 0.36,
-      "vpp52STClosed": 1.0,
+      "vpp52STClosed": 1,
       "vppSTGeneratorPowerMW": 263.1082202105902,
       "vppSTGridPowerMW": 263.1082202105902,
       "ST_OUTPUT_MW": 263.1082202105902,
@@ -35,7 +35,7 @@
     {
       "session_id": "SESSION_20260924_191347",
       "model_time_s": 1.36,
-      "vpp52STClosed": 1.0,
+      "vpp52STClosed": 1,
       "vppSTGeneratorPowerMW": 263.04055172010953,
       "vppSTGridPowerMW": 263.04055172010953,
       "ST_OUTPUT_MW": 263.04055172010953,
@@ -44,7 +44,7 @@
     {
       "session_id": "SESSION_20260924_191347",
       "model_time_s": 407.48,
-      "vpp52STClosed": 1.0,
+      "vpp52STClosed": 1,
       "vppSTGeneratorPowerMW": 263.3159507193399,
       "vppSTGridPowerMW": 263.3159507193399,
       "ST_OUTPUT_MW": 263.3159507193399,
@@ -53,8 +53,8 @@
   ],
   "closed_breaker_samples": 282,
   "open_breaker_samples": 0,
-  "max_abs_generator_grid_difference_mw": 0.0,
-  "max_abs_grid_alias_difference_mw": 0.0,
+  "max_abs_generator_grid_difference_mw": 0,
+  "max_abs_grid_alias_difference_mw": 0,
   "behavior_validation": "PARTIAL",
   "limitations": [
     "No 52ST-open sample; zero-export branch is source-defined but not behaviorally tested.",
@@ -76,5 +76,16 @@
       "vppSTGridPowerMW = if not vpp52STClosed then 0 else vppSTGeneratorPowerMW;"
     ],
     "source_scope": "User-provided local runtime package; not a claim that the preview Git branch contains the updated physical model."
+  },
+  "later_runtime_verification": {
+    "date": "2026-09-26",
+    "build": "TripLens_PlantControlV2_20260926-104046",
+    "patch_id": "TRIPLENS_ST_BREAKER_OPEN_TRIP_V1",
+    "source_sha256": "9392B702487A891046B4F9E7E0466198F72D5ED087125D2E0BE9958E52E8F07E",
+    "evidence_csv": "data/current_v8/st_breaker_open_evidence_20260926.csv",
+    "open_behavior_test_status": "RUNTIME_VERIFIED",
+    "st_grid_power_zero_verified": true,
+    "st_breaker_open_cause_verified": true,
+    "note": "The original 2026-09-24 session above remains a closed-only 282-row provenance record. The 2026-09-26 proof is a separate later runtime verification."
   }
 }
