@@ -6,15 +6,6 @@
     "patch_marker": "TRIPLENS_ST_BREAKER_OPEN_TRIP_V1",
     "note": "Run 54 live census remains historical. New 52ST breaker-open cause is exposed as SEARCH_ONLY until a fresh OPC UA census captures its numeric identity."
   },
-  "live_rule_updates": [
-    {
-      "rule_id": "PROT-ST-REQUEST",
-      "logic_name": "ST trip request",
-      "input_nodes": "vppGTTripRequest | vppCauseDirectSTTrip | vppCauseHPDrumHH | vppCauseIPDrumHH | vppCauseLPDrumHH",
-      "condition": "OR(all inputs)",
-      "source_basis": "Hierarchical ST request equation. GT-side causes enter through vppGTTripRequest; numeric cause-count labeling is retired."
-    }
-  ],
   "source_tags": [
     {
       "raw_tag_id": "vppCauseSTBreakerOpenWhileRunning",
