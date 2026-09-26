@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { EQUIPMENT_DRAWING_MASTER } from '../lib/equipmentDrawingMaster.mjs';
+import { plantDrawingHref, searchPlantViewEquipment } from '../lib/plantViewSearch.mjs';
 
 const TAG_ALIASES = Object.freeze({
   TRIP_LATCH: 'vppGTTripLatch',
@@ -57,11 +59,11 @@ function setLegendText(element, value) {
 function scrubViewer(document) {
   setText(document.querySelector('#equipment-view'), '설비별 로직');
   setText(document.querySelector('#tab-screens'), '설비 로직');
-  setText(document.querySelector('#tab-drawings'), '도면');
+  setText(document.querySelector('#tab-drawings'), '로직 다이어그램');
   const equipmentGroup = [...document.querySelectorAll('#page-select optgroup')].find(group => group.label === '설비 화면');
   if (equipmentGroup) equipmentGroup.label = '설비별 로직';
   const headerCopy = document.querySelector('.top p');
-  setText(headerCopy, '태그 · 로직 · 도면 검색 · 상세 정보');
+  setText(headerCopy, '태그 · 로직 · 설비별 로직 · 로직 다이어그램 · Plant View 설비');
 
   const revision = document.querySelector('#revision');
   setText(revision, '태그 및 로직 데이터 · Current V8');
@@ -139,8 +141,115 @@ export default function LogicViewerFrame({ src = '/logic-assets/viewer.html', ti
 
     observerRef.current?.disconnect();
     let currentPage;
+    let plantMode = false;
+    const searchInput = document.querySelector('#search');
+    const results = document.querySelector('#results');
+    const resultCount = document.querySelector('#result-count');
+    const workspace = document.querySelector('#workspace');
+    const main = document.querySelector('#workspace .main');
+    const side = document.querySelector('#workspace .side');
+    const inspector = document.querySelector('#inspector');
+
+    function ensurePlantViewTab() {
+      const tabs = document.querySelector('.tabs');
+      if (!tabs) return null;
+      let button = document.querySelector('#tab-plant-view');
+      if (!button) {
+        button = document.createElement('button');
+        button.type = 'button';
+        button.id = 'tab-plant-view';
+        button.setAttribute('aria-label', 'Plant View 설비');
+        button.title = 'Equipment Master에 등록된 설비 위치 검색';
+        button.textContent = 'Plant View 설비';
+        tabs.append(button);
+      }
+      return button;
+    }
+
+    function renderPlantViewResults() {
+      if (!searchInput || !results) return;
+      const rows = searchPlantViewEquipment(EQUIPMENT_DRAWING_MASTER, searchInput.value);
+      resultCount && (resultCount.textContent = `Plant View 설비 검색 결과 ${rows.length}개`);
+      const items = rows.map(row => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.plantEquipmentId = row.equipment_id;
+        button.setAttribute('aria-label', `${row.event_equipment} · ${row.equipment_type} · ${row.plant_location_id ? 'Plant View' : 'ECMS 도면'}`);
+
+        const name = document.createElement('strong');
+        name.textContent = row.event_equipment || row.equipment_id;
+        const details = document.createElement('small');
+        details.textContent = [row.aliases, row.equipment_type, row.plant_location_id ? 'Plant View' : 'ECMS 도면']
+          .filter(Boolean).join(' · ');
+        button.append(name, details);
+        return button;
+      });
+      results.replaceChildren(...items);
+      const moreResults = document.querySelector('#more-results');
+      if (moreResults) moreResults.hidden = true;
+    }
+
+    function showPlantViewSearch() {
+      plantMode = true;
+      document.querySelectorAll('.tabs button').forEach(button => {
+        button.classList.toggle('active', button.id === 'tab-plant-view');
+      });
+      if (searchInput) {
+        searchInput.placeholder = '설비명 · Equipment ID · 별칭 검색';
+        searchInput.setAttribute('aria-label', 'Plant View 설비 검색');
+      }
+      if (workspace) workspace.style.gridTemplateColumns = 'minmax(0, 1fr)';
+      if (side) side.style.gridTemplateColumns = 'minmax(0, 1fr)';
+      if (main) main.hidden = true;
+      if (inspector) inspector.hidden = true;
+      renderPlantViewResults();
+    }
+
+    function leavePlantViewSearch(nextTabId) {
+      if (!plantMode) return;
+      plantMode = false;
+      if (workspace) workspace.style.gridTemplateColumns = '';
+      if (side) side.style.gridTemplateColumns = '';
+      if (main) main.hidden = false;
+      if (inspector) inspector.hidden = false;
+      if (searchInput) {
+        const isDrawing = nextTabId === 'tab-drawings';
+        searchInput.placeholder = isDrawing ? '태그 · 로직 · 페이지 · 셀 검색' : '태그 ID · 설명 · 로직 검색';
+        searchInput.setAttribute('aria-label', isDrawing ? '로직 다이어그램 검색' : '태그 또는 로직 검색');
+      }
+    }
+
+    document.addEventListener('click', event => {
+      const plantTab = event.target?.closest?.('#tab-plant-view');
+      if (plantTab) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        showPlantViewSearch();
+        return;
+      }
+
+      const equipmentButton = event.target?.closest?.('[data-plant-equipment-id]');
+      if (plantMode && equipmentButton) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const row = EQUIPMENT_DRAWING_MASTER.find(item => item.equipment_id === equipmentButton.dataset.plantEquipmentId);
+        if (row) window.location.assign(plantDrawingHref(row));
+        return;
+      }
+
+      const nativeTab = event.target?.closest?.('#tab-tags, #tab-rules, #tab-screens, #tab-drawings');
+      if (plantMode && nativeTab) leavePlantViewSearch(nativeTab.id);
+    }, true);
+
+    document.addEventListener('input', event => {
+      if (!plantMode || event.target !== searchInput) return;
+      event.stopImmediatePropagation();
+      renderPlantViewResults();
+    }, true);
+
     const update = () => {
       scrubViewer(document);
+      ensurePlantViewTab();
       const selectedOption = document.querySelector('#page-select option:checked');
       const nextPage = selectedOption?.parentElement?.label === '설비별 로직'
         ? document.querySelector('#page-title')?.textContent?.trim() || '' : '';
