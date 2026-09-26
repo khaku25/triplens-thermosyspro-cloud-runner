@@ -95,6 +95,28 @@ body:has(.app-shell){background:#d8dee3;color:#183348}
 .app-shell .analysis-status b{font-size:13px;color:#17384c}
 .app-shell .analysis-status span{font-size:12px;color:#5d7382}
 .app-shell .analysis-status em{font-style:normal;font-size:12px;color:#9a3f2f}
+.app-shell .analysis-model-control{grid-column:1/-1;display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;color:#486275;font-size:12px}
+.app-shell .analysis-model-summary{display:flex;align-items:baseline;gap:8px}
+.app-shell .analysis-model-summary span{font-weight:700;color:#17384c}
+.app-shell .analysis-model-summary strong{color:#274f63}
+.app-shell .analysis-settings-trigger{padding:6px 10px;border:1px solid #8094a0;border-radius:5px;background:#fff;color:#19384c;font:inherit;font-weight:700;cursor:pointer}
+.app-shell .analysis-settings-trigger:disabled{opacity:.6;cursor:wait}
+.app-shell .analysis-model-control small{color:#627887}
+.analysis-settings-dialog{width:min(460px,calc(100vw - 28px));max-width:none;max-height:calc(100dvh - 28px);padding:0;border:1px solid #9eb2bf;border-radius:12px;background:#f7f9fa;color:#183348;box-shadow:0 20px 60px rgba(9,31,44,.28)}
+.analysis-settings-dialog::backdrop{background:rgba(13,31,45,.58)}
+.analysis-settings-dialog>header,.analysis-settings-dialog>footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:#fff}
+.analysis-settings-dialog>header{border-bottom:1px solid #d4dfe6}
+.analysis-settings-dialog>header h2{margin:0;font-size:17px}
+.analysis-settings-dialog>header p{margin:4px 0 0;color:#617685;font-size:12px}
+.analysis-settings-dialog>header button,.analysis-settings-dialog>footer button{min-height:36px;padding:7px 12px;border:1px solid #9db1bd;border-radius:7px;background:#fff;color:#183348;font-weight:700;cursor:pointer}
+.analysis-settings-content{display:grid;gap:10px;padding:18px 16px}
+.analysis-settings-content label{font-weight:700;color:#17384c}
+.analysis-settings-content select{width:100%;min-height:42px;padding:8px 10px;border:1px solid #8094a0;border-radius:5px;background:#fff;color:#19384c;font:inherit}
+.analysis-settings-content p{margin:0;color:#617685;font-size:12px;line-height:1.55}
+.analysis-settings-content .analysis-settings-hint{color:#7b4d26}
+.analysis-settings-content .analysis-settings-error{color:#9a3f2f}
+.analysis-settings-dialog>footer{border-top:1px solid #d4dfe6;color:#617685;font-size:12px}
+.analysis-settings-dialog>footer button{background:#214f66;border-color:#214f66;color:#fff}
 .app-shell .intake-actions{grid-column:1/-1;border-top:0;padding-top:0;gap:8px}
 .app-shell .intake-actions button,.app-shell .export-button,.app-shell .back-button{background:#1e465d;color:#fff;border:1px solid #17384c;padding:9px 13px;font-weight:700;cursor:pointer}
 .app-shell .intake-actions button:hover:not(:disabled),.app-shell .export-button:hover:not(:disabled),.app-shell .back-button:hover{background:#15384e}

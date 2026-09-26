@@ -40,6 +40,8 @@ import {
 } from '../lib/workspacePresentation.mjs';
 import reportExporter from '../lib/reportExporter.cjs';
 import {analysisApiUrl} from '../lib/analysisApi.mjs';
+import {analysisProviderChoices,analysisProviderLabel,appendAnalysisProvider,DEFAULT_ANALYSIS_PROVIDER} from '../lib/analysisProvider.mjs';
+import {loadAnalysisProviderPreference,saveAnalysisProviderPreference} from '../lib/analysisPreference.mjs';
 import '../app/integration.css';
 
 const CLAIM_STATUS_CHOICES=['UNKNOWN','OBSERVED','CANDIDATE'];
@@ -189,6 +191,10 @@ export default function TripLensWorkspace({mode='blind'}){
   const [detail,setDetail]=useState(null);
   const [reportOpen,setReportOpen]=useState(false);
   const [reportRows,setReportRows]=useState([]);
+  const [analysisProvider,setAnalysisProvider]=useState(DEFAULT_ANALYSIS_PROVIDER);
+  const [settingsOpen,setSettingsOpen]=useState(false);
+  const [providerPreferenceReady,setProviderPreferenceReady]=useState(false);
+  const [providerPreferenceError,setProviderPreferenceError]=useState('');
   const [pdfPreviewHtml,setPdfPreviewHtml]=useState('');
   const [evidenceQuery,setEvidenceQuery]=useState('');
   const [recovery,setRecovery]=useState(()=>normalizeRecovery(EMPTY_RECOVERY));
@@ -211,6 +217,8 @@ export default function TripLensWorkspace({mode='blind'}){
   const ready=Boolean(eventFile&&rawFile&&eventData&&rawData);
   const status=inputStatus({ready,busy,complete:Boolean(result),eventRows:eventData?.records.length||0,rawTagCount:rawTagCount(rawData)});
   const logic=contract?.logic_summary;
+  const modelOptions=useMemo(()=>analysisProviderChoices(contract),[contract]);
+  const selectedModelOption=modelOptions.find(option=>option.id===analysisProvider);
 
   useEffect(()=>{
     let active=true;
@@ -222,6 +230,10 @@ export default function TripLensWorkspace({mode='blind'}){
     let active=true;
     (async()=>{
       try{
+        const storedPreference=loadAnalysisProviderPreference();
+        if(!active)return;
+        setAnalysisProvider(storedPreference||DEFAULT_ANALYSIS_PROVIDER);
+        setProviderPreferenceReady(true);
         const saved=await loadSession();
         if(!active||!canRestoreWorkspaceSession(saved,mode))return;
         const savedEvents=saved.eventData||(saved.eventFile?parseCSV(await saved.eventFile.text()):null);
@@ -245,7 +257,7 @@ export default function TripLensWorkspace({mode='blind'}){
       }catch{
         if(active)setStatusText('이 브라우저에서 이전 분석을 복원하지 못했습니다. 파일을 다시 선택해 주세요.');
       }finally{
-        if(active)setRestored(true);
+        if(active){setProviderPreferenceReady(true);setRestored(true);}
       }
     })();
     return()=>{active=false;};
@@ -278,6 +290,12 @@ export default function TripLensWorkspace({mode='blind'}){
     clearSession().catch(()=>{});
   }
 
+  function changeAnalysisProvider(value){
+    const next=value==='openai'?'openai':'gemini';
+    setAnalysisProvider(next);
+    setProviderPreferenceError(saveAnalysisProviderPreference(next)?'':'모델 설정을 이 브라우저에 저장하지 못했습니다.');
+  }
+
   async function selectFile(kind,file){
     version.current+=1;
     resetAnalysisState();
@@ -303,10 +321,11 @@ export default function TripLensWorkspace({mode='blind'}){
       return;
     }
     const revision=version.current;
-    const form=()=>{
+    const form=(provider)=>{
       const body=new FormData();
       body.append('event',eventFile,eventFile.name||'EVENT.csv');
       body.append('raw',rawFile,rawFile.name||'RAW.csv');
+      if(provider)appendAnalysisProvider(body,provider);
       return body;
     };
     setBusy(true);
@@ -316,7 +335,7 @@ export default function TripLensWorkspace({mode='blind'}){
       if(revision!==version.current)return;
       setContract(prepared.contract);
       if(prepared.evidence_readiness?.status!=='PASS')throw new Error('EVENT.csv와 RAW.csv의 시간 범위와 형식을 확인해 주세요.');
-      const data=await request('/analyze',form());
+      const data=await request('/analyze',form(analysisProvider));
       if(revision!==version.current)return;
       data.analysis=normalizeDisplayAnalysis(data.analysis);
       const mergedEvents=mergeEvents(eventData.records,data.events||[]);
@@ -467,8 +486,14 @@ export default function TripLensWorkspace({mode='blind'}){
             ['raw',rawFile,rawData],
           ].map(([kind,file,data])=><label className={`file-card ${file?'ready':''}`} key={kind}><span>{kind.toUpperCase()}.csv</span><b>{file?.name||'파일 선택'}</b><em>{file?`${(file.size/1024).toFixed(1)} KB · ${data?.records.length??'확인 중'}${kind==='event'?'건':'행'}${kind==='raw'&&data?` · ${rawTagCount(data)}개 태그`:''}`:''}</em><input disabled={busy} type="file" accept=".csv,text/csv" aria-label={`${kind.toUpperCase()} 파일`} onClick={event=>{event.currentTarget.value='';}} onChange={event=>selectFile(kind,event.target.files?.[0])}/></label>)}</div>
           <div className="analysis-status" aria-live="polite"><b>{status.title}</b>{status.detail?<span>{status.detail}</span>:null}{statusText?<em role="alert">{statusText}</em>:null}</div>
+          <div className="analysis-model-control">
+            <div className="analysis-model-summary"><span>다음 분석 모델</span><strong>{selectedModelOption?.label||analysisProviderLabel(analysisProvider,contract)}</strong></div>
+            <button type="button" className="analysis-settings-trigger" disabled={!providerPreferenceReady} onClick={()=>setSettingsOpen(true)}>모델 설정</button>
+            {selectedModelOption?.disabled?<small>{analysisProvider==='openai'?'서버 OPENAI_API_KEY 설정 후 사용할 수 있습니다.':'서버 Gemini API 키 설정을 확인해 주세요.'}</small>:null}
+            {result?<small>현재 분석에 사용한 모델: {analysisProviderLabel(result.contract?.analysis_provider||result.analysis?.agent_execution?.provider,result.contract)} · {result.contract?.model||result.analysis?.agent_execution?.model||'모델 정보 없음'}</small>:null}
+          </div>
           <div className="intake-actions">
-            <button disabled={!ready||busy||Boolean(result)} onClick={analyze}>{busy?'분석 중…':result?'분석 완료':'이 Dual Log 분석하기'}</button>
+            <button disabled={!ready||busy||Boolean(result)||!providerPreferenceReady||!selectedModelOption?.available} onClick={analyze}>{busy?'분석 중…':result?'분석 완료':'이 Dual Log 분석하기'}</button>
             <button disabled={!result} className="secondary" onClick={()=>{setReportOpen(!reportOpen);setDetail(null);}}>고장분석 보고서 보기</button>
             <button disabled={busy} className="secondary" onClick={clear}>입력·분석 지우기</button>
           </div>
@@ -492,9 +517,40 @@ export default function TripLensWorkspace({mode='blind'}){
         </section>:null}
       </section>
     </div>
+    <AnalysisSettingsDialog open={settingsOpen} onClose={()=>setSettingsOpen(false)} provider={analysisProvider}
+      providerOptions={modelOptions} providerReady={providerPreferenceReady&&Boolean(contract)}
+      onProviderChange={changeAnalysisProvider} error={providerPreferenceError}/>
     {pdfPreviewHtml?<ReportPdfDialog html={pdfPreviewHtml} onClose={()=>setPdfPreviewHtml('')} onError={message=>setStatusText(message)}/>:null}
     <LogicLibraryDialog analysisMode/>
   </main>;
+}
+
+function AnalysisSettingsDialog({open,onClose,provider,providerOptions,providerReady,onProviderChange,error}){
+  const dialogRef=useRef(null);
+
+  useEffect(()=>{
+    const dialog=dialogRef.current;
+    if(!dialog)return;
+    if(open&&!dialog.open)dialog.showModal();
+    if(!open&&dialog.open)dialog.close();
+  },[open]);
+
+  const selected=providerOptions.find(option=>option.id===provider);
+
+  return <dialog ref={dialogRef} className="analysis-settings-dialog" aria-label="분석 모델 설정" onCancel={event=>{event.preventDefault();onClose();}}>
+    <header><div><h2>분석 설정</h2><p>분석에 사용할 모델을 선택하세요.</p></div><button type="button" onClick={onClose}>닫기</button></header>
+    <div className="analysis-settings-content">
+      <label htmlFor="analysis-model">분석 모델</label>
+      <select id="analysis-model" value={provider} disabled={!providerReady} onChange={event=>onProviderChange(event.target.value)}>
+        {providerOptions.map(option=><option key={option.id} value={option.id} disabled={option.disabled}>{option.displayLabel}</option>)}
+      </select>
+      <p>선택은 이 브라우저에 자동 저장되며, 입력·분석을 지운 뒤에도 유지됩니다.</p>
+      <p>모델 변경은 다음 분석부터 적용되고, 이미 만들어진 결과는 그대로 남습니다.</p>
+      {selected?.disabled?<p className="analysis-settings-hint">{provider==='openai'?'GPT 사용 전 Agent API에 OPENAI_API_KEY 설정이 필요합니다.':'Gemini API 설정 상태를 확인해 주세요.'}</p>:null}
+      {error?<p className="analysis-settings-error" role="alert">{error}</p>:null}
+    </div>
+    <footer><span>현재 선택: {selected?.label||provider}</span><button type="button" onClick={onClose}>확인</button></footer>
+  </dialog>;
 }
 
 function ReportPdfDialog({html,onClose,onError}){
