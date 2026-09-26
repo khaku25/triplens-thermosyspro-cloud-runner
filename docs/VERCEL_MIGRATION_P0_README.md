@@ -6,7 +6,7 @@ The filename is retained for existing references. This is no longer the original
 
 The old P0 passed HTTP tests with hand-authored GT events but omitted important real V8 boundaries: generic EVENT identity mapping, discoverable RAW tags, RAW Evidence IDs, uniform output objects and actual UI interaction. Old examples containing 86GT were not faithful to the Current V8 live source list and must not be used as evidence of the real runtime.
 
-Current live source data remain 603 source nodes and 53 Logic Master rows. An uploaded historical RAW file can contain a different number of columns, including display aliases; CSV presence is not proof of current live source registration.
+Current live source data remain 603 source nodes and 53 Logic Master rows. The Current production searchable projection is 606 tags and 55 rules across 37 searchable input groups and 102 draw.io pages; it adds later source/runtime-verified ST evidence without rewriting the frozen Run #54 census. An uploaded historical RAW file can contain a different number of columns, including display aliases; CSV presence is not proof of current live source registration.
 
 ## Files and responsibilities
 
@@ -34,7 +34,7 @@ The total executed call budget is eight, not eight calls per function. The UI di
 
 A real `GT::TRIP_LATCH` event resolves through the recorder registry to `vppGTTripLatch` while preserving the original tag. Registered design rows identify upstream request/input tags. Gemini can discover those actual RAW names, query samples and propose a cause. Python does not choose the active cause for the model.
 
-TripLens analysis does not use a fixed `9-cause matrix` as its diagnostic frame. It follows the currently registered Logic Master upstream relationships dynamically. The physical V8 protection model may still contain the present GT/ST cause inputs and OR relationships; those model semantics remain untouched. If the registered input set changes later, the Agent follows the new registered set without changing an analysis-side fixed cause count.
+TripLens analysis does not use a fixed cause-count matrix as its diagnostic frame. It follows the currently registered Logic Master upstream relationships dynamically. The physical V8 protection model may still contain the present GT/ST cause inputs and OR relationships; those model semantics remain untouched. If the registered input set changes later, the Agent follows the new registered set without changing an analysis-side fixed cause count.
 
 All raw values cited in output have `RAW:<original-data-row>:<tag>` IDs, original record sequence, model time and audit time. Digital transition samples include bracketing times; a one-second historian interval cannot establish millisecond onset. Simultaneous GT/ST trips can share a common input and are not automatically interpreted as GT-to-ST intertrip.
 
@@ -71,3 +71,7 @@ Run `python -m unittest discover -s services/agent-api/tests -p 'test_*.py' -v` 
 `Test Deployed V8 Evidence Integration` separately replays original GT/ST EVENT+RAW from archived run 34984251101 artifact 10404407335, without modifying input bytes or sending archive path/scenario names to Gemini. A degraded synthetic input checks that missing initiating evidence remains UNKNOWN. A successful regression is not a blind-generalization benchmark or a new physics simulation.
 
 The screenshot's session `SESSION_20260915_145125` and 48.44-second GT latch record match the archived GT case. The user-selected files were not independently byte-compared; the archive input SHA-256 values and API digests are retained for comparison.
+
+## Current ST breaker-open production update
+
+The production Logic Master registers `PROT-ST-BRK-OPEN` as the manual 52ST-open initiating cause. It is distinct from `SEQ-52ST-OPEN`, the post-trip breaker sequence. The web search projection exposes `vppCauseSTBreakerOpenWhileRunning` and the build `104046` runtime proof; historical Run #54 NodeId census remains 603 live tags.
