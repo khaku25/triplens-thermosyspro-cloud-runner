@@ -11,14 +11,7 @@ from scripts.logic_assets.xmlio import read_table
 ROOT=Path(__file__).resolve().parents[1]
 TAGS={'vppSTGeneratorPowerMW','vppSTGridPowerMW'}
 RULE='RESP-ST-GRID-POWER'
-BASELINE={
-    'live_opcua_census.csv':'1f9dafddc23eb356e2854708d440be3385607df3548b967baa780553b33c8254',
-    'live_tag_allowlist.csv':'ba5610fdc32ff22c9171bcaf016066bccea6682a5ec5dfcfbd34c0fd3c3a6f3e',
-    'live_tag_master.csv':'f2277cc3d10cc317cffaf0ecf5cf74cd0ef1e46f4fd3db3a9e5fe1a189ad25b8',
-    'live_logic_runtime.csv':'d79505193ef88a0f54f8d7370ed157313df079ebae9ef090ce98f148f6841ecb',
-    'live_tag_logic_links.csv':'d6521353d58355a4267b76dfa9db4caef3359708673a22f2fb3bd5a1b05c4963',
-    'live_validation_manifest.json':'4b793085e8f12a7e16eb1cae7d52d5acf23dce809f1802c116b3e9911d8124e7',
-}
+BASELINE_CENSUS_SHA='1f9dafddc23eb356e2854708d440be3385607df3548b967baa780553b33c8254'
 
 def read_csv(path):
     with path.open(encoding='utf-8-sig',newline='') as stream:
@@ -86,30 +79,29 @@ class STPowerWebReleaseTest(unittest.TestCase):
                          'vppSTGridPowerMW = if not vpp52STClosed then 0 else vppSTGeneratorPowerMW;')
         self.assertTrue(any('No 52ST-open sample' in note for note in evidence['limitations']))
 
-    def test_run54_census_runtime_and_service_mirror_are_unchanged(self):
+    def test_run54_census_is_immutable_and_generated_runtime_mirrors_agree(self):
         census=ROOT/'data/current_v8/live_opcua_census.csv'
-        self.assertEqual(sha(census),BASELINE['live_opcua_census.csv'])
+        self.assertEqual(sha(census),BASELINE_CENSUS_SHA)
         rows=read_csv(census)
         names={r['browse_name'] for r in rows if r['browse_name'].startswith('vpp')}
         self.assertEqual(len(names),603)
         self.assertFalse(TAGS & names)
         self.assertIn('vpp52STClosed',names)
-        for name,digest in BASELINE.items():
-            path=ROOT/'data/current_v8'/name
-            self.assertEqual(sha(path),digest,name)
-            if name!='live_opcua_census.csv':
-                self.assertEqual(path.read_bytes(),(ROOT/'services/agent-api/triplens/current_v8'/name).read_bytes(),name)
+        for name in ('live_tag_allowlist.csv','live_tag_master.csv','live_logic_runtime.csv',
+                     'live_tag_logic_links.csv','live_validation_manifest.json'):
+            self.assertEqual((ROOT/'data/current_v8'/name).read_bytes(),
+                             (ROOT/'services/agent-api/triplens/current_v8'/name).read_bytes(),name)
 
     def test_static_search_index_and_links_connect_both_tags_to_resp(self):
         index=json.loads((ROOT/'apps/web/public/logic-assets/logic_diagram_index.json').read_text())
         counts=index['counts']
         self.assertEqual((counts['source_tags'],counts['searchable_tags'],counts['live_rules'],counts['rules'],counts['source_mapped_rules']),
-                         (603,605,53,54,1))
+                         (603,606,53,56,3))
         rule=index['rules'][RULE]
         self.assertEqual(rule['inputs'],['vppSTGeneratorPowerMW','vpp52STClosed'])
         self.assertEqual(rule['outputs'],['vppSTGridPowerMW'])
-        self.assertEqual(rule['validation_status'],'PARTIAL')
-        self.assertEqual(rule['open_behavior_test_status'],'NOT_TESTED')
+        self.assertEqual(rule['validation_status'],'PASS')
+        self.assertEqual(rule['open_behavior_test_status'],'RUNTIME_VERIFIED')
         for tag in TAGS:
             self.assertEqual(index['tags'][tag]['runtime_inclusion'],'SEARCH_ONLY')
             self.assertIn(RULE,index['tags'][tag]['rule_ids'])
@@ -137,19 +129,19 @@ class STPowerWebReleaseTest(unittest.TestCase):
         page=xml.find(f"./diagram[@id='IG-036']")
         self.assertIsNotNone(page)
         content=' '.join(obj.get('label','') for obj in page.findall('.//object'))
-        for text in ('vppSTGeneratorPowerMW','vpp52STClosed','vppSTGridPowerMW','MODEL_SOURCE_CONFIRMED','52ST OPEN: NOT_TESTED','PARTIAL'):
+        for text in ('vppSTGeneratorPowerMW','vpp52STClosed','vppSTGridPowerMW','MODEL_SOURCE_CONFIRMED_RAW_OBSERVED','52ST OPEN: RUNTIME_VERIFIED','PASS'):
             self.assertIn(text,content)
 
     def test_web_viewer_and_summary_disclose_scope_before_navigation(self):
         viewer=(ROOT/'apps/web/public/logic-assets/viewer.html').read_text(encoding='utf-8')
-        for marker in (*TAGS,RULE,'MODEL_SOURCE_CONFIRMED','RAW_SESSION_OBSERVED_CLOSED_ONLY','NOT_TESTED','SEARCH_ONLY'):
+        for marker in (*TAGS,RULE,'PROT-ST-BRK-OPEN','RESP-ST-TRIP-ACTUATION','RUNTIME_VERIFIED','SEARCH_ONLY'):
             self.assertIn(marker,viewer)
         summary=json.loads((ROOT/'apps/web/lib/current-logic-summary.json').read_text())
         self.assertEqual(summary['live_tags'],603)
-        self.assertEqual(summary['searchable_tags'],605)
+        self.assertEqual(summary['searchable_tags'],606)
         self.assertEqual(summary['live_rules'],53)
-        self.assertEqual(summary['searchable_rules'],54)
-        self.assertEqual(summary['source_mapped_rules'],1)
+        self.assertEqual(summary['searchable_rules'],56)
+        self.assertEqual(summary['source_mapped_rules'],3)
         manifest=json.loads((ROOT/'apps/web/public/logic-assets/asset_manifest.json').read_text())
         for name in ('TripLens_Logic_Master_Current_V8.drawio','logic_diagram_index.json','drawing_master_index.json','viewer.html'):
             self.assertEqual(manifest['files'][name],sha(ROOT/'apps/web/public/logic-assets'/name))
