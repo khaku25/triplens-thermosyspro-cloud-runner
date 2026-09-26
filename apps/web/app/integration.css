@@ -416,6 +416,18 @@ body:has(.app-shell){background:#d8dee3;color:#183348}
 .app-shell .claim-reference-actions{display:inline-flex;align-items:center;gap:7px;margin-left:auto;white-space:nowrap}
 .app-shell .claim-reference-actions button,.app-shell .claim-reference-actions a{display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:3px 7px;border:1px solid #b9cbd3;border-radius:5px;background:#fff;color:#12617b;font:inherit;font-size:12px;font-weight:800;text-decoration:none;cursor:pointer}
 .app-shell .claim-reference-actions button:hover,.app-shell .claim-reference-actions a:hover{background:#eaf3f6;border-color:#7398a8}
+.report-pdf-dialog{width:min(1180px,96vw);height:min(94dvh,1200px);max-width:none;max-height:none;padding:0;border:1px solid #9eb2bf;border-radius:12px;background:#f4f7f9;color:#183348;overflow:hidden}
+.report-pdf-dialog::backdrop{background:rgba(13,31,45,.64)}
+.report-pdf-dialog>header,.report-pdf-dialog>footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:#fff}
+.report-pdf-dialog>header{min-height:70px;border-bottom:1px solid #d4dfe6}
+.report-pdf-dialog>header h2{margin:0;font-size:16px}
+.report-pdf-dialog>header p{margin:4px 0 0;color:#617685;font-size:12px}
+.report-pdf-dialog>header button,.report-pdf-dialog>footer button{min-height:36px;padding:7px 12px;border:1px solid #9db1bd;border-radius:7px;background:#fff;color:#183348;font-weight:700;cursor:pointer}
+.report-pdf-dialog>footer{min-height:58px;border-top:1px solid #d4dfe6;font-size:12px;color:#617685}
+.report-pdf-dialog>footer button{background:#214f66;border-color:#214f66;color:#fff;white-space:nowrap}
+.report-pdf-dialog>footer button:disabled{opacity:.55;cursor:wait}
+.report-pdf-dialog>iframe{display:block;width:100%;height:calc(100% - 128px);border:0;background:#dfe6eb}
+@media(max-width:700px){.report-pdf-dialog{width:100vw;height:100dvh;border:0;border-radius:0}.report-pdf-dialog>header,.report-pdf-dialog>footer{padding:10px 12px}.report-pdf-dialog>footer span{max-width:46%;line-height:1.4}.report-pdf-dialog>iframe{height:calc(100% - 134px)}}
 .app-shell .claim-evidence>details{margin-top:6px}
 .app-shell .claim-evidence summary{font-size:12px}
 .app-shell .detail-evidence-list{line-height:1.55}

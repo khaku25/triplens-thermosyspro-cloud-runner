@@ -8,5 +8,6 @@ test('defines the exact ST power display identity', () => {
     tag: 'vppSTGridPowerMW',
     unit: 'MW',
     href: '/logic?tag=vppSTGridPowerMW',
+    drawingHref: '/drawing?equipment=52ST&view=ecms&tag=vppSTGridPowerMW',
   });
 });

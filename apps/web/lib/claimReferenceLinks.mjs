@@ -4,6 +4,18 @@ import {resolvePlantFocus} from './plantDrawingFocus.mjs';
 
 const unique=values=>[...new Set((values||[]).map(value=>String(value||'').trim()).filter(Boolean))];
 const list=value=>Array.isArray(value)?value:value==null?[]:[value];
+const ST_POWER_TAGS=new Set(['vppSTGridPowerMW','vppSTGeneratorPowerMW']);
+const ST_BREAKER_TAGS=new Set([
+  'vppSTGridPowerMW',
+  'vppSTGeneratorPowerMW',
+  'vpp52STClosed',
+  'vppSTTripLatchPublished',
+  'vppSTTripRequest',
+  'vppExternalSTTripCommandNative',
+  'vppCauseDirectSTTrip',
+  'vppCauseSTBreakerOpenWhileRunning',
+  'vppECMS52STClosedCommandNative',
+]);
 
 export function buildClaimReferenceTargets(item={},catalog=[]){
   const ids=new Set(unique(list(item?.evidence_ids)));
@@ -13,6 +25,12 @@ export function buildClaimReferenceTargets(item={},catalog=[]){
   ]);
   const tags=unique([...list(item?.related_tags),...evidenceTags]);
   const logicTag=tags[0]||'';
+  const stBreakerTag=tags.find(tag=>ST_BREAKER_TAGS.has(tag));
+  if(stBreakerTag){
+    const query=new URLSearchParams({equipment:'52ST',view:'ecms'});
+    query.set(ST_POWER_TAGS.has(stBreakerTag)?'tag':'event',stBreakerTag);
+    return {logicTag,drawingHref:`/drawing?${query.toString()}`};
+  }
 
   for(const row of evidence){
     const eventDrawing=resolveEventDrawing({

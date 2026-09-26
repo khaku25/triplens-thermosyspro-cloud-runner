@@ -187,6 +187,7 @@ export default function TripLensWorkspace({mode='blind'}){
   const [detail,setDetail]=useState(null);
   const [reportOpen,setReportOpen]=useState(false);
   const [reportRows,setReportRows]=useState([]);
+  const [pdfPreviewHtml,setPdfPreviewHtml]=useState('');
   const [evidenceQuery,setEvidenceQuery]=useState('');
   const [recovery,setRecovery]=useState(()=>normalizeRecovery(EMPTY_RECOVERY));
   const [restored,setRestored]=useState(false);
@@ -349,7 +350,15 @@ export default function TripLensWorkspace({mode='blind'}){
     setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
 
-  function exportPDF(){if(!exportBlocked)reportExporter.printReport(exportReport);}
+  function exportPDF(){
+    if(exportBlocked)return;
+    try{
+      setPdfPreviewHtml(reportExporter.buildReportHtml(exportReport));
+      setStatusText('');
+    }catch(error){
+      setStatusText(`PDF 보고서를 준비하지 못했습니다: ${error?.message||'보고서 내용을 확인해 주세요.'}`);
+    }
+  }
   function exportDetailedCSV(){if(!exportBlocked)reportExporter.downloadPinpointCsv(exportReport,`TripLens_상세분석데이터_${result?.run_id||'analysis'}.csv`);}
 
   function editReportRow(row,key,value){
@@ -481,6 +490,50 @@ export default function TripLensWorkspace({mode='blind'}){
         </section>:null}
       </section>
     </div>
+    {pdfPreviewHtml?<ReportPdfDialog html={pdfPreviewHtml} onClose={()=>setPdfPreviewHtml('')} onError={message=>setStatusText(message)}/>:null}
     <LogicLibraryDialog analysisMode/>
   </main>;
+}
+
+function ReportPdfDialog({html,onClose,onError}){
+  const dialogRef=useRef(null);
+  const frameRef=useRef(null);
+  const [ready,setReady]=useState(false);
+
+  useEffect(()=>{
+    const dialog=dialogRef.current;
+    if(!dialog)return;
+    if(!dialog.open)dialog.showModal();
+    return()=>{if(dialog.open)dialog.close();};
+  },[]);
+
+  function frameLoaded(){
+    const view=frameRef.current?.contentWindow;
+    if(!view)return;
+    Promise.resolve(view.document.fonts?.ready).then(()=>{
+      if(typeof view.TripLensFitReport==='function')view.TripLensFitReport();
+      setReady(true);
+    }).catch(()=>setReady(true));
+  }
+
+  function printReport(){
+    const view=frameRef.current?.contentWindow;
+    if(!view||typeof view.print!=='function'){
+      onError('이 브라우저에서 보고서 인쇄 창을 열 수 없습니다.');
+      return;
+    }
+    try{
+      if(typeof view.TripLensFitReport==='function')view.TripLensFitReport();
+      view.focus();
+      view.print();
+    }catch(error){
+      onError(`보고서 인쇄 창을 열지 못했습니다: ${error?.message||'브라우저 설정을 확인해 주세요.'}`);
+    }
+  }
+
+  return <dialog ref={dialogRef} className="report-pdf-dialog" aria-label="PDF 보고서 미리보기" onCancel={event=>{event.preventDefault();onClose();}}>
+    <header><div><h2>고장분석보고서 PDF 미리보기</h2><p>PDF 저장 / 인쇄를 누른 뒤 인쇄 창에서 ‘PDF로 저장’을 선택하세요.</p></div><button type="button" onClick={onClose}>닫기</button></header>
+    <iframe ref={frameRef} srcDoc={html} title="고장분석보고서 PDF 미리보기" onLoad={frameLoaded}/>
+    <footer><span>보고서 4쪽 · 인쇄 설정은 브라우저 대화상자에서 선택합니다.</span><button type="button" disabled={!ready} onClick={printReport}>PDF 저장 / 인쇄</button></footer>
+  </dialog>;
 }

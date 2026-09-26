@@ -40,9 +40,10 @@ export default function PlantDrawingMaster(){
   useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
     const equipment=params.get('equipment')||params.get('eq');
-    const event=params.get('event')||params.get('tag')||'';
+    const event=params.get('event')||'';
+    const tag=params.get('tag')||'';
     const requested=params.get('view');
-    setEventLabel(event?('EVENT · '+event):'');
+    setEventLabel(event?('EVENT · '+event):tag?('TAG · '+tag):'');
     if(requested==='plant') {setScreen('plant');}
     if(!equipment)return;
     const row=resolveEquipmentDrawing(equipment);
@@ -129,7 +130,7 @@ export default function PlantDrawingMaster(){
         {screen==='ecms-overview'?<div style={canvas}><InlineSvgNavigator src="/drawing/ecms-overview-matlab.svg" pageId="ECMS_VPP" title="ECMS Overview" highlight={overviewHighlight} eventLabel={eventLabel} onView={overviewNavigate} onEquipment={equipmentClicked}/></div>:null}
         {screen==='ecms-detail'?<><div style={selectionBar}><b>Direct detail</b><span>{detailHighlight||'BUS를 선택하세요'}</span></div><div style={canvas}><InlineSvgNavigator src="/drawing/ecms-6p9kv-matlab.svg" pageId="ECMS_6P9KV" title="6.9 kV SWGR Detail" highlight={detailHighlight} eventLabel={eventLabel} onEquipment={equipmentClicked}/></div></>:null}
         {screen==='plant'?<><section aria-label={ST_POWER_DISPLAY.label} style={stPowerPanel}>
-            <div style={stPowerIdentity}><div><span style={stPowerEyebrow}>{ST_POWER_DISPLAY.label}</span><b>{ST_POWER_DISPLAY.tag}</b><span style={stPowerUnit}>{ST_POWER_DISPLAY.unit}</span></div><a href={ST_POWER_DISPLAY.href} style={stPowerLink}>로직 연결 보기 →</a></div>
+            <div style={stPowerIdentity}><div><span style={stPowerEyebrow}>{ST_POWER_DISPLAY.label}</span><b>{ST_POWER_DISPLAY.tag}</b><span style={stPowerUnit}>{ST_POWER_DISPLAY.unit}</span></div><div style={stPowerLinks}><a href={ST_POWER_DISPLAY.href} style={stPowerLink}>로직 연결 보기 →</a><a href={ST_POWER_DISPLAY.drawingHref} target="_blank" rel="noreferrer" style={stPowerLink}>52ST 차단기 위치 →</a></div></div>
           </section><ProcessViewCanvas locationId={selectedFocus?.locationId} relatedEquipment={relatedEquipment} eventLabel={eventLabel} onSelect={processClicked}/>
           <section aria-label="추가 밸브 상세도면" style={{padding:'12px 14px',borderTop:'1px solid #d7e1e7'}}>
             <h3 style={{fontSize:15,margin:'0 0 4px'}}>추가 밸브 상세도면</h3>
@@ -158,6 +159,7 @@ const panel={background:'#fff',border:'1px solid #c9d6df',borderRadius:12,minWid
 const canvas={padding:12,background:'#f5f8fa',overflow:'auto'};
 const stPowerPanel={margin:'12px 12px 0',padding:'10px 12px',border:'1px solid #8ebac6',borderRadius:10,background:'#eff9fb'};
 const stPowerIdentity={display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'};
+const stPowerLinks={display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'};
 const stPowerEyebrow={display:'block',fontSize:11,fontWeight:800,letterSpacing:'.08em',color:'#1b6878'};
 const stPowerUnit={marginLeft:8,fontSize:12,color:'#55717d'};
 const stPowerLink={color:'#126176',fontWeight:700,fontSize:12,textDecoration:'underline',textUnderlineOffset:3};
