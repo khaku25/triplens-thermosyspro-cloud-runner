@@ -81,7 +81,7 @@ jobs:
                   assert frame.locator('#diagram [data-tag="vpp52STClosed"]').count()==1
                   assert frame.locator('#diagram [data-tag="vppSTGridPowerMW"]').count()==1
                   detail=frame.locator('#inspector').inner_text()
-                  assert '52ST OPEN: NOT_TESTED' in detail and 'PARTIAL' in detail
+                  assert '52ST OPEN: RUNTIME_VERIFIED' in detail and 'PASS' in detail
               page.screenshot(path=os.path.join(os.environ['RUNNER_TEMP'],'st-logic-next.png'),full_page=True)
               page.goto('http://127.0.0.1:3000/logic?tag=vppSTGridPowerMW')
               frame.get_by_role('button',name='Drawing Master',exact=True).click()
@@ -117,7 +117,7 @@ jobs:
           fi
           git rev-parse HEAD | tee "$RUNNER_TEMP/st-release-sha.txt"
           echo "Verified source release: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
-          echo 'Run 54 census 603 tags / 53 live rules; static search 605 tags / 54 rules. OPEN behavior remains NOT_TESTED.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Run 54 census 603 tags / 53 live rules; current search 606 tags / 55 rules. 52ST OPEN behavior is RUNTIME_VERIFIED on PlantControlV2 104046.' >> "$GITHUB_STEP_SUMMARY"
       - name: Preserve browser and release evidence
         if: always()
         uses: actions/upload-artifact@v4
