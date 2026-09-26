@@ -254,10 +254,15 @@ def build_document(model: dict, layout_xml: str | None = None) -> str:
                 info+='\n'+lines('복귀/히스테리시스: '+(r['reset_hysteresis'] or '미기재'),38)
                 info_h=110
                 if r.get('source_mapped'):
-                    info+='\nMODEL_SOURCE_CONFIRMED · RAW closed-only'
-                    info+='\nRAW: 282 closed / 0 open'
-                    info+='\n52ST OPEN: NOT_TESTED · 전체 상태: PARTIAL'
-                    info_h=160
+                    model_status=r.get('model_source_status') or 'MODEL_SOURCE_CONFIRMED'
+                    raw_status=r.get('raw_session_status') or 'SOURCE_MAPPED'
+                    info+=f'\n{model_status} · {raw_status}'
+                    rows=r.get('raw_rows',''); closed=r.get('raw_closed_samples',''); opened=r.get('raw_open_samples','')
+                    if rows or closed or opened:
+                        info+=f'\nRAW: {rows or "—"} rows · closed {closed or "—"} / open {opened or "—"}'
+                    open_status=r.get('open_behavior_test_status') or 'NOT_APPLICABLE'
+                    info+=f'\n52ST OPEN: {open_status} · 전체 상태: {r.get("validation_status") or "UNVERIFIED"}'
+                    info_h=175
                 page.vertex('additional:'+rid,'additional',info,780,by+120,320,info_h,
                     rule_id=rid,delay=r['delay'],reset_hysteresis=r['reset_hysteresis'],
                     validation_status=r['validation_status'],output_class=r['output_class'],group_id=gid,
