@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "basis": {
+    "runtime_build": "TripLens_PlantControlV2_20260926-104046",
+    "model_source_sha256": "9392B702487A891046B4F9E7E0466198F72D5ED087125D2E0BE9958E52E8F07E",
+    "patch_marker": "TRIPLENS_ST_BREAKER_OPEN_TRIP_V1",
+    "note": "Run 54 live census remains historical. New 52ST breaker-open cause is exposed as SEARCH_ONLY until a fresh OPC UA census captures its numeric identity."
+  },
+  "live_rule_updates": [
+    {
+      "rule_id": "PROT-ST-REQUEST",
+      "logic_name": "ST trip request",
+      "input_nodes": "vppGTTripRequest | vppCauseDirectSTTrip | vppCauseHPDrumHH | vppCauseIPDrumHH | vppCauseLPDrumHH",
+      "condition": "OR(all inputs)",
+      "source_basis": "Hierarchical ST request equation. GT-side causes enter through vppGTTripRequest; numeric cause-count labeling is retired."
+    }
+  ],
+  "source_tags": [
+    {
+      "raw_tag_id": "vppCauseSTBreakerOpenWhileRunning",
+      "system": "PROTECTION",
+      "equipment_id": "52ST",
+      "signal_role": "PROTECTION_CAUSE",
+      "data_type": "BOOL",
+      "unit": "CAUSE",
+      "description_ko": "운전 중 52ST 차단기 개방 원인 상태",
+      "description_en": "52ST breaker-open-while-running initiating cause",
+      "canonical_tag": "",
+      "local_display_alias": "CAUSE.ST_BREAKER_OPEN",
+      "scope_class": "CURRENT_RUNTIME_EVIDENCE",
+      "writable": "N",
+      "scenario_lab_role": "",
+      "analysis_policy": "RAW_EVIDENCE_ALLOWED",
+      "unit_status": "CONFIRMED_OR_DETERMINISTIC",
+      "interpretation_method": "EXACT_MODELICA_EQUATION_AND_RUNTIME_READBACK",
+      "source_url": "https://github.com/khaku25/triplens-thermosyspro-cloud-runner/blob/main/modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo",
+      "source_commit": "",
+      "source_kind": "MODEL_SOURCE_RUNTIME_OBSERVED",
+      "runtime_inclusion": "SEARCH_ONLY",
+      "open_behavior_test_status": "RUNTIME_VERIFIED",
+      "runtime_build": "TripLens_PlantControlV2_20260926-104046",
+      "model_source_sha256": "9392B702487A891046B4F9E7E0466198F72D5ED087125D2E0BE9958E52E8F07E",
+      "runtime_evidence_status": "RUNTIME_VERIFIED",
+      "notes": "Manual 52ST OPEN asserted this cause, ST Trip Request/Latch, 52ST Trip command, HP/LP bypass and spray response, and drove ST grid output to 0 MW."
+    }
+  ],
+  "source_rules": [
+    {
+      "rule_id": "PROT-ST-BRK-OPEN",
+      "group": "ST Protection",
+      "logic_name": "52ST breaker open while running cause",
+      "logic_type": "PROTECTION_CAUSE",
+      "input_nodes": "vppECMS52STClosedCommandNative",
+      "condition": "52ST close command < 0.5",
+      "delay": "event-driven",
+      "reset_hysteresis": "ST reset with GT/ST initiating causes clear",
+      "output_nodes_or_tags": "vppCauseSTBreakerOpenWhileRunning",
+      "output_class": "RAW_NODE",
+      "input_group_id": "IG-037",
+      "validation_status": "PASS",
+      "source_basis": "TRIPLENS_ST_BREAKER_OPEN_TRIP_V1; runtime build 104046 manual 52ST OPEN proof",
+      "notes": "Initiating cause. This is distinct from SEQ-52ST-OPEN, which is the downstream breaker actuation after ST Trip latch.",
+      "source_kind": "MODEL_SOURCE_RUNTIME_OBSERVED",
+      "runtime_inclusion": "SEARCH_ONLY",
+      "open_behavior_test_status": "RUNTIME_VERIFIED",
+      "behavior_validation": "PASS",
+      "source_existence_status": "MODEL_SOURCE_RUNTIME_OBSERVED",
+      "runtime_build": "TripLens_PlantControlV2_20260926-104046",
+      "model_source_sha256": "9392B702487A891046B4F9E7E0466198F72D5ED087125D2E0BE9958E52E8F07E"
+    },
+    {
+      "rule_id": "RESP-ST-TRIP-ACTUATION",
+      "group": "ST Protection",
+      "logic_name": "ST trip actuator and power response",
+      "logic_type": "PHYSICAL_RESPONSE",
+      "input_nodes": "vppSTTripLatchPublished",
+      "condition": "ST Trip latch active -> admissions close; HP/LP bypass and sprays open; ST grid power reaches 0 after 52ST opens",
+      "delay": "dynamic actuator response",
+      "reset_hysteresis": "follows ST Trip reset and actuator dynamics",
+      "output_nodes_or_tags": "vppHPAdmissionPos | vppIPAdmissionPos | vppLPDrumAdmissionMultiplier | vppHPBypassCmd | vppLPBypassCmd | vppHPBypassPos | vppLPBypassPos | vppHPSprayPos | vppLPSprayPos | vppSTGridPowerMW",
+      "output_class": "RAW_NODE",
+      "input_group_id": "IG-038",
+      "validation_status": "PASS",
+      "source_basis": "Runtime build 104046: admissions ~=0.001; HP/LP bypass cmd/pos=1; HP/LP spray=1; ST grid power=0 MW after manual 52ST OPEN.",
+      "notes": "No IP bypass is modeled or claimed.",
+      "source_kind": "MODEL_SOURCE_RUNTIME_OBSERVED",
+      "runtime_inclusion": "SEARCH_ONLY",
+      "open_behavior_test_status": "RUNTIME_VERIFIED",
+      "behavior_validation": "PASS",
+      "source_existence_status": "MODEL_SOURCE_RUNTIME_OBSERVED",
+      "runtime_build": "TripLens_PlantControlV2_20260926-104046",
+      "model_source_sha256": "9392B702487A891046B4F9E7E0466198F72D5ED087125D2E0BE9958E52E8F07E"
+    }
+  ],
+  "search_rule_updates": [
+    {
+      "rule_id": "PROT-ST-REQUEST",
+      "logic_name": "ST trip request",
+      "input_nodes": "vppGTTripRequest | vppCauseDirectSTTrip | vppCauseSTBreakerOpenWhileRunning | vppCauseHPDrumHH | vppCauseIPDrumHH | vppCauseLPDrumHH",
+      "condition": "OR(all inputs)",
+      "validation_status": "PASS",
+      "source_basis": "Final PlantControlV2 hierarchy: GT request intertrip + direct ST + 52ST breaker-open + HP/IP/LP drum HH. Numeric cause-count labeling retired.",
+      "runtime_build": "TripLens_PlantControlV2_20260926-104046",
+      "model_source_sha256": "9392B702487A891046B4F9E7E0466198F72D5ED087125D2E0BE9958E52E8F07E"
+    },
+    {
+      "rule_id": "RESP-ST-GRID-POWER",
+      "validation_status": "PASS",
+      "behavior_validation": "PASS",
+      "open_behavior_test_status": "RUNTIME_VERIFIED",
+      "release_status": "RUNTIME_VERIFIED",
+      "live_validation_note": "Historical 20260924 RAW source session was 52ST-closed only. Later 20260926 PlantControlV2 build 104046 verified 52ST OPEN -> ST grid power 0 MW.",
+      "notes": "Historical source session retains 282 closed / 0 open samples. OPEN behavior is separately runtime-verified on build 104046; no historical counts are rewritten.",
+      "runtime_build": "TripLens_PlantControlV2_20260926-104046",
+      "runtime_evidence_status": "RUNTIME_VERIFIED"
+    }
+  ],
+  "tag_updates": {
+    "vppSTGeneratorPowerMW": {
+      "open_behavior_test_status": "RUNTIME_VERIFIED",
+      "verification_status": "MODEL_SOURCE_CONFIRMED_RUNTIME_BEHAVIOR_VERIFIED",
+      "notes": "Historical source session retains 282 closed / 0 open samples; later build 104046 verified the manual 52ST OPEN trip chain. Numeric OPC UA identity is still not promoted into the historical Run 54 census."
+    },
+    "vppSTGridPowerMW": {
+      "open_behavior_test_status": "RUNTIME_VERIFIED",
+      "verification_status": "MODEL_SOURCE_CONFIRMED_RUNTIME_BEHAVIOR_VERIFIED",
+      "notes": "Historical source session retains 282 closed / 0 open samples; later build 104046 verified vppSTGridPowerMW -> 0 MW after manual 52ST OPEN. Numeric OPC UA identity is still not promoted into the historical Run 54 census."
+    }
+  }
+}
