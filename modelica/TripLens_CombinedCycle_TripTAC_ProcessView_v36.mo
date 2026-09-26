@@ -662,8 +662,6 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
     "Independent ST Trip latch";
   discrete Boolean vppGTBreakerOpenCauseState(start=false, fixed=true)
     "Latched 52GT-open-while-running initiating cause";
-  discrete Boolean vppSTBreakerOpenCauseState(start=false, fixed=true)
-    "Independent ST breaker-open cause latch";
   discrete Real vppSTTripAssertTime(unit="s", start=0, fixed=true);
   discrete Real vppHPDrumHHAssertTime(unit="s", start=-1, fixed=true);
   discrete Real vppIPDrumHHAssertTime(unit="s", start=-1, fixed=true);
@@ -729,7 +727,6 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   output Boolean vppLPDrumLLRaw;
   output Boolean vppCauseDirectGTTrip;
   output Boolean vppCauseGTBreakerOpenWhileRunning;
-  output Boolean vppCauseSTBreakerOpenWhileRunning;
   output Boolean vppCauseDirectSTTrip;
   output Boolean vppCauseHPDrumHH;
   output Boolean vppCauseIPDrumHH;
@@ -985,7 +982,7 @@ equation
   elsewhen vppIPFWPTripPushbuttonNative >= 0.5 then
     vppIPFWPTripLatchState = 1;
   end when;
-  // TRIPLENS_PROTECTION_MATRIX_V8: explicit GT/ST protection requests
+  // TRIPLENS_PROTECTION_MATRIX_V8: nine explicit causes and two requests
   vppHPDrumHHRaw = vppHPDrumLevelM >= vppHPDrumHHSetpoint;
   vppIPDrumHHRaw = vppIPDrumLevelM >= vppIPDrumHHSetpoint;
   vppLPDrumHHRaw = vppLPDrumLevelM >= vppLPDrumHHSetpoint;
@@ -995,7 +992,6 @@ equation
   vppCauseDirectGTTrip = if vppUseExternalTripInput then
     vppExternalTripCommandNative >= 0.5 else time >= vppTripTime;
   vppCauseGTBreakerOpenWhileRunning = vppGTBreakerOpenCauseState;
-  vppCauseSTBreakerOpenWhileRunning = vppSTBreakerOpenCauseState;
   vppCauseDirectSTTrip = vppExternalSTTripCommandNative >= 0.5;
   vppCauseHPDrumHH = vppHPDrumHHRaw and vppHPDrumHHAssertTime >= 0 and
     time >= vppHPDrumHHAssertTime + vppDrumTripDelay;
@@ -1013,7 +1009,6 @@ equation
     vppCauseGTBreakerOpenWhileRunning or vppCauseHPDrumLL or
     vppCauseIPDrumLL or vppCauseLPDrumLL;
   vppSTTripRequest = vppGTTripRequest or vppCauseDirectSTTrip or
-    vppCauseSTBreakerOpenWhileRunning or
     vppCauseHPDrumHH or vppCauseIPDrumHH or vppCauseLPDrumHH;
   vppGTTripCmd = vppGTTripRequest;
   vppGTTripLatch = vppGTTripLatchInternal;
@@ -1165,17 +1160,6 @@ equation
   elsewhen vppGTTripRequest and vppGTTripResetNative < 0.5 then
     vppGTTripLatchInternal = true;
     vppGTTripAssertTime = time;
-  end when;
-  // TRIPLENS_ST_BREAKER_OPEN_TRIP_V1
-  when vppSTTripResetNative >= 0.5 and
-      not vppCauseDirectSTTrip and
-      not vppCauseHPDrumHH and not vppCauseIPDrumHH and
-      not vppCauseLPDrumHH and not vppGTTripRequest and
-      not vppGTTripLatchInternal and
-      vppECMS52STClosedCommandNative < 0.5 then
-    vppSTBreakerOpenCauseState = false;
-  elsewhen vppECMS52STClosedCommandNative < 0.5 then
-    vppSTBreakerOpenCauseState = true;
   end when;
   when vppSTTripResetNative >= 0.5 and not vppCauseDirectSTTrip and
       not vppCauseHPDrumHH and not vppCauseIPDrumHH and
