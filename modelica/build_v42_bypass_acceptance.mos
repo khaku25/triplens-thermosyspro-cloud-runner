@@ -1,0 +1,21 @@
+loadModel(Modelica, {"4.0.0"});
+getErrorString();
+loadFile("/workspace/vendor/ThermoSysPro/ThermoSysPro/package.mo");
+getErrorString();
+loadFile("/workspace/modelica/TripLensUserModels_Bypass.mo");
+getErrorString();
+loadFile("/workspace/modelica/TripLens_V42_Bypass_Acceptance.mo");
+getErrorString();
+
+checkModel(TripLens_V42_Bypass_Acceptance);
+getErrorString();
+cd("/workspace/build/v42-bypass-acceptance");
+buildModel(
+  TripLens_V42_Bypass_Acceptance,
+  startTime=0,
+  stopTime=0.5,
+  numberOfIntervals=100,
+  tolerance=1e-6,
+  method="dassl",
+  outputFormat="csv");
+getErrorString();

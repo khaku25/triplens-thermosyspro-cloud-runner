@@ -1,0 +1,18 @@
+setCommandLineOptions("--indexReductionMethod=dynamicStateSelection");
+setCommandLineOptions("-d=initialization,aliasConflicts");
+
+loadModel(Modelica, {"4.0.0"});
+getErrorString();
+loadFile("/workspace/vendor/ThermoSysPro/ThermoSysPro/package.mo");
+getErrorString();
+loadFile("/workspace/modelica/TripLensUserModels_Bypass.mo");
+getErrorString();
+
+checkModel(TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass_OMCStart_StaticFeedwaterMass);
+getErrorString();
+cd("/workspace/build/v42");
+buildModel(
+  TripLensUserModels_Bypass.CombinedCycle_TripTAC_Bypass_OMCStart_StaticFeedwaterMass,
+  startTime=0, stopTime=1, numberOfIntervals=10, tolerance=1e-3,
+  method="dassl", outputFormat="csv");
+getErrorString();
