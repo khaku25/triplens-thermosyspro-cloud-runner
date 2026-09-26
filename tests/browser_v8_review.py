@@ -78,7 +78,7 @@ def main():
             expect(page.get_by_role('heading',name='직접 보호동작',exact=True)).to_be_visible()
             expect(page.get_by_role('heading',name='파급 과정',exact=True)).to_be_visible()
             expect(page.get_by_role('heading',name='시간순 사고 경위',exact=True)).to_be_visible()
-            page.get_by_role('button',name='사고 진행 과정',exact=True).click()
+            page.get_by_role('button',name=re.compile('사고 진행 과정')).click()
             gt_event=page.locator('.operator-timeline article').filter(has_text='52GT').first
             logic_action=gt_event.get_by_role('button',name='[로직]',exact=True)
             drawing_action=gt_event.get_by_role('link',name='[드로잉]',exact=True)
