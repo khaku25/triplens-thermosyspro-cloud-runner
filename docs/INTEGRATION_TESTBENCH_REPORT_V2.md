@@ -28,6 +28,8 @@ flowchart TD
 
 비슷한 이름의 태그나 Rule로 대체 매칭하지 않는다.
 
+Current production searchable snapshot은 606 tags / 55 rules / 37 input groups / 102 draw.io pages이며, frozen Run #54 live census 603 tags / 53 live rules와 구분한다.
+
 ## 단위기기 fixture
 
 | 설비 | Source Tag | 기대 Rule |
@@ -36,6 +38,7 @@ flowchart TD
 | ST | `vppSTTripLatchPublished` | `PROT-ST-LATCH` |
 | 52GT | `vpp52GTTripCmd` | `SEQ-52GT-TRIPCMD` |
 | 52ST | `vpp52STTripCmd` | `SEQ-52ST-TRIPCMD` |
+| 52ST Manual Open Cause | `vppCauseSTBreakerOpenWhileRunning` | `PROT-ST-BRK-OPEN` |
 | HP FWP | `vppHPFWPTripLatchNative` | `CMD-FWP-HP-TRIP` |
 | IP FWP | `vppIPFWPTripLatchNative` | `CMD-FWP-IP-TRIP` |
 | LP FWP | `vppLPFWPTripLatchNative` | `CMD-FWP-LP-TRIP` |
