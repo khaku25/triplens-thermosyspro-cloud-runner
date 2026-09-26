@@ -64,12 +64,13 @@ Drawing Master는 같은 바이트로 다음 세 위치에 게시됩니다.
 | 생성 릴리스 | `generated/logic/drawing_master_index.json` |
 | 웹 정적 자산 | `apps/web/public/logic-assets/drawing_master_index.json` |
 
-초기 입력 snapshot에서 603 Source Tag, 53 Rule, 35 입력 그룹, 9 설비 화면입니다.
-전체 도면은 목차 1 + 설비 9 + 입력 그룹 35 + 개별 Rule 53 = 98페이지입니다.
-이 숫자는 미래 버전을 강제로 제한하는 상수가 아닙니다. 실제 입력으로 다시 계산합니다.
+동결된 Run #54 live 입력은 603 Source Tag, 53 live Rule, 35 live 입력 그룹, 9 설비 화면입니다.
+현재 Production searchable projection은 606 Tag, 55 Rule, 37 입력 그룹이며 draw.io는 102페이지입니다.
+추가 검색 범위에는 vppSTGeneratorPowerMW, vppSTGridPowerMW, vppCauseSTBreakerOpenWhileRunning이 포함되며 이 세 항목을 과거 Run #54 census NodeId로 소급하지 않습니다.
+이 숫자는 미래 버전을 강제로 제한하는 상수가 아니며 생성 시 실제 입력으로 다시 계산합니다.
 
-현재 생성된 Drawing Master snapshot은 draw.io 1개, 98페이지, 1,551개 `object` cell을 색인하며,
-그중 53개 고유 Logic ID와 86개 고유 Tag ID가 연결되어 있습니다. 이 수도 생성 결과이지 고정 상수가 아닙니다.
+현재 Production Drawing Master snapshot은 draw.io 1개, 102페이지, 1,609개 색인 cell/object를 가지며,
+55개 Logic ID와 89개 Tag ID가 연결되어 있습니다. 이 수도 생성 결과이지 고정 상수가 아닙니다.
 
 ## Drawing Master 계약
 
@@ -164,7 +165,7 @@ schema 1의 `logic:` 레이아웃은 한 번 schema 2로 이전합니다. 이전
 새 OPC UA 실행을 쓰려면 `--census`와 `--census-provenance`를 짝으로 지정합니다.
 이 UPDATE는 시뮬레이션을 다시 실행하지 않습니다.
 
-53개 Rule의 기존 `validation_status`는 유지합니다. Live 태그 존재성 검증과 보호동작/물리 검증을 혼동하지 않습니다.
+Run #54의 53개 live Rule 상태는 역사적 census 범위로 유지하고, 현재 검색 가능한 55개 Rule에는 이후 source/runtime 검증 항목을 별도 상태로 표시합니다. Live 태그 존재성 검증과 보호동작/물리 검증을 혼동하지 않습니다.
 `event-driven`, `runtime-defined`, `external runtime interface`는 타이머 초 값으로 만들지 않습니다.
 Hysteresis와 지연은 ADDITIONAL INFO에 원장 속성으로 기록하며 별도의 하류 실행 블록을 추측해 붙이지 않습니다.
 
@@ -220,3 +221,7 @@ GitHub의 **Update TripLens Logic Assets** workflow는 이 테스트와 Next.js 
 마지막 `--check` 및 `git diff --check`를 다시 수행합니다.
 생성기/엑셀 reader/도면 exporter에는 Python 3.10 이상 표준 라이브러리만 필요합니다.
 Testbench, 근거 상세 매핑과 GitHub→Vercel 단일 승격 절차는 [`INTEGRATION_TESTBENCH_REPORT_V2.md`](INTEGRATION_TESTBENCH_REPORT_V2.md)를 따릅니다.
+
+## 2026-09-26 ST breaker-open update
+
+`PROT-ST-BRK-OPEN`은 manual 52ST OPEN을 initiating protection cause로 등록하며 `SEQ-52ST-OPEN`(ST Trip 이후 breaker opening sequence)과 분리합니다. Current `PROT-ST-REQUEST`는 고정 원인 개수를 문서화하지 않고 등록 upstream input set을 OR 관계로 표시합니다. PlantControlV2 build `104046`에서 이 경로와 ST grid output 0 MW를 runtime-verified 했습니다.
