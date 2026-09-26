@@ -1,3 +1,10 @@
+# ---------------------------------------------------------------------------
+# CODE READING GUIDE
+# File role: regression contract or operator review harness.
+# Read in this order: fixtures/setup -> test_* or review steps -> assertions/report.
+# A PASS protects only the named contract; it is not live plant, OPC UA, or field evidence
+# unless the test explicitly says that it performed that external observation.
+# ---------------------------------------------------------------------------
 """Actual browser checks of the restored read-only Drawing Master."""
 import copy
 import json
@@ -64,6 +71,41 @@ class DrawingBrowserTest(unittest.TestCase):
         self.assertEqual(self.page.locator('#page-select').input_value(), before)
         self.assertFalse(self.page.evaluate("TripLensLogic.openDrawing('missing-file#page=bad&cell=bad')"))
         self.assertIn('도면 위치',self.page.locator('#drawing-feedback').inner_text())
+
+    def test_selecting_tag_opens_first_linked_drawing_and_limits_results(self):
+        tag='vppHPDrumLevelM'
+        expected=next(row for row in self.payload['drawing_master']['entries'] if row['tag_id']==tag)
+        expected_count=sum(row['tag_id']==tag for row in self.payload['drawing_master']['entries'])
+        self.page.locator('#tab-tags').click()
+        self.page.locator('#search').fill(tag)
+        self.page.locator('#results button').first.click()
+        self.assertIn('active',self.page.locator('#tab-drawings').get_attribute('class'))
+        self.assertEqual(self.page.locator('#search').input_value(),tag)
+        rows=self.page.locator('#results button')
+        self.assertEqual(rows.count(),expected_count)
+        self.assertTrue(all(tag in text for text in rows.all_inner_texts()))
+        self.assertEqual(self.page.locator('#page-select').input_value(),expected['page_id'])
+        self.assertEqual(self.page.locator('#diagram .selected').count(),1)
+        self.assertEqual(self.page.locator('#diagram .selected').get_attribute('data-cell-id'),expected['cell_id'])
+        details=self.page.locator('#inspector').inner_text()
+        self.assertIn(expected['source_ref'],details)
+        self.assertIn(expected['logic_id'],details)
+
+    def test_tag_without_drawing_clears_previous_drawing_and_shows_empty_state(self):
+        self.select_entry()
+        self.assertEqual(self.page.locator('#diagram .selected').count(),1)
+        self.page.evaluate("TripLensLogic.openTag('vppCondenserSteamVolume.P')")
+        self.assertIn('active',self.page.locator('#tab-drawings').get_attribute('class'))
+        self.assertEqual(self.page.locator('#results button').count(),0)
+        self.assertEqual(self.page.locator('#diagram .node').count(),0)
+        self.assertEqual(self.page.locator('#diagram .selected').count(),0)
+        self.assertIn('연결된 도면이 없습니다',self.page.locator('#drawing-feedback').inner_text())
+        self.page.locator('#tab-tags').click()
+        self.assertEqual(self.page.locator('#page-select').input_value(),'overview')
+        self.page.locator('#back').click()
+        self.assertEqual(self.page.locator('#page-select').input_value(),self.entry['page_id'])
+        self.assertEqual(self.page.locator('#diagram .selected').get_attribute('data-cell-id'),self.entry['cell_id'])
+        self.assertEqual(self.page.locator('#drawing-feedback').inner_text(),'')
 
     def test_tag_inspector_opens_matching_drawing_locations(self):
         self.page.evaluate("TripLensLogic.openTag('vppHPDrumLevelM')")
