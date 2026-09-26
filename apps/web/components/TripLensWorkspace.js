@@ -2,8 +2,6 @@
 
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {LogicLibraryDialog,openLogicLibrary} from './LogicLibrary';
-import {resolveEquipmentDrawing} from '../lib/equipmentDrawingMaster.mjs';
-import {resolvePlantFocus} from '../lib/plantDrawingFocus.mjs';
 import RecoveryForm from './RecoveryForm';
 import RecoveryReadiness from './RecoveryReadiness';
 import {WORKSPACE_TABS} from '../lib/contracts';
@@ -23,6 +21,7 @@ import {
 import {buildWorkspaceSession,canRestoreWorkspaceSession} from '../lib/workspaceSession.mjs';
 import {buildEvidenceLogicTargets} from '../lib/integrationTestbench.mjs';
 import {mergeEvents,mergeEvidenceCatalog} from '../lib/reportIntegrity.mjs';
+import {buildClaimReferenceTargets} from '../lib/claimReferenceLinks.mjs';
 import {EMPTY_RECOVERY,normalizeRecovery,recoveryStatusLabel} from '../lib/recoveryModel.mjs';
 import {applyRecoveryRows,buildWorkspaceExportReport,restoreWorkspaceReportRows,WORKSPACE_REPORT_VERSION} from '../lib/reportAdapter.mjs';
 import {
@@ -80,7 +79,16 @@ function EvidenceLinks({ids,onOpen,named=false}){
   return <span className="evidence-links">{values.map((id,index)=><button key={id} title={'ID: '+id} aria-label={label+' '+(index+1)} onClick={()=>onOpen({kind:'evidence',value:id})}>{label}</button>)}</span>;
 }
 
-function ClaimEvidence({item,onOpen}){
+function ClaimReferenceActions({item,catalog}){
+  const references=buildClaimReferenceTargets(item,catalog);
+  if(!references.logicTag&&!references.drawingHref)return null;
+  return <span className="claim-reference-actions" aria-label="근거 바로가기">
+    {references.logicTag?<button type="button" onClick={()=>openLogicLibrary({tag:references.logicTag})}>[로직]</button>:null}
+    {references.drawingHref?<a href={references.drawingHref} target="_blank" rel="noreferrer">[드로잉]</a>:null}
+  </span>;
+}
+
+function ClaimEvidence({item,onOpen,catalog}){
   const tags=summarizeEvidence(item?.related_tags||[],5);
   const allTags=[...tags.visible,...tags.hidden];
   const ids=[...new Set((item?.evidence_ids||[]).filter(Boolean))];
@@ -89,7 +97,9 @@ function ClaimEvidence({item,onOpen}){
   const timeText=[time.primary,time.secondary].filter(value=>value&&value!=='시각 미확인').join(' · ');
   const openClaim=()=>onOpen({kind:'claim',evidenceIds:ids,tags:allTags});
   return <div className="claim-evidence">
-    <div className="claim-evidence-summary"><span>근거</span><strong>{timeText||'연결 기록'}{ids.length?` · ${ids.length}건`:''}</strong></div>
+    <div className="claim-evidence-summary"><span>근거</span><strong>{timeText||'연결 기록'}{ids.length?` · ${ids.length}건`:''}</strong>
+      <ClaimReferenceActions item={item} catalog={catalog}/>
+    </div>
     <details>
       <summary>상세 근거 보기{ids.length?` · ${ids.length}건`:''}</summary>
       <div className="detail-evidence-list">
@@ -100,7 +110,7 @@ function ClaimEvidence({item,onOpen}){
   </div>;
 }
 
-function ClaimCard({title,item,stage,onOpen}){
+function ClaimCard({title,item,stage,onOpen,catalog}){
   const original=claimText(item);
   const compact=conciseClaim(operatorSummary(item,stage),140);
   const summary=compact.summary;
@@ -110,11 +120,11 @@ function ClaimCard({title,item,stage,onOpen}){
     <div className="claim-head"><h3>{title}</h3>{time.primary!=='시각 미확인'?<time>{time.primary}{time.secondary?<small>{time.secondary}</small>:null}</time>:null}</div>
     <div className="claim-text">{summary||'분석 결과 없음'}</div>
     {detail?<details className="claim-detail"><summary>상세 분석 설명</summary><p>{detail}</p></details>:null}
-    <ClaimEvidence item={item} onOpen={onOpen}/>
+    <ClaimEvidence item={item} onOpen={onOpen} catalog={catalog}/>
   </section>;
 }
 
-function AnalysisList({items,stage,onOpen,limit=5}){
+function AnalysisList({items,stage,onOpen,catalog,limit=5}){
   if(!items?.length)return <p className="empty-line">표시할 분석 결과 없음</p>;
   const visible=items.slice(0,limit);
   const hidden=items.slice(limit);
@@ -126,31 +136,27 @@ function AnalysisList({items,stage,onOpen,limit=5}){
     const time=displayEventTime(item);
     return <article key={`${item?.claim||'item'}-${index}`}>
       <div><b>{String(index+1).padStart(2,'0')}</b><p>{summary}</p>{time.primary!=='시각 미확인'?<time>{time.primary}{time.secondary?<small>{time.secondary}</small>:null}</time>:null}</div>
-      <ClaimEvidence item={item} onOpen={onOpen}/>
+      <ClaimEvidence item={item} onOpen={onOpen} catalog={catalog}/>
       {detail?<details><summary>상세 분석 설명</summary><p>{detail}</p></details>:null}
     </article>;
   };
   return <div className="analysis-list">{visible.map(renderItem)}{hidden.length?<details className="hidden-analysis-items"><summary>후속 분석 {hidden.length}건 보기</summary><div>{hidden.map((item,index)=>renderItem(item,index+limit))}</div></details>:null}</div>;
 }
 
-function DrawingLocationLink({equipment,eventTag}){
-  const value=String(equipment||'').trim();
-  const row=resolveEquipmentDrawing(value);
-  if(!row)return null;
-  const qs=new URLSearchParams({equipment:value});
-  if(resolvePlantFocus(row))qs.set('view','plant');
-  const tag=String(eventTag||'').trim();
-  if(tag)qs.set('event',tag);
-  return <a href={'/drawing?'+qs.toString()} target="_blank" rel="noreferrer" className="tag-link" title={value+' 설비 도면 위치 열기'}>도면 위치 보기</a>;
+function eventReferenceItem(event){
+  return {
+    related_tags:[event.source_node,event.canonical_tag,event.original_tag,event.tag].filter(Boolean),
+    evidence_ids:[event.evidence_id||event.event_id].filter(Boolean),
+  };
 }
 
-function EventTable({events,onOpen}){
-  return <div className="scroll-table"><table><thead><tr><th>시간</th><th>설비</th><th>사건</th><th>원천</th><th>근거</th></tr></thead><tbody>{events.map((event,index)=>{const time=displayEventTime(event);return <tr key={event.event_id||index}><td><b>{time.primary}</b>{time.secondary?<small>{time.secondary}</small>:null}</td><td>{event.equipment||'—'}</td><td>{operatorSummary(event)||event.message||friendlyTag(event.tag)}</td><td>{event.source||'—'}</td><td><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><EvidenceLinks ids={[event.evidence_id||event.event_id]} onOpen={onOpen} named/><DrawingLocationLink equipment={event.equipment} eventTag={event.tag}/></div></td></tr>;})}</tbody></table></div>;
+function EventTable({events,onOpen,catalog}){
+  return <div className="scroll-table"><table><thead><tr><th>시간</th><th>설비</th><th>사건</th><th>원천</th><th>근거</th></tr></thead><tbody>{events.map((event,index)=>{const time=displayEventTime(event);const referenceItem=eventReferenceItem(event);return <tr key={event.event_id||index}><td><b>{time.primary}</b>{time.secondary?<small>{time.secondary}</small>:null}</td><td>{event.equipment||'—'}</td><td>{operatorSummary(event)||event.message||friendlyTag(event.tag)}</td><td>{event.source||'—'}</td><td><div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}><EvidenceLinks ids={referenceItem.evidence_ids} onOpen={onOpen} named/><ClaimReferenceActions item={referenceItem} catalog={catalog}/></div></td></tr>;})}</tbody></table></div>;
 }
 
-function OperatorTimeline({events,onOpen}){
+function OperatorTimeline({events,onOpen,catalog}){
   const timeline=compactTimeline(events,7);
-  return <div className="operator-timeline">{timeline.visible.map((event,index)=>{const time=displayEventTime(event);const summary=conciseClaim(operatorSummary(event)||event.message||friendlyTag(event.tag),140).summary;return <article key={event.event_id||index}><time><b>{time.primary}</b>{time.secondary?<small>{time.secondary}</small>:null}</time><div><span>{event.equipment||event.event_class||'PLANT'}</span><strong>{summary}</strong></div><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><EvidenceLinks ids={[event.evidence_id||event.event_id]} onOpen={onOpen} named/><DrawingLocationLink equipment={event.equipment}/></div></article>;})}{timeline.hiddenCount?<p>후속 기록 {timeline.hiddenCount}건은 전체 사건 기록에서 확인</p>:null}</div>;
+  return <div className="operator-timeline">{timeline.visible.map((event,index)=>{const time=displayEventTime(event);const summary=conciseClaim(operatorSummary(event)||event.message||friendlyTag(event.tag),140).summary;const referenceItem=eventReferenceItem(event);return <article key={event.event_id||index}><time><b>{time.primary}</b>{time.secondary?<small>{time.secondary}</small>:null}</time><div><span>{event.equipment||event.event_class||'PLANT'}</span><strong>{summary}</strong></div><div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}><EvidenceLinks ids={referenceItem.evidence_ids} onOpen={onOpen} named/><ClaimReferenceActions item={referenceItem} catalog={catalog}/></div></article>;})}{timeline.hiddenCount?<p>후속 기록 {timeline.hiddenCount}건은 전체 사건 기록에서 확인</p>:null}</div>;
 }
 
 function OperatorReportPreview({analysis,events,recovery}){
@@ -378,23 +384,23 @@ export default function TripLensWorkspace({mode='blind'}){
     view=<div className="panel-stack cause-layout">
       <div className="section-heading"><div><h2>원인 분석</h2></div></div>
       <div className="cause-grid">
-        <ClaimCard title="발생 원인" stage="primary" item={analysis.primary_cause} onOpen={setDetail}/>
-        <ClaimCard title="직접 보호동작" stage="direct" item={analysis.direct_trigger} onOpen={setDetail}/>
+        <ClaimCard title="발생 원인" stage="primary" item={analysis.primary_cause} onOpen={setDetail} catalog={catalog}/>
+        <ClaimCard title="직접 보호동작" stage="direct" item={analysis.direct_trigger} onOpen={setDetail} catalog={catalog}/>
       </div>
       <section className="analysis-section">
         <div className="analysis-section-head"><div><h3>파급 과정</h3></div><p>보호동작 이후의 설비 변화</p></div>
-        <AnalysisList items={analysis.propagation} stage="propagation" onOpen={setDetail}/>
+        <AnalysisList items={analysis.propagation} stage="propagation" onOpen={setDetail} catalog={catalog}/>
       </section>
       <section className="analysis-section causal-section">
         <div className="analysis-section-head"><div><h3>시간순 사고 경위</h3></div><p>상세 인과관계</p></div>
-        <details><summary>상세 시간순서 보기</summary><AnalysisList items={analysis.causal_chain} stage="causal" onOpen={setDetail}/></details>
+        <details><summary>상세 시간순서 보기</summary><AnalysisList items={analysis.causal_chain} stage="causal" onOpen={setDetail} catalog={catalog}/></details>
       </section>
     </div>;
   }else if(activeTab==='timeline'){
     view=<div className="panel-stack">
       <div className="section-heading"><h2>사고 진행 과정</h2><span>EVENT {events.length}건</span></div>
-      <section className="analysis-section"><h3>주요 사건</h3><OperatorTimeline events={events} onOpen={setDetail}/></section>
-      <details className="analysis-details"><summary>전체 사건 기록 보기 · {events.length}건</summary><EventTable events={events} onOpen={setDetail}/></details>
+      <section className="analysis-section"><h3>주요 사건</h3><OperatorTimeline events={events} onOpen={setDetail} catalog={catalog}/></section>
+      <details className="analysis-details"><summary>전체 사건 기록 보기 · {events.length}건</summary><EventTable events={events} onOpen={setDetail} catalog={catalog}/></details>
     </div>;
   }else if(activeTab==='checks'){
     const checks=operatorReviewItems(analysis);
@@ -439,7 +445,7 @@ export default function TripLensWorkspace({mode='blind'}){
       <aside className="sidebar">
         <div className="side-title">ANALYSIS WORKSPACE</div>
         <nav>{WORKSPACE_TABS.map(tab=><button disabled={!result} className={`nav-item ${activeTab===tab.id?'active':''}`} key={tab.id} onClick={()=>{setActiveTab(tab.id);setDetail(null);}}><span className="nav-no">{tab.no}</span><span><b>{tab.label}</b><em>{tab.sub}</em></span></button>)}</nav>
-        <div className="side-links"><button onClick={()=>openLogicLibrary()}><b>LM</b><span>Logic / TAG Master<em>{logic?`${logic.live_rules} Logic · ${logic.protection} Protection`:'태그 검색 · 로직 연결'}</em></span></button><a className="drawing-entry" href="/drawing">Drawing Master · ECMS / Plant →</a></div>
+        <div className="side-links"><button onClick={()=>openLogicLibrary()}><b>LM</b><span>Logic / TAG Master<em>{logic?`${logic.live_rules} Logic · ${logic.protection} Protection`:'태그 검색 · 로직 연결'}</em></span></button></div>
         <div className="boundary"><b>READ-ONLY</b><span>분석 및 보고서 전용</span></div>
       </aside>
       <section className="main-area">

@@ -95,7 +95,7 @@ export default function PlantDrawingMaster(){
 
   return <main style={{minHeight:'100dvh',background:'#eef3f7',color:'#17324a'}}>
     <header style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',alignItems:'center',gap:12,padding:'12px 18px',background:'#17364d',color:'#fff'}}>
-      <div><div style={{fontSize:12,opacity:.75,fontWeight:700}}>TRIPLENS DRAWING MASTER</div><h1 style={{fontSize:20,margin:'3px 0 0'}}>설비 위치 도면</h1></div>
+      <div><div style={{fontSize:12,opacity:.75,fontWeight:700}}>TRIPLENS PLANT VIEW</div><h1 style={{fontSize:20,margin:'3px 0 0'}}>설비 위치 도면</h1></div>
       <div style={{display:'flex',gap:8,flexWrap:'wrap'}}><a href="/" style={topLink}>← 분석 화면</a><a href="/logic" style={topLink}>Logic</a></div>
     </header>
 
@@ -128,7 +128,6 @@ export default function PlantDrawingMaster(){
 
         {screen==='ecms-overview'?<div style={canvas}><InlineSvgNavigator src="/drawing/ecms-overview-matlab.svg" pageId="ECMS_VPP" title="ECMS Overview" highlight={overviewHighlight} eventLabel={eventLabel} onView={overviewNavigate} onEquipment={equipmentClicked}/></div>:null}
         {screen==='ecms-detail'?<><div style={selectionBar}><b>Direct detail</b><span>{detailHighlight||'BUS를 선택하세요'}</span></div><div style={canvas}><InlineSvgNavigator src="/drawing/ecms-6p9kv-matlab.svg" pageId="ECMS_6P9KV" title="6.9 kV SWGR Detail" highlight={detailHighlight} eventLabel={eventLabel} onEquipment={equipmentClicked}/></div></>:null}
-        {/* 공개된 로직 태그 연결만 보여주며, 런타임 수치는 만들어내지 않는다. */}
         {screen==='plant'?<><section aria-label={ST_POWER_DISPLAY.label} style={stPowerPanel}>
             <div style={stPowerIdentity}><div><span style={stPowerEyebrow}>{ST_POWER_DISPLAY.label}</span><b>{ST_POWER_DISPLAY.tag}</b><span style={stPowerUnit}>{ST_POWER_DISPLAY.unit}</span></div><a href={ST_POWER_DISPLAY.href} style={stPowerLink}>로직 연결 보기 →</a></div>
           </section><ProcessViewCanvas locationId={selectedFocus?.locationId} relatedEquipment={relatedEquipment} eventLabel={eventLabel} onSelect={processClicked}/>

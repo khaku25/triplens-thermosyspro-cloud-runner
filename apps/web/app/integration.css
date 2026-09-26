@@ -413,6 +413,9 @@ body:has(.app-shell){background:#d8dee3;color:#183348}
 .app-shell .claim-evidence-summary{min-height:24px;display:flex;align-items:center;gap:8px;color:#6a7e89;font-size:11px}
 .app-shell .claim-evidence-summary span{font-weight:800;color:#547080}
 .app-shell .claim-evidence-summary strong{color:#2f6075;font-size:12px}
+.app-shell .claim-reference-actions{display:inline-flex;align-items:center;gap:7px;margin-left:auto;white-space:nowrap}
+.app-shell .claim-reference-actions button,.app-shell .claim-reference-actions a{display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:3px 7px;border:1px solid #b9cbd3;border-radius:5px;background:#fff;color:#12617b;font:inherit;font-size:12px;font-weight:800;text-decoration:none;cursor:pointer}
+.app-shell .claim-reference-actions button:hover,.app-shell .claim-reference-actions a:hover{background:#eaf3f6;border-color:#7398a8}
 .app-shell .claim-evidence>details{margin-top:6px}
 .app-shell .claim-evidence summary{font-size:12px}
 .app-shell .detail-evidence-list{line-height:1.55}

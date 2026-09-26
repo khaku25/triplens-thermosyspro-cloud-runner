@@ -1,3 +1,10 @@
+# ---------------------------------------------------------------------------
+# CODE READING GUIDE
+# File role: regression contract or operator review harness.
+# Read in this order: fixtures/setup -> test_* or review steps -> assertions/report.
+# A PASS protects only the named contract; it is not live plant, OPC UA, or field evidence
+# unless the test explicitly says that it performed that external observation.
+# ---------------------------------------------------------------------------
 """Real Chromium UI test with mocked HTTP analysis; NOT a live Gemini result."""
 import json
 import os
@@ -71,6 +78,23 @@ def main():
             expect(page.get_by_role('heading',name='직접 보호동작',exact=True)).to_be_visible()
             expect(page.get_by_role('heading',name='파급 과정',exact=True)).to_be_visible()
             expect(page.get_by_role('heading',name='시간순 사고 경위',exact=True)).to_be_visible()
+            page.get_by_role('button',name=re.compile('사고 진행 과정')).click()
+            gt_event=page.locator('.operator-timeline article').filter(has_text='52GT').first
+            logic_action=gt_event.get_by_role('button',name='[로직]',exact=True)
+            drawing_action=gt_event.get_by_role('link',name='[드로잉]',exact=True)
+            expect(logic_action).to_be_visible()
+            expect(drawing_action).to_have_attribute('href',re.compile(r'/drawing\?equipment=GT&view=plant&event=vpp52GTClosed'))
+            with page.expect_popup() as drawing_popup:
+                drawing_action.click()
+            plant_view=drawing_popup.value
+            expect(plant_view).to_have_url(re.compile(r'/drawing\?equipment=GT&view=plant&event=vpp52GTClosed'))
+            expect(plant_view.get_by_text('TRIPLENS PLANT VIEW',exact=True)).to_be_visible()
+            plant_view.close()
+            logic_action.click()
+            logic_dialog=page.get_by_role('dialog',name='Logic / TAG Master · 로직 도면')
+            expect(logic_dialog.locator('iframe')).to_have_attribute('src',re.compile(r'tag=vpp52GTClosed'))
+            logic_dialog.get_by_role('button',name='닫기',exact=True).click()
+            page.get_by_role('button',name=re.compile('원인 분석')).click()
             expect(page.get_by_text('후속 설비 상태 4',exact=True)).to_be_hidden()
             page.locator('summary',has_text='후속 분석 2건 보기').click()
             expect(page.get_by_text('후속 설비 상태 4',exact=True)).to_be_visible()
@@ -113,8 +137,10 @@ def main():
                 logic_dialog=page.get_by_role('dialog',name='Logic / TAG Master · 로직 도면')
                 expect(logic_dialog).to_be_visible()
                 viewer=page.frame_locator('dialog iframe')
-                expect(viewer.get_by_role('banner').get_by_text('태그 · 로직 · Drawing Master 도면 검색 · 상세 정보',exact=True)).to_be_visible()
+                expect(viewer.get_by_role('banner').get_by_text('태그 · 로직 · 도면 검색 · 상세 정보',exact=True)).to_be_visible()
+                expect(viewer.get_by_role('button',name='도면',exact=True)).to_be_visible()
                 viewer_text=viewer.locator('body').inner_text()
+                assert 'Drawing Master' not in viewer_text
                 for hidden in ('고정 Cause Matrix','등록 확인은 사고 원인 확정','미등록 관측 태그','등록 Logic: 미확인'):
                     assert hidden not in viewer_text,hidden
                 logic_dialog.get_by_role('button',name='닫기',exact=True).click()
