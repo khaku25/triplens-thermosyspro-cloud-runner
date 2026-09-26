@@ -15,7 +15,7 @@ class CommandTest(unittest.TestCase):
             '--census-provenance',str(ROOT/'data/current_v8/live_census_provenance.json'),*args],capture_output=True,text=True)
     def test_one_command_build_and_check(self):
         r=self.run_cmd();self.assertEqual(r.returncode,0,r.stderr)
-        summary=json.loads(r.stdout);self.assertEqual(summary['counts']['rules'],54)
+        summary=json.loads(r.stdout);self.assertEqual(summary['counts']['rules'],55)
         self.assertEqual(self.run_cmd('--check').returncode,0)
         self.assertTrue((self.out/'apps/web/public/logic-assets/viewer.html').exists())
     def test_wrong_census_proof_does_not_publish(self):
