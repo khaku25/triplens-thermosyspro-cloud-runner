@@ -149,7 +149,7 @@ def main():
             expect(page.locator('.analysis-list article').filter(has_text='52GT 차단기 OPEN').first).to_be_visible()
             direct=page.locator('.cause-card').filter(has_text='직접 보호동작')
             direct.locator('summary',has_text='상세 근거 보기').click()
-            direct.get_by_role('button',name='연결 근거 모아보기 · 1건',exact=True).click()
+            direct.get_by_role('button',name='연결 근거 모아보기 · 2건',exact=True).click()
             expect(page.get_by_role('heading',name='근거 상세',exact=True)).to_be_visible()
             page.get_by_role('button',name='이전 화면',exact=True).click()
             if width>640:
