@@ -34,13 +34,14 @@ test('report preview defaults to concise operator summary and keeps editing coll
   assert.match(source,/report-editor/);
 });
 
-test('Plant View is reached from claim evidence and Drawing Master is hidden from navigation copy',()=>{
+test('claim evidence keeps the Plant View action without a generic logic-search link',()=>{
   assert.match(source,/>\[로직\]<\/button>/);
   assert.match(source,/references\.drawingLinks\.length===1\?'\[드로잉\]'/);
   assert.match(source,/\[드로잉 · \$\{drawing\.equipment\}\]/);
   assert.doesNotMatch(source,/Drawing Master/);
   assert.match(plantViewSource,/TRIPLENS PLANT VIEW/);
-  assert.match(logicPageSource,/>Plant View<\/a>/);
+  assert.doesNotMatch(logicPageSource,/>Plant View<\/a>/);
+  assert.match(logicPageSource,/>← TripLens 분석 화면<\/a>/);
   assert.match(drawingPageSource,/TripLens \| Plant View/);
   assert.doesNotMatch([plantViewSource,logicPageSource,drawingPageSource].join('\n'),/Drawing Master/);
   assert.match(logicViewerSource,/replace\('Drawing Master','연결 도면'\)/);
