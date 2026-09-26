@@ -36,7 +36,8 @@ test('report preview defaults to concise operator summary and keeps editing coll
 
 test('Plant View is reached from claim evidence and Drawing Master is hidden from navigation copy',()=>{
   assert.match(source,/>\[로직\]<\/button>/);
-  assert.match(source,/>\[드로잉\]<\/a>/);
+  assert.match(source,/references\.drawingLinks\.length===1\?'\[드로잉\]'/);
+  assert.match(source,/\[드로잉 · \$\{drawing\.equipment\}\]/);
   assert.doesNotMatch(source,/Drawing Master/);
   assert.match(plantViewSource,/TRIPLENS PLANT VIEW/);
   assert.match(logicPageSource,/>Plant View<\/a>/);
@@ -51,6 +52,7 @@ test('timeline event evidence exposes direct logic and drawing actions',()=>{
   assert.match(timeline,/catalog/);
   assert.match(timeline,/ClaimReferenceActions/);
   assert.match(source,/function ClaimReferenceActions/);
+  assert.match(source,/references\.drawingLinks\.map/);
 });
 
 test('overflow analysis items and raw evidence tags stay available in disclosures',()=>{

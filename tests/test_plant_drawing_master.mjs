@@ -4,7 +4,6 @@ import fs from 'node:fs';
 import {PLANT_PROCESS} from '../apps/web/lib/plantHotspots.mjs';
 import {EQUIPMENT_DRAWING_MASTER,resolveEquipmentDrawing} from '../apps/web/lib/equipmentDrawingMaster.mjs';
 import {resolvePlantFocus} from '../apps/web/lib/plantDrawingFocus.mjs';
-import {ST_POWER_DISPLAY} from '../apps/web/lib/stPowerDisplay.mjs';
 
 const page=fs.readFileSync(new URL('../apps/web/app/drawing/page.js',import.meta.url),'utf8');
 const component=fs.readFileSync(new URL('../apps/web/components/PlantDrawingMaster.js',import.meta.url),'utf8');
@@ -37,10 +36,9 @@ test('every Plant equipment has an exact source symbol or an explicitly related 
   assert.equal(PLANT_PROCESS.hotspots.HP_FWCV,undefined,'related fallback cannot create a false valve symbol');
 });
 
-test('ST power points to the 52ST breaker in the ECMS drawing',()=>{
-  assert.equal(ST_POWER_DISPLAY.drawingHref,'/drawing?equipment=52ST&view=ecms&tag=vppSTGridPowerMW');
-  assert.match(component,/href=\{ST_POWER_DISPLAY\.drawingHref\}/);
-  assert.match(component,/52ST 차단기 위치/);
+test('Plant View keeps its main process drawing free of a standalone ST power card',()=>{
+  assert.doesNotMatch(component,/ST_POWER_DISPLAY|ST POWER|52ST 차단기 위치/);
+  assert.match(component,/<ProcessViewCanvas/);
   assert.match(component,/setEventLabel\(event\?\('EVENT · '\+event\):tag\?\('TAG · '\+tag\):''\)/);
 });
 

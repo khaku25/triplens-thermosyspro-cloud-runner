@@ -7,13 +7,11 @@ PLANT_DRAWING = (ROOT / "apps/web/components/PlantDrawingMaster.js").read_text(e
 
 
 class STPowerPlantDisplayTest(unittest.TestCase):
-    def test_plant_view_renders_exact_st_power_identity_and_logic_link(self):
-        self.assertIn("ST_POWER_DISPLAY", PLANT_DRAWING)
-        self.assertIn("ST_POWER_DISPLAY.label", PLANT_DRAWING)
-        self.assertIn("ST_POWER_DISPLAY.tag", PLANT_DRAWING)
-        self.assertIn("ST_POWER_DISPLAY.unit", PLANT_DRAWING)
-        self.assertIn("href={ST_POWER_DISPLAY.href}", PLANT_DRAWING)
-        self.assertIn("로직 연결 보기", PLANT_DRAWING)
+    def test_plant_view_does_not_emphasize_st_power_as_a_separate_card(self):
+        self.assertNotIn("ST_POWER_DISPLAY", PLANT_DRAWING)
+        self.assertNotIn("ST POWER", PLANT_DRAWING)
+        self.assertNotIn("52ST 차단기 위치", PLANT_DRAWING)
+        self.assertIn("<ProcessViewCanvas", PLANT_DRAWING)
 
     def test_plant_view_does_not_invent_a_numeric_value_or_runtime_disclaimer(self):
         self.assertNotIn("263.315", PLANT_DRAWING)
