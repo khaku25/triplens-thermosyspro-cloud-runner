@@ -73,7 +73,7 @@ class DrawingBrowserTest(unittest.TestCase):
         self.assertIn('도면 위치',self.page.locator('#drawing-feedback').inner_text())
 
     def test_selecting_tag_opens_first_linked_drawing_and_limits_results(self):
-        tag='vppSTGridPowerMW'
+        tag='vppHPDrumLevelM'
         expected=next(row for row in self.payload['drawing_master']['entries'] if row['tag_id']==tag)
         expected_count=sum(row['tag_id']==tag for row in self.payload['drawing_master']['entries'])
         self.page.locator('#tab-tags').click()
