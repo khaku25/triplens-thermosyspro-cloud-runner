@@ -157,8 +157,15 @@ def main():
                 logic_dialog=page.get_by_role('dialog',name='Logic / TAG Master · 로직 도면')
                 expect(logic_dialog).to_be_visible()
                 viewer=page.frame_locator('dialog iframe')
-                expect(viewer.get_by_role('banner').get_by_text('태그 · 로직 · 도면 검색 · 상세 정보',exact=True)).to_be_visible()
-                expect(viewer.get_by_role('button',name='도면',exact=True)).to_be_visible()
+                expect(viewer.get_by_role('banner').get_by_text('태그 · 로직 · 설비별 로직 · 로직 다이어그램 · Plant View 설비',exact=True)).to_be_visible()
+                expect(viewer.get_by_role('button',name='로직 다이어그램',exact=True)).to_be_visible()
+                expect(viewer.get_by_role('button',name='Plant View 설비',exact=True)).to_be_visible()
+                viewer.get_by_role('button',name='Plant View 설비',exact=True).click()
+                plant_search=viewer.get_by_label('Plant View 설비 검색',exact=True)
+                expect(plant_search).to_be_visible()
+                plant_search.fill('ST BREAKER')
+                expect(viewer.locator('#results button[data-plant-equipment-id="52ST"]')).to_be_visible()
+                viewer.get_by_role('button',name='로직 다이어그램',exact=True).click()
                 viewer_text=viewer.locator('body').inner_text()
                 assert 'Drawing Master' not in viewer_text
                 for hidden in ('고정 Cause Matrix','등록 확인은 사고 원인 확정','미등록 관측 태그','등록 Logic: 미확인'):

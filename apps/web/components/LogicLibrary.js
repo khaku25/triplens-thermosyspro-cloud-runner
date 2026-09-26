@@ -52,7 +52,7 @@ export function LogicLibraryDialog({analysisMode = false}) {
             <button type="button" onClick={close} style={{ background: 'transparent', color: 'white', border: '1px solid #b5c8d5', borderRadius: 6, padding: '7px 12px', cursor: 'pointer' }}>닫기</button>
           </div>
         </header>
-        {selection ? <LogicViewerFrame key={selection.revision} title={analysisMode ? title : '태그와 로직 도면'} src={src} tag={selection.tag} rule={selection.rule} onEquipmentPage={setEquipmentPage} style={{ width: '100%', height: '100%', minHeight: 0, border: 0, display: 'block' }} /> : null}
+        {selection ? <LogicViewerFrame key={selection.revision} title={analysisMode ? title : '태그·로직 다이어그램·Plant View 설비 검색'} src={src} tag={selection.tag} rule={selection.rule} onEquipmentPage={setEquipmentPage} style={{ width: '100%', height: '100%', minHeight: 0, border: 0, display: 'block' }} /> : null}
       </div>
     </dialog>
   );
