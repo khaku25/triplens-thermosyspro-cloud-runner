@@ -70,7 +70,7 @@ class OpenAIAgentTests(unittest.TestCase):
         self.assertEqual(len(requests),2)
         self.assertEqual(requests[0][0].full_url,'https://api.openai.com/v1/responses')
         self.assertEqual(requests[0][0].get_header('Authorization'),'Bearer offline-test-key')
-        self.assertEqual(requests[0][1]['model'],'gpt-5.6-luna')
+        self.assertEqual(requests[0][1]['model'],'gpt-6-luna')
         self.assertIn('OPENAI_AGENT',requests[0][1]['input'][0]['content'][0]['text'])
         self.assertNotIn('GEMINI_AGENT',requests[0][1]['input'][0]['content'][0]['text'])
         self.assertFalse(requests[0][1]['store'])
@@ -78,7 +78,7 @@ class OpenAIAgentTests(unittest.TestCase):
         self.assertEqual(requests[0][1]['text']['format']['schema'],ANALYSIS_SCHEMA)
         self.assertTrue(any(item.get('type')=='function_call_output' for item in requests[1][1]['input']))
         self.assertEqual(result['agent_execution']['provider'],'openai')
-        self.assertEqual(result['agent_execution']['model'],'gpt-5.6-luna')
+        self.assertEqual(result['agent_execution']['model'],'gpt-6-luna')
         self.assertEqual(result['agent_execution']['tool_calls_used'],2)
         self.assertEqual(result['agent_execution']['usage'][0]['input_tokens'],120)
 

@@ -13,6 +13,10 @@ from gemini_agent import DEFAULT_MODEL as DEFAULT_GEMINI_MODEL, run_gemini_analy
 from openai_agent import DEFAULT_MODEL as DEFAULT_OPENAI_MODEL, run_openai_analysis
 
 DEFAULT_ANALYSIS_PROVIDER='gemini'
+OPENAI_MODEL_LABELS={
+    'gpt-5.6-luna':'GPT-5.6 Luna',
+    'gpt-6-luna':'GPT-6 Luna',
+}
 
 
 class UnknownAnalysisProvider(ValueError):
@@ -33,10 +37,11 @@ def provider_configuration(provider=DEFAULT_ANALYSIS_PROVIDER):
             'available':bool(os.getenv('GEMINI_API_KEY','').strip()),
         }
     if selected=='openai':
+        model=os.getenv('TRIPLENS_OPENAI_MODEL',DEFAULT_OPENAI_MODEL).strip() or DEFAULT_OPENAI_MODEL
         return {
             'id':'openai',
-            'label':'GPT-5.6 Luna',
-            'model':os.getenv('TRIPLENS_OPENAI_MODEL',DEFAULT_OPENAI_MODEL).strip() or DEFAULT_OPENAI_MODEL,
+            'label':OPENAI_MODEL_LABELS.get(model,model),
+            'model':model,
             'available':bool(os.getenv('OPENAI_API_KEY','').strip()),
         }
     raise UnknownAnalysisProvider('지원하지 않는 분석 모델입니다.')

@@ -16,9 +16,15 @@ class AnalysisProviderTests(unittest.TestCase):
         options=analysis_providers.available_analysis_providers()
         self.assertEqual(options,[
             {'id':'gemini','label':'Gemini Flash','model':'gemini-3.8-flash','available':True},
-            {'id':'openai','label':'GPT-5.6 Luna','model':'gpt-5.6-luna','available':True},
+            {'id':'openai','label':'GPT-6 Luna','model':'gpt-6-luna','available':True},
         ])
         self.assertNotIn('api_key',str(options).lower())
+
+    @patch.dict(os.environ,{'OPENAI_API_KEY':'openai-test','TRIPLENS_OPENAI_MODEL':'gpt-5.6-luna'},clear=True)
+    def test_provider_label_tracks_server_configured_model(self):
+        config=analysis_providers.provider_configuration('openai')
+        self.assertEqual(config['label'],'GPT-5.6 Luna')
+        self.assertEqual(config['model'],'gpt-5.6-luna')
 
     @patch.dict(os.environ,{'OPENAI_API_KEY':'openai-test','TRIPLENS_OPENAI_MODEL':'gpt-6-luna-canary'},clear=True)
     def test_selected_openai_provider_calls_luna_runner_with_server_configured_model(self):
