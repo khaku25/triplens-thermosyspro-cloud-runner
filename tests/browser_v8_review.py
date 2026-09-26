@@ -94,7 +94,7 @@ def main():
             logic_dialog=page.get_by_role('dialog',name='Logic / TAG Master · 로직 도면')
             expect(logic_dialog.locator('iframe')).to_have_attribute('src',re.compile(r'tag=vpp52GTClosed'))
             logic_dialog.get_by_role('button',name='닫기',exact=True).click()
-            page.get_by_role('button',name='원인 분석',exact=True).click()
+            page.get_by_role('button',name=re.compile('원인 분석')).click()
             expect(page.get_by_text('후속 설비 상태 4',exact=True)).to_be_hidden()
             page.locator('summary',has_text='후속 분석 2건 보기').click()
             expect(page.get_by_text('후속 설비 상태 4',exact=True)).to_be_visible()
