@@ -33,7 +33,7 @@
       "analysis_policy": "RAW_EVIDENCE_ALLOWED",
       "unit_status": "CONFIRMED_OR_DETERMINISTIC",
       "interpretation_method": "EXACT_MODELICA_EQUATION_AND_RUNTIME_READBACK",
-      "source_url": "https://github.com/khaku25/triplens-thermosyspro-cloud-runner/blob/main/modelica/TripLens_CombinedCycle_TripTAC_ProcessView_v36.mo",
+      "source_url": "https://github.com/khaku25/triplens-thermosyspro-cloud-runner/blob/main/data/current_v8/st_breaker_open_evidence_20260926.json",
       "source_commit": "",
       "source_kind": "MODEL_SOURCE_RUNTIME_OBSERVED",
       "runtime_inclusion": "SEARCH_ONLY",
@@ -41,7 +41,8 @@
       "runtime_build": "TripLens_PlantControlV2_20260926-104046",
       "model_source_sha256": "9392B702487A891046B4F9E7E0466198F72D5ED087125D2E0BE9958E52E8F07E",
       "runtime_evidence_status": "RUNTIME_VERIFIED",
-      "notes": "Manual 52ST OPEN asserted this cause, ST Trip Request/Latch, 52ST Trip command, HP/LP bypass and spray response, and drove ST grid output to 0 MW."
+      "notes": "Manual 52ST OPEN asserted this cause, ST Trip Request/Latch, 52ST Trip command, HP/LP bypass and spray response, and drove ST grid output to 0 MW.",
+      "source_file": "data/current_v8/st_breaker_open_evidence_20260926.json"
     }
   ],
   "source_rules": [
@@ -66,7 +67,9 @@
       "behavior_validation": "PASS",
       "source_existence_status": "MODEL_SOURCE_RUNTIME_OBSERVED",
       "runtime_build": "TripLens_PlantControlV2_20260926-104046",
-      "model_source_sha256": "9392B702487A891046B4F9E7E0466198F72D5ED087125D2E0BE9958E52E8F07E"
+      "model_source_sha256": "9392B702487A891046B4F9E7E0466198F72D5ED087125D2E0BE9958E52E8F07E",
+      "source_url": "https://github.com/khaku25/triplens-thermosyspro-cloud-runner/blob/main/data/current_v8/st_breaker_open_evidence_20260926.json",
+      "source_file": "data/current_v8/st_breaker_open_evidence_20260926.json"
     },
     {
       "rule_id": "RESP-ST-TRIP-ACTUATION",
@@ -89,7 +92,9 @@
       "behavior_validation": "PASS",
       "source_existence_status": "MODEL_SOURCE_RUNTIME_OBSERVED",
       "runtime_build": "TripLens_PlantControlV2_20260926-104046",
-      "model_source_sha256": "9392B702487A891046B4F9E7E0466198F72D5ED087125D2E0BE9958E52E8F07E"
+      "model_source_sha256": "9392B702487A891046B4F9E7E0466198F72D5ED087125D2E0BE9958E52E8F07E",
+      "source_url": "https://github.com/khaku25/triplens-thermosyspro-cloud-runner/blob/main/data/current_v8/st_breaker_open_evidence_20260926.json",
+      "source_file": "data/current_v8/st_breaker_open_evidence_20260926.json"
     }
   ],
   "search_rule_updates": [
