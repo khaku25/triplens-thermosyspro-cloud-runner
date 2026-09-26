@@ -13,22 +13,12 @@ class STBreakerOpenMasterTest(unittest.TestCase):
             ROOT / 'data/current_v8/live_opcua_census.csv',
         )
 
-    def test_historical_runtime_uses_hierarchical_st_request_without_cause_count(self):
+    def test_historical_run54_runtime_is_not_rewritten(self):
         rules = {row['rule_id']: row for row in self.repo['model']['rules']}
-        rule = rules['PROT-ST-REQUEST']
-        self.assertEqual(rule['logic_name'], 'ST trip request')
-        self.assertEqual(
-            rule['inputs'],
-            [
-                'vppGTTripRequest',
-                'vppCauseDirectSTTrip',
-                'vppCauseHPDrumHH',
-                'vppCauseIPDrumHH',
-                'vppCauseLPDrumHH',
-            ],
-        )
-        self.assertNotIn('9', rule['condition'])
-        self.assertNotIn('9-cause', rule['source_basis'])
+        self.assertEqual(len(self.repo['model']['tags']), 603)
+        self.assertEqual(len(rules), 53)
+        self.assertNotIn('PROT-ST-BRK-OPEN', rules)
+        self.assertNotIn('vppCauseSTBreakerOpenWhileRunning', self.repo['model']['tags'])
 
     def test_current_search_master_adds_verified_52st_breaker_open_cause(self):
         search = self.repo['search_model']
