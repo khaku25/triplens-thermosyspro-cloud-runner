@@ -33,7 +33,10 @@ def load_authoring(master_dir:Path,census_path:Path,layout_path:Path|None=None):
     source_rules=optional_table(master_dir/LOGIC_FILE,'06_Model_Source_Observed','rule_id')
     census=read_table(Path(census_path),key='browse_name')
     xml=Path(layout_path).read_text(encoding='utf-8') if layout_path and Path(layout_path).exists() else None
-    return make_repository(tags,rules,census,source_tags=source_tags,source_rules=source_rules,layout_xml=xml)
+    overlay_path=master_dir.parent/'runtime_overlay.json'
+    overlay=json.loads(overlay_path.read_text(encoding='utf-8')) if overlay_path.is_file() else {}
+    return make_repository(tags,rules,census,source_tags=source_tags,source_rules=source_rules,
+                           layout_xml=xml,overlay=overlay)
 
 def csv_bytes(rows,fields):
     stream=io.StringIO(newline='');writer=csv.DictWriter(stream,fieldnames=fields,extrasaction='ignore')

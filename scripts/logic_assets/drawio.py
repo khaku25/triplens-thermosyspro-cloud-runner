@@ -235,13 +235,13 @@ def build_document(model: dict, layout_xml: str | None = None) -> str:
                 is_native=tag in model['tags']
                 desc=t.get('description_ko') or t.get('description_en') or '등록된 파생 로직 출력'
                 if t.get('model_source_only'):
-                    desc += '\n모델 소스 확인 · RAW 관측 · OPC UA 신원 미확인'
+                    desc += '\n모델/런타임 근거 · OPC UA numeric identity 미확인'
                 label=('입력 태그' if is_native else '파생 입력')+'\n'+lines(tag,42)+'\n'+lines(desc,42)
                 if t.get('unit'):
                     label+='\n단위: '+t['unit']
                 sid=page.vertex('source:'+gid+':'+digest(tag)[:16],'source' if is_native else 'derived',
                     label,40,sy+i*120,320,108,tag_id=tag,group_id=gid,is_native=str(is_native).lower(),
-                    source_kind='MODEL_SOURCE_RAW_OBSERVED' if t.get('model_source_only') else 'LIVE_OPCUA_CENSUS')
+                    source_kind=t.get('source_kind','MODEL_SOURCE_RAW_OBSERVED') if t.get('model_source_only') else 'LIVE_OPCUA_CENSUS')
                 source_ids.append((sid,tag))
             by=sy
             for r,branch_h in zip(rules,branch_heights):
@@ -254,10 +254,17 @@ def build_document(model: dict, layout_xml: str | None = None) -> str:
                 info+='\n'+lines('복귀/히스테리시스: '+(r['reset_hysteresis'] or '미기재'),38)
                 info_h=110
                 if r.get('source_mapped'):
-                    info+='\nMODEL_SOURCE_CONFIRMED · RAW closed-only'
-                    info+='\nRAW: 282 closed / 0 open'
-                    info+='\n52ST OPEN: NOT_TESTED · 전체 상태: PARTIAL'
-                    info_h=160
+                    source_state=(r.get('source_existence_status') or r.get('model_source_status')
+                                  or r.get('source_kind') or 'SUPPLEMENTAL_SOURCE')
+                    info+='\n'+lines('근거: '+source_state,38)
+                    if r.get('raw_rows'):
+                        info+='\n'+lines('Historical RAW: '+str(r.get('raw_rows'))+' rows · closed '
+                                          +str(r.get('raw_closed_samples','?'))+' · open '
+                                          +str(r.get('raw_open_samples','?')),38)
+                    if r.get('open_behavior_test_status'):
+                        info+='\n'+lines('52ST OPEN: '+r.get('open_behavior_test_status')
+                                          +' · 전체 상태: '+(r.get('validation_status') or '미기재'),38)
+                    info_h=180
                 page.vertex('additional:'+rid,'additional',info,780,by+120,320,info_h,
                     rule_id=rid,delay=r['delay'],reset_hysteresis=r['reset_hysteresis'],
                     validation_status=r['validation_status'],output_class=r['output_class'],group_id=gid,
@@ -269,7 +276,7 @@ def build_document(model: dict, layout_xml: str | None = None) -> str:
                     is_native=tag in model['tags']; t=model['tags'].get(tag,{})
                     desc=t.get('description_ko') or ('연결된 파생 알람 출력' if not is_native else '')
                     if t.get('model_source_only'):
-                        desc += '\n모델 소스 확인 · RAW 관측 · OPC UA 신원 미확인'
+                        desc += '\n모델/런타임 근거 · OPC UA numeric identity 미확인'
                     label=('출력 태그' if is_native else '파생 출력')+'\n'+lines(tag,45)
                     if desc:
                         label+='\n'+lines(desc,45)

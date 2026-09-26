@@ -123,6 +123,7 @@ export default function PlantDrawingMaster(){
             {selectedFocus&&screen!=='plant'?<button type="button" onClick={()=>setScreen('plant')} style={smallButton}>{relatedEquipment?'← Plant 관련 영역':'← Plant 위치'}</button>:null}
             {selected?.detail_asset&&screen==='plant'?<button type="button" onClick={()=>setScreen('detail')} style={smallButton}>선택 설비 상세도면</button>:null}
             {selected?.ecms_location_id&&screen==='plant'?<button type="button" onClick={()=>selected.ecms_page==='ECMS_6P9KV'?setScreen('ecms-detail'):setScreen('ecms-overview')} style={smallButton}>ECMS 위치</button>:null}
+            {selected?.equipment_id==='52ST'?<a href="/logic?rule=PROT-ST-BRK-OPEN" style={{...smallButton,textDecoration:'none'}}>52ST 보호 로직</a>:null}
           </div>
         </div>
 

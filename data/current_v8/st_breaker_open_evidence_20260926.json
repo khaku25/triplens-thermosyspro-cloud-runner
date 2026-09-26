@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "evidence_id": "ST_BREAKER_OPEN_RUNTIME_20260926",
+  "runtime_build": "TripLens_PlantControlV2_20260926-104046",
+  "model_source_sha256": "9392B702487A891046B4F9E7E0466198F72D5ED087125D2E0BE9958E52E8F07E",
+  "patch_marker": "TRIPLENS_ST_BREAKER_OPEN_TRIP_V1",
+  "purpose": "Runtime evidence for the independent manual 52ST breaker-open initiating cause and its downstream ST trip response.",
+  "baseline": {
+    "model_time_s": 6.12,
+    "vppECMS52STClosedCommandNative": 1,
+    "vpp52STClosed": 1,
+    "vppCauseSTBreakerOpenWhileRunning": 0,
+    "vppSTTripRequest": 0,
+    "vppSTTripLatchPublished": 0,
+    "vppHPBypassCmd": 0,
+    "vppLPBypassCmd": 0,
+    "st_output_mw_approx": 262.7
+  },
+  "manual_open_observation": {
+    "model_time_s": 11.12,
+    "vppECMS52STClosedCommandNative": 0,
+    "vpp52STClosed": 0,
+    "vppSTBreakerOpenCauseState": 1,
+    "vppCauseSTBreakerOpenWhileRunning": 1,
+    "vppSTTripRequest": 1,
+    "vppSTTripLatchPublished": 1,
+    "vpp52STTripCmd": 1,
+    "vppHPBypassCmd": 1,
+    "vppHPBypassPos": 1,
+    "vppHPBypassOpenLS": 1,
+    "vppLPBypassCmd": 1,
+    "vppLPBypassPos": 1,
+    "vppLPBypassOpenLS": 1,
+    "vppHPAdmissionPos": 0.001,
+    "vppIPAdmissionPos": 0.001,
+    "vppLPDrumAdmissionMultiplier": 0.001,
+    "vppHPSprayPos": 1,
+    "vppLPSprayPos": 1,
+    "st_output_mw": 0
+  },
+  "event_observation": {
+    "model_time_s": 7.76,
+    "simultaneous_events": [
+      "ST TRIP LATCH ACTIVE",
+      "52ST BREAKER OPEN"
+    ],
+    "following_events": [
+      "HP turbine flow low/low-low",
+      "IP turbine flow low/low-low",
+      "LP turbine flow low/low-low"
+    ]
+  },
+  "logic_contract": {
+    "initiating_cause_rule": "PROT-ST-BRK-OPEN",
+    "cause_tag": "vppCauseSTBreakerOpenWhileRunning",
+    "request_rule": "PROT-ST-REQUEST",
+    "latch_rule": "PROT-ST-LATCH",
+    "downstream_breaker_rule": "SEQ-52ST-OPEN",
+    "distinction": "PROT-ST-BRK-OPEN is the operator/manual OPEN initiating cause; SEQ-52ST-OPEN is downstream breaker actuation after the ST trip latch."
+  },
+  "limitations": [
+    "The historical Run 54 OPC UA census is not rewritten.",
+    "The new cause tag remains SEARCH_ONLY until a fresh census captures its numeric OPC UA identity.",
+    "No IP bypass exists in the model; only HP and LP bypass responses are claimed."
+  ]
+}
