@@ -81,10 +81,12 @@ function EvidenceLinks({ids,onOpen,named=false}){
 
 function ClaimReferenceActions({item,catalog}){
   const references=buildClaimReferenceTargets(item,catalog);
-  if(!references.logicTag&&!references.drawingHref)return null;
+  if(!references.logicTag&&!references.drawingLinks.length)return null;
   return <span className="claim-reference-actions" aria-label="근거 바로가기">
     {references.logicTag?<button type="button" onClick={()=>openLogicLibrary({tag:references.logicTag})}>[로직]</button>:null}
-    {references.drawingHref?<a href={references.drawingHref} target="_blank" rel="noreferrer">[드로잉]</a>:null}
+    {references.drawingLinks.map(drawing=><a key={`${drawing.equipment}:${drawing.href}`} href={drawing.href} target="_blank" rel="noreferrer">
+      {references.drawingLinks.length===1?'[드로잉]':`[드로잉 · ${drawing.equipment}]`}
+    </a>)}
   </span>;
 }
 

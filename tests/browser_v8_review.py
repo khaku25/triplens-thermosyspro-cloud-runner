@@ -31,7 +31,7 @@ def fixture():
     trace=[{'name':'get_tag_series','arguments':{'tag':'vppExternalTripCommandNative','start_time_s':48,'end_time_s':49},'status':'OK','executed':True,'evidence_ids':raw_ids,'evidence_count':len(raw_ids),'raw_evidence_count':len(raw_ids),'duration_ms':2},{'name':'get_logic_context','arguments':{'tags':['GT::TRIP_LATCH']},'status':'OK','executed':True,'evidence_ids':[],'evidence_count':0,'raw_evidence_count':0,'duration_ms':1}]
     obj=lambda claim,ids,t,tags:dict(claim=claim,evidence_ids=ids,model_time_s=t,related_tags=tags,status='CANDIDATE',ai_confidence=.8)
     result=normalize_analysis({'primary_cause':obj('외부 GT Trip 명령 입력이 관측되었습니다. 운전 의도는 미확인입니다.',raw_ids,48.4,['vppExternalTripCommandNative']),
-        'direct_trigger':obj('GT Trip Latch 동작이 기록되었습니다.',['E-1'],48.44,['vppGTTripLatch']),
+        'direct_trigger':obj('GT·ST Trip Latch 동시 동작',['E-1','E-2'],48.44,['vppGTTripLatch','vppSTTripLatchPublished']),
         'critical_events':[obj('GT Trip Latch 관측',['E-1'],48.44,['vppGTTripLatch'])],
         'propagation':[
             obj('52GT 차단기 개방 관측',['E-3'],48.52,['vpp52GTClosed']),
@@ -83,18 +83,38 @@ def main():
             logic_action=gt_event.get_by_role('button',name='[로직]',exact=True)
             drawing_action=gt_event.get_by_role('link',name='[드로잉]',exact=True)
             expect(logic_action).to_be_visible()
-            expect(drawing_action).to_have_attribute('href',re.compile(r'/drawing\?equipment=GT&view=plant&event=vpp52GTClosed'))
+            expect(drawing_action).to_have_attribute('href',re.compile(r'/drawing\?equipment=52GT&view=vpp&event=vpp52GTClosed'))
             with page.expect_popup() as drawing_popup:
                 drawing_action.click()
-            plant_view=drawing_popup.value
-            expect(plant_view).to_have_url(re.compile(r'/drawing\?equipment=GT&view=plant&event=vpp52GTClosed'))
-            expect(plant_view.get_by_text('TRIPLENS PLANT VIEW',exact=True)).to_be_visible()
-            plant_view.close()
+            gt_breaker=drawing_popup.value
+            expect(gt_breaker).to_have_url(re.compile(r'/drawing\?equipment=52GT&view=vpp&event=vpp52GTClosed'))
+            expect(gt_breaker.get_by_role('heading',name='ECMS Overview',exact=True)).to_be_visible()
+            assert '52GT' in gt_breaker.get_by_role('region',name='설비 상세 정보').inner_text()
+            expect(gt_breaker.locator('.triplens-highlight-layer')).to_contain_text('EVENT · vpp52GTClosed')
+            gt_breaker.close()
             logic_action.click()
             logic_dialog=page.get_by_role('dialog',name='Logic / TAG Master · 로직 도면')
             expect(logic_dialog.locator('iframe')).to_have_attribute('src',re.compile(r'tag=vpp52GTClosed'))
             logic_dialog.get_by_role('button',name='닫기',exact=True).click()
             page.get_by_role('button',name=re.compile('원인 분석')).click()
+            direct_card=page.locator('.cause-grid .claim-card').nth(1)
+            gt_latch_drawing=direct_card.get_by_role('link',name='[드로잉 · GT]',exact=True)
+            st_latch_drawing=direct_card.get_by_role('link',name='[드로잉 · 52ST]',exact=True)
+            expect(gt_latch_drawing).to_have_attribute('href',re.compile(r'/drawing\?equipment=GT&view=plant&event=vppGTTripLatch'))
+            expect(st_latch_drawing).to_have_attribute('href',re.compile(r'/drawing\?equipment=52ST&view=ecms&event=vppSTTripLatchPublished'))
+            with page.expect_popup() as gt_latch_popup:
+                gt_latch_drawing.click()
+            gt_latch_view=gt_latch_popup.value
+            expect(gt_latch_view.get_by_role('heading',name='Plant Process View',exact=True)).to_be_visible()
+            expect(gt_latch_view.locator('.drawing-hotspot.is-active')).to_have_count(1)
+            gt_latch_view.close()
+            with page.expect_popup() as st_latch_popup:
+                st_latch_drawing.click()
+            st_latch_view=st_latch_popup.value
+            expect(st_latch_view.get_by_role('heading',name='ECMS Overview',exact=True)).to_be_visible()
+            expect(st_latch_view.locator('.triplens-highlight-layer')).to_contain_text('EVENT · vppSTTripLatchPublished')
+            assert '52ST' in st_latch_view.get_by_role('region',name='설비 상세 정보').inner_text()
+            st_latch_view.close()
             expect(page.get_by_text('후속 설비 상태 4',exact=True)).to_be_hidden()
             page.locator('summary',has_text='후속 분석 2건 보기').click()
             expect(page.get_by_text('후속 설비 상태 4',exact=True)).to_be_visible()
@@ -129,7 +149,7 @@ def main():
             expect(page.locator('.analysis-list article').filter(has_text='52GT 차단기 OPEN').first).to_be_visible()
             direct=page.locator('.cause-card').filter(has_text='직접 보호동작')
             direct.locator('summary',has_text='상세 근거 보기').click()
-            direct.get_by_role('button',name='연결 근거 모아보기 · 1건',exact=True).click()
+            direct.get_by_role('button',name='연결 근거 모아보기 · 2건',exact=True).click()
             expect(page.get_by_role('heading',name='근거 상세',exact=True)).to_be_visible()
             page.get_by_role('button',name='이전 화면',exact=True).click()
             if width>640:
@@ -162,17 +182,6 @@ def main():
             expect(pdf_report.locator('html')).to_have_attribute('data-print-requested','true')
             pdf_dialog.get_by_role('button',name='닫기',exact=True).click()
             expect(pdf_dialog).to_be_hidden()
-            st_view=page.context.new_page()
-            st_view.goto(os.getenv('TRIPLENS_UI_URL','http://localhost:3000').rstrip('/')+'/drawing?equipment=GT&view=plant')
-            with st_view.expect_popup() as st_breaker_popup:
-                st_view.get_by_role('link',name='52ST 차단기 위치 →',exact=True).click()
-            st_breaker=st_breaker_popup.value
-            expect(st_breaker.get_by_role('heading',name='ECMS Overview',exact=True)).to_be_visible()
-            expect(st_breaker.locator('.triplens-highlight-layer')).to_have_count(1)
-            expect(st_breaker.locator('.triplens-highlight-layer')).to_contain_text('TAG · vppSTGridPowerMW')
-            assert '52ST' in st_breaker.get_by_role('region',name='설비 상세 정보').inner_text()
-            st_breaker.close()
-            st_view.close()
             assert page.get_by_role('button',name=re.compile('PINPOINT')).count()==0
             page.locator('summary',has_text='내보내기').click()
             with page.expect_download() as detailed_download:page.get_by_role('button',name='상세 분석 데이터 CSV',exact=True).click()
