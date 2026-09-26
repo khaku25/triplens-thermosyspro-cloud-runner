@@ -172,7 +172,7 @@ jobs:
           python scripts/update_triplens_logic.py --check
           git -c core.whitespace=cr-at-eol diff --check
       - name: Save verified integration on the selected branch only
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+        if: github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.publish)
         shell: bash
         run: |
           set -euo pipefail
@@ -183,7 +183,7 @@ jobs:
           if test -f .git/MERGE_HEAD || ! git diff --cached --quiet; then
             git commit -m 'Integrate tested draw.io library with current grounded evidence and report review'
           fi
-          git push origin HEAD:"${GITHUB_REF_NAME}"
+          git push origin HEAD:"${{ github.event.pull_request.head.ref || github.ref_name }}"
           echo "VERIFIED_RELEASE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
           git rev-parse HEAD > outputs/integration-review/verified-release-sha.txt
       - name: Preserve evidence and release artifacts
@@ -194,7 +194,13 @@ jobs:
           path: |
             generated/logic/
             data/current_v8/masters/
+            data/current_v8/live_*.csv
+            data/current_v8/live_validation_manifest.json
+            data/current_v8/logic_definition.json
             logic_diagrams/
+            apps/web/lib/current-logic-summary.json
+            apps/web/public/logic-assets/
+            services/agent-api/triplens/current_v8/
             outputs/integration-review/
             ${{ runner.temp }}/logic-desktop.png
             ${{ runner.temp }}/logic-mobile.png

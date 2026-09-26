@@ -4,13 +4,13 @@
   "commands": 6,
   "live_rules": 53,
   "live_tags": 603,
-  "model_source_raw_observed_tags": 2,
+  "model_source_raw_observed_tags": 3,
   "physical_response": 2,
   "protection": 17,
   "searchable_physical_response": 3,
-  "searchable_rules": 54,
-  "searchable_tags": 605,
-  "semantic_sha256": "f367ff77b7416781f2904e3ab4976d98203fb16ad5e8b2955f7ce2c0f6448f21",
+  "searchable_rules": 55,
+  "searchable_tags": 606,
+  "semantic_sha256": "9583cab00e89238712d42ff17ec9fed108f63e82484948b1125b0fddbcf6155d",
   "source": "Generated Current V8 master snapshot",
-  "source_mapped_rules": 1
+  "source_mapped_rules": 3
 }

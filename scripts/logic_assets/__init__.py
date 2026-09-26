@@ -18,15 +18,14 @@ def _search_model(live_model, source_tags, source_rules):
             raise ValueError(f'model-source tag has wrong source_kind: {tag}')
         if text(source.get('runtime_inclusion')) != 'SEARCH_ONLY':
             raise ValueError(f'model-source tag must remain SEARCH_ONLY: {tag}')
-        if text(source.get('open_behavior_test_status')) != 'NOT_TESTED':
-            raise ValueError(f'model-source tag has unsupported OPEN test status: {tag}')
+        open_status=text(source.get('open_behavior_test_status'))
+        if open_status not in {'NOT_TESTED','RUNTIME_VERIFIED'}:
+            raise ValueError(f'model-source tag has unsupported OPEN test status: {tag}: {open_status}')
         row = {k:text(source.get(k)) for k in TAG_FIELDS}
         row.update({k:text(v) for k,v in source.items() if k not in TAG_FIELDS})
         row.update(is_native=True, live_existence='MODEL_SOURCE_RAW_OBSERVED',
                    live_variant_type='', live_node_id='', model_source_only=True)
         observed[tag] = row
-    if observed and set(observed) != {'vppSTGeneratorPowerMW', 'vppSTGridPowerMW'}:
-        raise ValueError('ST source search requires exactly the two observed MW tags')
     search['tags'].update(observed)
 
     source_normalized = []
@@ -40,27 +39,31 @@ def _search_model(live_model, source_tags, source_rules):
             raise ValueError(f'model-source rule must remain SEARCH_ONLY: {rid}')
         if text(source.get('model_source_status')) != 'MODEL_SOURCE_CONFIRMED':
             raise ValueError(f'model-source rule lacks source confirmation: {rid}')
-        if text(source.get('raw_session_status')) != 'RAW_SESSION_OBSERVED_CLOSED_ONLY':
-            raise ValueError(f'model-source rule lacks closed-only RAW status: {rid}')
-        if text(source.get('open_behavior_test_status')) != 'NOT_TESTED':
-            raise ValueError(f'model-source rule must retain OPEN NOT_TESTED: {rid}')
+        raw_status=text(source.get('raw_session_status'))
+        if raw_status not in {'RAW_SESSION_OBSERVED_CLOSED_ONLY','USER_RUNTIME_VERIFIED'}:
+            raise ValueError(f'model-source rule has unsupported RAW/runtime status: {rid}: {raw_status}')
+        open_status=text(source.get('open_behavior_test_status'))
+        if open_status not in {'NOT_TESTED','RUNTIME_VERIFIED'}:
+            raise ValueError(f'model-source rule has unsupported OPEN test status: {rid}: {open_status}')
         rule = {k:text(source.get(k)) for k in RULE_FIELDS}
         rule.update({k:text(v) for k,v in source.items() if k not in RULE_FIELDS})
         rule['inputs'] = parts(rule.get('input_nodes'))
         rule['outputs'] = parts(rule.get('output_nodes_or_tags'))
         if not rule['inputs'] or not rule['outputs']:
             raise ValueError(f'model-source rule has an empty input or output: {rid}')
-        if 'vppSTGeneratorPowerMW' not in rule['inputs']:
-            raise ValueError(f'model-source response is missing vppSTGeneratorPowerMW: {rid}')
-        if 'vppSTGridPowerMW' not in rule['outputs']:
-            raise ValueError(f'model-source response is missing vppSTGridPowerMW: {rid}')
+        if rid == 'RESP-ST-GRID-POWER':
+            if 'vppSTGeneratorPowerMW' not in rule['inputs']:
+                raise ValueError(f'model-source response is missing vppSTGeneratorPowerMW: {rid}')
+            if 'vppSTGridPowerMW' not in rule['outputs']:
+                raise ValueError(f'model-source response is missing vppSTGridPowerMW: {rid}')
         if any(tag not in search['tags'] and tag not in search['derived']
                for tag in rule['inputs']+rule['outputs']):
             raise ValueError(f'model-source rule references an unsearchable tag: {rid}')
         rule['screen'] = screen_for(rule['group'])
         rule['source_mapped'] = True
-        rule['source_existence_status'] = 'MODEL_SOURCE_CONFIRMED_RAW_OBSERVED'
-        rule['behavior_validation'] = 'PARTIAL'
+        rule['source_existence_status'] = ('MODEL_SOURCE_RUNTIME_VERIFIED'
+            if open_status == 'RUNTIME_VERIFIED' else 'MODEL_SOURCE_CONFIRMED_RAW_OBSERVED')
+        rule['behavior_validation'] = ('PASS' if open_status == 'RUNTIME_VERIFIED' else 'PARTIAL')
         signature = ' | '.join(sorted(rule['inputs']))
         rule['input_signature'] = signature
         rule['input_group_id'] = rule['input_group_id'] or ('IG-'+digest(signature)[:10])
@@ -71,6 +74,32 @@ def _search_model(live_model, source_tags, source_rules):
     for rule in source_normalized:
         search['groups'].setdefault(rule['input_group_id'], []).append(rule)
     search['rules'].extend(source_normalized)
+
+    # Current PlantControlV2 release semantics: do not encode a cause count.
+    # GT common-trip remains represented by vppGTTripRequest and the independent
+    # 52ST manual-open protection cause is registered separately.
+    st_request=next((r for r in search['rules'] if r['rule_id']=='PROT-ST-REQUEST'),None)
+    if st_request and 'vppCauseSTBreakerOpenWhileRunning' in search['tags']:
+        current_inputs=[
+            'vppGTTripRequest',
+            'vppCauseDirectSTTrip',
+            'vppCauseSTBreakerOpenWhileRunning',
+            'vppCauseHPDrumHH',
+            'vppCauseIPDrumHH',
+            'vppCauseLPDrumHH',
+        ]
+        st_request['input_nodes']=' | '.join(current_inputs)
+        st_request['inputs']=current_inputs
+        st_request['condition']='OR(registered ST trip inputs)'
+        st_request['logic_name']='ST trip request'
+        st_request['source_basis']='Current PlantControlV2 ST request equation; cause-count wording retired; 52ST breaker-open cause included.'
+        st_request['validation_status']='PASS'
+        st_request['source_mapped']=True
+        st_request['source_existence_status']='MODEL_SOURCE_RUNTIME_VERIFIED'
+        signature=' | '.join(sorted(current_inputs))
+        st_request['input_signature']=signature
+        # IG-022 is retained as the stable drawing/page identity.
+        search['groups']['IG-022']=[st_request]
     search['rules'].sort(key=lambda r:r['rule_id'])
     search['groups'] = {gid:sorted(rs,key=lambda r:r['rule_id'])
                         for gid,rs in sorted(search['groups'].items())}

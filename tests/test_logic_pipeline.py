@@ -114,8 +114,14 @@ class PipelineTest(unittest.TestCase):
         if not (ROOT/'data/current_v8/masters/06_TAG_MASTER_CURRENT_V8_VERIFIED.xlsx').exists():
             self.skipTest('snapshot bootstrap required')
         model=pipeline.load_authoring(ROOT/'data/current_v8/masters',ROOT/'data/current_v8/live_opcua_census.csv')
-        self.assertEqual(len(model['model']['tags']),604)
-        self.assertEqual(len(model['model']['rules']),54)
+        self.assertEqual(len(model['model']['tags']),603)
+        self.assertEqual(len(model['model']['rules']),53)
+        self.assertEqual(len(model['search_model']['tags']),606)
+        self.assertEqual(len(model['search_model']['rules']),55)
+        by_id={r['rule_id']:r for r in model['search_model']['rules']}
+        self.assertIn('PROT-ST-BRK-OPEN',by_id)
+        self.assertNotIn('9-cause',json.dumps(by_id['PROT-ST-REQUEST']).lower())
+        self.assertIn('vppCauseSTBreakerOpenWhileRunning',by_id['PROT-ST-REQUEST']['inputs'])
 
     def test_formula_in_authoring_rejected(self):
         import zipfile
