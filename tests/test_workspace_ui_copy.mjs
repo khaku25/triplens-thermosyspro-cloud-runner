@@ -5,6 +5,9 @@ import fs from 'node:fs';
 const source=fs.readFileSync(new URL('../apps/web/components/TripLensWorkspace.js',import.meta.url),'utf8');
 const logicViewerSource=fs.readFileSync(new URL('../apps/web/components/LogicViewerFrame.js',import.meta.url),'utf8');
 const integrationCss=fs.readFileSync(new URL('../apps/web/app/integration.css',import.meta.url),'utf8');
+const plantViewSource=fs.readFileSync(new URL('../apps/web/components/PlantDrawingMaster.js',import.meta.url),'utf8');
+const logicPageSource=fs.readFileSync(new URL('../apps/web/app/logic/page.js',import.meta.url),'utf8');
+const drawingPageSource=fs.readFileSync(new URL('../apps/web/app/drawing/page.js',import.meta.url),'utf8');
 
 test('cause screen uses operator-facing Korean hierarchy',()=>{
   for(const text of ['발생 원인','직접 보호동작','파급 과정','시간순 사고 경위'])assert.match(source,new RegExp(text));
@@ -31,9 +34,23 @@ test('report preview defaults to concise operator summary and keeps editing coll
   assert.match(source,/report-editor/);
 });
 
-test('Drawing Master is named and remains reachable from the mobile workspace',()=>{
-  assert.match(source,/href="\/drawing"[^>]*>Drawing Master/);
+test('Plant View is reached from claim evidence and Drawing Master is hidden from navigation copy',()=>{
+  assert.match(source,/>\[로직\]<\/button>/);
+  assert.match(source,/>\[드로잉\]<\/a>/);
+  assert.doesNotMatch(source,/Drawing Master/);
+  assert.match(plantViewSource,/TRIPLENS PLANT VIEW/);
+  assert.match(logicPageSource,/>Plant View<\/a>/);
+  assert.match(drawingPageSource,/TripLens \| Plant View/);
+  assert.doesNotMatch([plantViewSource,logicPageSource,drawingPageSource].join('\n'),/Drawing Master/);
+  assert.match(logicViewerSource,/replace\('Drawing Master','연결 도면'\)/);
   assert.doesNotMatch(integrationCss,/\.app-shell \.side-links\s*,\s*\.app-shell \.boundary\s*\{display:none\}/);
+});
+
+test('timeline event evidence exposes direct logic and drawing actions',()=>{
+  const timeline=source.slice(source.indexOf('function OperatorTimeline'),source.indexOf('function OperatorReportPreview'));
+  assert.match(timeline,/catalog/);
+  assert.match(timeline,/ClaimReferenceActions/);
+  assert.match(source,/function ClaimReferenceActions/);
 });
 
 test('overflow analysis items and raw evidence tags stay available in disclosures',()=>{

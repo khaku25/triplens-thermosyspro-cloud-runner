@@ -57,16 +57,17 @@ function setLegendText(element, value) {
 function scrubViewer(document) {
   setText(document.querySelector('#equipment-view'), '설비별 로직');
   setText(document.querySelector('#tab-screens'), '설비 로직');
+  setText(document.querySelector('#tab-drawings'), '도면');
   const equipmentGroup = [...document.querySelectorAll('#page-select optgroup')].find(group => group.label === '설비 화면');
   if (equipmentGroup) equipmentGroup.label = '설비별 로직';
   const headerCopy = document.querySelector('.top p');
-  setText(headerCopy, '태그 · 로직 · Drawing Master 도면 검색 · 상세 정보');
+  setText(headerCopy, '태그 · 로직 · 도면 검색 · 상세 정보');
 
   const revision = document.querySelector('#revision');
   setText(revision, '태그 및 로직 데이터 · Current V8');
 
   const notice = document.querySelector('#notice');
-  setText(notice, '등록된 태그, 로직 연결, Drawing Master 도면 위치를 조회할 수 있습니다.');
+  setText(notice, '등록된 태그, 로직 연결, 도면 위치를 조회할 수 있습니다.');
 
   const legendItems = document.querySelectorAll('.legend > span');
   setLegendText(legendItems[0], '입력 태그');
@@ -81,7 +82,7 @@ function scrubViewer(document) {
   });
 
   document.querySelectorAll('.inspector h2').forEach(element => {
-    setText(element, element.textContent.replace('DETAIL / ', '').replace('TAG / ', '').replace('LOGIC / ', ''));
+    setText(element, element.textContent.replace('DETAIL / ', '').replace('TAG / ', '').replace('LOGIC / ', '').replace('Drawing Master','연결 도면'));
   });
 
   document.querySelectorAll('.inspector p, .inspector span, #context-note, .legend span').forEach(element => {
