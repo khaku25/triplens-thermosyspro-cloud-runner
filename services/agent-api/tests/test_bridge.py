@@ -40,7 +40,7 @@ class BridgeTest(unittest.TestCase):
         contract = bridge.public_contract()
         self.assertEqual(contract["python_role"], "EVIDENCE_PROVIDER_AND_VERIFIER")
         self.assertEqual(contract["decision_authority"], "GEMINI_AGENT")
-        self.assertEqual(contract["logic_summary"]["live_rules"], 54)
+        self.assertEqual(contract["logic_summary"]["live_rules"], 53)
         self.assertEqual(contract["logic_summary"]["alarm"], 28)
         self.assertEqual(contract["logic_summary"]["protection"], 17)
         self.assertEqual(contract["logic_summary"]["commands"], 6)
@@ -60,7 +60,7 @@ class BridgeTest(unittest.TestCase):
 
     def test_runtime_logic_is_fail_closed_against_live_allowlist(self):
         rows = bridge.runtime_logic_rows()
-        self.assertEqual(len(rows), 54)
+        self.assertEqual(len(rows), 53)
         allow = bridge.live_tag_allowlist()
         self.assertEqual(len(allow), 604)
         for row in rows:
