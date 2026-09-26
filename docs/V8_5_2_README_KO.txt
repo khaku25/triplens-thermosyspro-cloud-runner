@@ -1,3 +1,12 @@
+역사 문서 안내 — Current PlantControlV2 이후 기준
+=================================================
+이 파일은 V8.5.2 당시 구현·검증 기록을 보존하는 역사 문서이다.
+아래의 fixed cause-count/9-cause 표현은 당시 버전 설명이며 Current PlantControlV2의
+현행 기준이 아니다. 2026-09-26 build 104046부터 manual 52ST OPEN은
+PROT-ST-BRK-OPEN 독립 원인으로 검증되었고, Current ST Trip Request는 등록 upstream
+input set으로 표현하며 원인 개수를 고정해 부르지 않는다. 현행 수치는
+603 live tags / 53 live rules, 606 searchable tags / 55 searchable rules이다.
+
 TripLens Protection Dashboard V8.5.2 Dual Log Event Hotfix
 ===========================================================
 
