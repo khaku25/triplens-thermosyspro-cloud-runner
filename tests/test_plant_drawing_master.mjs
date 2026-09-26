@@ -4,8 +4,10 @@ import fs from 'node:fs';
 import {PLANT_PROCESS} from '../apps/web/lib/plantHotspots.mjs';
 import {EQUIPMENT_DRAWING_MASTER,resolveEquipmentDrawing} from '../apps/web/lib/equipmentDrawingMaster.mjs';
 import {resolvePlantFocus} from '../apps/web/lib/plantDrawingFocus.mjs';
+import {ST_POWER_DISPLAY} from '../apps/web/lib/stPowerDisplay.mjs';
 
 const page=fs.readFileSync(new URL('../apps/web/app/drawing/page.js',import.meta.url),'utf8');
+const component=fs.readFileSync(new URL('../apps/web/components/PlantDrawingMaster.js',import.meta.url),'utf8');
 
 test('plant Drawing Master keeps known valve detail bindings alongside the v36 overview',()=>{
   for(const id of ['HP-FWCV','HP-TURB-ADM-VLV','IP-TURB-ADM-VLV']) {
@@ -33,6 +35,13 @@ test('every Plant equipment has an exact source symbol or an explicitly related 
   assert.deepEqual(resolvePlantFocus(resolveEquipmentDrawing('GT EXHAUST')),{locationId:'GT',kind:'related'});
   assert.deepEqual(resolvePlantFocus(resolveEquipmentDrawing('HP TURB ADM VALVE')),{locationId:'HP_TURB_ADM_VLV',kind:'exact'});
   assert.equal(PLANT_PROCESS.hotspots.HP_FWCV,undefined,'related fallback cannot create a false valve symbol');
+});
+
+test('ST power points to the 52ST breaker in the ECMS drawing',()=>{
+  assert.equal(ST_POWER_DISPLAY.drawingHref,'/drawing?equipment=52ST&view=ecms&tag=vppSTGridPowerMW');
+  assert.match(component,/href=\{ST_POWER_DISPLAY\.drawingHref\}/);
+  assert.match(component,/52ST 차단기 위치/);
+  assert.match(component,/setEventLabel\(event\?\('EVENT · '\+event\):tag\?\('TAG · '\+tag\):''\)/);
 });
 
 test('all registered valve and NRV detail assets are served unchanged by the web app',()=>{
