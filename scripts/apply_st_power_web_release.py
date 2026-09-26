@@ -89,7 +89,20 @@ def main()->int:
     command=[sys.executable,str(ROOT/'scripts/update_triplens_logic.py')]
     subprocess.run(command,cwd=ROOT,check=True)
     subprocess.run(command+['--check'],cwd=ROOT,check=True)
-    print('ST_SOURCE_EVIDENCE_AND_WEB_ASSETS_READY; census=603; runtime_rules=53; searchable_tags=605; searchable_rules=54; OPEN=NOT_TESTED')
+
+    index=json.loads((ROOT/'logic_diagrams/logic_diagram_index.json').read_text(encoding='utf-8'))
+    if index.get('counts',{}).get('live_tags')!=603 or index.get('counts',{}).get('live_rules')!=53:
+        raise ValueError('Historical Run 54 live census/runtime counts changed')
+    if index.get('counts',{}).get('searchable_tags')!=606 or index.get('counts',{}).get('rules')!=56:
+        raise ValueError('Current searchable ST master counts are not 606 tags / 56 rules')
+    current=index.get('rules',{})
+    if 'PROT-ST-BRK-OPEN' not in current:
+        raise ValueError('Current searchable master is missing PROT-ST-BRK-OPEN')
+    if current.get('RESP-ST-GRID-POWER',{}).get('open_behavior_test_status')!='RUNTIME_VERIFIED':
+        raise ValueError('52ST OPEN grid-power behavior is not marked runtime-verified')
+    if '9-cause' in current.get('PROT-ST-REQUEST',{}).get('source_basis','') or '9' in current.get('PROT-ST-REQUEST',{}).get('condition',''):
+        raise ValueError('Deprecated numeric cause-count wording remains in current ST request')
+    print('ST_SOURCE_EVIDENCE_AND_WEB_ASSETS_READY; census=603; runtime_rules=53; searchable_tags=606; searchable_rules=56; OPEN=RUNTIME_VERIFIED')
     return 0
 
 if __name__=='__main__':
