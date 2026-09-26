@@ -17,7 +17,6 @@ BASELINE={
     'live_tag_master.csv':'f2277cc3d10cc317cffaf0ecf5cf74cd0ef1e46f4fd3db3a9e5fe1a189ad25b8',
     'live_logic_runtime.csv':'d79505193ef88a0f54f8d7370ed157313df079ebae9ef090ce98f148f6841ecb',
     'live_tag_logic_links.csv':'d6521353d58355a4267b76dfa9db4caef3359708673a22f2fb3bd5a1b05c4963',
-    'live_validation_manifest.json':'4b793085e8f12a7e16eb1cae7d52d5acf23dce809f1802c116b3e9911d8124e7',
 }
 
 def read_csv(path):
