@@ -194,7 +194,13 @@ jobs:
           path: |
             generated/logic/
             data/current_v8/masters/
+            data/current_v8/live_*.csv
+            data/current_v8/live_validation_manifest.json
+            data/current_v8/logic_definition.json
             logic_diagrams/
+            apps/web/lib/current-logic-summary.json
+            apps/web/public/logic-assets/
+            services/agent-api/triplens/current_v8/
             outputs/integration-review/
             ${{ runner.temp }}/logic-desktop.png
             ${{ runner.temp }}/logic-mobile.png
