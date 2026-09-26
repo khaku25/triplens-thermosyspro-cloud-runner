@@ -42,10 +42,11 @@ jobs:
       # The LP discharge check valve closes before reverse flow; the unchanged
       # L/LL thresholds occur near 36/67 s after the 20 s Trip command.
       # Keep 40 ms OPC UA capture (two samples across the 80 ms breaker delay)
-      # and enough margin for the GT/ST return path.
-      LIVE_STOP_TIME_S: "100"
+      # and a full 30-second observation window after the GT Trip latch.
+      LIVE_STOP_TIME_S: "120"
       LIVE_STEP_SIZE_S: "0.04"
       LIVE_COMMAND_TIME_S: "20"
+      LIVE_POST_GT_TRIP_S: "30"
     steps:
       - uses: actions/checkout@v4
 
@@ -62,7 +63,7 @@ jobs:
           python3 scripts/render_modelica.py \
             --external-trip-input \
             --stop-time "$LIVE_STOP_TIME_S" \
-            --intervals 2500
+            --intervals 3000
           test -s build/build_native_opcua.mos
           git clone --no-checkout \
             https://github.com/Dwarf-Planet-Project/ThermoSysPro.git \
@@ -130,7 +131,7 @@ jobs:
               "vppLPFWPCheckValveInletPressurePa", "vppLPFWPCheckValveOutletPressurePa",
               "vppLPFWPCheckValveResistancePaSPerKg",
               "vppGTTripCmd", "vpp52GTClosed",
-              "vpp52STClosed",
+              "vpp52STClosed", "vppGTGPowerMW", "vppGTGSpeedRPM",
           ]
           missing = [name for name in required if name not in built]
           if missing:
@@ -163,13 +164,12 @@ jobs:
               --stop-time "$LIVE_STOP_TIME_S" \
               --step-size "$LIVE_STEP_SIZE_S" \
               --command-time "$LIVE_COMMAND_TIME_S" \
+              --post-gt-trip-seconds "$LIVE_POST_GT_TRIP_S" \
               --output-dir outputs/native-opcua; then
             tail -n 500 outputs/native-opcua/openmodelica-native.log || true
             exit 1
           fi
-          # The proof ends when LL, both trip latches, and both open breaker
-          # contacts have returned through OPC UA. Stop the paused native
-          # executable at that terminal scenario state.
+          # The proof ends only after 30 seconds of post-GT-Trip observation.
           docker rm -f "$native_container" >/dev/null 2>&1 || true
           wait "$native_pid" || true
           trap - EXIT
