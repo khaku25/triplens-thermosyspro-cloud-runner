@@ -1,0 +1,143 @@
+name: Verify submission count correction
+on:
+  push:
+    branches: [codex/submission-count-fix-20260927]
+    paths: ['.github/workflows/submission-count-fix-20260927.yml']
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Write and reproduce regression
+        shell: bash
+        run: |
+          mkdir -p outputs/submission-count-fix
+          cat > tests/test_logic_overview_live_counts.py <<'PY'
+          """The overview uses the frozen live model, not a filtered searchable overlay."""
+          import re
+          import unittest
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          from scripts.logic_assets.pipeline import load_authoring
+          ROOT = Path(__file__).resolve().parents[1]
+          class OverviewLiveCountsTest(unittest.TestCase):
+              def test_overview_uses_exact_live_model_counts(self):
+                  repo = load_authoring(ROOT/'data/current_v8/masters', ROOT/'data/current_v8/live_opcua_census.csv', ROOT/'logic_diagrams/TripLens_Logic_Master_Current_V8.drawio')
+                  label = ET.fromstring(repo['xml']).find("./diagram[@id='overview']/mxGraphModel/root/object[@id='overview-policy']").get('label')
+                  actual = int(re.search(r'live (\d+)개 로직', label).group(1))
+                  self.assertEqual(actual, len(repo['model']['rules']), 'Overview live count differs from frozen live model')
+                  self.assertEqual(actual, repo['index']['counts']['live_rules'])
+                  self.assertIn(f"census {len(repo['model']['tags'])}개 태그", label)
+                  self.assertIn(f"검색 {len(repo['search_model']['rules'])}개 로직", label)
+          PY
+          if python -m unittest discover -s tests -p test_logic_overview_live_counts.py > outputs/submission-count-fix/before-test.txt 2>&1; then
+            echo 'Expected baseline regression not reproduced'; exit 1
+          fi
+          grep -q 'Overview live count differs from frozen live model' outputs/submission-count-fix/before-test.txt
+      - name: Apply minimal count-source fix and verify exact scope
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib,json,subprocess,xml.etree.ElementTree as ET
+          out=Path('outputs/submission-count-fix')
+          src=Path('logic_diagrams/TripLens_Logic_Master_Current_V8.drawio')
+          old=src.read_bytes(); (out/'before.drawio').write_bytes(old)
+          def sha(b): return hashlib.sha256(b).hexdigest()
+          assert sha(old)=='ed3f100bc67234a38dd193b1d409f7e33fee5c62f5145d6da5a2eba3208e6a96','Unexpected base drawing'
+          p=Path('scripts/logic_assets/__init__.py'); text=p.read_text()
+          a='xml=build_document(searchable,layout_xml)'; b='xml=build_document(searchable,layout_xml,live_model=model)'
+          assert text.count(a)==1; p.write_text(text.replace(a,b))
+          p=Path('scripts/logic_assets/drawio.py'); text=p.read_text()
+          edits=[
+            ('def build_document(model: dict, layout_xml: str | None = None) -> str:', 'def build_document(model: dict, layout_xml: str | None = None, *, live_model: dict | None = None) -> str:'),
+            ("live_tag_count=sum(not row.get('model_source_only') for row in model['tags'].values())", "live_tag_count=(len(live_model['tags']) if live_model is not None else sum(not row.get('model_source_only') for row in model['tags'].values()))"),
+            ("live_rule_count=sum(not rule.get('source_mapped') for rule in model['rules'])", "# An existing live rule can also have a source-mapped searchable overlay.\n            # Count the frozen model, not searchable rules minus overlays.\n            live_rule_count=(len(live_model['rules']) if live_model is not None else sum(not rule.get('source_mapped') for rule in model['rules']))")]
+          for a,b in edits:
+            assert text.count(a)==1,a; text=text.replace(a,b)
+          p.write_text(text)
+          subprocess.run(['python','scripts/update_triplens_logic.py'],check=True)
+          subprocess.run(['python','scripts/update_triplens_logic.py','--check'],check=True)
+          new=src.read_bytes(); oldroot=ET.fromstring(old); newroot=ET.fromstring(new)
+          obj=oldroot.find("./diagram[@id='overview']/mxGraphModel/root/object[@id='overview-policy']")
+          oldlabel=obj.get('label'); assert 'live 52개 로직' in oldlabel
+          obj.set('label',oldlabel.replace('live 52개 로직','live 53개 로직'))
+          assert ET.tostring(oldroot)==ET.tostring(newroot),'Change outside approved overview label'
+          prefixes=('generated/logic/','logic_diagrams/','apps/web/public/logic-assets/')
+          allowed={x+n for x in prefixes for n in ('TripLens_Logic_Master_Current_V8.drawio','logic_diagram_index.json','drawing_master_index.json','asset_manifest.json','viewer.html')}
+          allowed.update(('scripts/logic_assets/__init__.py','scripts/logic_assets/drawio.py'))
+          changed=set(subprocess.check_output(['git','diff','--name-only'],text=True).splitlines())
+          assert changed<=allowed,changed-allowed
+          result={'base_commit':'38c1b2a879a0ce8963924c93e67d8484f85e18f6','old_sha256':sha(old),'source_sha256':sha(new),'old_label':oldlabel,'new_label':obj.get('label'),'only_overview_label_changed_in_xml':True,'geometry_tags_rules_edges_status_unchanged':True,'changed_files':sorted(changed),'paid_model_calls':0,'plant_writes':0}
+          (out/'SOURCE_VERIFICATION.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Install browser dependencies
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Run relevant regressions
+        shell: bash
+        run: |
+          python -m unittest discover -s tests -p 'test_logic*.py' 2>&1 | tee outputs/submission-count-fix/logic-tests.txt
+          python -m unittest discover -s tests -p 'test_drawing_master.py' 2>&1 | tee outputs/submission-count-fix/drawing-tests.txt
+          python -m unittest discover -s tests -p 'test_current_catalog.py' 2>&1 | tee outputs/submission-count-fix/catalog-tests.txt
+      - name: Verify all 102 pages and export corrected overview
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          import json,xml.etree.ElementTree as ET
+          out=Path('outputs/submission-count-fix')
+          xml=Path('logic_diagrams/TripLens_Logic_Master_Current_V8.drawio').read_text()
+          pages=ET.fromstring(xml).findall('diagram'); assert len(pages)==102
+          results=[]; errors=[]
+          with sync_playwright() as p:
+            browser=p.chromium.launch(headless=True,args=['--no-sandbox'])
+            v=browser.new_page(viewport={'width':1800,'height':1200})
+            v.on('pageerror',lambda e:errors.append(str(e)))
+            v.set_content(Path('apps/web/public/logic-assets/viewer.html').read_text(),wait_until='load')
+            v.wait_for_selector('body[data-ready="true"]')
+            assert not v.locator('#fatal').inner_text()
+            for n,page in enumerate(pages,1):
+              v.select_option('#page-select',page.get('id'))
+              check=v.eval_on_selector('#diagram', '''svg=>{const ns=[...svg.querySelectorAll('g.node')]], overlaps=[], overflow=[];for(let i=0;i<ns.length;i++){const a=ns[i],ra=a.querySelector('rect'),ta=a.querySelector('text'),aa=a.transform.baseVal.consolidate().matrix; const ab={x:aa.e,y:aa.f,w:+ra.getAttribute('width'),h:+ra.getAttribute('height')};if(ta){const t=ta.getBBox();if(t.x < -1 || t.y < -1 || t.x+t.width>ab.w+1 || t.y+t.height>ab.h+1)overflow.push(a.dataset.cellId);}for(let j=i+1;j<ns.length;j++){const b=ns[j],rb=b.querySelector('rect'),bb=b.transform.baseVal.consolidate().matrix; if(Math.min(ab.x+ab.w,bb.e+(+rb.getAttribute('width')))>Math.max(ab.x,bb.e) && Math.min(ab.y+ab.h,bb.f+(+rb.getAttribute('height')))>Math.max(ab.y,bb.f))overlaps.push([a.dataset.cellId,b.dataset.cellId]);}}return {overlaps,overflow};}'''.replace("')]],", "')],"))
+              assert not check['overlaps'] and not check['overflow'],(n,check)
+              results.append({'page':n,'name':page.get('name'),**check})
+              if n==1:
+                assert 'live 53개 로직' in v.locator('#diagram').inner_text()
+                svg=v.eval_on_selector('#diagram', '''e=>{const c=e.cloneNode(true);c.removeAttribute('class');c.removeAttribute('style');c.setAttribute('width',e.dataset.width);c.setAttribute('height',e.dataset.height);c.setAttribute('xmlns','http://www.w3.org/2000/svg');return new XMLSerializer().serializeToString(c);}''')
+                (out/'001_00_Logic_Master.svg').write_text(svg)
+                printer=browser.new_page();printer.emulate_media(media='screen')
+                printer.set_content('<style>@page{margin:0}html,body{margin:0;background:white}svg{display:block}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}</style>'+svg)
+                printer.evaluate('document.fonts.ready')
+                g=page.find('mxGraphModel');printer.pdf(path=str(out/'001_00_Logic_Master.pdf'),width=g.get('pageWidth')+'px',height=g.get('pageHeight')+'px',margin={'top':'0','bottom':'0','left':'0','right':'0'},print_background=True)
+                printer.close()
+            assert not errors,errors
+            browser.close()
+          (out/'BROWSER_VERIFICATION.json').write_text(json.dumps({'pages':results,'page_errors':errors,'scope':'local compiled viewer; not production and not engineering validation'},ensure_ascii=False,indent=2))
+          PY
+      - name: Commit verified source and compiled assets on isolated branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add scripts/logic_assets/__init__.py scripts/logic_assets/drawio.py tests/test_logic_overview_live_counts.py generated/logic/ logic_diagrams/ apps/web/public/logic-assets/
+          git commit -m 'fix: use frozen live model for overview logic count and synchronize exports'
+          git push origin HEAD:codex/submission-count-fix-20260927
+          git rev-parse HEAD > outputs/submission-count-fix/verified-commit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: submission-count-fix-${{ github.run_id }}
+          path: |
+            outputs/submission-count-fix/
+            logic_diagrams/
+            apps/web/public/logic-assets/
+            scripts/logic_assets/__init__.py
+            scripts/logic_assets/drawio.py
+            tests/test_logic_overview_live_counts.py
+          retention-days: 30
