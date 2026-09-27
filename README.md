@@ -1,5 +1,8 @@
 # TripLens ThermoSysPro V8 / ECMS VPP Reference
 
+> **Current ST breaker-open evidence (2026-09-26):** PlantControlV2 build `104046` verified manual 52ST OPEN → `vppCauseSTBreakerOpenWhileRunning` → ST Trip Request/Latch → HP/IP/LP admission close + HP/LP bypass/spray open → ST grid output 0 MW. The web/searchable master now contains **606 searchable tags / 55 searchable rules / 37 input groups / 102 drawing pages / 1,609 indexed cells**. The preserved Run #54 live census remains **603 live tags / 53 live rules**; searchable/source-mapped evidence is reported separately.
+
+
 GitHub Actions에서 ThermoSysPro/OpenModelica 물리 원천을 생성하는 저장소입니다.
 기존 GT·HP BFP Action은 계속 RAW-only 경계를 유지합니다. 별도의
 `Verify V8.5.2 LP BFP Dual Log physics` 검증 Action은 로컬에서 통과한 V8.5.2
