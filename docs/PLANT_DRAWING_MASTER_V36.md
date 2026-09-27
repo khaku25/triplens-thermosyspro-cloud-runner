@@ -31,6 +31,12 @@ HP/IP/LP drums are highlighted at the feedwater and level vessels in the lower r
 
 The existing `equipmentDrawingMaster.mjs` and `config/equipment_drawing_master_v1.csv` resolve explicit names to `equipment_id`, `plant_location_id` and `ecms_location_id`. They retain the `FWP-HP/IP/LP` identifiers and explicitly map HP/IP/LP BFP to those pumps. Six v36 symbols were added to the same registry, with ST kept on the ECMS generator view. EVENT timeline and table links open `/drawing?equipment=...` in another tab to preserve the active analysis; known Plant equipment opens the v36 page by default. An explicit electrical view, e.g. `/drawing?equipment=LP%20BFP&view=ecms`, highlights VCB-A02. Unknown names have no inferred location.
 
+For the ECMS-only 52ST object, the current Logic/Drawing cross-links are:
+- `PROT-ST-BRK-OPEN`: manual 52ST OPEN initiating protection cause.
+- `SEQ-52ST-TRIPCMD`: ST latch to 52ST Trip command.
+- `SEQ-52ST-OPEN`: post-trip breaker-open sequence/feedback.
+- `RESP-ST-GRID-POWER`: 52ST-gated ST grid output; build 104046 verified OPEN → 0 MW.
+
 RAW and OPC UA value overlays are a separate phase. The image labels show the capture time only; do not interpret the displayed zero values as the uploaded EVENT/RAW measurement.
 
 ## Verification

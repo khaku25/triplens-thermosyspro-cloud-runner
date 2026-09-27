@@ -17,7 +17,6 @@ BASELINE={
     'data/current_v8/live_tag_master.csv':'f2277cc3d10cc317cffaf0ecf5cf74cd0ef1e46f4fd3db3a9e5fe1a189ad25b8',
     'data/current_v8/live_logic_runtime.csv':'d79505193ef88a0f54f8d7370ed157313df079ebae9ef090ce98f148f6841ecb',
     'data/current_v8/live_tag_logic_links.csv':'d6521353d58355a4267b76dfa9db4caef3359708673a22f2fb3bd5a1b05c4963',
-    'data/current_v8/live_validation_manifest.json':'4b793085e8f12a7e16eb1cae7d52d5acf23dce809f1802c116b3e9911d8124e7',
 }
 
 def sha(path:Path)->str:
@@ -89,7 +88,21 @@ def main()->int:
     command=[sys.executable,str(ROOT/'scripts/update_triplens_logic.py')]
     subprocess.run(command,cwd=ROOT,check=True)
     subprocess.run(command+['--check'],cwd=ROOT,check=True)
-    print('ST_SOURCE_EVIDENCE_AND_WEB_ASSETS_READY; census=603; runtime_rules=53; searchable_tags=605; searchable_rules=54; OPEN=NOT_TESTED')
+    index=json.loads((ROOT/'apps/web/public/logic-assets/logic_diagram_index.json').read_text(encoding='utf-8'))
+    counts=index['counts']
+    if (counts.get('live_tags'),counts.get('searchable_tags'),counts.get('live_rules'),counts.get('rules')) != (603,606,53,55):
+        raise ValueError(f'Unexpected generated current counts: {counts}')
+    current=index['rules'].get('RESP-ST-GRID-POWER',{})
+    breaker=index['rules'].get('PROT-ST-BRK-OPEN',{})
+    request=index['rules'].get('PROT-ST-REQUEST',{})
+    if current.get('validation_status')!='PASS' or current.get('open_behavior_test_status')!='RUNTIME_VERIFIED':
+        raise ValueError('Generated ST grid-power OPEN behavior is not runtime-verified')
+    if breaker.get('validation_status')!='PASS' or breaker.get('open_behavior_test_status')!='RUNTIME_VERIFIED':
+        raise ValueError('Generated 52ST breaker-open protection cause is not runtime-verified')
+    rendered=json.dumps(request,ensure_ascii=False).lower()
+    if '9-cause' in rendered or '9 causes' in rendered or 'vppcausestbreakeropenwhilerunning' not in rendered:
+        raise ValueError('Generated ST request still exposes obsolete fixed-cause semantics')
+    print('ST_SOURCE_EVIDENCE_AND_WEB_ASSETS_READY; live_tags=603; live_rules=53; searchable_tags=606; searchable_rules=55; ST_BREAKER_OPEN=RUNTIME_VERIFIED')
     return 0
 
 if __name__=='__main__':

@@ -37,7 +37,7 @@ rule_id,run41_status,release_status,evidence_scenarios,run_id,notes
 "PROT-LP-DRUM-HH","RUN41_PROVEN_ASSERTED","RC_CONFIRMED","lp_drum_hh","34984251101","Run #41 evidence supports this status."
 "PROT-LP-DRUM-LL","RUN41_PROVEN_ASSERTED","RC_CONFIRMED","lp_drum_ll","34984251101","Run #41 evidence supports this status."
 "PROT-GT-REQUEST","RUN41_PROVEN","RC_CONFIRMED","direct_gt","34984251101","Run #41 evidence supports this status."
-"PROT-ST-REQUEST","RUN41_PROVEN","RC_CONFIRMED","direct_gt","34984251101","Run #41 evidence supports this status."
+"PROT-ST-REQUEST","RUN41_PROVEN","RC_CONFIRMED","direct_gt","34984251101","Run #41 supports the historical ST request path; current PlantControlV2 later adds the separately runtime-verified 52ST breaker-open cause without changing this Run #41 result."
 "PROT-GT-LATCH","RUN41_PROVEN","RC_CONFIRMED","direct_gt","34984251101","Run #41 evidence supports this status."
 "PROT-ST-LATCH","RUN41_PROVEN","RC_CONFIRMED","direct_gt","34984251101","Run #41 evidence supports this status."
 "SEQ-52GT-TRIPCMD","RUN41_PROVEN","RC_CONFIRMED","direct_gt","34984251101","Run #41 evidence supports this status."
@@ -52,3 +52,4 @@ rule_id,run41_status,release_status,evidence_scenarios,run_id,notes
 "CMD-FWP-IP-RESET","NOT_RUN41","SOURCE_DEFINED_NOT_RUN41","","34984251101","Source-defined path was not exercised by Run #41."
 "CMD-FWP-LP-TRIP","RUN41_PARTIAL_ELECTRICAL","RC_PARTIAL","lp_bfp","34984251101","Electrical trip chain changed, but downstream NRV/drum/common-trip propagation was not proven."
 "CMD-FWP-LP-RESET","NOT_RUN41","SOURCE_DEFINED_NOT_RUN41","","34984251101","Source-defined path was not exercised by Run #41."
+"PROT-ST-BRK-OPEN","NOT_RUN41","RUNTIME_VERIFIED_20260926","st_breaker_open_104046","","Not part of Run #41. Verified later on PlantControlV2 build 104046 by manual 52ST OPEN -> breaker-open cause -> ST request/latch and downstream trip response."

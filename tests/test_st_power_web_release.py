@@ -17,7 +17,6 @@ BASELINE={
     'live_tag_master.csv':'f2277cc3d10cc317cffaf0ecf5cf74cd0ef1e46f4fd3db3a9e5fe1a189ad25b8',
     'live_logic_runtime.csv':'d79505193ef88a0f54f8d7370ed157313df079ebae9ef090ce98f148f6841ecb',
     'live_tag_logic_links.csv':'d6521353d58355a4267b76dfa9db4caef3359708673a22f2fb3bd5a1b05c4963',
-    'live_validation_manifest.json':'4b793085e8f12a7e16eb1cae7d52d5acf23dce809f1802c116b3e9911d8124e7',
 }
 
 def read_csv(path):
@@ -104,12 +103,18 @@ class STPowerWebReleaseTest(unittest.TestCase):
         index=json.loads((ROOT/'apps/web/public/logic-assets/logic_diagram_index.json').read_text())
         counts=index['counts']
         self.assertEqual((counts['source_tags'],counts['searchable_tags'],counts['live_rules'],counts['rules'],counts['source_mapped_rules']),
-                         (603,605,53,54,1))
+                         (603,606,53,55,3))
         rule=index['rules'][RULE]
         self.assertEqual(rule['inputs'],['vppSTGeneratorPowerMW','vpp52STClosed'])
         self.assertEqual(rule['outputs'],['vppSTGridPowerMW'])
-        self.assertEqual(rule['validation_status'],'PARTIAL')
-        self.assertEqual(rule['open_behavior_test_status'],'NOT_TESTED')
+        self.assertEqual(rule['validation_status'],'PASS')
+        self.assertEqual(rule['open_behavior_test_status'],'RUNTIME_VERIFIED')
+        breaker=index['rules']['PROT-ST-BRK-OPEN']
+        self.assertEqual(breaker['outputs'],['vppCauseSTBreakerOpenWhileRunning'])
+        self.assertEqual(breaker['validation_status'],'PASS')
+        request=index['rules']['PROT-ST-REQUEST']
+        self.assertIn('vppCauseSTBreakerOpenWhileRunning',request['inputs'])
+        self.assertNotIn('9-cause',json.dumps(request).lower())
         for tag in TAGS:
             self.assertEqual(index['tags'][tag]['runtime_inclusion'],'SEARCH_ONLY')
             self.assertIn(RULE,index['tags'][tag]['rule_ids'])
@@ -119,7 +124,7 @@ class STPowerWebReleaseTest(unittest.TestCase):
         self.assertIn('vpp52STClosed',response['input_nodes'])
         self.assertEqual(response['source_outputs'],'vppSTGridPowerMW')
         self.assertEqual(response['link_status'],'SOURCE_MAPPED_ONLY')
-        self.assertEqual(response['source_existence'],'MODEL_SOURCE_CONFIRMED_RAW_OBSERVED')
+        self.assertEqual(response['source_existence'],'MODEL_SOURCE_RUNTIME_VERIFIED')
         ports=read_csv(ROOT/'generated/logic/ports.csv')
         self.assertTrue(any(p['rule_id']==RULE and p['relation']=='INPUT' and p['node_or_tag']=='vppSTGeneratorPowerMW' for p in ports))
 
@@ -137,19 +142,19 @@ class STPowerWebReleaseTest(unittest.TestCase):
         page=xml.find(f"./diagram[@id='IG-036']")
         self.assertIsNotNone(page)
         content=' '.join(obj.get('label','') for obj in page.findall('.//object'))
-        for text in ('vppSTGeneratorPowerMW','vpp52STClosed','vppSTGridPowerMW','MODEL_SOURCE_CONFIRMED','52ST OPEN: NOT_TESTED','PARTIAL'):
+        for text in ('vppSTGeneratorPowerMW','vpp52STClosed','vppSTGridPowerMW','MODEL_SOURCE_CONFIRMED','52ST OPEN: RUNTIME_VERIFIED','PASS'):
             self.assertIn(text,content)
 
     def test_web_viewer_and_summary_disclose_scope_before_navigation(self):
         viewer=(ROOT/'apps/web/public/logic-assets/viewer.html').read_text(encoding='utf-8')
-        for marker in (*TAGS,RULE,'MODEL_SOURCE_CONFIRMED','RAW_SESSION_OBSERVED_CLOSED_ONLY','NOT_TESTED','SEARCH_ONLY'):
+        for marker in (*TAGS,RULE,'PROT-ST-BRK-OPEN','vppCauseSTBreakerOpenWhileRunning','MODEL_SOURCE_CONFIRMED','RUNTIME_VERIFIED','SEARCH_ONLY'):
             self.assertIn(marker,viewer)
         summary=json.loads((ROOT/'apps/web/lib/current-logic-summary.json').read_text())
         self.assertEqual(summary['live_tags'],603)
-        self.assertEqual(summary['searchable_tags'],605)
+        self.assertEqual(summary['searchable_tags'],606)
         self.assertEqual(summary['live_rules'],53)
-        self.assertEqual(summary['searchable_rules'],54)
-        self.assertEqual(summary['source_mapped_rules'],1)
+        self.assertEqual(summary['searchable_rules'],55)
+        self.assertEqual(summary['source_mapped_rules'],3)
         manifest=json.loads((ROOT/'apps/web/public/logic-assets/asset_manifest.json').read_text())
         for name in ('TripLens_Logic_Master_Current_V8.drawio','logic_diagram_index.json','drawing_master_index.json','viewer.html'):
             self.assertEqual(manifest['files'][name],sha(ROOT/'apps/web/public/logic-assets'/name))

@@ -59,6 +59,7 @@ The implementation uses only tags already present in `data/current_v8/live_tag_m
 - `vppSTTripLatchPublished` → clear → `PROT-ST-LATCH`
 - `vppSTTripRequest` → clear → `PROT-ST-REQUEST`
 - `vpp52STClosed` → open during recovery isolation → `SEQ-52ST-OPEN`
+- Manual 52ST OPEN initiating cause → `vppCauseSTBreakerOpenWhileRunning` → `PROT-ST-BRK-OPEN` (separate from the post-trip `SEQ-52ST-OPEN` sequence)
 
 ### HRSG PROTECTION
 

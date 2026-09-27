@@ -10,10 +10,11 @@ The Tag Master, Logic Master, model, OPC UA inputs, Agent API and operator repor
 are unchanged. This is not a plant P&ID repository or an interactive co-simulation
 controller. An indexed location does not prove engineering or physical correctness.
 
-The current source contains 98 pages and 1,551 indexed objects, with 53 distinct
-logic IDs and 86 distinct tag IDs appearing in the drawing. The Tag Master still
-contains 603 source tags: this must not be reported as 603 tags all drawn.
-Numbers are calculated from the source and are not enforced as permanent limits.
+The current production source contains 102 pages and 1,609 indexed cells/objects,
+with 55 linked logic IDs and 89 linked tag IDs. The frozen Run #54 live census
+contains 603 source tags, while the current searchable projection contains 606
+tags. Neither count means that every source tag is drawn. Numbers are calculated
+from the generated source and are not enforced as permanent limits.
 
 ## Usage
 
@@ -66,3 +67,7 @@ Production main remains separate until this feature is explicitly promoted.
 ## Preview deployment request
 
 This branch is intentionally kept separate from production `main`. A branch-only push may be used to request a Vercel Preview deployment for manual phone/browser validation. Production aliases must not be changed by this step.
+
+## 52ST cross-link
+
+The ECMS 52ST object now cross-links to `PROT-ST-BRK-OPEN` for the manual-open initiating cause and keeps `SEQ-52ST-OPEN` for post-trip breaker opening. `RESP-ST-GRID-POWER` remains the 52ST-gated grid-output relation. These are separate semantics and must not be merged into one generic “breaker open” rule.

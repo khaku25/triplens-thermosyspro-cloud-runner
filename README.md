@@ -1,5 +1,8 @@
 # TripLens ThermoSysPro V8 / ECMS VPP Reference
 
+> **Current ST breaker-open evidence (2026-09-26):** PlantControlV2 build `104046` verified manual 52ST OPEN → `vppCauseSTBreakerOpenWhileRunning` → ST Trip Request/Latch → HP/IP/LP admission close + HP/LP bypass/spray open → ST grid output 0 MW. The web/searchable master now contains **606 searchable tags / 55 searchable rules / 37 input groups / 102 drawing pages / 1,609 indexed cells**. The preserved Run #54 live census remains **603 live tags / 53 live rules**; searchable/source-mapped evidence is reported separately.
+
+
 GitHub Actions에서 ThermoSysPro/OpenModelica 물리 원천을 생성하는 저장소입니다.
 기존 GT·HP BFP Action은 계속 RAW-only 경계를 유지합니다. 별도의
 `Verify V8.5.2 LP BFP Dual Log physics` 검증 Action은 로컬에서 통과한 V8.5.2
@@ -7,6 +10,9 @@ GitHub Actions에서 ThermoSysPro/OpenModelica 물리 원천을 생성하는 저
 `RAW.csv`, 결합 분석 및 검증 JSON을 독립 artifact로 게시합니다.
 
 > Run #41 evidence gate: the 12-scenario all-trip matrix produced **10 PASS / 2 FAIL** (HP BFP, LP BFP). See [docs/RUN41_EVIDENCE_GATE.md](docs/RUN41_EVIDENCE_GATE.md) and [config/run41_logic_validation.csv](config/run41_logic_validation.csv). Do not describe Run #41 as an all-pass validation. `model_time_s` is the causal clock; legacy RAW `quality=GOOD` was collector-row health, not OPC UA StatusCode.
+
+> Current production master (2026-09-27): frozen Run #54 live census **603 tags / 53 live rules / 35 live input groups**; current searchable web projection **606 tags / 55 rules / 37 input groups / 102 draw.io pages / 1,609 indexed cells**. PlantControlV2 build `104046` runtime-verified `PROT-ST-BRK-OPEN`: manual 52ST OPEN asserts `vppCauseSTBreakerOpenWhileRunning`, then ST request/latch, HP/LP bypass opening, HP/IP/LP admission closure and ST grid output 0 MW. The later proof is recorded separately from the frozen Run #54 census.
+
 
 V8은 현재 V8.5.3 RC1 검증 단계입니다. LP BFP 단기 시나리오는 GitHub Actions에서
 실제 OPC UA 입력과 EVENT/RAW 출력까지 통과했지만, 이는 장시간 안정성이

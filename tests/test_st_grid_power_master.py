@@ -25,19 +25,27 @@ class STGridPowerMasterTest(unittest.TestCase):
         self.assertEqual(len(provenance["sha256"]), 64)
         self.assertIn("node_id and 52ST-open response were not captured", provenance["evidence_scope"])
 
-    def test_st_grid_power_is_registered_as_operational_raw_tag(self):
-        rows = read_table(
+    def test_st_grid_power_is_searchable_without_rewriting_run54_live_census(self):
+        live = read_table(
             ROOT / "data/current_v8/masters/06_TAG_MASTER_CURRENT_V8_VERIFIED.xlsx",
             "01_Live_OPCUA_Tag_Master",
             "raw_tag_id",
         )
-        tag = next(row for row in rows if row["raw_tag_id"] == "vppSTGridPowerMW")
-
+        source = read_table(
+            ROOT / "data/current_v8/masters/06_TAG_MASTER_CURRENT_V8_VERIFIED.xlsx",
+            "11_Model_Source_Observed",
+            "raw_tag_id",
+        )
+        self.assertNotIn("vppSTGridPowerMW", {row["raw_tag_id"] for row in live})
+        tag = next(row for row in source if row["raw_tag_id"] == "vppSTGridPowerMW")
         self.assertEqual(tag["equipment_id"], "STG")
         self.assertEqual(tag["unit"], "MW")
-        self.assertEqual(tag["signal_role"], "PHYSICAL_OR_PROCESS")
-        self.assertEqual(tag["local_display_alias"], "ST_OUTPUT_MW")
-        self.assertEqual(tag["writable"], "N")
+        self.assertEqual(tag["runtime_inclusion"], "SEARCH_ONLY")
+
+        proof = json.loads((ROOT / "data/current_v8/st_power_evidence_20260924.json").read_text())
+        later = proof["later_runtime_verification"]
+        self.assertEqual(later["open_behavior_test_status"], "RUNTIME_VERIFIED")
+        self.assertTrue(later["st_grid_power_zero_verified"])
 
     def test_st_grid_power_resolves_to_exact_st_drawing_cell(self):
         drawing_master = json.loads(
@@ -56,6 +64,21 @@ class STGridPowerMasterTest(unittest.TestCase):
         self.assertTrue(exact, "ST grid MW must open an exact source cell on the ST drawing")
         self.assertIn("page=screen:", exact[0]["source_ref"])
         self.assertIn("cell=output:RESP-ST-GRID-POWER:", exact[0]["source_ref"])
+
+    def test_breaker_open_runtime_ledger_is_declared(self):
+        import csv
+        current = ROOT / "data/current_v8"
+        provenance = json.loads((current / "live_census_provenance.json").read_text())
+        self.assertEqual(provenance["expected_vpp_count"], 603)
+        runtime = provenance["runtime_behavior_evidence"]
+        self.assertEqual(runtime["status"], "RUNTIME_VERIFIED")
+        ledger = ROOT / runtime["evidence_csv"]
+        self.assertTrue(ledger.exists())
+        with ledger.open(encoding="utf-8", newline="") as stream:
+            rows = list(csv.DictReader(stream))
+        self.assertTrue(any(r["signal"] == "vppCauseSTBreakerOpenWhileRunning" and r["value"] == "1" for r in rows))
+        self.assertTrue(any(r["signal"] == "vppSTGridPowerMW" and r["value"] == "0" and r["verification_status"] == "RUNTIME_VERIFIED" for r in rows))
+
 
 
 if __name__ == "__main__":

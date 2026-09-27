@@ -67,10 +67,14 @@ model value.
 
 ## Coupling contract
 
-The eight rows of `config/common_trip_matrix.csv` are part of this Baseline.
-Direct GT Trip intertrips ST; direct ST Trip affects ST only. HP/IP/LP drum HH
-trips ST, while HP/IP/LP drum LL trips both GT and ST. FWP Trip remains local to
-the selected pump feeder.
+The original rows of `config/common_trip_matrix.csv` remain part of the V1
+historical design baseline. Current PlantControlV2 no longer describes the ST
+request by a fixed cause count. The current ST request is the registered OR of
+`vppGTTripRequest`, direct ST trip, independent 52ST breaker-open cause, and
+HP/IP/LP drum-HH causes. The 52ST breaker-open cause was runtime-verified on
+build `104046`. Direct GT Trip still reaches ST through `vppGTTripRequest`;
+FWP Trip remains local to the selected pump feeder unless another registered
+protection condition independently asserts.
 
 ## Change control
 
