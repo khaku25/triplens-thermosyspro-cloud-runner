@@ -1,0 +1,142 @@
+name: Capture real scenario user manual
+on:
+  push:
+    branches: [codex/manual-screenshots-20260927]
+    paths: ['.github/workflows/manual-screenshots-20260927.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install screenshot tools
+        run: |
+          python -m pip install playwright requests
+          python -m playwright install --with-deps chromium
+          sudo apt-get update -qq
+          sudo apt-get install -y fonts-noto-cjk
+      - name: One real scenario; no app or original data edits
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import requests,json,hashlib,datetime,time,traceback,os,zipfile,io
+          from playwright.sync_api import sync_playwright
+          out=Path('outputs/user-manual');out.mkdir(parents=True,exist_ok=True)
+          inputs=Path('inputs/manual-lp-drum-ll');inputs.mkdir(parents=True,exist_ok=True)
+          result={'started_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'scenario':'12_lp_drum_ll','app_url':'https://triplens-web-preview.vercel.app','base_commit':'9a0262391367baf1139f87cb8bcae8baf3bf76a5','app_changes':0,'original_files_modified':False,'screenshots':[],'notes':[],'input_files':{},'model_analysis_requests':0}
+          pairs=[('EVENT.csv','1VHq-TnXOYQIRa5GHiSP20WZjhYKFcUBO','290f449670e2c7ba7afac1d43cc5486894c789ff4902a328f9def99bb9d0fb3f'),('RAW.csv','1qIBr9ojJiBs7zLWoJTQ8RKRKpF3RfHIA','3f621d962671ab8a54da55015bb80acae25a751955865d07a1638ad77d516103')]
+          archive=None
+          for name,fid,expected in pairs:
+            try:
+              r=requests.get('https://drive.google.com/uc',params={'export':'download','id':fid},timeout=40);r.raise_for_status();data=r.content
+              assert hashlib.sha256(data).hexdigest()==expected,'Drive bytes did not match frozen baseline'
+              source='Google Drive original'
+            except Exception as exc:
+              result['notes'].append(name+': Drive direct download not usable; using matching preserved GitHub artifact')
+              if archive is None:
+                r=requests.get('https://api.github.com/repos/khaku25/triplens-thermosyspro-cloud-runner/actions/artifacts/10404407335/zip',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'},timeout=50);r.raise_for_status();archive=zipfile.ZipFile(io.BytesIO(r.content))
+              member=next(x for x in archive.namelist() if x.endswith('/lp_drum_ll/'+name))
+              data=archive.read(member);assert hashlib.sha256(data).hexdigest()==expected
+              source='preserved GitHub artifact, exact same bytes'
+            (inputs/name).write_bytes(data)
+            result['input_files'][name]={'sha256':expected,'bytes':len(data),'drive_id':fid,'retrieved_from':source}
+          with sync_playwright() as p:
+            browser=p.chromium.launch(headless=True,args=['--no-sandbox'])
+            ctx=browser.new_context(viewport={'width':1440,'height':1000},device_scale_factor=1.5,locale='ko-KR',accept_downloads=True)
+            page=ctx.new_page();page.set_default_timeout(20000)
+            def shot(name,locator=None):
+              page.wait_for_timeout(350)
+              path=out/(name+'.png')
+              if locator is None:page.screenshot(path=str(path),full_page=False)
+              else:locator.screenshot(path=str(path))
+              result['screenshots'].append({'file':path.name,'url':page.url,'captured_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()})
+              (out/(name+'.txt')).write_text(page.locator('body').inner_text(),encoding='utf-8')
+            for name,url in [('01_drive_scenarios','https://drive.google.com/drive/folders/1fm940HaZl3vmE0IyeIn2WAxetJdEmPdi'),('02_drive_case_files','https://drive.google.com/drive/folders/1CaFBzYOIL_XRd1uayJYCjc9qhIklEAyS')]:
+              try:
+                page.goto(url,wait_until='domcontentloaded',timeout=40000);page.wait_for_timeout(3000);shot(name)
+              except Exception as exc:result['notes'].append(name+': '+str(exc)[:250])
+            page.goto(result['app_url'],wait_until='networkidle',timeout=60000)
+            errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+            responses=[]
+            def on_request(req):
+              if req.method=='POST' and req.url.split('?')[0].endswith('/analyze'):result['model_analysis_requests']+=1
+            def on_response(resp):
+              if any(resp.url.split('?')[0].endswith(x) for x in ('/contract','/bootstrap','/analyze')):
+                try:
+                  entry={'url':resp.url,'status':resp.status,'data':resp.json()};responses.append(entry)
+                  if resp.url.split('?')[0].endswith('/analyze'):(out/'analysis_response.json').write_text(json.dumps(entry,ensure_ascii=False,indent=2))
+                  if resp.url.split('?')[0].endswith('/bootstrap'):(out/'bootstrap_response.json').write_text(json.dumps(entry,ensure_ascii=False,indent=2))
+                except Exception as exc:result['notes'].append('response capture: '+str(exc)[:150])
+            page.on('request',on_request);page.on('response',on_response)
+            try:
+              shot('03_app_empty')
+              page.get_by_role('button',name='모델 설정',exact=True).click()
+              page.locator('#analysis-model').select_option('gemini')
+              shot('04_model_settings',page.get_by_role('dialog',name='분석 모델 설정'))
+              result['selected_model']=page.locator('#analysis-model option:checked').inner_text()
+              page.get_by_role('dialog',name='분석 모델 설정').get_by_role('button',name='확인',exact=True).click()
+              page.get_by_label('EVENT 파일',exact=True).set_input_files(str(inputs/'EVENT.csv'))
+              page.get_by_label('RAW 파일',exact=True).set_input_files(str(inputs/'RAW.csv'))
+              page.get_by_role('button',name='이 Dual Log 분석하기',exact=True).wait_for(state='visible')
+              shot('05_files_ready',page.locator('.intake'))
+              with page.expect_response(lambda r:r.url.split('?')[0].endswith('/analyze') and r.request.method=='POST',timeout=300000) as pending:
+                page.get_by_role('button',name='이 Dual Log 분석하기',exact=True).click()
+                shot('06_analysis_running',page.locator('.intake'))
+              response=pending.value;data=response.json();result['analyze_http_status']=response.status
+              (out/'analysis_response.json').write_text(json.dumps({'status':response.status,'url':response.url,'data':data},ensure_ascii=False,indent=2))
+              if response.status!=200:raise RuntimeError('Analysis HTTP '+str(response.status))
+              page.get_by_role('button',name='분석 완료',exact=True).wait_for(state='visible',timeout=30000)
+              result['run_id']=data.get('run_id');result['provider_contract']=data.get('contract');result['gate']=data.get('analysis',{}).get('verification_gate');result['ui_completed']=True
+              shot('07_analysis_complete')
+              shot('08_cause_results',page.locator('.analysis-surface'))
+              details=page.locator('.cause-card .claim-evidence details').first
+              if details.count():
+                details.locator('summary').click();shot('09_cause_evidence_links',page.locator('.cause-card').first)
+                more=details.get_by_role('button',name='연결 근거 모아보기',exact=False)
+                if more.count():more.first.click();shot('10_evidence_detail',page.locator('.analysis-surface'));page.get_by_role('button',name='이전 화면',exact=True).click()
+              for key,name in [('timeline','11_timeline'),('checks','12_checks'),('evidence','13_evidence_table')]:
+                from pathlib import Path as P
+                labels={'timeline':'사고 진행 과정','checks':'추가 확인·검토','evidence':'상세 분석 근거'}
+                page.locator('nav .nav-item').filter(has_text=labels[key]).click();shot(name,page.locator('.analysis-surface'))
+              page.get_by_role('button',name='고장분석 보고서 보기',exact=True).click()
+              page.locator('.report-preview').scroll_into_view_if_needed();shot('14_report_preview',page.locator('.report-preview'))
+              page.get_by_role('button',name='보고서 PDF 저장',exact=True).click()
+              dialog=page.get_by_role('dialog',name='PDF 보고서 미리보기');dialog.wait_for()
+              page.get_by_role('button',name='PDF 저장 / 인쇄',exact=True).wait_for(state='visible')
+              page.wait_for_timeout(1200);shot('15_pdf_preview',dialog)
+              frame=dialog.locator('iframe').element_handle().content_frame()
+              frame.evaluate('document.fonts.ready')
+              report_html=frame.content();(out/'actual_report.html').write_text(report_html,encoding='utf-8')
+              printer=ctx.new_page();printer.set_content(report_html,wait_until='load');printer.evaluate('document.fonts.ready');printer.evaluate("if(typeof TripLensFitReport==='function')TripLensFitReport()")
+              printer.pdf(path=str(out/'manual_example_report.pdf'),format='A4',print_background=True,prefer_css_page_size=True)
+              printer.close();result['pdf_generated_from_actual_report_html']=True
+              dialog.get_by_role('button',name='닫기',exact=True).click()
+              page.locator('.export-menu summary').click();shot('16_csv_export_menu',page.locator('.report-preview'))
+              for button,filename in [('보고서 CSV','manual_example_report.csv'),('상세 분석 데이터 CSV','manual_example_detailed.csv')]:
+                with page.expect_download(timeout=30000) as item:page.get_by_role('button',name=button,exact=True).click()
+                d=item.value;d.save_as(str(out/filename));result[filename]={'suggested_filename':d.suggested_filename,'bytes':(out/filename).stat().st_size}
+              result['completed']=True
+            except Exception as exc:
+              result['completed']=False;result['error']=str(exc);(out/'error.txt').write_text(traceback.format_exc());
+              try:shot('99_actual_error')
+              except Exception:pass
+            result['page_errors']=errors;result['finished_utc']=datetime.datetime.now(datetime.timezone.utc).isoformat()
+            result['api_response_statuses']=[{'url':x['url'],'status':x['status']} for x in responses]
+            (out/'CAPTURE_MANIFEST.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
+            browser.close()
+          print(json.dumps({k:result.get(k) for k in ['completed','scenario','run_id','gate','model_analysis_requests','error']},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scenario-manual-${{ github.run_id }}
+          path: outputs/user-manual/
+          retention-days: 30
