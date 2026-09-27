@@ -65,15 +65,15 @@ jobs:
           Path('outputs/logic-layout-fix/result.json').write_text(json.dumps(result,indent=2)+'\n')
           print(json.dumps(result,indent=2))
           PY
+      - name: Install browser renderer
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
       - name: Run geometry and existing logic regressions
         run: |
           python -m unittest discover -s tests -p 'test_logic*.py'
           python -m unittest discover -s tests -p 'test_drawing_master.py'
           python -m unittest discover -s tests -p 'test_current_catalog.py'
-      - name: Install browser renderer
-        run: |
-          pip install playwright
-          python -m playwright install --with-deps chromium
       - name: Verify all rendered pages and ST input navigation
         shell: bash
         run: |
