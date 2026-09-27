@@ -1,0 +1,83 @@
+name: Verify deployed corrected Logic Master
+on:
+  push:
+    branches: [codex/logic-layout-fix-20260927]
+    paths: ['.github/workflows/verify-live-logic-layout-20260927.yml']
+permissions:
+  contents: read
+jobs:
+  live-layout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 38c1b2a879a0ce8963924c93e67d8484f85e18f6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Check production assets and actual application iframe
+        shell: bash
+        run: |
+          python - <<'PY'
+          import datetime,hashlib,json,time,urllib.request,xml.etree.ElementTree as ET
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          origin='https://triplens-web-preview.vercel.app'
+          expected='ed3f100bc67234a38dd193b1d409f7e33fee5c62f5145d6da5a2eba3208e6a96'
+          out=Path('outputs/live-layout-verification');out.mkdir(parents=True,exist_ok=True)
+          local=Path('apps/web/public/logic-assets')
+          def fetch(name):
+              req=urllib.request.Request(origin+'/logic-assets/'+name,headers={'Cache-Control':'no-cache','User-Agent':'TripLens-layout-verification'})
+              with urllib.request.urlopen(req,timeout=30) as r:return r.read()
+          for attempt in range(18):
+              manifest=json.loads(fetch('asset_manifest.json'))
+              if manifest['files']['TripLens_Logic_Master_Current_V8.drawio']==expected:break
+              time.sleep(5)
+          else:raise RuntimeError('Production did not publish the expected layout')
+          files={}
+          for name in ('TripLens_Logic_Master_Current_V8.drawio','logic_diagram_index.json','drawing_master_index.json','viewer.html','asset_manifest.json'):
+              data=fetch(name)
+              assert data==(local/name).read_bytes(),('Production mismatch',name)
+              files[name]=hashlib.sha256(data).hexdigest()
+          source=ET.parse(local/'TripLens_Logic_Master_Current_V8.drawio').getroot();pages=source.findall('diagram')
+          errors=[];checks=[]
+          with sync_playwright() as p:
+              browser=p.chromium.launch(headless=True)
+              page=browser.new_page(viewport={'width':1720,'height':1080})
+              page.on('pageerror',lambda e:errors.append(str(e)))
+              response=page.goto(origin+'/logic',wait_until='networkidle')
+              assert response.status==200
+              frame=page.frame_locator('iframe').first
+              frame.locator('body[data-ready="true"]').wait_for()
+              assert not frame.locator('#fatal').inner_text()
+              payload=json.loads(frame.locator('#repository-data').text_content())
+              assert hashlib.sha256(payload['xml'].encode()).hexdigest()==expected
+              for i,d in enumerate(pages,1):
+                  frame.locator('#page-select').select_option(d.get('id'))
+                  info=frame.locator('#diagram').evaluate('''e=>{const items=[...e.querySelectorAll('g.node')];const boxes=items.map(n=>({id:n.dataset.cellId,r:n.querySelector('rect').getBoundingClientRect()}));const overlaps=[];for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++){const a=boxes[i].r,b=boxes[j].r;if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>.1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>.1)overlaps.push([boxes[i].id,boxes[j].id]);}const overflow=[];for(const n of items){const r=n.querySelector('rect'),b=n.querySelector('text').getBBox();if(b.x< -1||b.y< -1||b.x+b.width>+r.getAttribute('width')+1||b.y+b.height>+r.getAttribute('height')+1)overflow.push(n.dataset.cellId);}return{nodes:items.length,overlaps,overflow};}''')
+                  assert not info['overlaps'] and not info['overflow'],(i,info)
+                  checks.append({'page':i,'name':d.get('name'),**info})
+                  if i in (10,46,98):
+                      if i==10:frame.locator('#diagram g.node[data-cell-id="group:IG-036"]').scroll_into_view_if_needed()
+                      page.screenshot(path=str(out/f'production-page-{i:03d}.png'))
+              for tag in ('vppSTGeneratorPowerMW','vpp52STClosed'):
+                  frame.locator('#page-select').select_option('IG-036')
+                  frame.locator(f'#diagram g.node[data-tag="{tag}"]').click()
+                  assert frame.locator('#inspector h3').inner_text()==tag
+              assert not errors,errors
+              browser.close()
+          result={'checked_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'origin':origin,'application_route':'/logic','release_commit':'38c1b2a879a0ce8963924c93e67d8484f85e18f6','source_sha256':expected,'production_files':files,'pages':checks,'st_input_clicks':2,'page_errors':errors,'paid_model_calls':0,'plant_control_writes':0}
+          (out/'PRODUCTION_LAYOUT_VERIFICATION.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+          print('PRODUCTION_LAYOUT_PASS',len(checks),'pages; 5 exact assets; 2 tag clicks')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-layout-${{ github.run_id }}
+          path: outputs/live-layout-verification/
+          retention-days: 30
