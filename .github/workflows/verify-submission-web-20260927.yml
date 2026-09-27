@@ -1,0 +1,76 @@
+name: Verify submission production display
+on:
+  push:
+    branches: [codex/submission-count-fix-20260927]
+    paths: ['.github/workflows/verify-submission-web-20260927.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 9a0262391367baf1139f87cb8bcae8baf3bf76a5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Check actual public deployment without credentials or paid analysis
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json,hashlib,time,urllib.request,datetime
+          from playwright.sync_api import sync_playwright
+          origin='https://triplens-web-preview.vercel.app'
+          source='9536f1b45d4e131ced0f64046ab57d7b57271d9a18ebeeb19d241ea34df7fddc'
+          out=Path('outputs/submission-production');out.mkdir(parents=True,exist_ok=True)
+          def get(path):
+            with urllib.request.urlopen(origin+path,timeout=30) as r:return r.read()
+          for attempt in range(24):
+            manifest=json.loads(get('/logic-assets/asset_manifest.json?submission-count=20260927'))
+            if manifest['files']['TripLens_Logic_Master_Current_V8.drawio']==source:break
+            time.sleep(10)
+          else:raise AssertionError('Corrected source has not reached production')
+          assets={}
+          for name in ('TripLens_Logic_Master_Current_V8.drawio','viewer.html','logic_diagram_index.json','drawing_master_index.json','asset_manifest.json'):
+            data=get('/logic-assets/'+name);local=Path('apps/web/public/logic-assets')/name
+            assert data==local.read_bytes(),name
+            assets[name]=hashlib.sha256(data).hexdigest()
+          routes={}
+          for path in ('/','/logic','/drawing/ecms-overview-matlab.svg','/drawing/ecms-6p9kv-matlab.svg','/drawing/plant-process-v36.png'):
+            data=get(path);assert len(data)>0;routes[path]={'http_status':200,'bytes':len(data)}
+          errors=[];checks=[]
+          with sync_playwright() as p:
+            browser=p.chromium.launch(headless=True,args=['--no-sandbox'])
+            page=browser.new_page(viewport={'width':1700,'height':1200})
+            page.on('pageerror',lambda e:errors.append(str(e)))
+            page.goto(origin+'/logic',wait_until='networkidle')
+            frame=next(f for f in page.frames if '/logic-assets/viewer.html' in f.url)
+            frame.wait_for_selector('body[data-ready="true"]')
+            options=frame.locator('#page-select option').evaluate_all('(xs)=>xs.map(x=>({id:x.value,name:x.textContent}))')
+            assert len(options)==102,len(options)
+            for n,o in enumerate(options,1):
+              frame.select_option('#page-select',o['id'])
+              result=frame.eval_on_selector('#diagram', '''svg=>{const ns=[...svg.querySelectorAll('g.node')], overlaps=[],overflow=[];for(let i=0;i<ns.length;i++){const a=ns[i],r=a.querySelector('rect'),t=a.querySelector('text'),m=a.transform.baseVal.consolidate().matrix;const box={x:m.e,y:m.f,w:+r.getAttribute('width'),h:+r.getAttribute('height')};if(t){const b=t.getBBox();if(b.x < -1||b.y < -1||b.x+b.width>box.w+1||b.y+b.height>box.h+1)overflow.push(a.dataset.cellId);}for(let j=i+1;j<ns.length;j++){const b=ns[j],rr=b.querySelector('rect'),mm=b.transform.baseVal.consolidate().matrix;if(Math.min(box.x+box.w,mm.e+(+rr.getAttribute('width')))>Math.max(box.x,mm.e)&&Math.min(box.y+box.h,mm.f+(+rr.getAttribute('height')))>Math.max(box.y,mm.f))overlaps.push([a.dataset.cellId,b.dataset.cellId]);}}return{overlaps,overflow};}''')
+              assert not result['overlaps'] and not result['overflow'],(n,result)
+              checks.append({'page':n,'name':o['name'],**result})
+              if n==1:
+                assert 'live 53개 로직' in frame.locator('#diagram').text_content()
+                page.screenshot(path=str(out/'production-overview.png'))
+            frame.select_option('#page-select','rule:RESP-ST-GRID-POWER')
+            page.screenshot(path=str(out/'production-st-inputs.png'))
+            browser.close()
+          assert not errors,errors
+          result={'checked_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'origin':origin,'release_commit':'9a0262391367baf1139f87cb8bcae8baf3bf76a5','source_sha256':source,'public_routes':routes,'exact_assets':assets,'pages':checks,'page_errors':errors,'paid_model_calls':0,'plant_control_writes':0,'scope':'Production static asset identity and diagram layout only; not incident-analysis accuracy'}
+          (out/'PRODUCTION_VERIFICATION.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: submission-production-${{ github.run_id }}
+          path: outputs/submission-production/
+          retention-days: 30
