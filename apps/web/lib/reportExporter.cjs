@@ -209,6 +209,10 @@
   }
 
   function displayTime(item) {
+    const interval = item?.time_interval_s;
+    if (Array.isArray(interval) && interval.length === 2 && interval.every(value => typeof value === 'number' && Number.isFinite(value)) && interval[0] <= interval[1]) {
+      return {primary:`${interval[0].toFixed(3)}–${interval[1].toFixed(3)} s (표본 구간)`, secondary:'정확한 발생 시각 미확인'};
+    }
     const wall = String(item?.wall_time_utc || item?.recorded_wall_time || '').trim();
     const clock = wall.match(/T(\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)/)?.[1] || '';
     const raw = item?.model_time_s ?? item?.recorded_time ?? item?.aligned_time ?? item?.time;
@@ -663,6 +667,8 @@
     const fullOperator = (item, stage = '') => {
       return fullText(reportOperatorClaim(item, stage, 4000));
     };
+    const compactOperator = (item, stage = '') => contract?.reportSummary?.(item) || fullOperator(item, stage);
+    const detailOperator = (item, stage = '') => contract?.reportSummary?.(item) ? String(item.claim || item.description || '') : fullOperator(item, stage);
     const evidenceCount = item => evidenceIds(item?.evidence_ids || item?.evidenceIds || []).length;
     const evidenceMeta = item => {
       const when = displayTime(item);
@@ -685,12 +691,23 @@
     const directRow = editedRow(report, '발생 원인', '직접 Trip 원인');
     const primarySource = String(primaryRow?.content ?? primaryRow?.['내용'] ?? primaryOriginal);
     const directSource = String(directRow?.content ?? directRow?.['내용'] ?? directOriginal);
-    const primaryEdited = Boolean(primaryRow && (primaryRow.edited === true || primarySource !== String(primaryOriginal)));
-    const directEdited = Boolean(directRow && (directRow.edited === true || directSource !== String(directOriginal)));
-    const primary = useful(primaryEdited ? primarySource : fullOperator(analysis.primary_cause, 'primary')) || '선행 원인 후보 없음';
-    const directAnalysisText = useful(directEdited ? directSource : fullOperator(analysis.direct_trigger, 'direct'));
+    // buildDraftRows may append this exact display-only bracket. It is not a human edit.
+    const matchesGeneratedClaim = (content, original, item) => {
+      if (content === String(original)) return true;
+      const interval = item?.time_interval_s;
+      if (!contract?.reportSummary?.(item) || !Array.isArray(interval) || interval.length !== 2 || !interval.every(Number.isFinite)) return false;
+      const suffix = ` [${interval[0].toFixed(3)} ~ ${interval[1].toFixed(3)} s (표본 구간); 정확한 발생 시각 미확인]`;
+      return content === String(original) + suffix;
+    };
+    const primaryEdited = Boolean(primaryRow && (primaryRow.edited === true || !matchesGeneratedClaim(primarySource, primaryOriginal, analysis.primary_cause)));
+    const directEdited = Boolean(directRow && (directRow.edited === true || !matchesGeneratedClaim(directSource, directOriginal, analysis.direct_trigger)));
+    const primaryDetail = primaryEdited ? primarySource : detailOperator(analysis.primary_cause, 'primary');
+    const primary = useful(primaryEdited ? primarySource : compactOperator(analysis.primary_cause, 'primary')) || '선행 원인 후보 없음';
+    const directDetail = directEdited ? directSource : detailOperator(analysis.direct_trigger, 'direct');
+    const directAnalysisText = useful(directEdited ? directSource : compactOperator(analysis.direct_trigger, 'direct'));
     const direct = directAnalysisText || observedDirectText || '직접 보호동작 근거 확인 필요';
-    const criticalDisplay = firstCritical === observedDirect ? observedDirectText : useful(fullOperator(firstCritical));
+    const criticalDetail = firstCritical === observedDirect ? observedDirectText : detailOperator(firstCritical);
+    const criticalDisplay = firstCritical === observedDirect ? observedDirectText : useful(compactOperator(firstCritical));
     const projectClaimRow = (source, row, claim) => {
       const projected = {...(source || {}), claim};
       if (!row) return projected;
@@ -731,7 +748,8 @@
     const verificationLabel = verificationPending
       ? `추가 검증 필요${verificationCounts ? ` (${verificationCounts})` : ''}`
       : '검증 통과';
-    const summaryBase = useful(summaryEdited ? summary : fullOperator({claim:summary})) || direct || criticalDisplay;
+    const summaryItem = [firstCritical, analysis.direct_trigger].find(item => String(item?.claim || '') === summaryOriginal);
+    const summaryBase = useful(summaryEdited ? summary : compactOperator(summaryItem || {claim:summary})) || direct || criticalDisplay;
     const summaryDisplay = verificationPending && !summaryBase.includes('추가 검증 필요')
       ? `${summaryBase} · ${verificationLabel}`
       : summaryBase;
@@ -771,9 +789,10 @@
     ]).map(item => `<div class="metric-card"><span>${esc(item.label)}</span><b>${esc(item.value)}</b></div>`).join('');
 
     const visiblePropagationItems = propagationItems
-      .map(item => ({item, claim:fullOperator(item, 'propagation')}))
+      .map(item => ({item, claim:compactOperator(item, 'propagation')}))
       .filter(entry => entry.claim)
       .slice(0, 4);
+    const propagationDetail = visiblePropagationItems.map(({item}) => detailOperator(item, 'propagation')).join(' → ');
     const propagationText = visiblePropagationItems.map(entry => entry.claim).join(' → ') || '후속 변화 근거 없음';
     const propagationEvidenceIds = [];
     const seenPropagationEvidenceIds = new Set();
@@ -805,10 +824,10 @@
     ].map(row => `<tr><th>${esc(row[0])}</th><td>${esc(row[1])}</td><td>${esc(row[2])}</td></tr>`).join('');
 
     const causalCards = [
-      ['선행 원인 (Primary Cause)', primary, primaryItem],
-      ['주요 이벤트 (Critical Event)', criticalDisplay || direct, firstCritical || directItem],
-      ['직접 Trip 원인 (Direct Trigger)', direct, directItem],
-      ['파급 결과 (Propagation)', propagationText, propagationCardItem],
+      ['선행 원인 (Primary Cause)', primaryDetail || primary, primaryItem],
+      ['주요 이벤트 (Critical Event)', criticalDetail || criticalDisplay || direct, firstCritical || directItem],
+      ['직접 Trip 원인 (Direct Trigger)', useful(directDetail) || direct, directItem],
+      ['파급 결과 (Propagation)', propagationDetail || propagationText, propagationCardItem],
     ].map(([label,claim,item]) => {
       const when=displayTime(item); const ids=evidenceIds(item?.evidence_ids || []);
       return `<div class="chain-row"><div class="chain-time">${esc(when.primary === '시각 미확인' ? '사고 구간' : when.primary)}</div><div class="chain-card"><b>${esc(label)}</b><span class="status">${esc(printableStatus(item?.status || (label.includes('선행')?'CANDIDATE':'OBSERVED')))}</span><strong>${esc(claim)}</strong><small>${esc(ids.length ? `근거 ID ${ids.join(' · ')}` : evidenceMeta(item))}</small></div></div>`;
@@ -868,7 +887,7 @@
       <div class="page-kicker">시간대별 조치사항 및 인과관계</div>
       <section><h2>4. 시간대별 조치사항</h2><table class="timeline"><thead><tr><th>기록 시각</th><th>구분</th><th>내용</th><th>상태</th><th>근거 ID</th></tr></thead><tbody>${firstTimelineRows || '<tr><td colspan="5">EVENT·RAW 사고 구간 연결</td></tr>'}</tbody></table></section>
       <section><h2>6. 조치 결과</h2><div class="metric-grid three"><div class="metric-card"><span>보호 동작</span><b>${esc(printableStatus(directItem?.status || directItem?.disposition || 'CONFIRMED'))}</b></div><div class="metric-card"><span>근거 연결</span><b>EVENT·RAW ${evidenceRows.length}건</b></div><div class="metric-card"><span>최종 판정</span><b>${esc(verificationPending?'추가 검증 필요':report.document_state==='REVIEWED'?'검토 완료':'분석 완료')}</b></div></div>${recoveryDetails}</section>
-      <section><h2>5-1. 인과관계 요약</h2><div class="chain-list">${causalCards}</div></section>
+      <section><h2>5-1. 인과관계 요약 · 상세 분석 및 근거</h2><div class="chain-list">${causalCards}</div></section>
       <section><h2>7. 판정 기준</h2><div class="rule-box"><b>선행 원인</b><span>RAW 변화구간과 원인 로직 연결</span><b>직접 보호동작</b><span>EVENT 기록과 RAW 상태 연결</span><b>표시 원칙</b><span>확인 · 관측 · 후보 상태로 구분</span></div></section>`);
 
     const pageThree = page(3, `

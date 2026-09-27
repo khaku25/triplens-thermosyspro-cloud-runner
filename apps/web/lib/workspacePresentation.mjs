@@ -1,3 +1,4 @@
+import reportContract from './triplens_ai_output_contract.js';
 const list=value=>Array.isArray(value)?value:[];
 
 const modelSeconds=value=>{
@@ -30,6 +31,10 @@ export function summarizeEvidence(values,limit=5){
 }
 
 export function displayEventTime(item={}){
+  const interval=item?.time_interval_s;
+  if(Array.isArray(interval)&&interval.length===2&&interval.every(value=>modelSeconds(value)!==null)&&Number(interval[0])<=Number(interval[1])){
+    return {primary:`${Number(interval[0]).toFixed(3)}–${Number(interval[1]).toFixed(3)} s (표본 구간)`,secondary:'정확한 발생 시각 미확인'};
+  }
   const wall=String(item?.wall_time_utc||item?.recorded_wall_time||'').trim();
   const clock=wall.match(/T(\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?)/)?.[1]||'';
   const seconds=modelSeconds(item?.model_time_s??item?.recorded_time);
@@ -59,6 +64,8 @@ function semanticTagSummary(tags,stage=''){
   return '';
 }
 export function operatorSummary(item={},stage=''){
+  const reportSummary=reportContract.reportSummary(item);
+  if(reportSummary)return reportSummary;
   const tags=sourceTags(item);
   const source=String(item?.claim||item?.message||item?.description||'');
   const state=String(item?.state||'').toUpperCase();

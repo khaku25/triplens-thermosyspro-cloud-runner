@@ -17,6 +17,7 @@ from gemini_agent import TOOL_DECLARATIONS, _system_prompt, evidence_ids
 from triplens.agent_tools import AgentToolSession
 from triplens.analysis_contract import ANALYSIS_SCHEMA,normalize_analysis
 from triplens.citation_support import citation_feedback,REPAIR_INSTRUCTION
+from triplens.report_presentation import repair_report_summaries
 
 DEFAULT_MODEL='gpt-6-luna'
 RESPONSES_URL='https://api.openai.com/v1/responses'
@@ -127,7 +128,20 @@ def _run_openai_agent(store,*,run_id,data_digest,model,client):
                     except Exception as exc:
                         repair['status']='REPAIR_FAILED_RETAINED_INITIAL_DRAFT';repair['error_type']=type(exc).__name__
                 repair['remaining_issue_count']=len(citation_feedback(raw,store))
+            def request_summary(instruction, schema):
+                revision=client.responses.create(model=model_name,store=False,
+                    instructions='보고서 표현만 정리합니다. 입력 분석과 근거는 변경하지 않습니다.',
+                    input=[{'role':'user','content':[{'type':'input_text','text':instruction}]}],
+                    text={'format':{'type':'json_schema','name':'triplens_report_summaries','schema':schema,'strict':True}})
+                revision_usage=revision.get('usage')
+                if isinstance(revision_usage,dict):usage.append(revision_usage)
+                if any(isinstance(item,dict) and item.get('type')=='function_call' for item in revision.get('output') or []):
+                    raise ValueError('Summary repair cannot execute tools')
+                return _json_from_text(_response_text(revision))
+            raw,presentation=repair_report_summaries(raw,request_summary,elapsed_seconds=time.monotonic()-started)
+            model_turns+=presentation['attempts']
             output=normalize_analysis(raw,store,trace)
+            output['report_presentation']=presentation
             output['citation_repair']=repair
             output['agent_execution']={'provider':'openai','model':model_name,'tool_calls_used':session.calls_used,'tool_budget':8,
                 'model_turns':model_turns,'duration_ms':round((time.monotonic()-started)*1000),'usage':usage,

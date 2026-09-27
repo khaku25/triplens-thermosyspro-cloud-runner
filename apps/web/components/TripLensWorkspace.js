@@ -118,7 +118,7 @@ function ClaimCard({title,item,stage,onOpen,catalog}){
   const original=claimText(item);
   const compact=conciseClaim(operatorSummary(item,stage),140);
   const summary=compact.summary;
-  const detail=original&&original!==summary?operatorPhrase(original,10000):compact.detail;
+  const detail=original&&original!==summary?(item?.report_summary?original:operatorPhrase(original,10000)):compact.detail;
   const time=displayEventTime(item);
   return <section className="claim-card cause-card">
     <div className="claim-head"><h3>{title}</h3>{time.primary!=='시각 미확인'?<time>{time.primary}{time.secondary?<small>{time.secondary}</small>:null}</time>:null}</div>
@@ -136,7 +136,7 @@ function AnalysisList({items,stage,onOpen,catalog,limit=5}){
     const original=claimText(item);
     const compact=conciseClaim(typeof item==='string'?item:operatorSummary(item,stage),150);
     const summary=compact.summary;
-    const detail=original&&original!==summary?operatorPhrase(original,10000):compact.detail;
+    const detail=original&&original!==summary?(item?.report_summary?original:operatorPhrase(original,10000)):compact.detail;
     const time=displayEventTime(item);
     return <article key={`${item?.claim||'item'}-${index}`}>
       <div><b>{String(index+1).padStart(2,'0')}</b><p>{summary}</p>{time.primary!=='시각 미확인'?<time>{time.primary}{time.secondary?<small>{time.secondary}</small>:null}</time>:null}</div>
