@@ -1,363 +1,160 @@
-# TripLens ThermoSysPro V8 / ECMS VPP Reference
+# TripLens — README
 
-GitHub Actions에서 ThermoSysPro/OpenModelica 물리 원천을 생성하는 저장소입니다.
-기존 GT·HP BFP Action은 계속 RAW-only 경계를 유지합니다. 별도의
-`Verify V8.5.2 LP BFP Dual Log physics` 검증 Action은 로컬에서 통과한 V8.5.2
-보호 로직을 실제 OPC UA 입력으로 실행하고, LP BFP 시나리오의 `EVENT.csv`,
-`RAW.csv`, 결합 분석 및 검증 JSON을 독립 artifact로 게시합니다.
+## 0. 문서 기준
 
-> Run #41 evidence gate: the 12-scenario all-trip matrix produced **10 PASS / 2 FAIL** (HP BFP, LP BFP). See [docs/RUN41_EVIDENCE_GATE.md](docs/RUN41_EVIDENCE_GATE.md) and [config/run41_logic_validation.csv](config/run41_logic_validation.csv). Do not describe Run #41 as an all-pass validation. `model_time_s` is the causal clock; legacy RAW `quality=GOOD` was collector-row health, not OPC UA StatusCode.
-
-V8은 현재 V8.5.3 RC1 검증 단계입니다. LP BFP 단기 시나리오는 GitHub Actions에서
-실제 OPC UA 입력과 EVENT/RAW 출력까지 통과했지만, 이는 장시간 안정성이
-입증됐다는 뜻은 아닙니다. V7 안정 기준은 `archive/pre-v8-main-20260915`
-브랜치에 보존되어 있습니다.
-검증 범위와 승격 조건은
-[`docs/V8_5_3_RC1_VALIDATION.md`](docs/V8_5_3_RC1_VALIDATION.md)를 기준으로 합니다.
-
-TripLens 웹의 근거→Tag/Logic/Drawing Master 도면 연결, `/testbench`, 보고서 V2/PDF/PINPOINT 및
-GitHub CI 통과 후 동일 Vercel Preview artifact를 한 번만 운영 승격하는 절차는
-[`docs/INTEGRATION_TESTBENCH_REPORT_V2.md`](docs/INTEGRATION_TESTBENCH_REPORT_V2.md)를 기준으로 합니다.
-
-Drawing Master는 Current V8 draw.io에 이미 존재하는 페이지와 `object` cell을 exact ID로 찾는
-읽기 전용 색인입니다. fuzzy matching이나 로직 재해석을 하지 않으며, 현재 snapshot은 98페이지의
-1,551개 cell, 53개 Logic ID, 86개 Tag ID를 색인합니다. 생성·게시·hash 검증·모바일 사용법과
-P&ID/SLD/Modelica runtime을 변경하지 않는 범위는
-[`docs/LOGIC_ASSETS.md`](docs/LOGIC_ASSETS.md)의 **Drawing Master 계약**을 따릅니다.
-
-저장소에 함께 있는 MATLAB ECMS VPP와 Python 변환기는 웹 변환부 이관 및
-예제 검증을 위한 실행 가능한 기준 구현입니다. Action 실행 경로와는 분리되어
-있으며, RAW를 변경하지 않고 네 관측 계층으로 변환합니다.
-확정된 전체 책임 경계는
-[`docs/TRIPLENS_WORKFLOW_BOUNDARY.md`](docs/TRIPLENS_WORKFLOW_BOUNDARY.md)를
-기준으로 합니다.
-
-## Native OPC UA topology assets
-
-현재 native 실행 경로의 시각화 파일은 `topology/opcua/`에 있습니다. SVG는
-`scripts/native_ecms_opcua_client.py`가 실제로 읽는 OPC UA BrowseName을 사용하며,
-구현된 터빈 입구·바이패스·스프레이 배선을 표시합니다. 모델 변수의 숫자 NodeId는
-런타임에 배정되므로 임의로 만들지 않고, OpenModelica namespace 0의 고정 step/time
-NodeId만 표시합니다. 상세 기준은
-[`docs/OPCUA_NATIVE_VISUAL_CONTRACT_V1.md`](docs/OPCUA_NATIVE_VISUAL_CONTRACT_V1.md)를
-참조합니다.
-
-## MATLAB Online에서 가장 빠른 시작
-
-ZIP을 MATLAB Drive에 압축 해제한 뒤 **압축 해제된 패키지 최상위 폴더**에서
-다음 한 줄을 실행합니다.
-
-```matlab
-ECMSVPP
-```
-
-큰 버튼 다섯 개가 있는 시작 화면이 열립니다.
-
-| 버튼/명령 | 하는 일 |
+| 항목 | 기준 |
 |---|---|
-| `ECMS_START` | ECMS 배선·A 설정·Command를 편집 |
-| `ECMS_RUN` | 현재 기본 CSV로 새 MATLAB VPP Run을 생성 |
-| `ECMS_RESULT` | 마지막으로 완전히 생성된 Run을 열고, 없으면 번들 예제를 열기 |
-| `ECMS_GITHUB` | GitHub의 MATLAB→OPC UA→ThermoSysPro 3.1 실행을 호출하고 물리 결과를 Cloud ECMS로 가져오기 |
-| `ECMS_DIAGNOSE` | 누락 파일·구형 함수 가림·6.9 kV 계약을 읽기 전용으로 점검 |
-| `ECMS_SELF_TEST` | 정상·계통상실·펌프 Trip을 임시 폴더에서 자체 시험 |
+| 문서 목적 | GitHub 저장소 및 제출용 웹앱 안내 |
+| 확인 기준 | `main` 브랜치 소스와 TripLens 시스템 명세, 2026-09-27 기준 |
+| 적용 범위 | 제품 기능, 데이터 흐름, 검증 경계, 저장소 구성 |
+| 원칙 | 개별 설비·고장 사례를 제품의 일반 기능이나 성능으로 확대 해석하지 않음 |
 
-`run_cloud_result`는 계산기가 아니라 **이미 생성된 결과를 그리는 내부
-뷰어**입니다. 새 계산을 만들려면 `ECMS_RUN` 또는 Editor의
-`현재 A/Command로 실행`을 누릅니다.
+## 1. 목적과 범위
 
-### GitHub OPC UA와 Cloud ECMS 연결
+TripLens는 산업 운영의 이벤트 및 공정 데이터를 검토하고, 분석 결과를 원본 근거와 연결해 보여주는 읽기 전용 분석·보고 도구입니다. 본 저장소는 TripLens 웹 애플리케이션, Agent API, 데이터 계약, 검증 도구와 공학 참고 자산을 포함합니다.
 
-`ECMS_GITHUB`은 `khaku25/triplens-matlab-cosim-runner`의 검증된
-`matlab-native-opcua-ecms.yml`을 호출합니다. GitHub에서는 Simulink가 운전 중
-52GT OPEN 명령과 실제 `52GT.CLOSED=1→0` 피드백을 순서대로 만든 뒤, 그 피드백에서
-도출된 GT Trip 요청만 OPC UA로 native OpenModelica/ThermoSysPro 3.1에 씁니다.
-같은 연결로 바이패스를 포함한 물리 피드백을 읽습니다. 내려받은 수신 CSV는 변경하지
-않으며, ProcessBus, DCS1/DCS2, ECMS 계산은 이 Cloud 패키지에서만 수행합니다.
+| 구분 | 내용 |
+|---|---|
+| 웹 앱 | [현재 TripLens 배포](https://triplens-web-preview-cmxrp0x82-junsic-s-projects.vercel.app) |
+| 소스 저장소 | [khaku25/triplens-thermosyspro-cloud-runner](https://github.com/khaku25/triplens-thermosyspro-cloud-runner) |
+| 워크플로 계약 | [TripLens 데이터 및 책임 경계](docs/TRIPLENS_WORKFLOW_BOUNDARY.md) |
+| 저장소 구성 | [소스 및 자산 안내](docs/repository-map.md) |
 
-먼저 GitHub fine-grained token에 해당 저장소의 **Actions read/write** 권한을 주고,
-토큰을 파일이나 MATLAB 코드에 적지 말고 환경변수로만 설정합니다.
+## 2. 시스템 아키텍처
 
-```matlab
-setenv("TRIPLENS_GITHUB_TOKEN","github에서 만든 토큰")
-ECMS_GITHUB
-```
-
-실행 후 `runs/MATLAB_GITHUB_OPCUA_*`에 원본 OPC UA 수신 CSV, 증명 JSON,
-ProcessBus, DCS1/DCS2 및 ECMS 결과가 함께 저장되고 `ECMS_RESULT`가 같은 결과를
-다시 엽니다. Editor의 `GitHub OPC UA 52GT 개방→GT Trip 실행` 버튼은 현재 A
-설정과 설비표를 후단 Cloud 계산에 적용합니다. 원격 원인 입력은 현재 검증 계약대로
-0.25초의 운전 중 52GT 개방 한 종류이며, 현장 ECMS 로직은 사용하지 않습니다.
-`GT_IN_SERVICE AND NOT 52GT.CLOSED`는 VPP 잠정 정책으로 명시됩니다. Editor의
-임의 Command 큐를 원격 물리에 보내지는 않습니다.
-
-처음 `ECMS_RESULT`에서 열리는 번들 예제는 화면과 파일 구조 확인용
-`BUNDLED_SYNTHETIC_DEMO`이며 실제 ThermoSysPro 계산으로 표시되지 않습니다.
-
-## Editor 3.1
-
-- Overview 설비를 드래그해 배치 변경
-- 배선을 직접 눌러 선택(기본 5 px, 선택 9 px의 모바일 터치 폭)
-- `가로→세로`, `세로→가로`, `세로→가로→세로`,
-  `가로→세로→가로` 네 직각 경로와 꺾임 좌표 편집
-- `전체 배선 자동 정리`로 대각선 없는 직각 배선 재배치
-- BUS-A/B를 눌러 6.9 kV 피더 상세 열기
-- A 설정·설비 BUS·피더·정격·정상 차단기 상태 편집
-- 잠긴 M 물리 태그 201개와 실행 설비 M 연결 5개 조회
-- 24개 설비 ID의 Command 87개를 버튼으로 시간 예약
-- Command 큐 CSV 불러오기·저장
-- 화면의 저장하지 않은 A/Command 값으로 바로 MATLAB VPP 실행
-- 현재 화면값으로 Overview/6.9 kV 상세 SVG 생성
-
-### FMU 밸브 SVG
-
-[`topology/fmu_valves_overview.svg`](topology/fmu_valves_overview.svg)은
-ThermoSysPro 3.1 전체 모델에 FMU로 연결된 12개 밸브의 시각화 인덱스입니다.
-각 설비 상세 SVG는 `topology/valves/`에 있으며 AUTO/MAN 선택, 자동·수동 명령,
-선택 CMD, 고장 주입, 적용 FB, 편차, Cv, 질량유량과 차압을 한 화면에 표시합니다.
-
-SVG 값 요소의 `data-bind`와 `data-value-for`는
-[`data/fmu_valve_ports_v1.csv`](data/fmu_valve_ports_v1.csv)의 실제 포트명과
-일치합니다. 전체 파일 매핑은
-[`topology/valve_svg_manifest.json`](topology/valve_svg_manifest.json)에 있습니다.
-포트 계약이 변경되면 다음 명령으로 SVG를 재생성합니다.
-
-```bash
-python3 scripts/generate_valve_svg_assets.py
-```
-
-배선의 **모양과 설비 위치**는 사용자가 바꿀 수 있지만, 잘못된 계통을
-사실처럼 만드는 것을 막기 위해 설비 ID와 배선 시작점·종점·계통은 잠겨 있습니다.
-즉 요청한 대로 기존 접속관계는 유지하면서 모든 배선을 직각으로 편집합니다.
-
-## 고정 ECMS 계통 골격
-
-- 154 kV BUS-A/B
-- GTG — 52GT — GT 저압측 TAP — GT 주 변압기 — 154 kV 계통
-- STG — 52ST — ST 저압측 TAP — ST 주 변압기 — 154 kV 계통
-- GT TAP — UAT-A — A Incoming — 6.9 kV BUS-A
-- ST TAP — UAT-B — B Incoming — 6.9 kV BUS-B
-- BUS-A/B 사이 모선연락차단기
-- 별도 SST 없음
-
-발전기가 정지하고 계통이 살아 있으면 GT/ST 주 변압기가 역수전 방향으로
-UAT와 6.9 kV 모선에 전원을 공급할 수 있습니다. 승인된 동기검정 모델이 없으므로
-두 전원의 병렬은 기본적으로 금지됩니다.
-
-## 데이터 계층
-
-- **M(Model)**: ThermoSysPro 물리 원본과 잠긴 태그·연결
-- **A(Assumption)**: 전압·정격·보호지연·설비배치·초기상태
-- **C(Calculated)**: 전압·전류·전력방향
-- **E(Event/ECMS)**: 차단기·Relay·SOE·통신품질
-- **CommandBus**: 시각·설비·명령·값·실행계층·피드백 태그
-
-표준 소유권은 `CommandBus → 보호/제어`, `ECMS → 차단기·Relay·전기상태`,
-`DCS1/DCS2 → 운전·공정 알람`, `ProcessBus → RPM·유량·압력·수위`입니다.
-공정 물리량을 `ECMS.*.PHYS`로 복제하지 않습니다.
-
-유량의 공개 단위는 전 계층에서 `t/h`입니다. Tag Master, ProcessBus의
-`*_t_h` 필드, DCS 임계값·히스테리시스, VPP/ECMS 이벤트와 GitHub RAW alias가
-같은 계약을 사용합니다. 물리 솔버 내부 값은 출력 경계에서 정확히 3.6배로 한 번만
-변환됩니다.
-
-M은 읽기 전용입니다. A와 Command를 바꾸면 C/E만 새 Run에 계산되며 기존
-Run은 덮어쓰지 않습니다.
-
-## 실행 방식과 책임 경계
-
-### MATLAB-native VPP
-
-`ECMS_RUN`은 MATLAB Online만으로 즉시 실행됩니다. 편집기 기능과 사고 데이터
-생성을 시험하기 위한 **명시적인 합성 fallback**이며, ThermoSysPro 결과나 현장
-계측값으로 표시하지 않습니다. 각 Run은 `runs/MATLAB_*`에 먼저 임시 생성되고,
-필수 파일 검증이 끝난 뒤에만 `latest_run.txt`가 갱신됩니다.
-
-```matlab
-ECMS_RUN
-ECMS_RUN("FaultPreset","grid_loss")
-ECMS_RUN("CommandFile","examples/bfp_trip_commands.csv")
-ECMS_RUN("SamplingProfile","incident_1ms")
-```
-
-MATLAB 합성 fallback에서도 마지막 명령처럼 사고 전·후 1 ms 구간을 추가할 수
-있습니다. 이 결과는 계속 `MATLAB_NATIVE_SYNTHETIC_FALLBACK`으로 표시되며,
-ThermoSysPro 물리 실행으로 취급되지 않습니다.
-
-공통 Trip은 `config/common_trip_matrix.csv`가 실행 원본입니다. GT Trip은 GT와
-ST를 함께 요청하고, Drum HH는 ST만, Drum LL은 GT와 ST를 함께 요청합니다.
-STG Active Power는 추세·전류계산용 측정값만 유지하며 H/HH/L/LL 및
-`stg_low_state`를 만들지 않습니다. FWP 정상 STOP은
-VCB를 닫힌 상태로 유지하고, TRIP만 latch와 VCB 개방을 발생시키며 RESET만으로는
-재투입되지 않습니다.
-
-### ThermoSysPro Cloud Action (RAW-only)
-
-두 Workflow가 현재 등록되어 있습니다.
-
-| Workflow | 물리 어댑터 | Action 산출물 |
+| 구성 요소 | 주요 역할 | 책임 경계 |
 |---|---|---|
-| `Generate ThermoSysPro RAW (GT physical adapter)` | GT 배기 유량·온도 경계 변화 | RAW CSV + 무라벨 manifest |
-| `Generate ThermoSysPro RAW (BFP physical adapter)` | FWP-HP 회전속도 경계 변화(Workflow명은 legacy) | RAW CSV + 무라벨 manifest |
+| Web Frontend | 파일 입력, 분석·근거 탐색, Tag/Logic/Drawing 참조, 보고서 편집 | 분석 결과를 표시하고 편집하며 원인 정답을 지정하지 않음 |
+| Python Agent API | 입력·시간 검증, Evidence Store, Tool 실행·Trace, Citation Check, Verification Gate | 근거 조회와 형식 검증을 수행하며 공학적 결론을 자동 승인하지 않음 |
+| Evidence Store | EVENT/RAW 정렬, 색인, 등록 ID 매핑 | 판단 대신 조회 가능한 관측 근거 제공 |
+| 선택 분석 제공자 | 근거 조회 요청 및 구조화된 분석 결과 생성 | Python이 반환한 근거를 해석 |
+| Human Reviewer | 결론 검토, 보고서 승인 | 최종 공학 판단 수행 |
 
-두 Workflow 모두 고정 ThermoSysPro commit과 OpenModelica 이미지를 사용합니다.
-OpenModelica 결과를 바이트 그대로 복사한 뒤 해시와 구조를 검증하며, 실패한
-실행은 artifact를 게시하지 않습니다. `fault_preset`, ECMS Command, DCS 규칙,
-사고 정답은 Action 입력 또는 산출물에 포함하지 않습니다.
+### 2.1 실행 경계
 
-### CSV 시간 해상도 선택
+- Frontend는 파일 선택, 분석 결과와 근거 탐색, Tag/Logic/Drawing 이동, 보고서 편집을 담당합니다.
+- Agent API는 입력 검증, 근거 구성, 제한된 Tool 실행, 인용 검사와 Gate를 담당합니다.
+- 분석 제공자 API 키는 서버 환경에서만 사용하며 Frontend에 전달하지 않습니다.
+- 브라우저 저장소가 사용되는 경우 현재 파일·분석·편집 상태를 보존하며, 서버의 영구 사고 데이터베이스를 의미하지 않습니다.
 
-GT 물리 어댑터의 `sampling_profile`에서 세 RAW 출력 방식을 선택할 수 있습니다.
+## 3. 입력과 데이터 계약
 
-| 프로필 | ThermoSysPro RAW CSV | 용도 |
+| 입력 | 내용 | 처리 기준 |
+|---|---|---|
+| `EVENT.csv` | Alarm, Operator Action, Protection, Breaker 등 사건 기록 | 원본 사건 및 Evidence ID 보존 |
+| `RAW.csv` | 공정·전기·설비 상태의 시계열 관측값 | `model_time_s` 기준 정렬, 필요한 구간만 조회 |
+| Tag / Logic Catalog | 등록 Source Tag, Logic, upstream, Drawing 참조 | exact match 사용, 미등록 ID를 추론하지 않음 |
+
+- 동일 분석에 연결된 EVENT/RAW 입력을 함께 사용합니다.
+- 직접 업로드 크기는 EVENT.csv와 RAW.csv 합계 4,000,000 bytes 이하입니다.
+- `model_time_s`는 인과 순서와 분석 구간에 사용합니다. `wall_time_utc`는 감사·전송 시각으로 구분합니다.
+- 분석 입력에서 정답성 Metadata를 제외하고, 별도 AI 재학습은 수행하지 않습니다.
+- 원본 EVENT/RAW 관측값은 분석 과정에서 변경하지 않습니다.
+
+## 4. 분석 Workflow
+
+1. **입력 검증** — 파일 형식, 시간 필드, 입력 계약을 확인합니다.
+2. **Evidence 구성** — 원본 행, Tag ID, 시간 참조를 보존해 조회 가능한 근거를 구성합니다.
+3. **근거 조회** — 선택 분석 제공자가 Python Tool을 통해 필요한 범위의 근거를 요청합니다.
+4. **구조화 분석** — 조회된 근거를 사용해 핵심 사건, 원인 후보, 직접 트리거, 후속 변화, 반대 근거를 정리합니다.
+5. **Citation / Gate 검사** — 실제 조회된 근거 ID, Tag, 시간, 출력 형식을 확인합니다.
+6. **보고서 검토** — 보고서 초안을 사람이 검토하고 승인합니다.
+
+Tool은 여섯 종류이며 정해진 고정 순서로 실행되지 않습니다. 분석당 Tool 호출 예산은 합계 최대 8회입니다. 근거가 부족하면 결과를 `UNKNOWN` 또는 `HOLD`로 남깁니다.
+
+## 5. Evidence Tools
+
+| Tool | 목적 | 제한 |
+|---|---|---|
+| `search_events` | 사건 및 Alarm 검색 | 최대 20 EVENT |
+| `get_event_window` | 특정 시각 전후 사건 순서 확인 | 최대 30 EVENT, ±10초 |
+| `get_raw_window` | 여러 RAW Tag의 제한 구간 비교 | 최대 8 Tag, 50 Row, 20초 |
+| `get_tag_series` | 단일 Tag 추세 확인 | 최대 50 Point |
+| `get_logic_context` | 등록 Logic 및 upstream 관계 조회 | 최대 12 Logic Row |
+| `get_equipment_state` | 주변 EVENT와 요청된 RAW Tag 상태 확인 | 최대 10 EVENT, 8 RAW Tag |
+
+RAW 전체를 초기 Prompt에 전달하지 않습니다. 등록 Tag/Logic은 exact match로 조회하며, 유사한 항목으로 대체하지 않습니다.
+
+## 6. 분석 출력과 상태
+
+| 출력/상태 | 의미 | 해석 경계 |
+|---|---|---|
+| Critical Events | 사고 이해에 필요한 핵심 사건 | 원본 chronology를 대체하지 않음 |
+| Primary Cause / Direct Trigger | 원인 후보와 직접 보호동작 | 기본 상태는 `CANDIDATE` 또는 `OBSERVED` |
+| Propagation / Counter Evidence | 후속 변화와 반대 근거 | 후속 Alarm을 원인으로 자동 승격하지 않음 |
+| Incident Report | 편집 가능한 8열×10섹션 보고서 초안 | Human Review 전 최종 승인 아님 |
+| Claim | `OBSERVED` / `CANDIDATE` / `UNKNOWN` | 주장에 대한 관측·불확실성 상태 |
+| Verification Gate | `PASS` / `HOLD` | 근거·시간·출력 형식 검증 상태 |
+
+`PASS`는 설정된 Gate 검사를 통과했다는 뜻이며 원인 확정이나 사람의 승인을 뜻하지 않습니다. `Logic VERIFIED`도 등록 관계가 확인됐다는 의미이며 특정 상황의 공학적 인과를 확정하지 않습니다.
+
+## 7. Web 기능
+
+- **Evidence Explorer** — 인용된 EVENT/RAW 원본 근거를 열고 분석 화면으로 돌아갑니다.
+- **Tag Master / Logic Master** — 등록 정보와 관련 로직·도면을 탐색합니다.
+- **Logic Drawing / Plant Process View** — 설비·로직·도면 관점의 보조 탐색을 제공합니다.
+- **Incident Report** — 동일 분석 객체의 근거와 연결된 편집 가능한 보고서 초안을 제공합니다.
+- **Engineering Reviewer** — 선택적으로 별도 실행되며 보고서 Snapshot을 검토합니다.
+- **PINPOINT / CSV / Evidence Export** — 관련 형식과 일부 정적 검증이 마련되어 있습니다. 전체 브라우저 Acceptance는 별도로 관리합니다.
+
+## 8. 보고서와 리뷰 경계
+
+- Engineering Reviewer는 `/analyze`의 자동 필수 단계가 아닙니다.
+- Reviewer는 `row_id`, `current_section`, `evidence_ids`와 보고서 SHA-256 Snapshot을 확인합니다.
+- 보고서를 편집하거나 재정렬해 Snapshot이 달라지면 기존 Review를 새 버전에 적용하지 않습니다.
+- Reviewer와 Verification Gate는 운전 승인 또는 재기동 승인을 수행하지 않습니다.
+
+## 9. READ-ONLY 및 보안 경계
+
+- TripLens에서 발전소 OT로 제어명령을 반환하는 경로가 없습니다.
+- EVENT/RAW 원본을 변경하거나 자동복전·재기동 명령을 수행하지 않습니다.
+- AI Confidence, 등록 Logic, Gate `PASS`만으로 공학적 원인을 자동 확정하지 않습니다.
+- API 키는 서버 환경변수에서만 읽으며 Frontend 코드에 전달하지 않습니다.
+
+## 10. 현재 구현·검증 상태
+
+아래 결과는 2026-09-27 기준 시스템 명세에 기록되어 있습니다. 서로 다른 검증 범위이므로 하나의 통과율로 합산하지 않습니다.
+
+| 항목 | 기록된 결과 | 범위 및 제한 |
 |---|---:|---|
-| `causal_100ms` (기본값) | 전체 0.1 s | 사고 전·후 물리 변화 검토 |
-| `standard` | 입력한 종료시간/구간 수 | 임의 장시간 해상도 |
-| `incident_1ms` | 0~10 s 전체 1 ms | 짧은 물리 변화 정밀 확인 |
+| 기존 웹 분석 실행 | 12/12 실행 PASS | 업로드→분석→Evidence→보고서 기록 흐름. 정확도·일반화 점수가 아님 |
+| Preview Tag 색인 | 606/606 searchable | 정적 ID 색인 무결성. 전체 UI 재실행과 구분 |
+| Preview Logic 색인 | 55/55 searchable | 등록 ID 대조. 클릭·도면 렌더링 재검증과 구분 |
+| Report QA | 48/48 페이지, 12개 산출물 | 보고서 산출물 검사. 각 결론의 승인 여부와 구분 |
+| 남은 Acceptance | `PARTIAL` / `NOT TESTED` | CSV/PINPOINT, 전체 모바일, 세션 초기화 등 |
 
-`causal_100ms`는 기본 입력인 사건시각 600 s, 종료 1000 s를 유지하면서 물리
-CSV를 0.1 s 간격으로 출력합니다. FWP-HP 어댑터(legacy BFP 파일명)는 `stop_time_s / output_intervals`
-간격의 표준 RAW를 출력합니다. 어떤 프로필도 알람 시각이나 ECMS 사건을 만들지
-않습니다.
+현장 정확도, 시설별 공학적 타당성, 미관측 데이터에 대한 일반화는 별도 평가가 필요합니다. 소스와 정적 검증은 해당 코드 또는 색인의 존재를 보여주며, 현장 유효성을 단독으로 입증하지 않습니다.
 
-`incident_1ms`는 사건시각 2 s, 경계 변화 5 s, 종료 10 s, 출력구간 10,000개인
-제한된 진단용 실행입니다.
+## 11. Software / AI Runtime Specification
 
-여기서 1 ms는 **CSV 출력 시각 간격**입니다. OpenModelica의 DASSL 적분기는
-정확도 조건에 따라 내부 계산 간격을 자동 조절하므로 “솔버가 항상 1 ms 고정
-스텝으로 계산했다”는 뜻은 아닙니다. 알람/SOE의 밀리초 시각은 이후 웹 변환부가
-승인된 논리와 실제 RAW crossing을 적용해 별도로 생성해야 합니다.
+| 구성 | 현재 명세 | 역할 |
+|---|---|---|
+| Web Frontend | Next.js 16.3.5 · React 19.2.0 | 브라우저 UI, 입력, 탐색, 보고서 편집 |
+| Agent API | Python 3.12+ · FastAPI | 입력·근거·Tool·Gate 처리 |
+| Analysis Provider | 기본 Gemini · 선택형 OpenAI | 근거 선택 요청 및 구조화 분석 |
+| Deployment | Vercel · `main` 기준 | Web / Agent API 배포 |
 
-## Action 결과 파일
+Provider와 모델 설정은 변경될 수 있습니다. API 키 설정 여부는 키 유효성, 잔액 또는 실제 모델 응답을 보장하지 않습니다.
 
-| 파일 | 역할 |
+## 12. 저장소 구성 및 Source of Truth
+
+| 경로 | 내용 |
 |---|---|
-| `thermosyspro-raw.csv` | OpenModelica native 결과의 바이트 단위 복사본 |
-| `raw-manifest.json` | SHA-256, 행·열·시간범위, 엔진·표본 설정, RAW-only 경계 |
+| `apps/web/` | TripLens 웹 애플리케이션 |
+| `services/agent-api/` | Agent API와 Provider Adapter |
+| `config/`, `data/`, `logic_db/`, `logic_diagrams/` | 데이터 계약과 등록 참조 자산 |
+| `scripts/`, `tests/` | 변환·검증·회귀 확인 코드 |
+| `matlab/`, `modelica/`, `examples/` | 재현 가능한 공학 참고 구현과 지원 자산 |
+| `docs/` | 워크플로 계약, 설계 참고자료, 검증 기록 |
 
-기존 `processbus.csv`, `DCS1.csv`, `DCS2.csv`, `ECMS.csv`, 사고창과 정답 파일은
-Action artifact가 아니다. 관련 Python 코드는 웹 변환부가 그대로 이관·대조할 수
-있는 실행 가능한 기준 구현으로 유지한다.
+웹 애플리케이션 구현의 기준은 저장소 소스와 실행 설정입니다. Google Drive 시스템 명세는 시스템 범위·데이터 계약·현재 검증 상태를 설명하는 제출용 기준 문서입니다. 지원 자산이 저장소에 있다는 사실만으로 모든 자산이 배포 앱에서 활성화되거나 모든 시설·운전 조건에 대해 검증됐다고 보지 않습니다.
 
-Action에서 내려받은 RAW는 로컬 기준 변환기로 다음처럼 분리할 수 있습니다.
+## 13. 제한 및 추가 문서
 
-```bash
-python3 scripts/convert_raw_observations.py \
-  --input svgBFP_TRIP_ECMS_RAW_5s_1ms.csv \
-  --event-time 1 \
-  --output-dir outputs/fwp_hp_observations
-```
+TripLens는 분석·보고 지원 도구입니다. 검토자의 공학적 판단과 승인 없이 분석 결과를 운전 지시, 보호 설정, 복구 또는 재기동 결정으로 사용하지 않습니다.
 
-출력은 `ProcessBus.csv`, `DCS1.csv`, `DCS2.csv`, `ECMS.csv`와 추세·피더·매핑
-검토·manifest입니다. 원본 SHA-256을 전후 비교하며 사고명이나 원인 정답을 넣지
-않습니다. 1 ms DCS timer는 RAW 표본 사이를 선형보간하지 않고 zero-order hold로
-평가합니다.
+- [워크플로 및 데이터 경계](docs/TRIPLENS_WORKFLOW_BOUNDARY.md)
+- [간결한 보고서 작성 정책](docs/CONCISE_REPORT_POLICY.md)
+- [통합 Testbench 및 보고서 흐름](docs/INTEGRATION_TESTBENCH_REPORT_V2.md)
+- [저장소 구성 안내](docs/repository-map.md)
 
-현재 GT 어댑터는 독립적인 GT 내부고장을 계산하는 모델이 아니라 배기 경계가
-변하는 물리 예제이고, FWP-HP 어댑터도 HP FWP 속도 경계 변화 예제다. 따라서 어느
-Workflow도 임의 사고 범용 생성기로 표시하지 않는다.
-
-## 등록된 VPP Baseline 및 GT Trip 통합 실행
-
-`config/vpp_baseline_v1.json`은 특정 발전소 복제가 아닌 공개 가능한 가상플랜트
-`VPP_BASELINE_V1`의 잠긴 설계 기준입니다. 기존 CSV 설정표는 MATLAB/Python 실행
-테이블로 계속 사용하며, JSON은 정격·동작시간·알람 규칙·공통 Trip 관계가 서로
-갈라지지 않았는지 실행 전에 검증하는 단일 진입점입니다. `LOCKED`는 VPP 설계값을
-고정했다는 뜻이고, CSV의 `PROVISIONAL`은 현장 승인값이 아니라는 뜻이므로 서로
-충돌하지 않습니다.
-
-GT Trip 생성과 내장 알람/Event 계층은 한 명령으로 실행합니다.
-
-```bash
-python3 scripts/run_vpp_gt_trip.py --output-dir outputs/GT_TRIP_01
-```
-
-기본 실행은 사고 전 1초·사고 후 4초·1 ms로 5,001행을 생성합니다. 장시간
-프로필은 다음처럼 선택합니다.
-
-```bash
-python3 scripts/run_vpp_gt_trip.py \
-  --output-dir outputs/GT_TRIP_01_LONG \
-  --pre-seconds 300 --post-seconds 120 --step-ms 1
-```
-
-한 번의 실행으로 `VPP.RAW.csv`, `ProcessBus.csv`, `VPP.EVENT.csv`, `DCS1.csv`,
-`DCS2.csv`, `ECMS.csv`, 추세·피더 및 `VPP.MANIFEST.json`을 만듭니다. 요청한
-TripLens·알람표시기 입력용 `ECMS_EVENT.csv`와 `VPP_EVENT.csv`도 생성합니다.
-전자는 ECMS 사건/알람만, 후자는 DCS1·DCS2·ECMS 사건/알람을 시간순으로 모은
-희소 이벤트 파일이며 연속 RAW·추세 표본은 포함하지 않습니다. RAW에는
-시나리오명·원인·정답 열을 넣지 않으며, 자동검증용 `GT_TRIP_01.expected.json`은
-별도 파일로 격리합니다. GitHub Actions의 `Run VPP GT Trip Scenario`에서도 같은
-진입점을 실행하며 Blind 재생 묶음과 검증 Oracle을 서로 다른 artifact로 게시합니다.
-
-## 표준 명칭
-
-- 프로젝트명은 `VPP`; `VVP`는 legacy alias입니다.
-- 설비 ID는 `FWP-HP`, `FWP-IP`, `FWP-LP`; “HP BFP”는 화면 표시명으로만 허용합니다.
-- ThermoSysPro native `MP`/`BP`는 RAW에서 보존하고 ProcessBus 경계에서 `IP`/`LP`로 바꿉니다.
-- 차단기 표준 태그는 `ECMS.52GT.CLOSED`, `ECMS.CB-IN-A.CLOSED`,
-  `ECMS.VCB-A01.CLOSED` 형식입니다.
-
-전체 alias와 소유권은 `config/tag_alias_contract.csv`가 기준입니다.
-
-## 실행 오류 복구
-
-다른 폴더의 구형 함수가 MATLAB 경로를 가리는지 먼저 확인합니다.
-
-```matlab
-ECMS_DIAGNOSE
-which -all triplens_ecms_vpp_editor
-which -all triplens_ecms_vpp_simulate
-which -all run_cloud_result
-```
-
-패키지 파일을 교체한 직후라면 기존 창을 닫은 뒤 최상위 폴더에서 다시 실행합니다.
-
-```matlab
-clear functions
-rehash
-ECMS_DIAGNOSE
-ECMS_SELF_TEST
-ECMSVPP
-```
-
-`triplens_ecms_editor`는 오래된 호출을 위한 호환 래퍼일 뿐입니다. 새 작업은
-항상 고유 진입점 `ECMSVPP` 또는 `ECMS_START`로 시작합니다.
-
-## 검증
-
-고정 ThermoSysPro 모델의 물리 FWP 세 대(HP/IP/LP)는 토출 체크밸브를 사용합니다.
-각 체크밸브의 OPEN, 개도, 유량, 차압, 입·출구 압력, 유효 저항은 OPC UA
-READ 값이며 개별/전체 SVG는 다음 명령으로 생성·검증합니다.
-
-```bash
-python3 scripts/generate_fwp_check_valve_svg_assets.py
-python3 scripts/generate_fwp_check_valve_svg_assets.py --check
-```
-
-```bash
-python3 -m unittest discover -s tests -v
-python3 scripts/validate_commands.py --commands examples/bfp_trip_commands.csv
-python3 config/audit_trip_semantics.py
-```
-
-Python 회귀시험은 A 설정 반영, 모든 FaultBus, Command 계약, 피더 출력,
-저전압 지연, 통신품질, 산출물 SHA-256, 과거 결과 재사용 방지와 MATLAB 공개
-함수 계약, 표준 20 ms·사고창 1 ms·인과검토 100 ms 표본 계약과 DCS 알람의
-실제 임계값 통과 여부를 검사합니다. 최종 UI·자체실행은 MATLAB Online의
-`ECMS_DIAGNOSE`와 `ECMS_SELF_TEST`로 확인합니다.
-
-## 제한
-
-현재 A값은 `PROVISIONAL`이며 승인된 보호정정치나 발전소 SLD가 아닙니다.
-피더 50/51은 설정 가능한 단순 RMS 모델일 뿐 실제 단락용량·임피던스·계전기
-정정자료가 반영된 EMT/보호협조 해석이 아닙니다. 이 VPP는 운전·정비·LOTO
-도구가 아닙니다.
-MATLAB 합성 Run, ThermoSysPro Run, 현장 Raw Data를 서로 바꾸어 표기하면 안 됩니다.
-
-고정 실행 기반:
-
-- OpenModelica `openmodelica/openmodelica:v1.27.0-minimal`
-- ThermoSysPro `Dwarf-Planet-Project/ThermoSysPro`
-- ThermoSysPro commit `db81ae1b5a6a85f6c6c7693244cafa6087e18ff5`
-- Modelica Standard Library `3.2.3+maint.om`
