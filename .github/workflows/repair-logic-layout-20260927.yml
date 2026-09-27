@@ -1,0 +1,135 @@
+name: Repair approved Logic Master layout
+on:
+  push:
+    branches: [codex/logic-layout-fix-20260927]
+    paths: ['.github/workflows/repair-logic-layout-20260927.yml']
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reproduce original overlap
+        shell: bash
+        run: |
+          mkdir -p outputs/logic-layout-fix
+          if python -m unittest discover -s tests -p 'test_logic_layout_no_overlap.py' > outputs/logic-layout-fix/before-tests.txt 2>&1; then
+            echo 'Expected original layout regression was not reproduced'; exit 1
+          fi
+          grep -q 'Overlapping diagram vertices' outputs/logic-layout-fix/before-tests.txt
+      - name: Apply approved geometry only and rebuild indexes
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib,json,subprocess,xml.etree.ElementTree as ET
+          from pathlib import Path
+          src=Path('logic_diagrams/TripLens_Logic_Master_Current_V8.drawio')
+          original=src.read_bytes()
+          assert hashlib.sha256(original).hexdigest()=='ba4f983f286e61a445f9c6f44fe9b3eef73663bac58c79ef9e6bd6f15410c9a3','Unexpected source revision'
+          Path('outputs/logic-layout-fix/before.drawio').write_bytes(original)
+          def meaning(e):
+              attrs={k:v for k,v in e.attrib.items() if not(e.tag=='mxGraphModel' and k in ('pageWidth','pageHeight'))}
+              return(e.tag,sorted(attrs.items()),e.text or '',[meaning(c) for c in e if c.tag!='mxGeometry'])
+          root=ET.fromstring(original); before=meaning(root)
+          pages={p.get('id'):p for p in root.findall('diagram')}
+          def y(pid,cid,value):
+              obj=next(o for o in pages[pid].findall('mxGraphModel/root/object') if o.get('id')==cid)
+              obj.find('mxCell/mxGeometry').set('y',str(value))
+          pid='screen:09254a48d627'
+          y(pid,'source:IG-036:003d416fdd7f2672',3046)
+          y(pid,'source:IG-036:1da1755111e660ae',3166)
+          y(pid,'group:IG-037',3336)
+          for column in ('input','condition','operation','output'):y(pid,'column:IG-037:'+column,3390)
+          for cid in ('source:IG-037:b53f671f8e827e7d','condition:PROT-ST-BRK-OPEN','operation:PROT-ST-BRK-OPEN','output:PROT-ST-BRK-OPEN:42ccfcf648e2aa3e'):y(pid,cid,3442)
+          y(pid,'additional:PROT-ST-BRK-OPEN',3562)
+          pages[pid].find('mxGraphModel').set('pageHeight','3792')
+          for pid in ('IG-036','rule:RESP-ST-GRID-POWER'):y(pid,'source:IG-036:1da1755111e660ae',356)
+          src.write_text('<?xml version="1.0" encoding="utf-8"?>\n'+ET.tostring(root,encoding='unicode')+'\n',encoding='utf-8')
+          subprocess.run(['python','scripts/update_triplens_logic.py'],check=True)
+          subprocess.run(['python','scripts/update_triplens_logic.py','--check'],check=True)
+          after=src.read_bytes()
+          assert meaning(ET.fromstring(after))==before,'Non-geometry data changed; stop publication'
+          expected={'overview','screen:09254a48d627','IG-036','rule:RESP-ST-GRID-POWER'}
+          assert expected <= set(pages)
+          allowed={prefix+name for prefix in ('generated/logic/','logic_diagrams/','apps/web/public/logic-assets/') for name in ('TripLens_Logic_Master_Current_V8.drawio','logic_diagram_index.json','drawing_master_index.json','asset_manifest.json','viewer.html')}
+          changed=set(subprocess.check_output(['git','diff','--name-only'],text=True).splitlines())
+          assert changed <= allowed,('Unexpected changes',changed-allowed)
+          result={'original_sha256':hashlib.sha256(original).hexdigest(),'corrected_sha256':hashlib.sha256(after).hexdigest(),'semantic_content_unchanged':True,'pages':len(pages),'changed_files':sorted(changed),'plant_or_agent_runtime_changed':False}
+          Path('outputs/logic-layout-fix/result.json').write_text(json.dumps(result,indent=2)+'\n')
+          print(json.dumps(result,indent=2))
+          PY
+      - name: Run geometry and existing logic regressions
+        run: |
+          python -m unittest discover -s tests -p 'test_logic*.py'
+          python -m unittest discover -s tests -p 'test_drawing_master.py'
+          python -m unittest discover -s tests -p 'test_current_catalog.py'
+      - name: Install browser renderer
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Verify all rendered pages and ST input navigation
+        shell: bash
+        run: |
+          python - <<'PY'
+          import functools,http.server,json,threading,xml.etree.ElementTree as ET
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          out=Path('outputs/logic-layout-fix')
+          httpd=http.server.ThreadingHTTPServer(('127.0.0.1',8765),functools.partial(http.server.SimpleHTTPRequestHandler,directory='.'))
+          threading.Thread(target=httpd.serve_forever,daemon=True).start()
+          source=Path('apps/web/public/logic-assets/TripLens_Logic_Master_Current_V8.drawio')
+          diagrams=ET.parse(source).getroot().findall('diagram'); results=[]; errors=[]
+          with sync_playwright() as p:
+              browser=p.chromium.launch(headless=True)
+              page=browser.new_page(viewport={'width':1800,'height':1100})
+              page.on('pageerror',lambda e:errors.append(str(e)))
+              page.goto('http://127.0.0.1:8765/apps/web/public/logic-assets/viewer.html')
+              page.wait_for_selector('body[data-ready="true"]')
+              assert not page.locator('#fatal').inner_text()
+              for i,d in enumerate(diagrams,1):
+                  page.select_option('#page-select',d.get('id'))
+                  info=page.eval_on_selector('#diagram','''e=>{const boxes=[...e.querySelectorAll('g.node')].map(n=>({id:n.dataset.cellId,r:n.querySelector('rect').getBoundingClientRect()}));let pairs=[];for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++){const a=boxes[i].r,b=boxes[j].r;if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>.1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>.1)pairs.push([boxes[i].id,boxes[j].id]);}const overflow=[];for(const n of e.querySelectorAll('g.node')){const r=n.querySelector('rect'),t=n.querySelector('text'),b=t.getBBox();if(b.x< -1||b.y< -1||b.x+b.width>+r.getAttribute('width')+1||b.y+b.height>+r.getAttribute('height')+1)overflow.push(n.dataset.cellId);}return{nodes:boxes.length,pairs,overflow};}''')
+                  assert not info['pairs'],(i,info['pairs'])
+                  assert not info['overflow'],(i,info['overflow'])
+                  results.append({'page':i,'id':d.get('id'),**info})
+                  if i in (10,46,98):
+                      svg=page.eval_on_selector('#diagram','''e=>{const c=e.cloneNode(true);c.removeAttribute('style');c.removeAttribute('class');c.setAttribute('width',e.dataset.width);c.setAttribute('height',e.dataset.height);return new XMLSerializer().serializeToString(c);}''')
+                      (out/f'page-{i:03d}.svg').write_text(svg,encoding='utf-8')
+                      shot=browser.new_page(viewport={'width':1560,'height':1100})
+                      shot.set_content('<style>body{margin:0;background:white}svg{display:block}</style>'+svg)
+                      shot.locator('svg').screenshot(path=str(out/f'page-{i:03d}.png'));shot.close()
+              for tag in ('vppSTGeneratorPowerMW','vpp52STClosed'):
+                  page.select_option('#page-select','IG-036')
+                  page.locator(f'#diagram g.node[data-tag="{tag}"]').click()
+                  assert tag in page.locator('body').inner_text()
+              assert not errors,errors
+              browser.close()
+          httpd.shutdown()
+          (out/'browser-results.json').write_text(json.dumps({'pages':results,'browser_errors':errors,'st_input_navigation':True},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Commit verified derived files on isolated branch only
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- logic_diagrams generated/logic apps/web/public/logic-assets
+          git diff --cached --check
+          git commit -m 'fix: separate overlapping ST diagram inputs and regenerate exact indexes'
+          git push origin HEAD:codex/logic-layout-fix-20260927
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verified-logic-layout-${{ github.run_id }}
+          path: |
+            outputs/logic-layout-fix/
+            logic_diagrams/
+            apps/web/public/logic-assets/
+            tests/test_logic_layout_no_overlap.py
+          retention-days: 30
