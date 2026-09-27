@@ -15,7 +15,7 @@
     "source_mapped_rules": 3,
     "source_tags": 603
   },
-  "drawio_sha256": "ed3f100bc67234a38dd193b1d409f7e33fee5c62f5145d6da5a2eba3208e6a96",
+  "drawio_sha256": "9536f1b45d4e131ced0f64046ab57d7b57271d9a18ebeeb19d241ea34df7fddc",
   "entities": {
     "GT.EXHAUST.FLOW.L": {
       "description_ko": "등록된 파생 알람 출력",

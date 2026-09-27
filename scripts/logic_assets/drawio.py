@@ -184,7 +184,7 @@ class Page:
         self.model.set('pageWidth',str(int(self.max_x)))
 
 
-def build_document(model: dict, layout_xml: str | None = None) -> str:
+def build_document(model: dict, layout_xml: str | None = None, *, live_model: dict | None = None) -> str:
     layout=read_layout(layout_xml)
     root=ET.Element('mxfile',{'host':'app.diagrams.net','type':'device','compressed':'false',
         'triplens_schema':'2','semantic_sha256':model['semantic_sha256'],
@@ -208,8 +208,10 @@ def build_document(model: dict, layout_xml: str | None = None) -> str:
         page=Page(root,page_id,name,rule_ids,layout,model['semantic_sha256'],scope)
         page.vertex('title','title',f'TripLens  /  {name}\n태그·로직 연결도',32,24,1480,78)
         if scope=='overview':
-            live_tag_count=sum(not row.get('model_source_only') for row in model['tags'].values())
-            live_rule_count=sum(not rule.get('source_mapped') for rule in model['rules'])
+            live_tag_count=(len(live_model['tags']) if live_model is not None else sum(not row.get('model_source_only') for row in model['tags'].values()))
+            # An existing live rule can also have a source-mapped searchable overlay.
+            # Count the frozen model, not searchable rules minus overlays.
+            live_rule_count=(len(live_model['rules']) if live_model is not None else sum(not rule.get('source_mapped') for rule in model['rules']))
             page.vertex('overview-policy','group_label',
                 f"Run 54 census {live_tag_count}개 태그 · 검색 {len(model['tags'])}개 태그  /  live {live_rule_count}개 로직 · 검색 {len(model['rules'])}개 로직\n"
                 '태그 검색 · 설비별 분류 · 로직 연결 · 상세 정보',
