@@ -1,0 +1,59 @@
+name: Verify Common Concise Report
+on:
+  push:
+    branches: [codex/concise-common-report-20260927]
+  pull_request:
+    paths:
+      - 'services/agent-api/**'
+      - 'apps/web/**'
+      - 'tests/*concise*'
+      - '.github/workflows/verify-concise-report.yml'
+permissions:
+  contents: read
+concurrency:
+  group: concise-report-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture exact tracked source without credentials or build output
+        run: |
+          mkdir -p /tmp/concise-source
+          git archive --format=tar HEAD | gzip > /tmp/concise-source/source.tar.gz
+          git rev-parse HEAD > /tmp/concise-source/commit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: concise-report-source-${{ github.run_id }}
+          path: /tmp/concise-source/
+          retention-days: 3
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install backend test dependencies
+        run: |
+          python - <<'PY'
+          import pathlib, subprocess, sys, tomllib
+          spec = tomllib.loads(pathlib.Path('services/agent-api/pyproject.toml').read_text())
+          subprocess.check_call([sys.executable, '-m', 'pip', 'install', *spec['project']['dependencies']])
+          PY
+      - name: Backend suite (no provider calls)
+        run: python -m unittest discover -s services/agent-api/tests -p 'test_*.py' -v
+      - name: Frontend unit suite
+        if: always()
+        run: node --test tests/test_*.mjs apps/web/lib/*.test.mjs
+      - name: Build web application
+        if: always()
+        run: |
+          npm ci --prefix apps/web --no-audit --no-fund
+          npm run build --prefix apps/web

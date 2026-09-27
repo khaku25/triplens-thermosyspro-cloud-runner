@@ -51,7 +51,7 @@ Forbidden answer metadata includes scenario_id, scenario_name, scenario, expecte
 
 ## Output contract
 
-Return primary_cause and direct_trigger objects, and arrays critical_events, propagation, causal_chain, counter_evidence. Each item has status, claim (Korean), evidence_ids, related_tags, model_time_s, time_interval_s, ai_confidence. additional_evidence_required and review_recommendations are Korean text arrays. Recommendations are evidence-review tasks only, subject to human approval, never plant control commands. No separate essay. Do not claim that all six tools ran unless they did.
+Return primary_cause and direct_trigger objects, and arrays critical_events, propagation, causal_chain, counter_evidence. Each item has status, claim (Korean detailed explanation), report_summary (Korean short body text), evidence_ids, related_tags, model_time_s, time_interval_s, ai_confidence. additional_evidence_required and review_recommendations are Korean text arrays. Recommendations are evidence-review tasks only, subject to human approval, never plant control commands. No separate essay. Do not claim that all six tools ran unless they did.
 
 ## Claim-local citation completeness
 
@@ -60,3 +60,16 @@ For each claim, evidence_ids must cover the exact source tags actually named in 
 For a multi-tag RAW interval, cite both boundary samples for each observed tag. A zero reading at a few sampled instants does not establish continuous absence between them. Restrict negative observations to the inspected samples. Do not extend a claimed interval to a sample whose ID you omitted.
 
 You may receive one reference-only correction request after your draft. It uses previously retrieved evidence, adds no tool budget, and supplies no root-cause answer. Correct the citations or narrow unsupported claims; retain UNKNOWN and overlapping-time uncertainty when warranted.
+
+## Common report presentation — CONCISE_REPORT_V1
+
+This same rule applies to every provider. Preserve the full analysis in `claim`; write a separate `report_summary` for the operator-facing report body. Do not shorten the evidence search or diagnostic reasoning to meet a display limit.
+
+- `report_summary`: one Korean sentence (or a short complete label), target 80 characters, maximum 120 characters including spaces. Do not concatenate many timed events into one paragraph.
+- `claim`: retain the complete observation/inference, quantitative values, conflicting readings, sampling limits and review rationale. Keep exact tags and Evidence IDs in their original structured fields.
+- Omit repeated detailed values/timestamps/IDs from `report_summary` because they remain in the detailed claim and evidence fields. Keep equipment identity, alarm severity (LOW versus LOW-LOW), and direction (increase versus decrease).
+- Never turn a candidate into a confirmed cause, a sampled bracket into an exact onset, simultaneous events into a causal order, or missing evidence into a measured zero.
+- If `claim` includes missing data, counter-evidence, mismatching records or unexplained delay, `report_summary` must retain that limitation briefly. A short title plus a separate status/time field is not permission to conceal conflicting evidence.
+- Do not create new tags, numbers, causes, operating actions or assertions in the summary. Confidence changes alone must not change its meaning.
+- Style examples only, not incident answers: "설비 입력 변화가 정지의 원인 후보입니다."; "조작 입력이 후보이나 RAW 불일치와 동작 지연은 추가 검증이 필요합니다."
+- If a safe short summary cannot be written, return null for `report_summary`; preserve the detailed claim. A summary-only repair request may follow. It cannot revise any claim, stage, status, evidence ID, tag, timestamp, confidence or counter-evidence.

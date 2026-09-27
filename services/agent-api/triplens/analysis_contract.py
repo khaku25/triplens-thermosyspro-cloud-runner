@@ -4,17 +4,19 @@ Python never creates a causal claim or accepts AI self-confirmation.
 from __future__ import annotations
 import math
 import re
+from .report_presentation import validate_summary
 VERSION='GROUNDED_ANALYSIS_V3'
 STATUSES={'CONFIRMED','CANDIDATE','OBSERVED','UNKNOWN'}
 LIST_FIELDS=('critical_events','propagation','causal_chain','counter_evidence')
 CLAIM_SCHEMA={'type':'object','properties':{
  'status':{'type':'string','enum':['CANDIDATE','OBSERVED','UNKNOWN']},
  'claim':{'type':'string','description':'한국어 설명. 관측과 추론을 구분하고 운전 조작 지시를 쓰지 마세요.'},
+ 'report_summary':{'type':['string','null'],'description':'본문용 한국어 한 문장, 공백 포함 120자 이내. 상세 수치/시각/태그는 claim과 근거 필드에 보존. 결측·반증·불일치·지연은 삭제하지 마세요.'},
  'evidence_ids':{'type':'array','items':{'type':'string'}},'related_tags':{'type':'array','items':{'type':'string'}},
  'model_time_s':{'type':['number','null']},
  'time_interval_s':{'type':['array','null'],'items':{'type':'number'},'minItems':2,'maxItems':2},
  'ai_confidence':{'type':['number','null'],'minimum':0,'maximum':1}},
- 'required':['status','claim','evidence_ids','related_tags','model_time_s','time_interval_s','ai_confidence'],'additionalProperties':False}
+ 'required':['status','claim','report_summary','evidence_ids','related_tags','model_time_s','time_interval_s','ai_confidence'],'additionalProperties':False}
 ANALYSIS_SCHEMA={'type':'object','properties':{
  **{name:{'type':'array','items':CLAIM_SCHEMA} for name in LIST_FIELDS},'primary_cause':CLAIM_SCHEMA,'direct_trigger':CLAIM_SCHEMA,
  'additional_evidence_required':{'type':'array','items':{'type':'string'}},'review_recommendations':{'type':'array','items':{'type':'string'}}},
@@ -89,7 +91,8 @@ def normalize_claim(value,stage,store=None):
     if stage=='primary_cause' and not valid_ids:claim='선행 원인을 뒷받침하는 조회 근거가 부족합니다. 원인은 미확인입니다.'
     logic_ids=list(dict.fromkeys(i for r in refs for i in r.get('logic_ids',[])))
     logic_ok=bool(store and tags and all(store.logic_matches([t]) for t in tags))
-    return {'stage':stage,'status':status,'claim':claim,'description':claim,'evidence_ids':valid_ids,'related_tags':tags,
+    report_summary, summary_notes = validate_summary({**src, 'claim':claim, 'status':status, 'model_time_s':when, 'time_interval_s':interval})
+    return {'report_summary':report_summary,'report_summary_notes':summary_notes,'stage':stage,'status':status,'claim':claim,'description':claim,'evidence_ids':valid_ids,'related_tags':tags,
             'original_tags':list(dict.fromkeys(r.get('original_tag') or r.get('tag') for r in refs if r.get('original_tag') or r.get('tag'))),
             'model_time_s':when,'time_interval_s':interval,'evidence_time_range_s':[times[0],times[-1]] if times else None,
             'recorded_time':str(when) if when is not None else '','wall_time_utc':wall,'ai_confidence':confidence,'ai_proposed_status':src.get('status',''),
@@ -115,6 +118,11 @@ def normalize_analysis(raw=None,store=None,trace=None):
         for item in out['propagation']:
             if item['model_time_s'] is not None and item['model_time_s']<trigger['model_time_s']-1e-6:
                 item['status']='UNKNOWN';item['verification_notes'].append('Direct Trigger 이전 관측: 파급 분류 검토 필요');issues.append('파급 항목의 시간 선후관계 불일치')
+    # Chronology may have changed status after normalize_claim. Never show a stale confident summary.
+    for item in all_claims:
+        summary, notes = validate_summary(item)
+        item['report_summary'] = summary
+        item['report_summary_notes'] = list(dict.fromkeys(item.get('report_summary_notes', []) + notes))
     traces=trace or [];successful={t.get('name') for t in traces if t.get('status')=='OK'}
     has_raw=any(t.get('status')=='OK' and t.get('raw_evidence_count',0)>0 for t in traces);has_logic='get_logic_context' in successful
     if not has_raw:issues.append('RAW Tool 조회 성공 기록 없음')

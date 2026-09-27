@@ -59,6 +59,28 @@
     return String(src.claim ?? src.description ?? src.summary ?? src.title ?? src.text ?? '').trim();
   }
 
+  // Presentation-only guards; not a proof of semantic/engineering correctness.
+  const REPORT_SUMMARY_LIMIT = 120;
+  function reportSummary(item = {}) {
+    const value = item?.report_summary;
+    if (typeof value !== 'string') return '';
+    const summary = value.trim();
+    const detail = String(item.claim || item.description || '');
+    if (!summary || [...summary].length > REPORT_SUMMARY_LIMIT || /[\r\n]/.test(summary)) return '';
+    if ([...summary.matchAll(/(?<!\d)[.!?](?=\s|$)/g)].length > 1) return '';
+    if (/확정|CONFIRMED/i.test(summary) && item.status !== 'CONFIRMED') return '';
+    if (item.status === 'UNKNOWN' && !/미확인|불확실|확인.*필요|근거.*부족|UNKNOWN/i.test(summary)) return '';
+    for (const pattern of [/결측|미수집|누락|확인 불가/, /불일치|반증|상충/, /지연/]) {
+      if (pattern.test(detail) && !pattern.test(summary)) return '';
+    }
+    const allowed = `${detail} ${item.model_time_s} ${JSON.stringify(item.time_interval_s)}`;
+    const numericPattern = /(?<![A-Za-z0-9_])[+-]?\d+(?:\.\d+)?/g;
+    const allowedNumbers = new Set([...allowed.matchAll(numericPattern)].map(match => Number(match[0])));
+    if ([...summary.matchAll(numericPattern)].some(match => !allowedNumbers.has(Number(match[0])))) return '';
+    if ([...summary.matchAll(/\bvpp[A-Za-z0-9_.\[\]]+/g)].some(match => !detail.includes(match[0]) && !array(item.related_tags).includes(match[0]))) return '';
+    return summary;
+  }
+
   function normalizeClaim(value, stage, context = {}) {
     const src = value && typeof value === 'object' && !Array.isArray(value)
       ? { ...value }
@@ -105,6 +127,8 @@
       status_label: statusLabel(status),
       claim,
       description: claim,
+      report_summary: reportSummary({...src, claim, status}) || null,
+      report_summary_notes: array(src.report_summary_notes),
       evidence_ids: ids,
       related_tags: tags,
       recorded_time: recordedTime,
@@ -179,6 +203,8 @@
     VALID_STATUSES,
     STATUS_LABELS,
     statusLabel,
+    reportSummary,
+    REPORT_SUMMARY_LIMIT,
     normalizeClaim,
     normalizeAnalysis,
   };
