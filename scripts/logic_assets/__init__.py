@@ -113,7 +113,7 @@ def _search_model(live_model, source_tags, source_rules):
 def make_repository(tags, rules, census, *, source_tags=(), source_rules=(), layout_xml=None):
     model=validate_model(tags,rules,census)
     searchable=_search_model(model,source_tags,source_rules)
-    xml=build_document(searchable,layout_xml)
+    xml=build_document(searchable,layout_xml,live_model=model)
     index=create_index(searchable,xml,live_model=model)
     drawing_master=create_drawing_master(
         xml,
