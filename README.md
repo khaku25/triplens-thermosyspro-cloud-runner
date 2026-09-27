@@ -119,7 +119,7 @@ npm run dev
 
 ## 10. 개발 이력과 기준 문서
 
-TripLens 웹/API의 주요 변경을 Git 커밋 기록으로 정리한 [개발일지](docs/DEVELOPMENT_LOG.md)를 참고하세요. 전체 이력은 [GitHub 커밋 목록](https://github.com/khaku25/triplens-thermosyspro-cloud-runner/commits/main/)에서 확인할 수 있습니다.
+9월 7일부터 데이터·실행 기반, TripLens 웹/API, 근거 탐색과 보고서 검토 흐름까지 정리한 [개발일지](docs/DEVELOPMENT_LOG.md)를 참고하세요. 전체 이력은 [GitHub 커밋 목록](https://github.com/khaku25/triplens-thermosyspro-cloud-runner/commits/main/)에서 확인할 수 있습니다.
 
 - [TripLens 데이터 및 책임 경계](docs/TRIPLENS_WORKFLOW_BOUNDARY.md)
 - [간결한 보고서 작성 정책](docs/CONCISE_REPORT_POLICY.md)
