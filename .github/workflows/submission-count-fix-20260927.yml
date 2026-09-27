@@ -105,11 +105,11 @@ jobs:
             assert not v.locator('#fatal').inner_text()
             for n,page in enumerate(pages,1):
               v.select_option('#page-select',page.get('id'))
-              check=v.eval_on_selector('#diagram', '''svg=>{const ns=[...svg.querySelectorAll('g.node')]], overlaps=[], overflow=[];for(let i=0;i<ns.length;i++){const a=ns[i],ra=a.querySelector('rect'),ta=a.querySelector('text'),aa=a.transform.baseVal.consolidate().matrix; const ab={x:aa.e,y:aa.f,w:+ra.getAttribute('width'),h:+ra.getAttribute('height')};if(ta){const t=ta.getBBox();if(t.x < -1 || t.y < -1 || t.x+t.width>ab.w+1 || t.y+t.height>ab.h+1)overflow.push(a.dataset.cellId);}for(let j=i+1;j<ns.length;j++){const b=ns[j],rb=b.querySelector('rect'),bb=b.transform.baseVal.consolidate().matrix; if(Math.min(ab.x+ab.w,bb.e+(+rb.getAttribute('width')))>Math.max(ab.x,bb.e) && Math.min(ab.y+ab.h,bb.f+(+rb.getAttribute('height')))>Math.max(ab.y,bb.f))overlaps.push([a.dataset.cellId,b.dataset.cellId]);}}return {overlaps,overflow};}'''.replace("')]],", "')],"))
+              check=v.eval_on_selector('#diagram', '''svg=>{const ns=[...svg.querySelectorAll('g.node')], overlaps=[], overflow=[];for(let i=0;i<ns.length;i++){const a=ns[i],ra=a.querySelector('rect'),ta=a.querySelector('text'),aa=a.transform.baseVal.consolidate().matrix; const ab={x:aa.e,y:aa.f,w:+ra.getAttribute('width'),h:+ra.getAttribute('height')};if(ta){const t=ta.getBBox();if(t.x < -1 || t.y < -1 || t.x+t.width>ab.w+1 || t.y+t.height>ab.h+1)overflow.push(a.dataset.cellId);}for(let j=i+1;j<ns.length;j++){const b=ns[j],rb=b.querySelector('rect'),bb=b.transform.baseVal.consolidate().matrix; if(Math.min(ab.x+ab.w,bb.e+(+rb.getAttribute('width')))>Math.max(ab.x,bb.e) && Math.min(ab.y+ab.h,bb.f+(+rb.getAttribute('height')))>Math.max(ab.y,bb.f))overlaps.push([a.dataset.cellId,b.dataset.cellId]);}}return {overlaps,overflow};}''')
               assert not check['overlaps'] and not check['overflow'],(n,check)
               results.append({'page':n,'name':page.get('name'),**check})
               if n==1:
-                assert 'live 53개 로직' in v.locator('#diagram').inner_text()
+                assert 'live 53개 로직' in v.locator('#diagram').text_content()
                 svg=v.eval_on_selector('#diagram', '''e=>{const c=e.cloneNode(true);c.removeAttribute('class');c.removeAttribute('style');c.setAttribute('width',e.dataset.width);c.setAttribute('height',e.dataset.height);c.setAttribute('xmlns','http://www.w3.org/2000/svg');return new XMLSerializer().serializeToString(c);}''')
                 (out/'001_00_Logic_Master.svg').write_text(svg)
                 printer=browser.new_page();printer.emulate_media(media='screen')
