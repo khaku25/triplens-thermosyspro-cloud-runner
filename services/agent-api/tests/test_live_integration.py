@@ -117,6 +117,13 @@ class LiveIntegrationTests(unittest.TestCase):
         self.event.write_text(text,encoding='utf-8')
         with self.assertRaises(ValueError): bridge.build_store(self.event,self.raw)
 
+    def test_mojibaked_utf8_bom_is_removed_from_event_header_before_validation(self):
+        text=self.event.read_text(encoding='utf-8-sig')
+        self.event.write_text('ï»¿'+text,encoding='utf-8')
+        store=bridge.build_store(self.event,self.raw)
+        self.assertEqual(len(store.event_rows),4)
+        self.assertEqual(store.event_rows[0]['event_id'],'E-1')
+
     def test_case_variant_answer_metadata_is_blocked(self):
         with self.raw.open(encoding='utf-8-sig',newline='') as f:
             r=csv.DictReader(f); fields=r.fieldnames+['Expected_Root_Cause']; rows=list(r)

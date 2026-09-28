@@ -8,7 +8,7 @@ import csv
 import re
 from collections import Counter,defaultdict
 from pathlib import Path
-from .agent_tools import EvidenceStore,RAW_META_COLUMNS,FORBIDDEN,_event_public,_finite,_clamp_int
+from .agent_tools import EvidenceStore,RAW_META_COLUMNS,FORBIDDEN,_event_public,_finite,_clamp_int,_normalize_csv_header
 META=RAW_META_COLUMNS|{'time'}
 VERSION='V8_EVIDENCE_INTEGRATION_V3'
 LATCH_ALIASES={
@@ -28,7 +28,9 @@ def finite_time(value):
 
 def read_checked(path,kind):
     with Path(path).open(encoding='utf-8-sig',newline='') as f:
-        reader=csv.DictReader(f,strict=True);fields=reader.fieldnames or []
+        reader=csv.DictReader(f,strict=True)
+        fields=[_normalize_csv_header(field) for field in (reader.fieldnames or [])]
+        reader.fieldnames=fields
         normalized=[re.sub(r'[^a-z0-9]+','_',x.strip().lower()).strip('_') for x in fields]
         if len(fields)!=len(set(fields)) or len(normalized)!=len(set(normalized)):raise ValueError(f'{kind}: 중복 CSV 열 이름')
         blocked=set(normalized)&(FORBIDDEN|{'test_audit','expected_answer','fault_injection_metadata'})

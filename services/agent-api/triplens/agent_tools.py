@@ -53,10 +53,26 @@ def _finite(value: Any) -> float | None:
     return number if math.isfinite(number) else None
 
 
+_CSV_BOM_PREFIXES = ('Ã¯Â»Â¿', 'ï»¿', '\ufeff')
+
+
+def _normalize_csv_header(value: Any) -> str:
+    """Remove real or mojibaked UTF-8 BOM text from a CSV column name."""
+    header = str(value or '').strip()
+    while True:
+        for prefix in _CSV_BOM_PREFIXES:
+            if header.startswith(prefix):
+                header = header[len(prefix):].lstrip()
+                break
+        else:
+            return header
+
+
 def _read_csv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
     with Path(path).open("r", encoding="utf-8-sig", newline="") as stream:
         reader = csv.DictReader(stream)
-        fields = list(reader.fieldnames or [])
+        fields = [_normalize_csv_header(field) for field in (reader.fieldnames or [])]
+        reader.fieldnames = fields
         leaked = sorted(FORBIDDEN.intersection(fields))
         if leaked:
             raise ValueError(f"answer/fault metadata leaked: {leaked}")

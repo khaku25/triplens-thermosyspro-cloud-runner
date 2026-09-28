@@ -3,7 +3,8 @@
   "git": {
     "deploymentEnabled": {
       "**": false,
-      "main": true
+      "main": true,
+      "codex/gpt-6-luna-20260926": true
     }
   }
 }
