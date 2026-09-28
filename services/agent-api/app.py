@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import logging
 import os
 import tempfile
 import uuid
@@ -13,9 +14,11 @@ from starlette.concurrency import run_in_threadpool
 from bridge import build_store,public_contract,sha256_files
 from analysis_providers import (DEFAULT_ANALYSIS_PROVIDER,AnalysisProviderNotConfigured,
     UnknownAnalysisProvider,available_analysis_providers,provider_configuration,run_selected_analysis)
+from analysis_trace import build_provider_failure_detail,log_provider_failure
 from triplens.evidence_context import VERSION
 MAX_DIRECT_UPLOAD_BYTES=4_000_000
 app=FastAPI(title='TripLens Agent API',version='0.3.0')
+logger=logging.getLogger('triplens.agent_api')
 origins=['http://localhost:3000','http://127.0.0.1:3000','https://triplens-web-preview.vercel.app']
 configured=os.getenv('TRIPLENS_WEB_ORIGIN','').strip()
 if configured:origins.append(configured)
@@ -75,6 +78,9 @@ async def analyze(event:UploadFile=File(...),raw:UploadFile=File(...),provider:s
         if store.readiness()['status']!='PASS':raise HTTPException(422,detail={'stage':'time_alignment','message':'조회 가능한 EVENT와 최소 2시점의 RAW 및 공통 시간구간이 필요합니다.','validation':store.validation})
         try:analysis=await run_in_threadpool(run_selected_analysis,configuration['id'],store,run_id=run['run_id'],data_digest=run['data_digest'])
         except AnalysisProviderNotConfigured as exc:raise HTTPException(503,detail=f"{configuration['label']} 서버 API 키가 설정되지 않았습니다.") from exc
-        except Exception as exc:raise HTTPException(502,detail={'stage':f"{configuration['id']}_agent",'error_type':type(exc).__name__,'message':f"{configuration['label']} 분석이 완료되지 않았습니다. 입력은 유지됩니다. 서버 API 인증·한도·응답 형식을 확인하세요."}) from exc
+        except Exception as exc:
+            detail=build_provider_failure_detail(configuration['id'],configuration['label'],exc)
+            log_provider_failure(logger,detail)
+            raise HTTPException(502,detail=detail) from exc
         run.update(analysis=analysis,evidence_catalog=store.evidence_catalog(),events=[store.describe_event(r) for r in store.event_rows[:1000]],events_truncated=len(store.event_rows)>1000,tool_contract=store.tool_manifest());return run
     finally:temp.cleanup()
