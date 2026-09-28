@@ -21,6 +21,16 @@ from triplens.report_presentation import repair_report_summaries
 
 DEFAULT_MODEL='gpt-6-luna'
 RESPONSES_URL='https://api.openai.com/v1/responses'
+OPENAI_STYLE_GUIDANCE = """## Korean report style
+Write all human-facing claims and review text in a concise, objective Korean style suitable for an official plant incident report. Use polite formal 합니다체, such as '~합니다', '~했습니다', '~입니다', and '~필요합니다'. Avoid casual speech, plain endings such as '~한다/~했다/~이다', filler, and unnecessarily long explanations.
+
+Prefer a direct finding followed by a separate limitation when needed. For example: '입력 변화가 확인됐습니다. 다만, 표본 간격 때문에 정확한 발생 시각은 확인되지 않았습니다.' Keep engineering terms understandable, preserve exact tag names and Evidence IDs, and do not repeat the same caveat.
+
+This is a style instruction only. Preserve every evidence boundary, status, uncertainty, causal limitation, and human-review requirement from the analysis contract. Never make a claim more certain or less certain to improve its wording."""
+
+
+def _openai_system_prompt():
+    return f"{_system_prompt()}\n\n{OPENAI_STYLE_GUIDANCE}"
 
 
 class _ResponsesEndpoint:
@@ -72,7 +82,7 @@ def _create_response(client,model,history,*,tools_enabled):
     payload={
         'model':model,
         'store':False,
-        'instructions':_system_prompt(),
+        'instructions':_openai_system_prompt(),
         'input':history,
         'text':{'format':{'type':'json_schema','name':'triplens_analysis','schema':ANALYSIS_SCHEMA,'strict':True}},
     }

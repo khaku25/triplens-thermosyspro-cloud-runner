@@ -71,6 +71,8 @@ class OpenAIAgentTests(unittest.TestCase):
         self.assertEqual(requests[0][0].full_url,'https://api.openai.com/v1/responses')
         self.assertEqual(requests[0][0].get_header('Authorization'),'Bearer offline-test-key')
         self.assertEqual(requests[0][1]['model'],'gpt-6-luna')
+        self.assertIn('Use polite formal 합니다체',requests[0][1]['instructions'])
+        self.assertIn('Preserve every evidence boundary',requests[0][1]['instructions'])
         self.assertIn('OPENAI_AGENT',requests[0][1]['input'][0]['content'][0]['text'])
         self.assertNotIn('GEMINI_AGENT',requests[0][1]['input'][0]['content'][0]['text'])
         self.assertFalse(requests[0][1]['store'])
