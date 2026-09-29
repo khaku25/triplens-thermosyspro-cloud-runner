@@ -1,0 +1,22 @@
+setCommandLineOptions("--indexReductionMethod=dynamicStateSelection");
+setCommandLineOptions("-d=initialization,aliasConflicts");
+
+loadModel(Modelica, {"4.0.0"});
+getErrorString();
+
+loadFile("/workspace/vendor/ThermoSysPro/ThermoSysPro/package.mo");
+getErrorString();
+
+checkModel(ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC);
+getErrorString();
+
+cd("/workspace/build/v42");
+buildModel(
+  ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC,
+  startTime=0,
+  stopTime=1,
+  numberOfIntervals=10,
+  tolerance=1e-3,
+  method="dassl",
+  outputFormat="csv");
+getErrorString();
