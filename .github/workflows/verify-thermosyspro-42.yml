@@ -1,0 +1,165 @@
+name: Verify ThermoSysPro 4.2 physical simulation
+
+on:
+  push:
+    branches:
+      - experiment/thermosyspro-4.2
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/verify-thermosyspro-42.yml"
+      - "modelica/**"
+      - "scripts/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  physical-simulation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      OPENMODELICA_IMAGE: openmodelica/openmodelica:v1.27.0-minimal
+      THERMOSYSPRO_SHA: a896ab75ce22162369e7fa4ce79927eeca44ad4a
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and verify official ThermoSysPro 4.2
+        run: |
+          set -euo pipefail
+          mkdir -p vendor build/omhome outputs/tsp42 "$RUNNER_TEMP/tsp42"
+          archive_url="https://gitlab.pam-retd.fr/thermosysproandco/ThermoSysPro/-/archive/$THERMOSYSPRO_SHA/ThermoSysPro-$THERMOSYSPRO_SHA.zip"
+          curl --fail --location --retry 3 --retry-delay 2 "$archive_url" \
+            --output "$RUNNER_TEMP/tsp42/ThermoSysPro.zip"
+          package_file="$(find "$RUNNER_TEMP/tsp42" -type f \
+            -path '*/ThermoSysPro/package.mo' -print -quit)"
+          test -n "$package_file"
+          archive_root="$(dirname "$(dirname "$package_file")")"
+          mv "$archive_root" vendor/ThermoSysPro
+          package_file=vendor/ThermoSysPro/ThermoSysPro/package.mo
+          grep -Eq 'ThermoSysPro Version 4\.2|version[[:space:]]*=[[:space:]]*"(4\.2|4\.2\.0)' \
+            "$package_file"
+          archive_sha256="$(sha256sum "$RUNNER_TEMP/tsp42/ThermoSysPro.zip" | cut -d' ' -f1)"
+          printf 'revision=%s\narchive_sha256=%s\n' \
+            "$THERMOSYSPRO_SHA" "$archive_sha256" \
+            | tee outputs/tsp42/source-identity.txt
+          grep -nE 'Version 4\.2|version[[:space:]]*=' "$package_file" | head -n 5
+
+      - name: Run upstream combined-cycle reference on ThermoSysPro 4.2
+        run: |
+          set -euo pipefail
+          cat > build/tsp42-reference.mos <<'MOS'
+          setCommandLineOptions("--std=3.4");
+          if not installPackage(Modelica, "4.0.0", exactMatch=true) then
+            print(getErrorString());
+            exit(1);
+          end if;
+          if not loadModel(Modelica, {"4.0.0"}) then
+            print(getErrorString());
+            exit(1);
+          end if;
+          if not loadFile("/workspace/vendor/ThermoSysPro/ThermoSysPro/package.mo") then
+            print(getErrorString());
+            exit(1);
+          end if;
+          getVersion(Modelica);
+          getVersion(ThermoSysPro);
+          cd("/workspace/build");
+          simulate(
+            ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC,
+            startTime=0,
+            stopTime=0.04,
+            numberOfIntervals=10,
+            tolerance=1e-3,
+            method="dassl",
+            outputFormat="csv",
+            fileNamePrefix="tsp42_reference");
+          getErrorString();
+          MOS
+          timeout --signal=TERM --kill-after=30s 18m \
+            docker run --rm \
+              -v "$PWD/build/omhome:/root" \
+              -v "$PWD:/workspace" \
+              -w /workspace \
+              "$OPENMODELICA_IMAGE" \
+              omc /workspace/build/tsp42-reference.mos \
+            | tee outputs/tsp42/upstream-reference.log
+          if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' \
+              outputs/tsp42/upstream-reference.log; then
+            exit 1
+          fi
+          test -s build/tsp42_reference_res.csv
+
+      - name: Render the existing TripLens physical trip case
+        run: |
+          set -euo pipefail
+          python3 scripts/render_modelica.py \
+            --trip-time 2 \
+            --trip-ramp-duration 5 \
+            --stop-time 10 \
+            --intervals 10000
+          plant=vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
+          python3 scripts/patch_turbine_bypass_model.py --source "$plant"
+          python3 scripts/patch_stodola_turbine.py \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
+
+      - name: Simulate the TripLens physical model with ThermoSysPro 4.2
+        run: |
+          set -euo pipefail
+          cat > build/tsp42-triplens.mos <<'MOS'
+          setCommandLineOptions("--std=3.4");
+          if not loadModel(Modelica, {"4.0.0"}) then
+            print(getErrorString());
+            exit(1);
+          end if;
+          if not loadFile("/workspace/vendor/ThermoSysPro/ThermoSysPro/package.mo") then
+            print(getErrorString());
+            exit(1);
+          end if;
+          if not loadFile("/workspace/build/TripLens_CombinedCycle_TripTAC.mo") then
+            print(getErrorString());
+            exit(1);
+          end if;
+          getVersion(Modelica);
+          getVersion(ThermoSysPro);
+          cd("/workspace/build");
+          simulate(
+            TripLens_CombinedCycle_TripTAC,
+            startTime=0,
+            stopTime=10,
+            numberOfIntervals=10000,
+            tolerance=1e-3,
+            method="dassl",
+            outputFormat="csv",
+            fileNamePrefix="tsp42_triplens_trip");
+          getErrorString();
+          MOS
+          timeout --signal=TERM --kill-after=30s 25m \
+            docker run --rm \
+              -v "$PWD/build/omhome:/root" \
+              -v "$PWD:/workspace" \
+              -w /workspace \
+              "$OPENMODELICA_IMAGE" \
+              omc /workspace/build/tsp42-triplens.mos \
+            | tee outputs/tsp42/triplens-physical-trip.log
+          if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' \
+              outputs/tsp42/triplens-physical-trip.log; then
+            exit 1
+          fi
+          test -s build/tsp42_triplens_trip_res.csv
+          printf 'THERMOSYSPRO_42_TRIPLENS_PHYSICAL_SIMULATION_PASS\n' \
+            | tee outputs/tsp42/result.txt
+
+      - name: Upload ThermoSysPro 4.2 simulation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: thermosyspro-42-physical-simulation
+          path: |
+            outputs/tsp42/**
+            build/tsp42_reference_res.csv
+            build/tsp42_triplens_trip_res.csv
+          if-no-files-found: warn
+          retention-days: 14
