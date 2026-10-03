@@ -133,6 +133,19 @@ class TurbineBypassPatchTests(unittest.TestCase):
         self.assertIn("vppHPBypassMassFlow = vppHPBypassValve.Q", patched)
         self.assertIn("vppCondenserPressure = Condenseur.P", patched)
 
+    def test_patch_supports_model_without_legacy_csthp_anchor(self) -> None:
+        source = UPSTREAM_STUB.replace(
+            "  parameter Real CstHP(fixed=false,start=7618660.65374636);\\n",
+            "",
+        )
+        self.assertNotIn("CstHP", source)
+
+        patched = patch_model(source)
+
+        self.assertIn(MARKER, patched)
+        self.assertIn("parameter Real vppAdmissionStroke95", patched)
+        self.assertLess(patched.index(MARKER), patched.index("\\nequation\\n"))
+
     def test_patch_fails_closed_when_reapplied(self) -> None:
         with self.assertRaisesRegex(ValueError, "already patched"):
             patch_model(patch_model(UPSTREAM_STUB))
