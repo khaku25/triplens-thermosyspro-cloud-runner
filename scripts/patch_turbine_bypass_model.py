@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import re
 import tempfile
 from pathlib import Path
 
@@ -447,16 +448,23 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
 
 
 def replace_connect_statement(text: str, call: str, replacement: str) -> str:
-    start_token = f"  connect({call})"
-    start = text.find(start_token)
-    if start < 0:
+    normalize = lambda value: "".join(value.split())
+    expected = normalize(call)
+    matches = [
+        match
+        for match in re.finditer(
+            r"(?m)^[ \t]*connect\((.*?)\);",
+            text,
+            re.DOTALL,
+        )
+        if normalize(match.group(1)) == expected
+    ]
+    if not matches:
         raise ValueError(f"missing upstream connection: {call}")
-    end = text.find(";", start)
-    if end < 0:
-        raise ValueError(f"unterminated upstream connection: {call}")
-    if text.find(start_token, end + 1) >= 0:
+    if len(matches) != 1:
         raise ValueError(f"duplicate upstream connection: {call}")
-    return text[:start] + replacement + text[end + 1 :]
+    match = matches[0]
+    return text[:match.start()] + replacement + text[match.end():]
 
 
 def patch_model(source: str) -> str:
