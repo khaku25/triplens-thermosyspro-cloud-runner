@@ -21,15 +21,29 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
-      OPENMODELICA_IMAGE: openmodelica/openmodelica:v1.27.0-minimal
       THERMOSYSPRO_SHA: a896ab75ce22162369e7fa4ce79927eeca44ad4a
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install OpenModelica 1.28 development nightly
+        run: |
+          set -euo pipefail
+          mkdir -p outputs/tsp42
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates curl gnupg
+          curl -fsSL https://build.openmodelica.org/apt/openmodelica.asc \
+            | sudo gpg --dearmor -o /usr/share/keyrings/openmodelica-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/openmodelica-keyring.gpg] https://build.openmodelica.org/apt noble nightly" \
+            | sudo tee /etc/apt/sources.list.d/openmodelica.list
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends omc
+          omc --version | tee outputs/tsp42/openmodelica-version.txt
+          grep -q '1.28.0-dev' outputs/tsp42/openmodelica-version.txt
+
       - name: Download and verify official ThermoSysPro 4.2
         run: |
           set -euo pipefail
-          mkdir -p vendor build/omhome outputs/tsp42 "$RUNNER_TEMP/tsp42"
+          mkdir -p vendor build outputs/tsp42 "$RUNNER_TEMP/tsp42"
           archive_url="https://gitlab.pam-retd.fr/thermosysproandco/ThermoSysPro/-/archive/$THERMOSYSPRO_SHA/ThermoSysPro-$THERMOSYSPRO_SHA.zip"
           curl --fail --location --retry 3 --retry-delay 2 "$archive_url" \
             --output "$RUNNER_TEMP/tsp42/ThermoSysPro.zip"
@@ -51,8 +65,10 @@ jobs:
       - name: Run upstream combined-cycle reference on ThermoSysPro 4.2
         run: |
           set -euo pipefail
-          cat > build/tsp42-reference.mos <<'MOS'
+          cat > build/tsp42-reference.mos <<MOS
           setCommandLineOptions("--std=3.4");
+          setMatchingAlgorithm("PFPlusExt");
+          setIndexReductionMethod("dynamicStateSelection");
           if not installPackage(Modelica, "4.0.0", exactMatch=true) then
             print(getErrorString());
             exit(1);
@@ -61,13 +77,13 @@ jobs:
             print(getErrorString());
             exit(1);
           end if;
-          if not loadFile("/workspace/vendor/ThermoSysPro/ThermoSysPro/package.mo") then
+          if not loadFile("$PWD/vendor/ThermoSysPro/ThermoSysPro/package.mo") then
             print(getErrorString());
             exit(1);
           end if;
           getVersion(Modelica);
           getVersion(ThermoSysPro);
-          cd("/workspace/build");
+          cd("$PWD/build");
           simulate(
             ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC,
             startTime=0,
@@ -80,12 +96,7 @@ jobs:
           getErrorString();
           MOS
           timeout --signal=TERM --kill-after=30s 18m \
-            docker run --rm \
-              -v "$PWD/build/omhome:/root" \
-              -v "$PWD:/workspace" \
-              -w /workspace \
-              "$OPENMODELICA_IMAGE" \
-              omc /workspace/build/tsp42-reference.mos \
+            omc "$PWD/build/tsp42-reference.mos" \
             | tee outputs/tsp42/upstream-reference.log
           if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' \
               outputs/tsp42/upstream-reference.log; then
@@ -109,23 +120,25 @@ jobs:
       - name: Simulate the TripLens physical model with ThermoSysPro 4.2
         run: |
           set -euo pipefail
-          cat > build/tsp42-triplens.mos <<'MOS'
+          cat > build/tsp42-triplens.mos <<MOS
           setCommandLineOptions("--std=3.4");
+          setMatchingAlgorithm("PFPlusExt");
+          setIndexReductionMethod("dynamicStateSelection");
           if not loadModel(Modelica, {"4.0.0"}) then
             print(getErrorString());
             exit(1);
           end if;
-          if not loadFile("/workspace/vendor/ThermoSysPro/ThermoSysPro/package.mo") then
+          if not loadFile("$PWD/vendor/ThermoSysPro/ThermoSysPro/package.mo") then
             print(getErrorString());
             exit(1);
           end if;
-          if not loadFile("/workspace/build/TripLens_CombinedCycle_TripTAC.mo") then
+          if not loadFile("$PWD/build/TripLens_CombinedCycle_TripTAC.mo") then
             print(getErrorString());
             exit(1);
           end if;
           getVersion(Modelica);
           getVersion(ThermoSysPro);
-          cd("/workspace/build");
+          cd("$PWD/build");
           simulate(
             TripLens_CombinedCycle_TripTAC,
             startTime=0,
@@ -138,12 +151,7 @@ jobs:
           getErrorString();
           MOS
           timeout --signal=TERM --kill-after=30s 25m \
-            docker run --rm \
-              -v "$PWD/build/omhome:/root" \
-              -v "$PWD:/workspace" \
-              -w /workspace \
-              "$OPENMODELICA_IMAGE" \
-              omc /workspace/build/tsp42-triplens.mos \
+            omc "$PWD/build/tsp42-triplens.mos" \
             | tee outputs/tsp42/triplens-physical-trip.log
           if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' \
               outputs/tsp42/triplens-physical-trip.log; then
