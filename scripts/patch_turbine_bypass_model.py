@@ -465,15 +465,9 @@ def patch_model(source: str) -> str:
 
     source = replace_once(
         source,
-        "  parameter Real CstHP(fixed=false,start=7618660.65374636)",
-        PARAMETERS + "  parameter Real CstHP(fixed=false,start=7618660.65374636)",
-        "parameter insertion",
-    )
-    source = replace_once(
-        source,
         "\nequation\n",
-        COMPONENTS + "\nequation\n" + EQUATIONS,
-        "component/equation insertion",
+        PARAMETERS + COMPONENTS + "\nequation\n" + EQUATIONS,
+        "parameter/component/equation insertion",
     )
 
     source = replace_connect_statement(
