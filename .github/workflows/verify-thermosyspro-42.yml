@@ -33,6 +33,7 @@ jobs:
           archive_url="https://gitlab.pam-retd.fr/thermosysproandco/ThermoSysPro/-/archive/$THERMOSYSPRO_SHA/ThermoSysPro-$THERMOSYSPRO_SHA.zip"
           curl --fail --location --retry 3 --retry-delay 2 "$archive_url" \
             --output "$RUNNER_TEMP/tsp42/ThermoSysPro.zip"
+          unzip -q "$RUNNER_TEMP/tsp42/ThermoSysPro.zip" -d "$RUNNER_TEMP/tsp42/unpacked"
           package_file="$(find "$RUNNER_TEMP/tsp42" -type f \
             -path '*/ThermoSysPro/package.mo' -print -quit)"
           test -n "$package_file"
