@@ -146,6 +146,19 @@ class TurbineBypassPatchTests(unittest.TestCase):
         self.assertIn("parameter Real vppAdmissionStroke95", patched)
         self.assertLess(patched.index(MARKER), patched.index("\nequation\n"))
 
+    def test_patch_matches_upstream_connections_with_flexible_whitespace(self) -> None:
+        source = UPSTREAM_STUB.replace(
+            "connect(Temperature.y,SourceFumees. ITemperature);",
+            "connect(Temperature.y, SourceFumees.ITemperature);",
+        )
+
+        patched = patch_model(source)
+
+        self.assertIn(
+            "connect(vppGTExhaustTemperatureCommand, SourceFumees.ITemperature);",
+            patched,
+        )
+
     def test_patch_fails_closed_when_reapplied(self) -> None:
         with self.assertRaisesRegex(ValueError, "already patched"):
             patch_model(patch_model(UPSTREAM_STUB))
