@@ -105,6 +105,9 @@ jobs:
           fi
           test -s build/tsp42_reference_res.csv
 
+      - name: Test the version-independent turbine patch
+        run: python3 -m unittest discover -s tests -p "test_turbine_bypass_patch.py"
+
       - name: Render the existing TripLens physical trip case
         run: |
           set -euo pipefail
