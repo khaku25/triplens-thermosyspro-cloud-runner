@@ -62,7 +62,7 @@ jobs:
             | tee outputs/tsp42/source-identity.txt
           grep -nE 'Version 4\.2|version[[:space:]]*=' "$package_file" | head -n 5
 
-      - name: Diagnostic reference: upstream combined-cycle on ThermoSysPro 4.2
+      - name: Diagnostic upstream combined-cycle reference on ThermoSysPro 4.2
         continue-on-error: true
         run: |
           set -euo pipefail
