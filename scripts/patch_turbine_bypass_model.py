@@ -131,7 +131,7 @@ PARAMETERS = f'''  // {MARKER}
     ThermoSysPro.WaterSteam.Connectors.FluidInlet C1;
     ThermoSysPro.WaterSteam.Connectors.FluidOutlet C2;
     ThermoSysPro.Units.xSI.Cv Cv(start=0);
-    ThermoSysPro.Units.xSI.DifferentialPressure deltaP;
+    Modelica.Units.SI.Pressure deltaP;
     Modelica.Units.SI.MassFlowRate Q(start=0);
   equation
     C1.Q = C2.Q;

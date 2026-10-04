@@ -93,9 +93,10 @@ end StodolaTurbine;
         patched = patch_model(UPSTREAM_STUB)
 
         self.assertIn("ThermoSysPro.Units.xSI.Cv Cvmax", patched)
-        self.assertIn("ThermoSysPro.Units.xSI.DifferentialPressure deltaP", patched)
+        self.assertIn("Modelica.Units.SI.Pressure deltaP", patched)
         self.assertNotIn("ThermoSysPro.Units.Cv", patched)
         self.assertNotIn("ThermoSysPro.Units.DifferentialPressure", patched)
+        self.assertNotIn("ThermoSysPro.Units.xSI.DifferentialPressure", patched)
 
     def test_patch_accepts_pinned_thermosyspro_42_combined_cycle_source(self) -> None:
         upstream = (
