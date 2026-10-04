@@ -447,24 +447,84 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
     return text.replace(old, new, 1)
 
 
+def _matching_parenthesis(text: str, opening: int) -> int:
+    if opening >= len(text) or text[opening] != "(":
+        raise ValueError("expected an opening parenthesis")
+
+    depth = 0
+    in_string = False
+    index = opening
+    while index < len(text):
+        if in_string:
+            if text[index] == "\\":
+                index += 2
+                continue
+            if text[index] == '"':
+                in_string = False
+        else:
+            if text.startswith("//", index):
+                newline = text.find("\n", index)
+                index = len(text) if newline < 0 else newline + 1
+                continue
+            if text.startswith("/*", index):
+                end_comment = text.find("*/", index + 2)
+                if end_comment < 0:
+                    raise ValueError("unterminated Modelica block comment")
+                index = end_comment + 2
+                continue
+            if text[index] == '"':
+                in_string = True
+            elif text[index] == "(":
+                depth += 1
+            elif text[index] == ")":
+                depth -= 1
+                if depth == 0:
+                    return index
+        index += 1
+
+    raise ValueError("unterminated Modelica parenthesized expression")
+
+
+def _connect_statement_end(text: str, closing: int) -> int:
+    cursor = closing + 1
+    while cursor < len(text) and text[cursor].isspace():
+        cursor += 1
+
+    if re.match(r"annotation\b", text[cursor:]):
+        cursor += len("annotation")
+        while cursor < len(text) and text[cursor].isspace():
+            cursor += 1
+        if cursor >= len(text) or text[cursor] != "(":
+            raise ValueError("malformed Modelica connection annotation")
+        cursor = _matching_parenthesis(text, cursor) + 1
+        while cursor < len(text) and text[cursor].isspace():
+            cursor += 1
+
+    if cursor >= len(text) or text[cursor] != ";":
+        raise ValueError("Modelica connect statement is missing its semicolon")
+    return cursor + 1
+
+
 def replace_connect_statement(text: str, call: str, replacement: str) -> str:
     normalize = lambda value: "".join(value.split())
     expected = normalize(call)
-    matches = [
-        match
-        for match in re.finditer(
-            r"(?m)^[ \t]*connect\((.*?)\);",
-            text,
-            re.DOTALL,
+    matches: list[tuple[int, int]] = []
+
+    for match in re.finditer(r"(?m)^[ \t]*connect[ \t]*\(", text):
+        opening = match.end() - 1
+        closing = _matching_parenthesis(text, opening)
+        if normalize(text[opening + 1:closing]) != expected:
+            continue
+        matches.append(
+            (match.start(), _connect_statement_end(text, closing))
         )
-        if normalize(match.group(1)) == expected
-    ]
+
     if not matches:
         raise ValueError(f"missing upstream connection: {call}")
     if len(matches) != 1:
         raise ValueError(f"duplicate upstream connection: {call}")
-    match = matches[0]
-    return text[:match.start()] + replacement + text[match.end():]
+    start, end = matches[0]
+    return text[:start] + replacement + text[end:]
 
 
 def patch_model(source: str) -> str:

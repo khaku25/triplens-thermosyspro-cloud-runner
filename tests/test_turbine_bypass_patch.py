@@ -10,7 +10,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from patch_turbine_bypass_model import MARKER, patch_model  # noqa: E402
+from patch_turbine_bypass_model import (  # noqa: E402
+    MARKER,
+    patch_model,
+)
 
 
 UPSTREAM_STUB = """within ThermoSysPro.Examples.CombinedCyclePowerPlant;
@@ -37,6 +40,48 @@ end CombinedCycle_TripTAC;
 
 
 class TurbineBypassPatchTests(unittest.TestCase):
+    def test_patch_matches_multiline_modelica_connection_annotations(self) -> None:
+        source = "\n".join(
+            line.replace(
+                ");",
+                ") annotation(\n"
+                "    Line(points={{0,0},{1,1}}, color={0,0,255}));",
+            )
+            if "connect(" in line
+            else line
+            for line in UPSTREAM_STUB.splitlines()
+        )
+
+        patched = patch_model(source)
+
+        self.assertIn(MARKER, patched)
+        self.assertNotIn("annotation(\n", patched)
+
+    def test_patch_accepts_pinned_thermosyspro_42_combined_cycle_source(self) -> None:
+        upstream = (
+            ROOT
+            / "vendor"
+            / "ThermoSysPro"
+            / "ThermoSysPro"
+            / "Examples"
+            / "CombinedCyclePowerPlant"
+            / "CombinedCycle_TripTAC.mo"
+        )
+        if not upstream.is_file():
+            self.skipTest("pinned ThermoSysPro source is not installed")
+
+        patched = patch_model(upstream.read_text(encoding="utf-8"))
+
+        self.assertEqual(patched.count(MARKER), 1)
+        self.assertIn(
+            "connect(vppGTExhaustTemperatureCommand, SourceFumees.ITemperature);",
+            patched,
+        )
+        self.assertIn(
+            "connect(vppHPSplitter.Cs2, vppHPBypassValve.C1);",
+            patched,
+        )
+
     def test_patch_adds_only_hp_and_hot_reheat_lp_bypass(self) -> None:
         patched = patch_model(UPSTREAM_STUB)
 
