@@ -123,15 +123,15 @@ PARAMETERS = f'''  // {MARKER}
 
   model VPPPressureDrivenBypassValve
     "One-way Cv valve with a numerically isolated fully closed state"
-    parameter ThermoSysPro.Units.Cv Cvmax=8000;
+    parameter ThermoSysPro.Units.xSI.Cv Cvmax=8000;
     parameter Modelica.Units.SI.Density rhoNom=10
       "Normal inlet density used to regularize the short Trip transient";
     parameter Real closedEpsilon=1e-9;
     ThermoSysPro.InstrumentationAndControl.Connectors.InputReal Ouv;
     ThermoSysPro.WaterSteam.Connectors.FluidInlet C1;
     ThermoSysPro.WaterSteam.Connectors.FluidOutlet C2;
-    ThermoSysPro.Units.Cv Cv(start=0);
-    ThermoSysPro.Units.DifferentialPressure deltaP;
+    ThermoSysPro.Units.xSI.Cv Cv(start=0);
+    ThermoSysPro.Units.xSI.DifferentialPressure deltaP;
     Modelica.Units.SI.MassFlowRate Q(start=0);
   equation
     C1.Q = C2.Q;
@@ -202,9 +202,9 @@ PARAMETERS = f'''  // {MARKER}
     "Normal HP-main-steam density used for Trip-transient regularization";
   parameter Modelica.Units.SI.Density vppHotReheatSteamDensity0 = 6.5
     "Normal hot-reheat density used for Trip-transient regularization";
-  parameter ThermoSysPro.Units.Cv vppHPBypassCvmax = 1890
+  parameter ThermoSysPro.Units.xSI.Cv vppHPBypassCvmax = 1890
     "HPBP Cv calibrated to the verified normal HP steam flow";
-  parameter ThermoSysPro.Units.Cv vppLPBypassCvmax = 22000
+  parameter ThermoSysPro.Units.xSI.Cv vppLPBypassCvmax = 22000
     "LPBP Cv calibrated to the verified normal hot-reheat steam flow";
   parameter Real vppHPSprayRatio = 0.245289
     "HP spray-water mass flow divided by measured HPBP steam flow";

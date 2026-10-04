@@ -89,6 +89,14 @@ end StodolaTurbine;
         self.assertIn("Modelica.Units.SI.AbsolutePressure", patched)
         self.assertNotIn("Modelica.SIunits.", patched)
 
+    def test_trip_patch_uses_thermosyspro_42_custom_units(self) -> None:
+        patched = patch_model(UPSTREAM_STUB)
+
+        self.assertIn("ThermoSysPro.Units.xSI.Cv Cvmax", patched)
+        self.assertIn("ThermoSysPro.Units.xSI.DifferentialPressure deltaP", patched)
+        self.assertNotIn("ThermoSysPro.Units.Cv", patched)
+        self.assertNotIn("ThermoSysPro.Units.DifferentialPressure", patched)
+
     def test_patch_accepts_pinned_thermosyspro_42_combined_cycle_source(self) -> None:
         upstream = (
             ROOT
