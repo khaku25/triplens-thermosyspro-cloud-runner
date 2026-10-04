@@ -23,14 +23,14 @@ MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V13"
 PARAMETERS = f'''  // {MARKER}
   model VPPRegularizedSplitter2
     "Two-way steam splitter with bounded IF97 evaluation during Newton trials"
-    parameter Modelica.SIunits.AbsolutePressure pressureFloor=500
+    parameter ThermoSysPro.Units.xSI.AbsolutePressure pressureFloor=500
       "IF97 evaluation floor; the connector pressure itself is not clipped";
     parameter Integer fluid=1 "1: water/steam - 2: C3H3F5";
     parameter Integer mode=0 "IF97 region";
-    Modelica.SIunits.AbsolutePressure P(start=10e5, min=0);
-    Modelica.SIunits.AbsolutePressure Pthermo;
-    Modelica.SIunits.SpecificEnthalpy h(start=10e5);
-    Modelica.SIunits.Temperature T;
+    ThermoSysPro.Units.xSI.AbsolutePressure P(start=10e5, min=0);
+    ThermoSysPro.Units.xSI.AbsolutePressure Pthermo;
+    ThermoSysPro.Units.xSI.SpecificEnthalpy h(start=10e5);
+    ThermoSysPro.Units.xSI.Temperature T;
     Real alpha1;
     ThermoSysPro.WaterSteam.Connectors.FluidInlet Ce;
     ThermoSysPro.WaterSteam.Connectors.FluidOutlet Cs1;
@@ -58,23 +58,23 @@ PARAMETERS = f'''  // {MARKER}
 
   model VPPRegularizedMixingVolume
     "Three-inlet header with bounded IF97 evaluation during Newton trials"
-    parameter Modelica.SIunits.Volume V=1;
-    parameter Modelica.SIunits.AbsolutePressure P0=1e5;
-    parameter Modelica.SIunits.SpecificEnthalpy h0=1e5;
+    parameter ThermoSysPro.Units.xSI.Volume V=1;
+    parameter ThermoSysPro.Units.xSI.AbsolutePressure P0=1e5;
+    parameter ThermoSysPro.Units.xSI.SpecificEnthalpy h0=1e5;
     parameter Boolean dynamic_mass_balance=false;
     parameter Boolean steady_state=true;
     parameter Integer fluid=1;
-    parameter Modelica.SIunits.Density p_rho=0;
+    parameter ThermoSysPro.Units.xSI.Density p_rho=0;
     parameter Integer mode=0;
-    parameter Modelica.SIunits.AbsolutePressure pressureFloor=500
+    parameter ThermoSysPro.Units.xSI.AbsolutePressure pressureFloor=500
       "IF97 evaluation floor; the connector pressure itself is not clipped";
-    Modelica.SIunits.Temperature T;
-    Modelica.SIunits.AbsolutePressure P(start=1e5, min=0);
-    Modelica.SIunits.AbsolutePressure Pthermo;
-    Modelica.SIunits.SpecificEnthalpy h(start=1e5);
-    Modelica.SIunits.Density rho(start=10, min=1e-6);
-    Modelica.SIunits.MassFlowRate BQ;
-    Modelica.SIunits.Power BH;
+    ThermoSysPro.Units.xSI.Temperature T;
+    ThermoSysPro.Units.xSI.AbsolutePressure P(start=1e5, min=0);
+    ThermoSysPro.Units.xSI.AbsolutePressure Pthermo;
+    ThermoSysPro.Units.xSI.SpecificEnthalpy h(start=1e5);
+    ThermoSysPro.Units.xSI.Density rho(start=10, min=1e-6);
+    ThermoSysPro.Units.xSI.MassFlowRate BQ;
+    ThermoSysPro.Units.xSI.Power BH;
     ThermoSysPro.WaterSteam.Connectors.FluidInlet Ce1;
     ThermoSysPro.WaterSteam.Connectors.FluidInlet Ce2;
     ThermoSysPro.WaterSteam.Connectors.FluidInlet Ce3;
@@ -124,7 +124,7 @@ PARAMETERS = f'''  // {MARKER}
   model VPPPressureDrivenBypassValve
     "One-way Cv valve with a numerically isolated fully closed state"
     parameter ThermoSysPro.Units.Cv Cvmax=8000;
-    parameter Modelica.SIunits.Density rhoNom=10
+    parameter ThermoSysPro.Units.xSI.Density rhoNom=10
       "Normal inlet density used to regularize the short Trip transient";
     parameter Real closedEpsilon=1e-9;
     ThermoSysPro.InstrumentationAndControl.Connectors.InputReal Ouv;
@@ -132,7 +132,7 @@ PARAMETERS = f'''  // {MARKER}
     ThermoSysPro.WaterSteam.Connectors.FluidOutlet C2;
     ThermoSysPro.Units.Cv Cv(start=0);
     ThermoSysPro.Units.DifferentialPressure deltaP;
-    Modelica.SIunits.MassFlowRate Q(start=0);
+    ThermoSysPro.Units.xSI.MassFlowRate Q(start=0);
   equation
     C1.Q = C2.Q;
     C1.h = C2.h;
@@ -167,10 +167,10 @@ PARAMETERS = f'''  // {MARKER}
     "Resolved ST Trip time for the physical GT Trip adapter";
   parameter Boolean vppUseExternalTripInput = false
     "Use the inherited FMU input instead of the scheduled Trip source";
-  parameter Modelica.SIunits.MassFlowRate vppGTExhaustMassFlowNormal = 606.94;
-  parameter Modelica.SIunits.MassFlowRate vppGTExhaustMassFlowTrip = 50;
-  parameter Modelica.SIunits.Temperature vppGTExhaustTemperatureNormal = 893.75;
-  parameter Modelica.SIunits.Temperature vppGTExhaustTemperatureTrip = 450;
+  parameter ThermoSysPro.Units.xSI.MassFlowRate vppGTExhaustMassFlowNormal = 606.94;
+  parameter ThermoSysPro.Units.xSI.MassFlowRate vppGTExhaustMassFlowTrip = 50;
+  parameter ThermoSysPro.Units.xSI.Temperature vppGTExhaustTemperatureNormal = 893.75;
+  parameter ThermoSysPro.Units.xSI.Temperature vppGTExhaustTemperatureTrip = 450;
   parameter Real vppGTExhaustResponseTau(unit="s") = 0.667
     "First-order live-command GT exhaust response time constant";
   parameter Real vppAdmissionStroke95(unit="s") = 0.150
@@ -181,26 +181,26 @@ PARAMETERS = f'''  // {MARKER}
     "LPBP 95 percent opening time";
   parameter Real vppSprayStroke95(unit="s") = 0.050
     "Spray-water actuator 95 percent opening time";
-  parameter Modelica.SIunits.MassFlowRate vppSpraySeatLeak = 0
+  parameter ThermoSysPro.Units.xSI.MassFlowRate vppSpraySeatLeak = 0
     "Fully closed pre-Trip spray flow";
   parameter Real vppAdmissionSeatLeak = 1e-3
     "Numerical 0.1 percent turbine admission-valve seat leakage";
   parameter Real vppValveLeak = 0
     "Fully closed pre-Trip bypass position";
-  parameter Modelica.SIunits.Volume vppHPHeaderVolume = 1
+  parameter ThermoSysPro.Units.xSI.Volume vppHPHeaderVolume = 1
     "Preliminary cold-reheat mixing volume";
-  parameter Modelica.SIunits.Volume vppLPHeaderVolume = 50
+  parameter ThermoSysPro.Units.xSI.Volume vppLPHeaderVolume = 50
     "Preliminary condenser-inlet steam mixing volume";
-  parameter Modelica.SIunits.MassFlowRate vppHPMainFlow0 = 151.7690991976083
+  parameter ThermoSysPro.Units.xSI.MassFlowRate vppHPMainFlow0 = 151.7690991976083
     "Verified pre-Trip HP steam-flow initialization point";
-  parameter Modelica.SIunits.MassFlowRate vppIPMainFlow0 = 176.7893383342879
+  parameter ThermoSysPro.Units.xSI.MassFlowRate vppIPMainFlow0 = 176.7893383342879
     "Verified pre-Trip hot-reheat steam-flow initialization point";
-  parameter Modelica.SIunits.MassFlowRate vppCondenserSteamFlow0 =
+  parameter ThermoSysPro.Units.xSI.MassFlowRate vppCondenserSteamFlow0 =
       196.6524916480812
     "Verified pre-Trip condenser steam-flow initialization point";
-  parameter Modelica.SIunits.Density vppHPSteamDensity0 = 34
+  parameter ThermoSysPro.Units.xSI.Density vppHPSteamDensity0 = 34
     "Normal HP-main-steam density used for Trip-transient regularization";
-  parameter Modelica.SIunits.Density vppHotReheatSteamDensity0 = 6.5
+  parameter ThermoSysPro.Units.xSI.Density vppHotReheatSteamDensity0 = 6.5
     "Normal hot-reheat density used for Trip-transient regularization";
   parameter ThermoSysPro.Units.Cv vppHPBypassCvmax = 1890
     "HPBP Cv calibrated to the verified normal HP steam flow";
@@ -251,20 +251,20 @@ COMPONENTS = '''
   Boolean vppHPBypassCloseLS;
   Boolean vppLPBypassOpenLS;
   Boolean vppLPBypassCloseLS;
-  Modelica.SIunits.MassFlowRate vppHPBypassMassFlow;
-  Modelica.SIunits.MassFlowRate vppLPBypassMassFlow;
-  Modelica.SIunits.MassFlowRate vppHPSprayMassFlow;
-  Modelica.SIunits.MassFlowRate vppLPSprayMassFlow;
-  Modelica.SIunits.AbsolutePressure vppHPBypassInletPressure;
-  Modelica.SIunits.AbsolutePressure vppLPBypassInletPressure;
-  Modelica.SIunits.AbsolutePressure vppHPBypassOutletPressure;
-  Modelica.SIunits.AbsolutePressure vppLPBypassOutletPressure;
-  Modelica.SIunits.Temperature vppHPBypassInletTemperature;
-  Modelica.SIunits.Temperature vppLPBypassInletTemperature;
-  Modelica.SIunits.Temperature vppHPBypassOutletTemperature;
-  Modelica.SIunits.Temperature vppLPBypassOutletTemperature;
-  Modelica.SIunits.AbsolutePressure vppCondenserPressure;
-  Modelica.SIunits.Length vppCondenserLevel;
+  ThermoSysPro.Units.xSI.MassFlowRate vppHPBypassMassFlow;
+  ThermoSysPro.Units.xSI.MassFlowRate vppLPBypassMassFlow;
+  ThermoSysPro.Units.xSI.MassFlowRate vppHPSprayMassFlow;
+  ThermoSysPro.Units.xSI.MassFlowRate vppLPSprayMassFlow;
+  ThermoSysPro.Units.xSI.AbsolutePressure vppHPBypassInletPressure;
+  ThermoSysPro.Units.xSI.AbsolutePressure vppLPBypassInletPressure;
+  ThermoSysPro.Units.xSI.AbsolutePressure vppHPBypassOutletPressure;
+  ThermoSysPro.Units.xSI.AbsolutePressure vppLPBypassOutletPressure;
+  ThermoSysPro.Units.xSI.Temperature vppHPBypassInletTemperature;
+  ThermoSysPro.Units.xSI.Temperature vppLPBypassInletTemperature;
+  ThermoSysPro.Units.xSI.Temperature vppHPBypassOutletTemperature;
+  ThermoSysPro.Units.xSI.Temperature vppLPBypassOutletTemperature;
+  ThermoSysPro.Units.xSI.AbsolutePressure vppCondenserPressure;
+  ThermoSysPro.Units.xSI.Length vppCondenserLevel;
 
   VPPRegularizedSplitter2 vppHPSplitter(
     mode=2,
