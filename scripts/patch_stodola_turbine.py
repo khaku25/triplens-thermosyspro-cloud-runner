@@ -14,14 +14,14 @@ PARAMETER_ANCHOR = "protected\n"
 PARAMETER_PATCH = f'''  // {MARKER}
   parameter Boolean regularizePressureCrossover=false
     "Enable the smooth one-way law only on a pressure-reversing turbine";
-  parameter Modelica.SIunits.Pressure pressureDifferenceRegularization=100
+  parameter Units.SI.AbsolutePressure pressureDifferenceRegularization=100
     "Finite low-flow scale for a tiny one-way numerical leakage";
 
 protected
   function regularizedPositivePressureSquare
     "Cancellation-safe smooth positive part for the Stodola pressure square"
     input Real pressureSquareDifference;
-    input Modelica.SIunits.Pressure pressureScale;
+    input Units.SI.AbsolutePressure pressureScale;
     output Real positivePressureSquare;
   protected
     Real discriminant;
