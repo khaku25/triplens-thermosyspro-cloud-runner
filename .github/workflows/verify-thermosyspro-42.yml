@@ -93,6 +93,7 @@ jobs:
             tolerance=1e-3,
             method="dassl",
             outputFormat="csv",
+            simflags="-lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS",
             fileNamePrefix="tsp42_reference");
           getErrorString();
           MOS
@@ -167,6 +168,7 @@ jobs:
             tolerance=1e-3,
             method="dassl",
             outputFormat="csv",
+            simflags="-lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS",
             fileNamePrefix="tsp42_triplens_trip");
           getErrorString();
           MOS
