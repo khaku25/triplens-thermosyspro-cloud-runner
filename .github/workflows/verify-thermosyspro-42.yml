@@ -129,10 +129,13 @@ jobs:
           python3 scripts/patch_turbine_bypass_model.py --source "$plant"
           python3 scripts/patch_stodola_turbine.py \
             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
+          cp "$plant" outputs/tsp42/CombinedCycle_TripTAC-4.2-patched.mo
+          sha256sum outputs/tsp42/CombinedCycle_TripTAC-4.2-patched.mo \
+            | tee outputs/tsp42/CombinedCycle_TripTAC-4.2-patched.sha256
           cp build/TripLens_CombinedCycle_TripTAC.mo \
-            outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-patched.mo
-          sha256sum outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-patched.mo \
-            | tee outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-patched.sha256
+            outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.mo
+          sha256sum outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.mo \
+            | tee outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.sha256
 
       - name: Simulate the TripLens physical model with ThermoSysPro 4.2
         run: |

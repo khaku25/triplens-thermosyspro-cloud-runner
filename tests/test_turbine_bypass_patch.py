@@ -82,11 +82,11 @@ end StodolaTurbine;
         self.assertIn(MARKER, patched)
         self.assertNotIn("annotation(\n", patched)
 
-    def test_trip_patch_uses_thermosyspro_42_xsi_types(self) -> None:
+    def test_trip_patch_uses_modelica_4_standard_units(self) -> None:
         patched = patch_model(UPSTREAM_STUB)
 
-        self.assertIn("ThermoSysPro.Units.xSI.MassFlowRate", patched)
-        self.assertIn("ThermoSysPro.Units.xSI.AbsolutePressure", patched)
+        self.assertIn("Modelica.Units.SI.MassFlowRate", patched)
+        self.assertIn("Modelica.Units.SI.AbsolutePressure", patched)
         self.assertNotIn("Modelica.SIunits.", patched)
 
     def test_patch_accepts_pinned_thermosyspro_42_combined_cycle_source(self) -> None:
