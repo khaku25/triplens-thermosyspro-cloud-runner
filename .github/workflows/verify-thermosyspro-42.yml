@@ -68,6 +68,7 @@ jobs:
           set -euo pipefail
           cat > build/tsp42-reference.mos <<MOS
           setCommandLineOptions("--std=3.4");
+          setCommandLineOptions("-d=initialization,aliasConflicts");
           setMatchingAlgorithm("PFPlusExt");
           setIndexReductionMethod("dynamicStateSelection");
           if not installPackage(Modelica, "4.0.0", exactMatch=true) then
@@ -143,6 +144,7 @@ jobs:
           set -euo pipefail
           cat > build/tsp42-triplens.mos <<MOS
           setCommandLineOptions("--std=3.4");
+          setCommandLineOptions("-d=initialization,aliasConflicts");
           setMatchingAlgorithm("PFPlusExt");
           setIndexReductionMethod("dynamicStateSelection");
           if not loadModel(Modelica, {"4.0.0"}) then
