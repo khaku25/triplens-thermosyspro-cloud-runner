@@ -117,6 +117,10 @@ jobs:
             --stop-time 10 \
             --intervals 10000
           plant=vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
+          test -s "$plant"
+          cp "$plant" outputs/tsp42/CombinedCycle_TripTAC-4.2-upstream.mo
+          sha256sum outputs/tsp42/CombinedCycle_TripTAC-4.2-upstream.mo \
+            | tee outputs/tsp42/CombinedCycle_TripTAC-4.2-upstream.sha256
           python3 scripts/patch_turbine_bypass_model.py --source "$plant"
           python3 scripts/patch_stodola_turbine.py \
             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
