@@ -14,6 +14,7 @@ from patch_turbine_bypass_model import (  # noqa: E402
     MARKER,
     patch_model,
 )
+from patch_stodola_turbine import patch_text as patch_stodola_text  # noqa: E402
 
 
 UPSTREAM_STUB = """within ThermoSysPro.Examples.CombinedCyclePowerPlant;
@@ -40,6 +41,30 @@ end CombinedCycle_TripTAC;
 
 
 class TurbineBypassPatchTests(unittest.TestCase):
+    def test_stodola_patch_uses_thermosyspro_42_pressure_type(self) -> None:
+        source = """within ThermoSysPro.WaterSteam.Machines;
+model StodolaTurbine
+  Units.SI.AbsolutePressure Pe;
+protected
+  parameter Units.SI.AbsolutePressure pcrit=1;
+  parameter Units.SI.Temperature Tcrit=1;
+equation
+  if noEvent((Pe > pcrit) or (Te > Tcrit)) then
+    Q = sqrt((Pe^2 - Ps^2)/(Cst*Te));
+  else
+    Q = sqrt((Pe^2 - Ps^2)/(Cst*Te*proe.x));
+  end if;
+end StodolaTurbine;
+"""
+        patched = patch_stodola_text(source)
+
+        self.assertIn(
+            "parameter Units.SI.AbsolutePressure pressureDifferenceRegularization=100",
+            patched,
+        )
+        self.assertIn("input Units.SI.AbsolutePressure pressureScale;", patched)
+        self.assertNotIn("Modelica.SIunits.Pressure", patched)
+
     def test_patch_matches_multiline_modelica_connection_annotations(self) -> None:
         source = "\n".join(
             line.replace(
