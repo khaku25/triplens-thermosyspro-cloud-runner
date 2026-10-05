@@ -159,17 +159,17 @@ jobs:
           if fluid_end < 0:
               raise SystemExit(f"could not find end of Fluid package in {fluid_package}")
           helper_source = """  function checkedPh
-            input .ThermoSysPro.Units.SI.AbsolutePressure p;
-            input .ThermoSysPro.Units.SI.SpecificEnthalpy h;
+            input ThermoSysPro.Units.SI.AbsolutePressure p;
+            input ThermoSysPro.Units.SI.SpecificEnthalpy h;
             input Integer mode;
             input Integer fluid;
             input String caller;
-            output .ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph props;
+            output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph props;
           algorithm
             assert(p > 611.657,
               "TRACE " + caller + ": p=" + String(p) + " Pa, h=" + String(h) +
               " J/kg, mode=" + String(mode));
-            props := .ThermoSysPro.Properties.Fluid.Ph(p, h, mode, fluid);
+            props := Ph(p, h, mode, fluid);
           end checkedPh;
           """
           if "function checkedPh" in fluid_source:
@@ -244,7 +244,13 @@ jobs:
                       else:
                           cursor = closing + 1
                           continue
-                      call_sites.append((call_start, closing + 1, pressure, enthalpy, mode_arg, fluid_arg))
+                      qualified_start = call_start
+                      while qualified_start > scan_start and (
+                          candidate_source[qualified_start - 1].isalnum()
+                          or candidate_source[qualified_start - 1] in "_."
+                      ):
+                          qualified_start -= 1
+                      call_sites.append((qualified_start, closing + 1, pressure, enthalpy, mode_arg, fluid_arg))
                       cursor = closing + 1
               if not call_sites:
                   continue
@@ -252,7 +258,7 @@ jobs:
               for index, (call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg) in reversed(list(enumerate(call_sites, start=1))):
                   caller = f"{relative} call {index}"
                   replacement = (
-                      ".ThermoSysPro.Properties.Fluid.checkedPh("
+                      "ThermoSysPro.Properties.Fluid.checkedPh("
                       f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
@@ -388,17 +394,17 @@ jobs:
           if fluid_end < 0:
               raise SystemExit(f"could not find end of Fluid package in {fluid_package}")
           helper_source = """  function checkedPh
-            input .ThermoSysPro.Units.SI.AbsolutePressure p;
-            input .ThermoSysPro.Units.SI.SpecificEnthalpy h;
+            input ThermoSysPro.Units.SI.AbsolutePressure p;
+            input ThermoSysPro.Units.SI.SpecificEnthalpy h;
             input Integer mode;
             input Integer fluid;
             input String caller;
-            output .ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph props;
+            output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph props;
           algorithm
             assert(p > 611.657,
               "TRACE " + caller + ": p=" + String(p) + " Pa, h=" + String(h) +
               " J/kg, mode=" + String(mode));
-            props := .ThermoSysPro.Properties.Fluid.Ph(p, h, mode, fluid);
+            props := Ph(p, h, mode, fluid);
           end checkedPh;
           """
           if "function checkedPh" in fluid_source:
@@ -473,7 +479,13 @@ jobs:
                       else:
                           cursor = closing + 1
                           continue
-                      call_sites.append((call_start, closing + 1, pressure, enthalpy, mode_arg, fluid_arg))
+                      qualified_start = call_start
+                      while qualified_start > scan_start and (
+                          candidate_source[qualified_start - 1].isalnum()
+                          or candidate_source[qualified_start - 1] in "_."
+                      ):
+                          qualified_start -= 1
+                      call_sites.append((qualified_start, closing + 1, pressure, enthalpy, mode_arg, fluid_arg))
                       cursor = closing + 1
               if not call_sites:
                   continue
@@ -481,7 +493,7 @@ jobs:
               for index, (call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg) in reversed(list(enumerate(call_sites, start=1))):
                   caller = f"{relative} call {index}"
                   replacement = (
-                      ".ThermoSysPro.Properties.Fluid.checkedPh("
+                      "ThermoSysPro.Properties.Fluid.checkedPh("
                       f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
