@@ -341,6 +341,9 @@ jobs:
       - name: Test the version-independent turbine patch
         run: python3 -m unittest discover -s tests -p "test_turbine_bypass_patch.py"
 
+      - name: Test the ThermoSysPro 4.2 pressure-property patch
+        run: python3 -m unittest discover -s tests -p "test_tsp42_pipe_pressure_floor.py"
+
       - name: Render the existing TripLens physical trip case
         run: |
           set -euo pipefail
@@ -362,6 +365,12 @@ jobs:
           python3 scripts/patch_turbine_bypass_model.py --source "$plant"
           python3 scripts/patch_stodola_turbine.py \
             vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
+          pipe_loss=vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo
+          cp "$pipe_loss" outputs/tsp42/PipePressureLoss-4.2-upstream.mo
+          python3 scripts/patch_tsp42_pipe_pressure_floor.py "$pipe_loss"
+          cp "$pipe_loss" outputs/tsp42/PipePressureLoss-4.2-property-floor.mo
+          sha256sum outputs/tsp42/PipePressureLoss-4.2-property-floor.mo \
+            | tee outputs/tsp42/PipePressureLoss-4.2-property-floor.sha256
           cp "$plant" outputs/tsp42/CombinedCycle_TripTAC-4.2-patched.mo
           sha256sum outputs/tsp42/CombinedCycle_TripTAC-4.2-patched.mo \
             | tee outputs/tsp42/CombinedCycle_TripTAC-4.2-patched.sha256
@@ -693,6 +702,24 @@ jobs:
             exit 1
           fi
           test -s build/tsp42_triplens_trip_res.csv
+          python3 - build/tsp42_triplens_trip_res.csv <<'PY'
+          import csv
+          import math
+          import sys
+          from pathlib import Path
+
+          result = Path(sys.argv[1])
+          with result.open(newline="", encoding="utf-8") as stream:
+              reader = csv.DictReader(stream)
+              columns = [name for name in (reader.fieldnames or []) if name.endswith("perteChargeK.Pm")]
+              if len(columns) != 1:
+                  raise SystemExit(f"expected one perteChargeK.Pm result column, found {columns}")
+              values = [float(row[columns[0]]) for row in reader if row.get(columns[0])]
+          if not values or any(not math.isfinite(value) or value <= 700 for value in values):
+              minimum = min(values) if values else float("nan")
+              raise SystemExit(f"converged physical pressure reached the 700 Pa property floor (min={minimum} Pa)")
+          print(f"perteChargeK.Pm remains above the property floor: min={min(values):.1f} Pa")
+          PY
           printf 'THERMOSYSPRO_42_TRIPLENS_PHYSICAL_SIMULATION_PASS\n' \
             | tee outputs/tsp42/result.txt
 
