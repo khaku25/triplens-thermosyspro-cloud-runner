@@ -204,7 +204,7 @@ jobs:
               owner = candidate.relative_to(seed_root).as_posix()
               local_function = function_source.replace("TRACE PipePressureLoss", f"TRACE {owner}")
               candidate_source = candidate_source.replace(
-                  pump_marker, "\\n" + local_function + pump_marker[1:], 1)
+                  pump_marker, "\n" + local_function + pump_marker[1:], 1)
               candidate_source = candidate_source.replace(
                   diagnostic_call,
                   "  pro = checkedFluidProperties(Pm, C1.P, C2.P, h, mode, fluid);",
@@ -214,7 +214,7 @@ jobs:
           if not diagnostic_callers:
               raise SystemExit("no additional Pm fluid-property callers found")
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
-              "\\n".join(diagnostic_callers) + "\\n")
+              "\n".join(diagnostic_callers) + "\n")
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
@@ -389,7 +389,7 @@ jobs:
               owner = candidate.relative_to(seed_root).as_posix()
               local_function = function_source.replace("TRACE PipePressureLoss", f"TRACE {owner}")
               candidate_source = candidate_source.replace(
-                  pump_marker, "\\n" + local_function + pump_marker[1:], 1)
+                  pump_marker, "\n" + local_function + pump_marker[1:], 1)
               candidate_source = candidate_source.replace(
                   diagnostic_call,
                   "  pro = checkedFluidProperties(Pm, C1.P, C2.P, h, mode, fluid);",
@@ -399,7 +399,7 @@ jobs:
           if not diagnostic_callers:
               raise SystemExit("no additional Pm fluid-property callers found")
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
-              "\\n".join(diagnostic_callers) + "\\n")
+              "\n".join(diagnostic_callers) + "\n")
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
