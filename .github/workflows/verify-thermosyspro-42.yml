@@ -179,12 +179,12 @@ jobs:
           loss_model.write_text(loss_source.replace(loss_call, traced_loss_call, 1))
           pump_model = seed_root / "WaterSteam/Machines/StaticCentrifugalPump.mo"
           pump_source = pump_model.read_text()
-          pump_marker = "\\nprotected\\n"
+          pump_marker = "\nprotected\n"
           if pump_source.count(pump_marker) != 1:
               raise SystemExit(f"expected one StaticCentrifugalPump protected section, got {pump_source.count(pump_marker)}")
           pump_function = function_source.replace("PipePressureLoss", "StaticCentrifugalPump")
           pump_source = pump_source.replace(
-              pump_marker, "\\n" + pump_function + pump_marker[1:], 1)
+              pump_marker, "\n" + pump_function + pump_marker[1:], 1)
           pump_call = "  pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"
           traced_pump_call = "  pro = checkedFluidProperties(Pm, C1.P, C2.P, h, mode, fluid);"
           if pump_source.count(pump_call) != 1:
@@ -340,12 +340,12 @@ jobs:
           loss_model.write_text(loss_source.replace(loss_call, traced_loss_call, 1))
           pump_model = seed_root / "WaterSteam/Machines/StaticCentrifugalPump.mo"
           pump_source = pump_model.read_text()
-          pump_marker = "\\nprotected\\n"
+          pump_marker = "\nprotected\n"
           if pump_source.count(pump_marker) != 1:
               raise SystemExit(f"expected one StaticCentrifugalPump protected section, got {pump_source.count(pump_marker)}")
           pump_function = function_source.replace("PipePressureLoss", "StaticCentrifugalPump")
           pump_source = pump_source.replace(
-              pump_marker, "\\n" + pump_function + pump_marker[1:], 1)
+              pump_marker, "\n" + pump_function + pump_marker[1:], 1)
           pump_call = "  pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"
           traced_pump_call = "  pro = checkedFluidProperties(Pm, C1.P, C2.P, h, mode, fluid);"
           if pump_source.count(pump_call) != 1:
