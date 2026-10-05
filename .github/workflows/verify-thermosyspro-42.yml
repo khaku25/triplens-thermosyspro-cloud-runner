@@ -151,9 +151,9 @@ jobs:
               raise SystemExit(f"expected one target in Water_Ph, got {water_function.count(needle)}")
           water_function = water_function.replace(needle, traced, 1)
           properties.write_text(property_source[:function_start] + water_function + property_source[function_end:])
-          fluid_package = seed_root / "Properties/Fluid.mo"
+          fluid_package = seed_root / "Properties/Fluid/package.mo"
           if not fluid_package.is_file():
-              fluid_package = seed_root / "Properties/Fluid/package.mo"
+              fluid_package = seed_root / "Properties/Fluid.mo"
           fluid_source = fluid_package.read_text()
           fluid_end = fluid_source.rfind("end Fluid;")
           if fluid_end < 0:
@@ -433,38 +433,49 @@ jobs:
               if relative == if97_relative:
                   continue
               candidate_source = candidate.read_text()
-              matches = list(re.finditer(r"(?m)^[ \t]*(?:partial[ \t]+)?function[ \t]+Ph\b", candidate_source))
+              matches = list(re.finditer(
+                  r"(?m)^[ \t]*(?:partial[ \t]+)?function[ \t]+([A-Za-z_][A-Za-z_0-9]*)\b",
+                  candidate_source))
               for function_match in reversed(matches):
+                  function_name = function_match.group(1)
                   function_end_match = re.search(
-                      r"(?m)^[ \t]*end[ \t]+Ph[ \t]*;",
+                      r"(?m)^[ \t]*end[ \t]+" + re.escape(function_name) + r"[ \t]*;",
                       candidate_source[function_match.end():])
                   if function_end_match is None:
                       continue
                   function_end = function_match.end() + function_end_match.end()
                   function_source = candidate_source[function_match.start():function_end]
-                  if re.search(r"(?m)^[ \t]*input\b[^;\n]*\bp[ \t]*;", function_source) is None:
+                  if "Water_Ph(" not in function_source:
                       continue
-                  if re.search(r"(?m)^[ \t]*input\b[^;\n]*\bh[ \t]*;", function_source) is None:
+                  pressure_match = re.search(
+                      r"(?m)^[ \t]*input\b[^;\n]*\b([pP])[ \t]*;",
+                      function_source)
+                  enthalpy_match = re.search(
+                      r"(?m)^[ \t]*input\b[^;\n]*\b([hH])[ \t]*;",
+                      function_source)
+                  if pressure_match is None or enthalpy_match is None:
                       continue
+                  pressure_name = pressure_match.group(1)
+                  enthalpy_name = enthalpy_match.group(1)
                   algorithm_match = re.search(r"(?m)^([ \t]*)algorithm[ \t]*$", function_source)
                   if algorithm_match is None:
                       continue
                   indent = algorithm_match.group(1)
                   algorithm_start = function_match.start() + algorithm_match.start()
-                  algorithm_line_end = candidate_source.find("\n", function_match.start() + algorithm_match.end())
+                  algorithm_line_end = candidate_source.find(
+                      "\n", function_match.start() + algorithm_match.end())
                   if algorithm_line_end < 0:
                       continue
                   injected_algorithm = (
                       f"{indent}algorithm\n"
-                      f'{indent}  assert(p > 611.657, "TRACE {relative} Fluid.Ph: p=" + String(p) + " Pa, h=" + String(h));')
+                      f'{indent}  assert({pressure_name} > 611.657, "TRACE {relative} {function_name}: P=" + String({pressure_name}) + " Pa, h=" + String({enthalpy_name}));\n')
                   candidate_source = (
                       candidate_source[:algorithm_start] + injected_algorithm +
                       candidate_source[algorithm_line_end + 1:])
-                  diagnostic_ph_functions.append(f"{relative}: Ph")
+                  diagnostic_ph_functions.append(f"{relative}: {function_name}")
               candidate.write_text(candidate_source)
           Path("outputs/tsp42/diagnostic-ph-functions.txt").write_text(
               "\n".join(diagnostic_ph_functions) + "\n")
-
           def split_arguments(argument_text):
               arguments = []
               depth = 0
@@ -560,11 +571,11 @@ jobs:
               target.parent.mkdir(parents=True, exist_ok=True)
               shutil.copyfile(candidate, target)
               for line_number, line in enumerate(source_text.splitlines(), start=1):
-                  if re.search(r"\\b(?:Ph|Water_Ph)\\b", line):
+                  if re.search(r"\b(?:Ph|Water_Ph)\b", line):
                       diagnostic_property_index.append(
                           f"{relative}:{line_number}: {line.strip()}")
           Path("outputs/tsp42/diagnostic-property-index.txt").write_text(
-              "\\n".join(diagnostic_property_index) + "\\n")
+              "\n".join(diagnostic_property_index) + "\n")
           for relative in (
               "WaterSteam/HeatExchangers/SimpleDynamicCondenser.mo",
               "WaterSteam/HeatExchangers/DynamicTwoPhaseFlowPipe.mo",
