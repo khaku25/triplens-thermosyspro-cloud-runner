@@ -448,10 +448,10 @@ jobs:
                   if "Water_Ph(" not in function_source:
                       continue
                   pressure_match = re.search(
-                      r"(?m)^[ \t]*input\b[^;\n]*\b([pP])[ \t]*;",
+                      r'(?m)^[ \t]*input\b[^;\n]*\b([pP])(?:[ \t]+"[^"]*")?[ \t]*;',
                       function_source)
                   enthalpy_match = re.search(
-                      r"(?m)^[ \t]*input\b[^;\n]*\b([hH])[ \t]*;",
+                      r'(?m)^[ \t]*input\b[^;\n]*\b([hH])(?:[ \t]+"[^"]*")?[ \t]*;',
                       function_source)
                   if pressure_match is None or enthalpy_match is None:
                       continue
