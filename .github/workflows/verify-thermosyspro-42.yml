@@ -191,28 +191,77 @@ jobs:
               raise SystemExit(f"expected one StaticCentrifugalPump property call, got {pump_source.count(pump_call)}")
           pump_model.write_text(pump_source.replace(pump_call, traced_pump_call, 1))
           shutil.copyfile(pump_model, Path("outputs/tsp42/StaticCentrifugalPump-diagnostic.mo"))
-          diagnostic_call = "  pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"
+          def split_arguments(argument_text):
+              arguments = []
+              depth = 0
+              start = 0
+              for index, character in enumerate(argument_text):
+                  if character == "(":
+                      depth += 1
+                  elif character == ")":
+                      depth -= 1
+                  elif character == "," and depth == 0:
+                      arguments.append(argument_text[start:index].strip())
+                      start = index + 1
+              arguments.append(argument_text[start:].strip())
+              return arguments
+
+          def find_call_end(source_text, opening):
+              depth = 1
+              for index in range(opening + 1, len(source_text)):
+                  if source_text[index] == "(":
+                      depth += 1
+                  elif source_text[index] == ")":
+                      depth -= 1
+                      if depth == 0:
+                          return index
+              return None
+
           diagnostic_callers = []
           for candidate in sorted((seed_root / "WaterSteam").rglob("*.mo")):
               candidate_source = candidate.read_text()
-              if candidate_source.count(diagnostic_call) != 1:
+              if "checkedFluidProperties" in candidate_source:
                   continue
               if "C1.P" not in candidate_source or "C2.P" not in candidate_source:
                   continue
               if candidate_source.count(pump_marker) != 1:
                   continue
+              call_sites = []
+              for token in ("Fluid.Ph(", "Water_Ph("):
+                  cursor = 0
+                  while cursor < len(candidate_source):
+                      call_start = candidate_source.find(token, cursor)
+                      if call_start < 0:
+                          break
+                      opening = call_start + len(token) - 1
+                      closing = find_call_end(candidate_source, opening)
+                      if closing is None:
+                          break
+                      arguments = split_arguments(candidate_source[opening + 1:closing])
+                      if token == "Fluid.Ph(" and len(arguments) == 4:
+                          pressure, enthalpy, mode_arg, fluid_arg = arguments
+                      elif token == "Water_Ph(" and len(arguments) in (2, 3):
+                          pressure, enthalpy = arguments[:2]
+                          mode_arg = arguments[2] if len(arguments) == 3 else "0"
+                          fluid_arg = "1"
+                      else:
+                          cursor = closing + 1
+                          continue
+                      replacement = (
+                          f"checkedFluidProperties({pressure}, C1.P, C2.P, "
+                          f"{enthalpy}, {mode_arg}, {fluid_arg})")
+                      call_sites.append((call_start, closing + 1, replacement))
+                      cursor = closing + 1
+              if not call_sites:
+                  continue
+              for start, end, replacement in reversed(call_sites):
+                  candidate_source = candidate_source[:start] + replacement + candidate_source[end:]
               owner = candidate.relative_to(seed_root).as_posix()
               local_function = function_source.replace("TRACE PipePressureLoss", f"TRACE {owner}")
               candidate_source = candidate_source.replace(
                   pump_marker, "\n" + local_function + pump_marker[1:], 1)
-              candidate_source = candidate_source.replace(
-                  diagnostic_call,
-                  "  pro = checkedFluidProperties(Pm, C1.P, C2.P, h, mode, fluid);",
-                  1)
               candidate.write_text(candidate_source)
               diagnostic_callers.append(owner)
-          if not diagnostic_callers:
-              raise SystemExit("no additional Pm fluid-property callers found")
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
               "\n".join(diagnostic_callers) + "\n")
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
@@ -376,28 +425,77 @@ jobs:
               raise SystemExit(f"expected one StaticCentrifugalPump property call, got {pump_source.count(pump_call)}")
           pump_model.write_text(pump_source.replace(pump_call, traced_pump_call, 1))
           shutil.copyfile(pump_model, Path("outputs/tsp42/StaticCentrifugalPump-diagnostic.mo"))
-          diagnostic_call = "  pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"
+          def split_arguments(argument_text):
+              arguments = []
+              depth = 0
+              start = 0
+              for index, character in enumerate(argument_text):
+                  if character == "(":
+                      depth += 1
+                  elif character == ")":
+                      depth -= 1
+                  elif character == "," and depth == 0:
+                      arguments.append(argument_text[start:index].strip())
+                      start = index + 1
+              arguments.append(argument_text[start:].strip())
+              return arguments
+
+          def find_call_end(source_text, opening):
+              depth = 1
+              for index in range(opening + 1, len(source_text)):
+                  if source_text[index] == "(":
+                      depth += 1
+                  elif source_text[index] == ")":
+                      depth -= 1
+                      if depth == 0:
+                          return index
+              return None
+
           diagnostic_callers = []
           for candidate in sorted((seed_root / "WaterSteam").rglob("*.mo")):
               candidate_source = candidate.read_text()
-              if candidate_source.count(diagnostic_call) != 1:
+              if "checkedFluidProperties" in candidate_source:
                   continue
               if "C1.P" not in candidate_source or "C2.P" not in candidate_source:
                   continue
               if candidate_source.count(pump_marker) != 1:
                   continue
+              call_sites = []
+              for token in ("Fluid.Ph(", "Water_Ph("):
+                  cursor = 0
+                  while cursor < len(candidate_source):
+                      call_start = candidate_source.find(token, cursor)
+                      if call_start < 0:
+                          break
+                      opening = call_start + len(token) - 1
+                      closing = find_call_end(candidate_source, opening)
+                      if closing is None:
+                          break
+                      arguments = split_arguments(candidate_source[opening + 1:closing])
+                      if token == "Fluid.Ph(" and len(arguments) == 4:
+                          pressure, enthalpy, mode_arg, fluid_arg = arguments
+                      elif token == "Water_Ph(" and len(arguments) in (2, 3):
+                          pressure, enthalpy = arguments[:2]
+                          mode_arg = arguments[2] if len(arguments) == 3 else "0"
+                          fluid_arg = "1"
+                      else:
+                          cursor = closing + 1
+                          continue
+                      replacement = (
+                          f"checkedFluidProperties({pressure}, C1.P, C2.P, "
+                          f"{enthalpy}, {mode_arg}, {fluid_arg})")
+                      call_sites.append((call_start, closing + 1, replacement))
+                      cursor = closing + 1
+              if not call_sites:
+                  continue
+              for start, end, replacement in reversed(call_sites):
+                  candidate_source = candidate_source[:start] + replacement + candidate_source[end:]
               owner = candidate.relative_to(seed_root).as_posix()
               local_function = function_source.replace("TRACE PipePressureLoss", f"TRACE {owner}")
               candidate_source = candidate_source.replace(
                   pump_marker, "\n" + local_function + pump_marker[1:], 1)
-              candidate_source = candidate_source.replace(
-                  diagnostic_call,
-                  "  pro = checkedFluidProperties(Pm, C1.P, C2.P, h, mode, fluid);",
-                  1)
               candidate.write_text(candidate_source)
               diagnostic_callers.append(owner)
-          if not diagnostic_callers:
-              raise SystemExit("no additional Pm fluid-property callers found")
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
               "\n".join(diagnostic_callers) + "\n")
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
