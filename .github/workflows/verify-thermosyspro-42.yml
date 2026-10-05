@@ -107,6 +107,50 @@ jobs:
           fi
           test -s build/tsp42_reference_res.csv
 
+      - name: Probe reference with condenser-consistent pressure start
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          cat > build/tsp42-reference-condenser-seed.mos <<MOS
+          setCommandLineOptions("--std=3.4");
+          setCommandLineOptions("-d=initialization,aliasConflicts");
+          setMatchingAlgorithm("PFPlusExt");
+          setIndexReductionMethod("dynamicStateSelection");
+          if not loadModel(Modelica, {"4.0.0"}) then
+            print(getErrorString());
+            exit(1);
+          end if;
+          if not loadFile("$PWD/vendor/ThermoSysPro/ThermoSysPro/package.mo") then
+            print(getErrorString());
+            exit(1);
+          end if;
+          loadString("model TSP42_CombinedCycle_TripTAC_CondenserSeed extends ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC(Condenseur(Pfond(start=20787.469550107293))); end TSP42_CombinedCycle_TripTAC_CondenserSeed;");
+          getVersion(Modelica);
+          getVersion(ThermoSysPro);
+          cd("$PWD/build");
+          simulate(
+            TSP42_CombinedCycle_TripTAC_CondenserSeed,
+            startTime=0,
+            stopTime=0.04,
+            numberOfIntervals=10,
+            tolerance=1e-3,
+            method="dassl",
+            outputFormat="csv",
+            simflags="-lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS",
+            fileNamePrefix="tsp42_reference_condenser_seed");
+          getErrorString();
+          MOS
+          printf 'diagnostic seed Pfond=20787.469550107293 Pa (P + rho_l*g*z_l)\n' \
+            | tee outputs/tsp42/reference-condenser-seed.txt
+          timeout --signal=TERM --kill-after=30s 18m \
+            omc "$PWD/build/tsp42-reference-condenser-seed.mos" \
+            | tee outputs/tsp42/upstream-reference-condenser-seed.log
+          if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' \
+              outputs/tsp42/upstream-reference-condenser-seed.log; then
+            exit 1
+          fi
+          test -s build/tsp42_reference_condenser_seed_res.csv
+
       - name: Test the version-independent turbine patch
         run: python3 -m unittest discover -s tests -p "test_turbine_bypass_patch.py"
 
@@ -138,6 +182,54 @@ jobs:
             outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.mo
           sha256sum outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.mo \
             | tee outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.sha256
+
+      - name: Probe TripLens with condenser-consistent pressure start
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          cat > build/tsp42-triplens-condenser-seed.mos <<MOS
+          setCommandLineOptions("--std=3.4");
+          setCommandLineOptions("-d=initialization,aliasConflicts");
+          setMatchingAlgorithm("PFPlusExt");
+          setIndexReductionMethod("dynamicStateSelection");
+          if not loadModel(Modelica, {"4.0.0"}) then
+            print(getErrorString());
+            exit(1);
+          end if;
+          if not loadFile("$PWD/vendor/ThermoSysPro/ThermoSysPro/package.mo") then
+            print(getErrorString());
+            exit(1);
+          end if;
+          if not loadFile("$PWD/build/TripLens_CombinedCycle_TripTAC.mo") then
+            print(getErrorString());
+            exit(1);
+          end if;
+          loadString("model TripLens_CombinedCycle_TripTAC_CondenserSeed extends TripLens_CombinedCycle_TripTAC(Condenseur(Pfond(start=20787.469550107293))); end TripLens_CombinedCycle_TripTAC_CondenserSeed;");
+          getVersion(Modelica);
+          getVersion(ThermoSysPro);
+          cd("$PWD/build");
+          simulate(
+            TripLens_CombinedCycle_TripTAC_CondenserSeed,
+            startTime=0,
+            stopTime=0.04,
+            numberOfIntervals=10,
+            tolerance=1e-3,
+            method="dassl",
+            outputFormat="csv",
+            simflags="-lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS",
+            fileNamePrefix="tsp42_triplens_condenser_seed");
+          getErrorString();
+          MOS
+          printf 'diagnostic seed Pfond=20787.469550107293 Pa (P + rho_l*g*z_l)\n' \
+            | tee outputs/tsp42/triplens-condenser-seed.txt
+          timeout --signal=TERM --kill-after=30s 20m \
+            omc "$PWD/build/tsp42-triplens-condenser-seed.mos" \
+            | tee outputs/tsp42/triplens-condenser-seed.log
+          if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' \
+              outputs/tsp42/triplens-condenser-seed.log; then
+            exit 1
+          fi
+          test -s build/tsp42_triplens_condenser_seed_res.csv
 
       - name: Simulate the TripLens physical model with ThermoSysPro 4.2
         run: |
