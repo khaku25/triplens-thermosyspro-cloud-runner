@@ -609,7 +609,7 @@ jobs:
             | tee outputs/tsp42/triplens-pressure-seed.sha256
           cat > build/tsp42-triplens-condenser-seed.mos <<MOS
           setCommandLineOptions("--std=3.4");
-          setCommandLineOptions("-d=initialization,aliasConflicts");
+          setCommandLineOptions("-d=initialization,aliasConflicts,dumpLoops");
           setMatchingAlgorithm("PFPlusExt");
           setIndexReductionMethod("dynamicStateSelection");
           if not loadModel(Modelica, {"4.0.0"}) then
