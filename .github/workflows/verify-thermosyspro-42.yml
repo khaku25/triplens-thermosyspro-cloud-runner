@@ -107,10 +107,34 @@ jobs:
           fi
           test -s build/tsp42_reference_res.csv
 
-      - name: Probe reference with condenser-consistent pressure start
+      - name: Probe reference with physically consistent condenser outlet pressures
         continue-on-error: true
         run: |
           set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+
+          seed_root = Path("build/tsp42-reference-seeded/ThermoSysPro")
+          shutil.copytree(Path("vendor/ThermoSysPro/ThermoSysPro"), seed_root)
+          model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
+          source = model.read_text()
+          # SimpleDynamicCondenser documents Pfond = P + rho_l*g*z_l.
+          # P=6136 Pa, rho_l=996.0227362797892 kg/m3, z_l=1.5 m.
+          replacements = (
+              ("Pfond(start = 10000.0)", "Pfond(start = 20787.469550107293)"),
+              ("Pm(start = 6200)", "Pm(start = 20787.469550107293)"),
+          )
+          for old, new in replacements:
+              if source.count(old) != 1:
+                  raise SystemExit(f"expected one occurrence of {old!r}, got {source.count(old)}")
+              source = source.replace(old, new, 1)
+          model.write_text(source)
+          PY
+          cp build/tsp42-reference-seeded/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo \
+            outputs/tsp42/CombinedCycle_TripTAC-4.2-reference-pressure-seed.mo
+          sha256sum outputs/tsp42/CombinedCycle_TripTAC-4.2-reference-pressure-seed.mo \
+            | tee outputs/tsp42/reference-pressure-seed.sha256
           cat > build/tsp42-reference-condenser-seed.mos <<MOS
           setCommandLineOptions("--std=3.4");
           setCommandLineOptions("-d=initialization,aliasConflicts");
@@ -120,16 +144,15 @@ jobs:
             print(getErrorString());
             exit(1);
           end if;
-          if not loadFile("$PWD/vendor/ThermoSysPro/ThermoSysPro/package.mo") then
+          if not loadFile("$PWD/build/tsp42-reference-seeded/ThermoSysPro/package.mo") then
             print(getErrorString());
             exit(1);
           end if;
-          loadString("model TSP42_CombinedCycle_TripTAC_CondenserSeed extends ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC(Condenseur(Pfond(start=20787.469550107293)), perteChargeK(Pm(start=20787.469550107293))); end TSP42_CombinedCycle_TripTAC_CondenserSeed;");
           getVersion(Modelica);
           getVersion(ThermoSysPro);
           cd("$PWD/build");
           simulate(
-            TSP42_CombinedCycle_TripTAC_CondenserSeed,
+            ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC,
             startTime=0,
             stopTime=0.04,
             numberOfIntervals=10,
@@ -140,7 +163,7 @@ jobs:
             fileNamePrefix="tsp42_reference_condenser_seed");
           getErrorString();
           MOS
-          printf 'diagnostic seeds: Condenseur.Pfond and perteChargeK.Pm = 20787.469550107293 Pa (P + rho_l*g*z_l)\n' \
+          printf 'source-clone pressure starts: Pfond=Pm=20787.469550107293 Pa (P + rho_l*g*z_l)\\n' \
             | tee outputs/tsp42/reference-condenser-seed.txt
           timeout --signal=TERM --kill-after=30s 18m \
             omc "$PWD/build/tsp42-reference-condenser-seed.mos" \
@@ -183,10 +206,34 @@ jobs:
           sha256sum outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.mo \
             | tee outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.sha256
 
-      - name: Probe TripLens with condenser-consistent pressure start
+      - name: Probe TripLens with physically consistent condenser outlet pressures
         continue-on-error: true
         run: |
           set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+
+          seed_root = Path("build/tsp42-triplens-seeded/ThermoSysPro")
+          shutil.copytree(Path("vendor/ThermoSysPro/ThermoSysPro"), seed_root)
+          model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
+          source = model.read_text()
+          # SimpleDynamicCondenser documents Pfond = P + rho_l*g*z_l.
+          # P=6136 Pa, rho_l=996.0227362797892 kg/m3, z_l=1.5 m.
+          replacements = (
+              ("Pfond(start = 10000.0)", "Pfond(start = 20787.469550107293)"),
+              ("Pm(start = 6200)", "Pm(start = 20787.469550107293)"),
+          )
+          for old, new in replacements:
+              if source.count(old) != 1:
+                  raise SystemExit(f"expected one occurrence of {old!r}, got {source.count(old)}")
+              source = source.replace(old, new, 1)
+          model.write_text(source)
+          PY
+          cp build/tsp42-triplens-seeded/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo \
+            outputs/tsp42/CombinedCycle_TripTAC-4.2-triplens-pressure-seed.mo
+          sha256sum outputs/tsp42/CombinedCycle_TripTAC-4.2-triplens-pressure-seed.mo \
+            | tee outputs/tsp42/triplens-pressure-seed.sha256
           cat > build/tsp42-triplens-condenser-seed.mos <<MOS
           setCommandLineOptions("--std=3.4");
           setCommandLineOptions("-d=initialization,aliasConflicts");
@@ -196,7 +243,7 @@ jobs:
             print(getErrorString());
             exit(1);
           end if;
-          if not loadFile("$PWD/vendor/ThermoSysPro/ThermoSysPro/package.mo") then
+          if not loadFile("$PWD/build/tsp42-triplens-seeded/ThermoSysPro/package.mo") then
             print(getErrorString());
             exit(1);
           end if;
@@ -204,12 +251,11 @@ jobs:
             print(getErrorString());
             exit(1);
           end if;
-          loadString("model TripLens_CombinedCycle_TripTAC_CondenserSeed extends TripLens_CombinedCycle_TripTAC(Condenseur(Pfond(start=20787.469550107293)), perteChargeK(Pm(start=20787.469550107293))); end TripLens_CombinedCycle_TripTAC_CondenserSeed;");
           getVersion(Modelica);
           getVersion(ThermoSysPro);
           cd("$PWD/build");
           simulate(
-            TripLens_CombinedCycle_TripTAC_CondenserSeed,
+            TripLens_CombinedCycle_TripTAC,
             startTime=0,
             stopTime=0.04,
             numberOfIntervals=10,
@@ -220,7 +266,7 @@ jobs:
             fileNamePrefix="tsp42_triplens_condenser_seed");
           getErrorString();
           MOS
-          printf 'diagnostic seeds: Condenseur.Pfond and perteChargeK.Pm = 20787.469550107293 Pa (P + rho_l*g*z_l)\n' \
+          printf 'source-clone pressure starts: Pfond=Pm=20787.469550107293 Pa (P + rho_l*g*z_l)\\n' \
             | tee outputs/tsp42/triplens-condenser-seed.txt
           timeout --signal=TERM --kill-after=30s 20m \
             omc "$PWD/build/tsp42-triplens-condenser-seed.mos" \
