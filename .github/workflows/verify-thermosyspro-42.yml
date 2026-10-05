@@ -150,12 +150,28 @@ jobs:
           properties.write_text(property_source[:function_start] + water_function + property_source[function_end:])
           loss_model = seed_root / "WaterSteam/PressureLosses/PipePressureLoss.mo"
           loss_source = loss_model.read_text()
+          marker = "\nprotected\n"
+          function_source = """  function checkedFluidProperties
+            input Units.SI.AbsolutePressure pm;
+            input Units.SI.AbsolutePressure p1;
+            input Units.SI.AbsolutePressure p2;
+            input Units.SI.SpecificEnthalpy h;
+            input Integer mode;
+            input Integer fluid;
+            output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph props;
+          algorithm
+            assert(pm > 611.657,
+              "TRACE PipePressureLoss: Pm=" + String(pm) +
+              ", C1.P=" + String(p1) + ", C2.P=" + String(p2) +
+              ", h=" + String(h) + ", mode=" + String(mode));
+            props := ThermoSysPro.Properties.Fluid.Ph(pm, h, mode, fluid);
+          end checkedFluidProperties;
+          """
+          if loss_source.count(marker) != 1:
+              raise SystemExit(f"expected one PipePressureLoss protected section, got {loss_source.count(marker)}")
+          loss_source = loss_source.replace(marker, "\n" + function_source + marker[1:], 1)
           loss_call = "  pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"
-          traced_loss_call = """  assert(Pm > 611.657,
-            "TRACE PipePressureLoss: Pm = " + String(Pm) + " Pa, C1.P = " + String(C1.P) +
-            " Pa, C2.P = " + String(C2.P) + " Pa, h = " + String(h) +
-            " J/kg, mode = " + String(mode));
-          pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"""
+          traced_loss_call = "  pro = checkedFluidProperties(Pm, C1.P, C2.P, h, mode, fluid);"
           if loss_source.count(loss_call) != 1:
               raise SystemExit(f"expected one PipePressureLoss property call, got {loss_source.count(loss_call)}")
           loss_model.write_text(loss_source.replace(loss_call, traced_loss_call, 1))
@@ -281,12 +297,28 @@ jobs:
           properties.write_text(property_source[:function_start] + water_function + property_source[function_end:])
           loss_model = seed_root / "WaterSteam/PressureLosses/PipePressureLoss.mo"
           loss_source = loss_model.read_text()
+          marker = "\nprotected\n"
+          function_source = """  function checkedFluidProperties
+            input Units.SI.AbsolutePressure pm;
+            input Units.SI.AbsolutePressure p1;
+            input Units.SI.AbsolutePressure p2;
+            input Units.SI.SpecificEnthalpy h;
+            input Integer mode;
+            input Integer fluid;
+            output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph props;
+          algorithm
+            assert(pm > 611.657,
+              "TRACE PipePressureLoss: Pm=" + String(pm) +
+              ", C1.P=" + String(p1) + ", C2.P=" + String(p2) +
+              ", h=" + String(h) + ", mode=" + String(mode));
+            props := ThermoSysPro.Properties.Fluid.Ph(pm, h, mode, fluid);
+          end checkedFluidProperties;
+          """
+          if loss_source.count(marker) != 1:
+              raise SystemExit(f"expected one PipePressureLoss protected section, got {loss_source.count(marker)}")
+          loss_source = loss_source.replace(marker, "\n" + function_source + marker[1:], 1)
           loss_call = "  pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"
-          traced_loss_call = """  assert(Pm > 611.657,
-            "TRACE PipePressureLoss: Pm = " + String(Pm) + " Pa, C1.P = " + String(C1.P) +
-            " Pa, C2.P = " + String(C2.P) + " Pa, h = " + String(h) +
-            " J/kg, mode = " + String(mode));
-          pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"""
+          traced_loss_call = "  pro = checkedFluidProperties(Pm, C1.P, C2.P, h, mode, fluid);"
           if loss_source.count(loss_call) != 1:
               raise SystemExit(f"expected one PipePressureLoss property call, got {loss_source.count(loss_call)}")
           loss_model.write_text(loss_source.replace(loss_call, traced_loss_call, 1))
