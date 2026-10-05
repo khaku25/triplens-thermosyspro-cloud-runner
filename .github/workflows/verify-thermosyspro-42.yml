@@ -139,9 +139,15 @@ jobs:
                   "TRACE Water_Ph: p = " + String(p) + " Pa, h = " + String(h) +
                   " J/kg, mode = " + String(mode));
                 supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
-          if property_source.count(needle) != 1:
-              raise SystemExit(f"expected one Water_Ph algorithm entry, got {property_source.count(needle)}")
-          properties.write_text(property_source.replace(needle, traced, 1))
+          function_start = property_source.find("    function Water_Ph\\n")
+          function_end = property_source.find("    end Water_Ph;", function_start)
+          if function_start < 0 or function_end < 0:
+              raise SystemExit("could not isolate Water_Ph function")
+          water_function = property_source[function_start:function_end]
+          if water_function.count(needle) != 1:
+              raise SystemExit(f"expected one target in Water_Ph, got {water_function.count(needle)}")
+          water_function = water_function.replace(needle, traced, 1)
+          properties.write_text(property_source[:function_start] + water_function + property_source[function_end:])
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
@@ -253,9 +259,15 @@ jobs:
                   "TRACE Water_Ph: p = " + String(p) + " Pa, h = " + String(h) +
                   " J/kg, mode = " + String(mode));
                 supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
-          if property_source.count(needle) != 1:
-              raise SystemExit(f"expected one Water_Ph algorithm entry, got {property_source.count(needle)}")
-          properties.write_text(property_source.replace(needle, traced, 1))
+          function_start = property_source.find("    function Water_Ph\\n")
+          function_end = property_source.find("    end Water_Ph;", function_start)
+          if function_start < 0 or function_end < 0:
+              raise SystemExit("could not isolate Water_Ph function")
+          water_function = property_source[function_start:function_end]
+          if water_function.count(needle) != 1:
+              raise SystemExit(f"expected one target in Water_Ph, got {water_function.count(needle)}")
+          water_function = water_function.replace(needle, traced, 1)
+          properties.write_text(property_source[:function_start] + water_function + property_source[function_end:])
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
