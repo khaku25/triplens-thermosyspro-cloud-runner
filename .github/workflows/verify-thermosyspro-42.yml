@@ -120,7 +120,7 @@ jobs:
           fi
           test -s build/tsp42_reference_res.csv
 
-      - name: Probe reference with physically consistent condenser outlet pressures
+      - name: Probe reference with condenser P0 matched to its declared initial pressure
         continue-on-error: true
         run: |
           set -euo pipefail
@@ -132,12 +132,14 @@ jobs:
           shutil.copytree(Path("vendor/ThermoSysPro/ThermoSysPro"), seed_root)
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
-          # Fix the model's declared cavity pressure at t=0; derive Pfond = P + rho_l*g*z_l.
-          # P=6136 Pa, rho_l=996.0227362797892 kg/m3, z_l=1.5 m.
+          # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
+          # This instance starts P at 6136 Pa; gravity_pressure defaults false, so Pfond=P.
+          # Keep P free and align P0, Pfond, and the nearby pressure-loss start at 6136 Pa.
           replacements = (
-              ("Pfond(start = 10000.0)", "Pfond(start = 20787.469550107293)"),
-              ("Pm(start = 6200)", "Pm(start = 20787.469550107293)"),
-              ("P(fixed = false, start = 6136)", "P(fixed = true, start = 6136)"),
+              ("steady_state = false, yNiveau(signal(start = 1.5))",
+               "steady_state = false, P0 = 6136, gravity_pressure = false, yNiveau(signal(start = 1.5))"),
+              ("Pfond(start = 10000.0)", "Pfond(start = 6136)"),
+              ("Pm(start = 6200)", "Pm(start = 6136)"),
           )
           for old, new in replacements:
               if source.count(old) != 1:
@@ -177,7 +179,7 @@ jobs:
             fileNamePrefix="tsp42_reference_condenser_seed");
           getErrorString();
           MOS
-          printf 'source-clone state: P=6136 Pa; Pfond=Pm=20787.469550107293 Pa (P + rho_l*g*z_l)\n' \
+          printf 'source-clone initial conditions: P=P0=6136 Pa; gravity_pressure=false, so Pfond=P; Pm(start)=6136 Pa\n' \
             | tee outputs/tsp42/reference-condenser-seed.txt
           timeout --signal=TERM --kill-after=30s 18m \
             omc "$PWD/build/tsp42-reference-condenser-seed.mos" \
@@ -220,7 +222,7 @@ jobs:
           sha256sum outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.mo \
             | tee outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.sha256
 
-      - name: Probe TripLens with physically consistent condenser outlet pressures
+      - name: Probe TripLens with condenser P0 matched to its declared initial pressure
         continue-on-error: true
         run: |
           set -euo pipefail
@@ -232,12 +234,14 @@ jobs:
           shutil.copytree(Path("vendor/ThermoSysPro/ThermoSysPro"), seed_root)
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
-          # Fix the model's declared cavity pressure at t=0; derive Pfond = P + rho_l*g*z_l.
-          # P=6136 Pa, rho_l=996.0227362797892 kg/m3, z_l=1.5 m.
+          # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
+          # This instance starts P at 6136 Pa; gravity_pressure defaults false, so Pfond=P.
+          # Keep P free and align P0, Pfond, and the nearby pressure-loss start at 6136 Pa.
           replacements = (
-              ("Pfond(start = 10000.0)", "Pfond(start = 20787.469550107293)"),
-              ("Pm(start = 6200)", "Pm(start = 20787.469550107293)"),
-              ("P(fixed = false, start = 6136)", "P(fixed = true, start = 6136)"),
+              ("steady_state = false, yNiveau(signal(start = 1.5))",
+               "steady_state = false, P0 = 6136, gravity_pressure = false, yNiveau(signal(start = 1.5))"),
+              ("Pfond(start = 10000.0)", "Pfond(start = 6136)"),
+              ("Pm(start = 6200)", "Pm(start = 6136)"),
           )
           for old, new in replacements:
               if source.count(old) != 1:
@@ -281,7 +285,7 @@ jobs:
             fileNamePrefix="tsp42_triplens_condenser_seed");
           getErrorString();
           MOS
-          printf 'source-clone state: P=6136 Pa; Pfond=Pm=20787.469550107293 Pa (P + rho_l*g*z_l)\n' \
+          printf 'source-clone initial conditions: P=P0=6136 Pa; gravity_pressure=false, so Pfond=P; Pm(start)=6136 Pa\n' \
             | tee outputs/tsp42/triplens-condenser-seed.txt
           timeout --signal=TERM --kill-after=30s 20m \
             omc "$PWD/build/tsp42-triplens-condenser-seed.mos" \
