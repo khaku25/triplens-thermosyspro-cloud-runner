@@ -151,6 +151,32 @@ jobs:
               raise SystemExit(f"expected one target in Water_Ph, got {water_function.count(needle)}")
           water_function = water_function.replace(needle, traced, 1)
           properties.write_text(property_source[:function_start] + water_function + property_source[function_end:])
+          fluid_package = seed_root / "Properties/Fluid.mo"
+          if not fluid_package.is_file():
+              fluid_package = seed_root / "Properties/Fluid/package.mo"
+          fluid_source = fluid_package.read_text()
+          fluid_end = fluid_source.rfind("end Fluid;")
+          if fluid_end < 0:
+              raise SystemExit(f"could not find end of Fluid package in {fluid_package}")
+          helper_source = """  function checkedPh
+            input ThermoSysPro.Units.SI.AbsolutePressure p;
+            input ThermoSysPro.Units.SI.SpecificEnthalpy h;
+            input Integer mode;
+            input Integer fluid;
+            input String caller;
+            output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph props;
+          algorithm
+            assert(p > 611.657,
+              "TRACE " + caller + ": p=" + String(p) + " Pa, h=" + String(h) +
+              " J/kg, mode=" + String(mode));
+            props := ThermoSysPro.Properties.Fluid.Ph(p, h, mode, fluid);
+          end checkedPh;
+          """
+          if "function checkedPh" in fluid_source:
+              raise SystemExit("checkedPh already exists in the source clone")
+          fluid_source = fluid_source[:fluid_end] + helper_source + fluid_source[fluid_end:]
+          fluid_package.write_text(fluid_source)
+
           def split_arguments(argument_text):
               arguments = []
               depth = 0
@@ -185,56 +211,54 @@ jobs:
               candidate_source = candidate.read_text()
               if "Fluid.Ph(" not in candidate_source and "Water_Ph(" not in candidate_source:
                   continue
-              model_match = re.search(r"(?m)^(?:partial[ \t]+)?model[ \t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
+              model_match = re.search(r"(?m)^(?:partial[ \\t]+)?model[ \\t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
               if model_match is None:
                   continue
-              equation_match = re.search(r"(?m)^[ \t]*equation[ \t]*$", candidate_source[model_match.end():])
+              equation_match = re.search(r"(?m)^[ \\t]*equation[ \\t]*$", candidate_source[model_match.end():])
               if equation_match is None:
                   continue
-              equation_end = model_match.end() + equation_match.end()
-              if candidate_source[equation_end:equation_end + 1] == "\n":
-                  equation_end += 1
+              scan_start = model_match.end() + equation_match.end()
+              if candidate_source[scan_start:scan_start + 1] == "\\n":
+                  scan_start += 1
+              annotation_start = candidate_source.find("annotation(", scan_start)
+              scan_end = annotation_start if annotation_start >= 0 else len(candidate_source)
 
               call_sites = []
               for token in ("Fluid.Ph(", "Water_Ph("):
-                  cursor = 0
-                  while cursor < len(candidate_source):
-                      call_start = candidate_source.find(token, cursor)
+                  cursor = scan_start
+                  while cursor < scan_end:
+                      call_start = candidate_source.find(token, cursor, scan_end)
                       if call_start < 0:
                           break
                       opening = call_start + len(token) - 1
                       closing = find_call_end(candidate_source, opening)
-                      if closing is None:
+                      if closing is None or closing >= scan_end:
                           break
                       arguments = split_arguments(candidate_source[opening + 1:closing])
                       if token == "Fluid.Ph(" and len(arguments) == 4:
-                          pressure, enthalpy = arguments[:2]
+                          pressure, enthalpy, mode_arg, fluid_arg = arguments
                       elif token == "Water_Ph(" and len(arguments) >= 2:
                           pressure, enthalpy = arguments[:2]
+                          mode_arg = arguments[2] if len(arguments) >= 3 else "0"
+                          fluid_arg = "1"
                       else:
                           cursor = closing + 1
                           continue
-                      if "[" in pressure or "[" in enthalpy:
-                          cursor = closing + 1
-                          continue
-                      call_sites.append((pressure, enthalpy))
+                      call_sites.append((call_start, closing + 1, pressure, enthalpy, mode_arg, fluid_arg))
                       cursor = closing + 1
               if not call_sites:
                   continue
 
-              assertions = []
-              for index, (pressure, enthalpy) in enumerate(call_sites, start=1):
-                  assertions.append(
-                      f'  assert(({pressure}) > 611.657, "TRACE {relative} call {index}: p=" + '
-                      f'String(({pressure})) + ", h=" + String(({enthalpy})));')
-              candidate_source = (
-                  candidate_source[:equation_end]
-                  + "\n".join(assertions) + "\n"
-                  + candidate_source[equation_end:])
+              for index, (call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg) in reversed(list(enumerate(call_sites, start=1))):
+                  caller = f"{relative} call {index}"
+                  replacement = (
+                      "ThermoSysPro.Properties.Fluid.checkedPh("
+                      f"{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, \\"{caller}\\")")
+                  candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
               diagnostic_callers.append(f"{relative}: {len(call_sites)}")
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
-              "\n".join(diagnostic_callers) + "\n")
+              "\\n".join(diagnostic_callers) + "\\n")
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
@@ -356,6 +380,32 @@ jobs:
               raise SystemExit(f"expected one target in Water_Ph, got {water_function.count(needle)}")
           water_function = water_function.replace(needle, traced, 1)
           properties.write_text(property_source[:function_start] + water_function + property_source[function_end:])
+          fluid_package = seed_root / "Properties/Fluid.mo"
+          if not fluid_package.is_file():
+              fluid_package = seed_root / "Properties/Fluid/package.mo"
+          fluid_source = fluid_package.read_text()
+          fluid_end = fluid_source.rfind("end Fluid;")
+          if fluid_end < 0:
+              raise SystemExit(f"could not find end of Fluid package in {fluid_package}")
+          helper_source = """  function checkedPh
+            input ThermoSysPro.Units.SI.AbsolutePressure p;
+            input ThermoSysPro.Units.SI.SpecificEnthalpy h;
+            input Integer mode;
+            input Integer fluid;
+            input String caller;
+            output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph props;
+          algorithm
+            assert(p > 611.657,
+              "TRACE " + caller + ": p=" + String(p) + " Pa, h=" + String(h) +
+              " J/kg, mode=" + String(mode));
+            props := ThermoSysPro.Properties.Fluid.Ph(p, h, mode, fluid);
+          end checkedPh;
+          """
+          if "function checkedPh" in fluid_source:
+              raise SystemExit("checkedPh already exists in the source clone")
+          fluid_source = fluid_source[:fluid_end] + helper_source + fluid_source[fluid_end:]
+          fluid_package.write_text(fluid_source)
+
           def split_arguments(argument_text):
               arguments = []
               depth = 0
@@ -390,56 +440,54 @@ jobs:
               candidate_source = candidate.read_text()
               if "Fluid.Ph(" not in candidate_source and "Water_Ph(" not in candidate_source:
                   continue
-              model_match = re.search(r"(?m)^(?:partial[ \t]+)?model[ \t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
+              model_match = re.search(r"(?m)^(?:partial[ \\t]+)?model[ \\t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
               if model_match is None:
                   continue
-              equation_match = re.search(r"(?m)^[ \t]*equation[ \t]*$", candidate_source[model_match.end():])
+              equation_match = re.search(r"(?m)^[ \\t]*equation[ \\t]*$", candidate_source[model_match.end():])
               if equation_match is None:
                   continue
-              equation_end = model_match.end() + equation_match.end()
-              if candidate_source[equation_end:equation_end + 1] == "\n":
-                  equation_end += 1
+              scan_start = model_match.end() + equation_match.end()
+              if candidate_source[scan_start:scan_start + 1] == "\\n":
+                  scan_start += 1
+              annotation_start = candidate_source.find("annotation(", scan_start)
+              scan_end = annotation_start if annotation_start >= 0 else len(candidate_source)
 
               call_sites = []
               for token in ("Fluid.Ph(", "Water_Ph("):
-                  cursor = 0
-                  while cursor < len(candidate_source):
-                      call_start = candidate_source.find(token, cursor)
+                  cursor = scan_start
+                  while cursor < scan_end:
+                      call_start = candidate_source.find(token, cursor, scan_end)
                       if call_start < 0:
                           break
                       opening = call_start + len(token) - 1
                       closing = find_call_end(candidate_source, opening)
-                      if closing is None:
+                      if closing is None or closing >= scan_end:
                           break
                       arguments = split_arguments(candidate_source[opening + 1:closing])
                       if token == "Fluid.Ph(" and len(arguments) == 4:
-                          pressure, enthalpy = arguments[:2]
+                          pressure, enthalpy, mode_arg, fluid_arg = arguments
                       elif token == "Water_Ph(" and len(arguments) >= 2:
                           pressure, enthalpy = arguments[:2]
+                          mode_arg = arguments[2] if len(arguments) >= 3 else "0"
+                          fluid_arg = "1"
                       else:
                           cursor = closing + 1
                           continue
-                      if "[" in pressure or "[" in enthalpy:
-                          cursor = closing + 1
-                          continue
-                      call_sites.append((pressure, enthalpy))
+                      call_sites.append((call_start, closing + 1, pressure, enthalpy, mode_arg, fluid_arg))
                       cursor = closing + 1
               if not call_sites:
                   continue
 
-              assertions = []
-              for index, (pressure, enthalpy) in enumerate(call_sites, start=1):
-                  assertions.append(
-                      f'  assert(({pressure}) > 611.657, "TRACE {relative} call {index}: p=" + '
-                      f'String(({pressure})) + ", h=" + String(({enthalpy})));')
-              candidate_source = (
-                  candidate_source[:equation_end]
-                  + "\n".join(assertions) + "\n"
-                  + candidate_source[equation_end:])
+              for index, (call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg) in reversed(list(enumerate(call_sites, start=1))):
+                  caller = f"{relative} call {index}"
+                  replacement = (
+                      "ThermoSysPro.Properties.Fluid.checkedPh("
+                      f"{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, \\"{caller}\\")")
+                  candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
               diagnostic_callers.append(f"{relative}: {len(call_sites)}")
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
-              "\n".join(diagnostic_callers) + "\n")
+              "\\n".join(diagnostic_callers) + "\\n")
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
