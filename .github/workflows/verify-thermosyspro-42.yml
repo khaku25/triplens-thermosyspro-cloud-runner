@@ -124,7 +124,7 @@ jobs:
             print(getErrorString());
             exit(1);
           end if;
-          loadString("model TSP42_CombinedCycle_TripTAC_CondenserSeed extends ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC(Condenseur(Pfond(start=20787.469550107293))); end TSP42_CombinedCycle_TripTAC_CondenserSeed;");
+          loadString("model TSP42_CombinedCycle_TripTAC_CondenserSeed extends ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC(Condenseur(Pfond(start=20787.469550107293)), perteChargeK(Pm(start=20787.469550107293))); end TSP42_CombinedCycle_TripTAC_CondenserSeed;");
           getVersion(Modelica);
           getVersion(ThermoSysPro);
           cd("$PWD/build");
@@ -140,7 +140,7 @@ jobs:
             fileNamePrefix="tsp42_reference_condenser_seed");
           getErrorString();
           MOS
-          printf 'diagnostic seed Pfond=20787.469550107293 Pa (P + rho_l*g*z_l)\n' \
+          printf 'diagnostic seeds: Condenseur.Pfond and perteChargeK.Pm = 20787.469550107293 Pa (P + rho_l*g*z_l)\n' \
             | tee outputs/tsp42/reference-condenser-seed.txt
           timeout --signal=TERM --kill-after=30s 18m \
             omc "$PWD/build/tsp42-reference-condenser-seed.mos" \
@@ -204,7 +204,7 @@ jobs:
             print(getErrorString());
             exit(1);
           end if;
-          loadString("model TripLens_CombinedCycle_TripTAC_CondenserSeed extends TripLens_CombinedCycle_TripTAC(Condenseur(Pfond(start=20787.469550107293))); end TripLens_CombinedCycle_TripTAC_CondenserSeed;");
+          loadString("model TripLens_CombinedCycle_TripTAC_CondenserSeed extends TripLens_CombinedCycle_TripTAC(Condenseur(Pfond(start=20787.469550107293)), perteChargeK(Pm(start=20787.469550107293))); end TripLens_CombinedCycle_TripTAC_CondenserSeed;");
           getVersion(Modelica);
           getVersion(ThermoSysPro);
           cd("$PWD/build");
@@ -220,7 +220,7 @@ jobs:
             fileNamePrefix="tsp42_triplens_condenser_seed");
           getErrorString();
           MOS
-          printf 'diagnostic seed Pfond=20787.469550107293 Pa (P + rho_l*g*z_l)\n' \
+          printf 'diagnostic seeds: Condenseur.Pfond and perteChargeK.Pm = 20787.469550107293 Pa (P + rho_l*g*z_l)\n' \
             | tee outputs/tsp42/triplens-condenser-seed.txt
           timeout --signal=TERM --kill-after=30s 20m \
             omc "$PWD/build/tsp42-triplens-condenser-seed.mos" \
