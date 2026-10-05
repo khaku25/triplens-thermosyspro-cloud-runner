@@ -139,7 +139,7 @@ jobs:
                   "TRACE Water_Ph: p = " + String(p) + " Pa, h = " + String(h) +
                   " J/kg, mode = " + String(mode));
                 supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
-          function_start = property_source.find("    function Water_Ph\\n")
+          function_start = property_source.find("    function Water_Ph\n")
           function_end = property_source.find("    end Water_Ph;", function_start)
           if function_start < 0 or function_end < 0:
               raise SystemExit("could not isolate Water_Ph function")
@@ -259,7 +259,7 @@ jobs:
                   "TRACE Water_Ph: p = " + String(p) + " Pa, h = " + String(h) +
                   " J/kg, mode = " + String(mode));
                 supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
-          function_start = property_source.find("    function Water_Ph\\n")
+          function_start = property_source.find("    function Water_Ph\n")
           function_end = property_source.find("    end Water_Ph;", function_start)
           if function_start < 0 or function_end < 0:
               raise SystemExit("could not isolate Water_Ph function")
