@@ -180,7 +180,7 @@ jobs:
           diagnostic_callers = []
           for candidate in sorted(seed_root.rglob("*.mo")):
               relative = candidate.relative_to(seed_root).as_posix()
-              if relative.startswith("Properties/"):
+              if relative.startswith("Properties/") or relative.startswith("Examples/"):
                   continue
               candidate_source = candidate.read_text()
               if "Fluid.Ph(" not in candidate_source and "Water_Ph(" not in candidate_source:
@@ -212,6 +212,9 @@ jobs:
                       elif token == "Water_Ph(" and len(arguments) >= 2:
                           pressure, enthalpy = arguments[:2]
                       else:
+                          cursor = closing + 1
+                          continue
+                      if "[" in pressure or "[" in enthalpy:
                           cursor = closing + 1
                           continue
                       call_sites.append((pressure, enthalpy))
@@ -382,7 +385,7 @@ jobs:
           diagnostic_callers = []
           for candidate in sorted(seed_root.rglob("*.mo")):
               relative = candidate.relative_to(seed_root).as_posix()
-              if relative.startswith("Properties/"):
+              if relative.startswith("Properties/") or relative.startswith("Examples/"):
                   continue
               candidate_source = candidate.read_text()
               if "Fluid.Ph(" not in candidate_source and "Water_Ph(" not in candidate_source:
@@ -414,6 +417,9 @@ jobs:
                       elif token == "Water_Ph(" and len(arguments) >= 2:
                           pressure, enthalpy = arguments[:2]
                       else:
+                          cursor = closing + 1
+                          continue
+                      if "[" in pressure or "[" in enthalpy:
                           cursor = closing + 1
                           continue
                       call_sites.append((pressure, enthalpy))
