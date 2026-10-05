@@ -130,6 +130,18 @@ jobs:
 
           seed_root = Path("build/tsp42-reference-seeded/ThermoSysPro")
           shutil.copytree(Path("vendor/ThermoSysPro/ThermoSysPro"), seed_root)
+          properties = seed_root / "Properties/WaterSteam/IF97_packages.mo"
+          property_source = properties.read_text()
+          needle = """    algorithm
+                supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
+          traced = """    algorithm
+                assert(p > 611.657,
+                  "TRACE Water_Ph: p = " + String(p) + " Pa, h = " + String(h) +
+                  " J/kg, mode = " + String(mode));
+                supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
+          if property_source.count(needle) != 1:
+              raise SystemExit(f"expected one Water_Ph algorithm entry, got {property_source.count(needle)}")
+          properties.write_text(property_source.replace(needle, traced, 1))
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
@@ -232,6 +244,18 @@ jobs:
 
           seed_root = Path("build/tsp42-triplens-seeded/ThermoSysPro")
           shutil.copytree(Path("vendor/ThermoSysPro/ThermoSysPro"), seed_root)
+          properties = seed_root / "Properties/WaterSteam/IF97_packages.mo"
+          property_source = properties.read_text()
+          needle = """    algorithm
+                supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
+          traced = """    algorithm
+                assert(p > 611.657,
+                  "TRACE Water_Ph: p = " + String(p) + " Pa, h = " + String(h) +
+                  " J/kg, mode = " + String(mode));
+                supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
+          if property_source.count(needle) != 1:
+              raise SystemExit(f"expected one Water_Ph algorithm entry, got {property_source.count(needle)}")
+          properties.write_text(property_source.replace(needle, traced, 1))
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
