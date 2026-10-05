@@ -62,6 +62,19 @@ jobs:
             | tee outputs/tsp42/source-identity.txt
           grep -nE 'Version 4\.2|version[[:space:]]*=' "$package_file" | head -n 5
 
+      - name: Capture ThermoSysPro 4.2 pressure-property source
+        run: |
+          set -euo pipefail
+          mkdir -p outputs/tsp42/reference-source
+          cp vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/IF97_packages.mo \
+            outputs/tsp42/reference-source/IF97_packages.mo
+          cp vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/BaseIF97.mo \
+            outputs/tsp42/reference-source/BaseIF97.mo
+          cp vendor/ThermoSysPro/ThermoSysPro/WaterSteam/HeatExchangers/SimpleDynamicCondenser.mo \
+            outputs/tsp42/reference-source/SimpleDynamicCondenser.mo
+          cp vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo \
+            outputs/tsp42/reference-source/PipePressureLoss.mo
+
       - name: Diagnostic upstream combined-cycle reference on ThermoSysPro 4.2
         continue-on-error: true
         run: |
