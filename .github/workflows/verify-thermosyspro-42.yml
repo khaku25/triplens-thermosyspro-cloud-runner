@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install OpenModelica 1.28 development nightly
+      - name: Install OpenModelica 1.27.1 official release
         run: |
           set -euo pipefail
           mkdir -p outputs/tsp42
@@ -33,12 +33,12 @@ jobs:
           sudo apt-get install -y ca-certificates curl gnupg
           curl -fsSL https://build.openmodelica.org/apt/openmodelica.asc \
             | sudo gpg --dearmor -o /usr/share/keyrings/openmodelica-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/openmodelica-keyring.gpg] https://build.openmodelica.org/apt noble nightly" \
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/openmodelica-keyring.gpg] https://build.openmodelica.org/apt noble stable" \
             | sudo tee /etc/apt/sources.list.d/openmodelica.list
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends omc
           omc --version | tee outputs/tsp42/openmodelica-version.txt
-          grep -q '1.28.0-dev' outputs/tsp42/openmodelica-version.txt
+          grep -q '1.27.1' outputs/tsp42/openmodelica-version.txt
 
       - name: Download and verify official ThermoSysPro 4.2
         run: |
