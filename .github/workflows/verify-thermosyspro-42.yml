@@ -148,6 +148,17 @@ jobs:
               raise SystemExit(f"expected one target in Water_Ph, got {water_function.count(needle)}")
           water_function = water_function.replace(needle, traced, 1)
           properties.write_text(property_source[:function_start] + water_function + property_source[function_end:])
+          loss_model = seed_root / "WaterSteam/PressureLosses/PipePressureLoss.mo"
+          loss_source = loss_model.read_text()
+          loss_call = "  pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"
+          traced_loss_call = """  assert(Pm > 611.657,
+            "TRACE PipePressureLoss: Pm = " + String(Pm) + " Pa, C1.P = " + String(C1.P) +
+            " Pa, C2.P = " + String(C2.P) + " Pa, h = " + String(h) +
+            " J/kg, mode = " + String(mode));
+          pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"""
+          if loss_source.count(loss_call) != 1:
+              raise SystemExit(f"expected one PipePressureLoss property call, got {loss_source.count(loss_call)}")
+          loss_model.write_text(loss_source.replace(loss_call, traced_loss_call, 1))
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
@@ -268,6 +279,17 @@ jobs:
               raise SystemExit(f"expected one target in Water_Ph, got {water_function.count(needle)}")
           water_function = water_function.replace(needle, traced, 1)
           properties.write_text(property_source[:function_start] + water_function + property_source[function_end:])
+          loss_model = seed_root / "WaterSteam/PressureLosses/PipePressureLoss.mo"
+          loss_source = loss_model.read_text()
+          loss_call = "  pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"
+          traced_loss_call = """  assert(Pm > 611.657,
+            "TRACE PipePressureLoss: Pm = " + String(Pm) + " Pa, C1.P = " + String(C1.P) +
+            " Pa, C2.P = " + String(C2.P) + " Pa, h = " + String(h) +
+            " J/kg, mode = " + String(mode));
+          pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"""
+          if loss_source.count(loss_call) != 1:
+              raise SystemExit(f"expected one PipePressureLoss property call, got {loss_source.count(loss_call)}")
+          loss_model.write_text(loss_source.replace(loss_call, traced_loss_call, 1))
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
