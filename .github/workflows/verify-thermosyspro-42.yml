@@ -128,6 +128,7 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import re
           import shutil
 
           seed_root = Path("build/tsp42-reference-seeded/ThermoSysPro")
@@ -329,6 +330,7 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import re
           import shutil
 
           seed_root = Path("build/tsp42-triplens-seeded/ThermoSysPro")
