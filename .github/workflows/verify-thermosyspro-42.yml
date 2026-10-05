@@ -159,17 +159,17 @@ jobs:
           if fluid_end < 0:
               raise SystemExit(f"could not find end of Fluid package in {fluid_package}")
           helper_source = """  function checkedPh
-            input ThermoSysPro.Units.SI.AbsolutePressure p;
-            input ThermoSysPro.Units.SI.SpecificEnthalpy h;
+            input .ThermoSysPro.Units.SI.AbsolutePressure p;
+            input .ThermoSysPro.Units.SI.SpecificEnthalpy h;
             input Integer mode;
             input Integer fluid;
             input String caller;
-            output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph props;
+            output .ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph props;
           algorithm
             assert(p > 611.657,
               "TRACE " + caller + ": p=" + String(p) + " Pa, h=" + String(h) +
               " J/kg, mode=" + String(mode));
-            props := ThermoSysPro.Properties.Fluid.Ph(p, h, mode, fluid);
+            props := .ThermoSysPro.Properties.Fluid.Ph(p, h, mode, fluid);
           end checkedPh;
           """
           if "function checkedPh" in fluid_source:
@@ -252,7 +252,7 @@ jobs:
               for index, (call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg) in reversed(list(enumerate(call_sites, start=1))):
                   caller = f"{relative} call {index}"
                   replacement = (
-                      "ThermoSysPro.Properties.Fluid.checkedPh("
+                      ".ThermoSysPro.Properties.Fluid.checkedPh("
                       f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
@@ -388,17 +388,17 @@ jobs:
           if fluid_end < 0:
               raise SystemExit(f"could not find end of Fluid package in {fluid_package}")
           helper_source = """  function checkedPh
-            input ThermoSysPro.Units.SI.AbsolutePressure p;
-            input ThermoSysPro.Units.SI.SpecificEnthalpy h;
+            input .ThermoSysPro.Units.SI.AbsolutePressure p;
+            input .ThermoSysPro.Units.SI.SpecificEnthalpy h;
             input Integer mode;
             input Integer fluid;
             input String caller;
-            output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph props;
+            output .ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph props;
           algorithm
             assert(p > 611.657,
               "TRACE " + caller + ": p=" + String(p) + " Pa, h=" + String(h) +
               " J/kg, mode=" + String(mode));
-            props := ThermoSysPro.Properties.Fluid.Ph(p, h, mode, fluid);
+            props := .ThermoSysPro.Properties.Fluid.Ph(p, h, mode, fluid);
           end checkedPh;
           """
           if "function checkedPh" in fluid_source:
@@ -481,7 +481,7 @@ jobs:
               for index, (call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg) in reversed(list(enumerate(call_sites, start=1))):
                   caller = f"{relative} call {index}"
                   replacement = (
-                      "ThermoSysPro.Properties.Fluid.checkedPh("
+                      ".ThermoSysPro.Properties.Fluid.checkedPh("
                       f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
