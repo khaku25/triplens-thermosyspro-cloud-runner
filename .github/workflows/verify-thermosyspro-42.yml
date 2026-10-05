@@ -253,7 +253,7 @@ jobs:
                   caller = f"{relative} call {index}"
                   replacement = (
                       "ThermoSysPro.Properties.Fluid.checkedPh("
-                      f"{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, \\"{caller}\\")")
+                      f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
               diagnostic_callers.append(f"{relative}: {len(call_sites)}")
@@ -482,7 +482,7 @@ jobs:
                   caller = f"{relative} call {index}"
                   replacement = (
                       "ThermoSysPro.Properties.Fluid.checkedPh("
-                      f"{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, \\"{caller}\\")")
+                      f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
               diagnostic_callers.append(f"{relative}: {len(call_sites)}")
