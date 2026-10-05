@@ -265,6 +265,19 @@ jobs:
               diagnostic_callers.append(f"{relative}: {len(call_sites)}")
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
               "\n".join(diagnostic_callers) + "\n")
+          diagnostic_source_dir = Path("outputs/tsp42/diagnostic-source")
+          diagnostic_source_dir.mkdir(parents=True, exist_ok=True)
+          shutil.copyfile(fluid_package, diagnostic_source_dir / "Fluid-package-diagnostic.mo")
+          for relative in (
+              "WaterSteam/HeatExchangers/SimpleDynamicCondenser.mo",
+              "WaterSteam/HeatExchangers/DynamicTwoPhaseFlowPipe.mo",
+              "WaterSteam/PressureLosses/PipePressureLoss.mo",
+              "WaterSteam/Machines/StaticCentrifugalPump.mo",
+              "WaterSteam/Volumes/VolumeC.mo",
+          ):
+              source_file = seed_root / relative
+              if source_file.is_file():
+                  shutil.copyfile(source_file, diagnostic_source_dir / relative.replace("/", "__"))
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
@@ -500,6 +513,19 @@ jobs:
               diagnostic_callers.append(f"{relative}: {len(call_sites)}")
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
               "\n".join(diagnostic_callers) + "\n")
+          diagnostic_source_dir = Path("outputs/tsp42/diagnostic-source")
+          diagnostic_source_dir.mkdir(parents=True, exist_ok=True)
+          shutil.copyfile(fluid_package, diagnostic_source_dir / "Fluid-package-diagnostic.mo")
+          for relative in (
+              "WaterSteam/HeatExchangers/SimpleDynamicCondenser.mo",
+              "WaterSteam/HeatExchangers/DynamicTwoPhaseFlowPipe.mo",
+              "WaterSteam/PressureLosses/PipePressureLoss.mo",
+              "WaterSteam/Machines/StaticCentrifugalPump.mo",
+              "WaterSteam/Volumes/VolumeC.mo",
+          ):
+              source_file = seed_root / relative
+              if source_file.is_file():
+                  shutil.copyfile(source_file, diagnostic_source_dir / relative.replace("/", "__"))
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
