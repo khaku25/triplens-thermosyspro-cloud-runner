@@ -211,14 +211,14 @@ jobs:
               candidate_source = candidate.read_text()
               if "Fluid.Ph(" not in candidate_source and "Water_Ph(" not in candidate_source:
                   continue
-              model_match = re.search(r"(?m)^(?:partial[ \\t]+)?model[ \\t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
+              model_match = re.search(r"(?m)^(?:partial[ \t]+)?model[ \t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
               if model_match is None:
                   continue
-              equation_match = re.search(r"(?m)^[ \\t]*equation[ \\t]*$", candidate_source[model_match.end():])
+              equation_match = re.search(r"(?m)^[ \t]*equation[ \t]*$", candidate_source[model_match.end():])
               if equation_match is None:
                   continue
               scan_start = model_match.end() + equation_match.end()
-              if candidate_source[scan_start:scan_start + 1] == "\\n":
+              if candidate_source[scan_start:scan_start + 1] == "\n":
                   scan_start += 1
               annotation_start = candidate_source.find("annotation(", scan_start)
               scan_end = annotation_start if annotation_start >= 0 else len(candidate_source)
@@ -258,7 +258,7 @@ jobs:
               candidate.write_text(candidate_source)
               diagnostic_callers.append(f"{relative}: {len(call_sites)}")
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
-              "\\n".join(diagnostic_callers) + "\\n")
+              "\n".join(diagnostic_callers) + "\n")
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
@@ -440,14 +440,14 @@ jobs:
               candidate_source = candidate.read_text()
               if "Fluid.Ph(" not in candidate_source and "Water_Ph(" not in candidate_source:
                   continue
-              model_match = re.search(r"(?m)^(?:partial[ \\t]+)?model[ \\t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
+              model_match = re.search(r"(?m)^(?:partial[ \t]+)?model[ \t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
               if model_match is None:
                   continue
-              equation_match = re.search(r"(?m)^[ \\t]*equation[ \\t]*$", candidate_source[model_match.end():])
+              equation_match = re.search(r"(?m)^[ \t]*equation[ \t]*$", candidate_source[model_match.end():])
               if equation_match is None:
                   continue
               scan_start = model_match.end() + equation_match.end()
-              if candidate_source[scan_start:scan_start + 1] == "\\n":
+              if candidate_source[scan_start:scan_start + 1] == "\n":
                   scan_start += 1
               annotation_start = candidate_source.find("annotation(", scan_start)
               scan_end = annotation_start if annotation_start >= 0 else len(candidate_source)
@@ -487,7 +487,7 @@ jobs:
               candidate.write_text(candidate_source)
               diagnostic_callers.append(f"{relative}: {len(call_sites)}")
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
-              "\\n".join(diagnostic_callers) + "\\n")
+              "\n".join(diagnostic_callers) + "\n")
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
