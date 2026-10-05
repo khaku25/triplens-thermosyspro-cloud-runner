@@ -459,11 +459,10 @@ jobs:
               candidate_source = candidate.read_text()
               if "Fluid.Ph(" not in candidate_source and "Water_Ph(" not in candidate_source:
                   continue
-              # Include declaration modifiers and initial equation sections, and
-              # include the CombinedCycle example that TripLens extends.
+              # Include declaration modifiers, initial equations, nested local
+              # models, and code after inline graphical annotations.
               scan_start = 0
-              annotation_start = candidate_source.find("annotation(")
-              scan_end = annotation_start if annotation_start >= 0 else len(candidate_source)
+              scan_end = len(candidate_source)
 
               call_sites = []
               for token in ("Fluid.Ph(", "Water_Ph("):
