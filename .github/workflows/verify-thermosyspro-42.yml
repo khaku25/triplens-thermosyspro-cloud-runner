@@ -552,14 +552,19 @@ jobs:
 
           shutil.copyfile(properties, diagnostic_source_dir / "IF97-packages-diagnostic.mo")
           property_source_dir = diagnostic_source_dir / "Properties"
+          diagnostic_property_index = []
           for candidate in sorted(property_root.rglob("*.mo")):
               source_text = candidate.read_text()
-              if "function Ph" not in source_text and "Water_Ph(" not in source_text and "Fluid.Ph(" not in source_text:
-                  continue
               relative = candidate.relative_to(property_root)
               target = property_source_dir / relative
               target.parent.mkdir(parents=True, exist_ok=True)
               shutil.copyfile(candidate, target)
+              for line_number, line in enumerate(source_text.splitlines(), start=1):
+                  if re.search(r"\\b(?:Ph|Water_Ph)\\b", line):
+                      diagnostic_property_index.append(
+                          f"{relative}:{line_number}: {line.strip()}")
+          Path("outputs/tsp42/diagnostic-property-index.txt").write_text(
+              "\\n".join(diagnostic_property_index) + "\\n")
           for relative in (
               "WaterSteam/HeatExchangers/SimpleDynamicCondenser.mo",
               "WaterSteam/HeatExchangers/DynamicTwoPhaseFlowPipe.mo",
