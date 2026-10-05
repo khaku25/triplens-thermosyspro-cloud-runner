@@ -191,6 +191,30 @@ jobs:
               raise SystemExit(f"expected one StaticCentrifugalPump property call, got {pump_source.count(pump_call)}")
           pump_model.write_text(pump_source.replace(pump_call, traced_pump_call, 1))
           shutil.copyfile(pump_model, Path("outputs/tsp42/StaticCentrifugalPump-diagnostic.mo"))
+          diagnostic_call = "  pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"
+          diagnostic_callers = []
+          for candidate in sorted((seed_root / "WaterSteam").rglob("*.mo")):
+              candidate_source = candidate.read_text()
+              if candidate_source.count(diagnostic_call) != 1:
+                  continue
+              if "C1.P" not in candidate_source or "C2.P" not in candidate_source:
+                  continue
+              if candidate_source.count(pump_marker) != 1:
+                  continue
+              owner = candidate.relative_to(seed_root).as_posix()
+              local_function = function_source.replace("TRACE PipePressureLoss", f"TRACE {owner}")
+              candidate_source = candidate_source.replace(
+                  pump_marker, "\\n" + local_function + pump_marker[1:], 1)
+              candidate_source = candidate_source.replace(
+                  diagnostic_call,
+                  "  pro = checkedFluidProperties(Pm, C1.P, C2.P, h, mode, fluid);",
+                  1)
+              candidate.write_text(candidate_source)
+              diagnostic_callers.append(owner)
+          if not diagnostic_callers:
+              raise SystemExit("no additional Pm fluid-property callers found")
+          Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
+              "\\n".join(diagnostic_callers) + "\\n")
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
@@ -352,6 +376,30 @@ jobs:
               raise SystemExit(f"expected one StaticCentrifugalPump property call, got {pump_source.count(pump_call)}")
           pump_model.write_text(pump_source.replace(pump_call, traced_pump_call, 1))
           shutil.copyfile(pump_model, Path("outputs/tsp42/StaticCentrifugalPump-diagnostic.mo"))
+          diagnostic_call = "  pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"
+          diagnostic_callers = []
+          for candidate in sorted((seed_root / "WaterSteam").rglob("*.mo")):
+              candidate_source = candidate.read_text()
+              if candidate_source.count(diagnostic_call) != 1:
+                  continue
+              if "C1.P" not in candidate_source or "C2.P" not in candidate_source:
+                  continue
+              if candidate_source.count(pump_marker) != 1:
+                  continue
+              owner = candidate.relative_to(seed_root).as_posix()
+              local_function = function_source.replace("TRACE PipePressureLoss", f"TRACE {owner}")
+              candidate_source = candidate_source.replace(
+                  pump_marker, "\\n" + local_function + pump_marker[1:], 1)
+              candidate_source = candidate_source.replace(
+                  diagnostic_call,
+                  "  pro = checkedFluidProperties(Pm, C1.P, C2.P, h, mode, fluid);",
+                  1)
+              candidate.write_text(candidate_source)
+              diagnostic_callers.append(owner)
+          if not diagnostic_callers:
+              raise SystemExit("no additional Pm fluid-property callers found")
+          Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
+              "\\n".join(diagnostic_callers) + "\\n")
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
