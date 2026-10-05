@@ -425,6 +425,46 @@ jobs:
           fluid_source = fluid_source[:fluid_end] + helper_source + fluid_source[fluid_end:]
           fluid_package.write_text(fluid_source)
 
+          property_root = seed_root / "Properties"
+          diagnostic_ph_functions = []
+          if97_relative = "Properties/WaterSteam/IF97_packages.mo"
+          for candidate in sorted(property_root.rglob("*.mo")):
+              relative = candidate.relative_to(seed_root).as_posix()
+              if relative == if97_relative:
+                  continue
+              candidate_source = candidate.read_text()
+              matches = list(re.finditer(r"(?m)^[ \t]*(?:partial[ \t]+)?function[ \t]+Ph\b", candidate_source))
+              for function_match in reversed(matches):
+                  function_end_match = re.search(
+                      r"(?m)^[ \t]*end[ \t]+Ph[ \t]*;",
+                      candidate_source[function_match.end():])
+                  if function_end_match is None:
+                      continue
+                  function_end = function_match.end() + function_end_match.end()
+                  function_source = candidate_source[function_match.start():function_end]
+                  if re.search(r"(?m)^[ \t]*input\b[^;\n]*\bp[ \t]*;", function_source) is None:
+                      continue
+                  if re.search(r"(?m)^[ \t]*input\b[^;\n]*\bh[ \t]*;", function_source) is None:
+                      continue
+                  algorithm_match = re.search(r"(?m)^([ \t]*)algorithm[ \t]*$", function_source)
+                  if algorithm_match is None:
+                      continue
+                  indent = algorithm_match.group(1)
+                  algorithm_start = function_match.start() + algorithm_match.start()
+                  algorithm_line_end = candidate_source.find("\n", function_match.start() + algorithm_match.end())
+                  if algorithm_line_end < 0:
+                      continue
+                  injected_algorithm = (
+                      f"{indent}algorithm\n"
+                      f'{indent}  assert(p > 611.657, "TRACE {relative} Fluid.Ph: p=" + String(p) + " Pa, h=" + String(h));')
+                  candidate_source = (
+                      candidate_source[:algorithm_start] + injected_algorithm +
+                      candidate_source[algorithm_line_end + 1:])
+                  diagnostic_ph_functions.append(f"{relative}: Ph")
+              candidate.write_text(candidate_source)
+          Path("outputs/tsp42/diagnostic-ph-functions.txt").write_text(
+              "\n".join(diagnostic_ph_functions) + "\n")
+
           def split_arguments(argument_text):
               arguments = []
               depth = 0
@@ -509,6 +549,17 @@ jobs:
           diagnostic_source_dir = Path("outputs/tsp42/diagnostic-source")
           diagnostic_source_dir.mkdir(parents=True, exist_ok=True)
           shutil.copyfile(fluid_package, diagnostic_source_dir / "Fluid-package-diagnostic.mo")
+
+          shutil.copyfile(properties, diagnostic_source_dir / "IF97-packages-diagnostic.mo")
+          property_source_dir = diagnostic_source_dir / "Properties"
+          for candidate in sorted(property_root.rglob("*.mo")):
+              source_text = candidate.read_text()
+              if "function Ph" not in source_text and "Water_Ph(" not in source_text and "Fluid.Ph(" not in source_text:
+                  continue
+              relative = candidate.relative_to(property_root)
+              target = property_source_dir / relative
+              target.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copyfile(candidate, target)
           for relative in (
               "WaterSteam/HeatExchangers/SimpleDynamicCondenser.mo",
               "WaterSteam/HeatExchangers/DynamicTwoPhaseFlowPipe.mo",
