@@ -18,8 +18,10 @@ MARKER = "TRIPLENS_TSP42_PIPE_PROPERTY_FLOOR_V1"
 PROPERTY_FLOOR_PA = 700
 PROTECTED_ANCHOR = "protected\n"
 PROPERTY_CALL = "  pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"
-PROPERTY_PATCH = f'''  Pthermo = noEvent(max(propertyPressureFloor, Pm));
-  pro = ThermoSysPro.Properties.Fluid.Ph(Pthermo, h, mode, fluid);'''
+PROPERTY_PATCH = (
+    "  pro = ThermoSysPro.Properties.Fluid.Ph("
+    "noEvent(max(propertyPressureFloor, Pm)), h, mode, fluid);"
+)
 
 
 def patch_text(source: str) -> str:
@@ -34,8 +36,6 @@ def patch_text(source: str) -> str:
   // {marker}
   constant Units.SI.AbsolutePressure propertyPressureFloor = {floor}
     "Pressure floor for IF97 property evaluation only";
-  Units.SI.AbsolutePressure Pthermo
-    "Pressure passed to IF97 property evaluation";
 '''.format(marker=MARKER, floor=PROPERTY_FLOOR_PA)
     source = source.replace(PROTECTED_ANCHOR, declarations, 1)
     return source.replace(PROPERTY_CALL, PROPERTY_PATCH, 1)

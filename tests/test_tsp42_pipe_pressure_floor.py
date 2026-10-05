@@ -37,10 +37,10 @@ class Tsp42PipePressureFloorTests(unittest.TestCase):
         )
         self.assertIsNotNone(floor)
         self.assertGreater(float(floor.group(1)), 611.657)
-        self.assertIn("Units.SI.AbsolutePressure Pthermo", patched)
-        self.assertIn("Pthermo = noEvent(max(propertyPressureFloor, Pm));", patched)
+        self.assertNotIn("Pthermo", patched)
         self.assertIn(
-            "pro = ThermoSysPro.Properties.Fluid.Ph(Pthermo, h, mode, fluid);",
+            "pro = ThermoSysPro.Properties.Fluid.Ph("
+            "noEvent(max(propertyPressureFloor, Pm)), h, mode, fluid);",
             patched,
         )
         self.assertIn("Pm = (C1.P + C2.P)/2;", patched)
