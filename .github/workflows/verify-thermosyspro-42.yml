@@ -454,21 +454,15 @@ jobs:
           diagnostic_callers = []
           for candidate in sorted(seed_root.rglob("*.mo")):
               relative = candidate.relative_to(seed_root).as_posix()
-              if relative.startswith("Properties/") or relative.startswith("Examples/"):
+              if relative.startswith("Properties/"):
                   continue
               candidate_source = candidate.read_text()
               if "Fluid.Ph(" not in candidate_source and "Water_Ph(" not in candidate_source:
                   continue
-              model_match = re.search(r"(?m)^(?:partial[ \t]+)?model[ \t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
-              if model_match is None:
-                  continue
-              equation_match = re.search(r"(?m)^[ \t]*equation[ \t]*$", candidate_source[model_match.end():])
-              if equation_match is None:
-                  continue
-              scan_start = model_match.end() + equation_match.end()
-              if candidate_source[scan_start:scan_start + 1] == "\n":
-                  scan_start += 1
-              annotation_start = candidate_source.find("annotation(", scan_start)
+              # Include declaration modifiers and initial equation sections, and
+              # include the CombinedCycle example that TripLens extends.
+              scan_start = 0
+              annotation_start = candidate_source.find("annotation(")
               scan_end = annotation_start if annotation_start >= 0 else len(candidate_source)
 
               call_sites = []
