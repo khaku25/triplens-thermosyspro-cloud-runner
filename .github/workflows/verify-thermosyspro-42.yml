@@ -122,7 +122,7 @@ jobs:
           fi
           test -s build/tsp42_reference_res.csv
 
-      - name: Probe reference with condenser P0 matched to its declared initial pressure
+      - name: Probe reference with condenser P0 and pump pressure trace
         continue-on-error: true
         run: |
           set -euo pipefail
@@ -177,6 +177,20 @@ jobs:
           if loss_source.count(loss_call) != 1:
               raise SystemExit(f"expected one PipePressureLoss property call, got {loss_source.count(loss_call)}")
           loss_model.write_text(loss_source.replace(loss_call, traced_loss_call, 1))
+          pump_model = seed_root / "WaterSteam/Machines/StaticCentrifugalPump.mo"
+          pump_source = pump_model.read_text()
+          pump_marker = "\\nprotected\\n"
+          if pump_source.count(pump_marker) != 1:
+              raise SystemExit(f"expected one StaticCentrifugalPump protected section, got {pump_source.count(pump_marker)}")
+          pump_function = function_source.replace("PipePressureLoss", "StaticCentrifugalPump")
+          pump_source = pump_source.replace(
+              pump_marker, "\\n" + pump_function + pump_marker[1:], 1)
+          pump_call = "  pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"
+          traced_pump_call = "  pro = checkedFluidProperties(Pm, C1.P, C2.P, h, mode, fluid);"
+          if pump_source.count(pump_call) != 1:
+              raise SystemExit(f"expected one StaticCentrifugalPump property call, got {pump_source.count(pump_call)}")
+          pump_model.write_text(pump_source.replace(pump_call, traced_pump_call, 1))
+          shutil.copyfile(pump_model, Path("outputs/tsp42/StaticCentrifugalPump-diagnostic.mo"))
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
@@ -269,7 +283,7 @@ jobs:
           sha256sum outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.mo \
             | tee outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.sha256
 
-      - name: Probe TripLens with condenser P0 matched to its declared initial pressure
+      - name: Probe TripLens with condenser P0 and pump pressure trace
         continue-on-error: true
         run: |
           set -euo pipefail
@@ -324,6 +338,20 @@ jobs:
           if loss_source.count(loss_call) != 1:
               raise SystemExit(f"expected one PipePressureLoss property call, got {loss_source.count(loss_call)}")
           loss_model.write_text(loss_source.replace(loss_call, traced_loss_call, 1))
+          pump_model = seed_root / "WaterSteam/Machines/StaticCentrifugalPump.mo"
+          pump_source = pump_model.read_text()
+          pump_marker = "\\nprotected\\n"
+          if pump_source.count(pump_marker) != 1:
+              raise SystemExit(f"expected one StaticCentrifugalPump protected section, got {pump_source.count(pump_marker)}")
+          pump_function = function_source.replace("PipePressureLoss", "StaticCentrifugalPump")
+          pump_source = pump_source.replace(
+              pump_marker, "\\n" + pump_function + pump_marker[1:], 1)
+          pump_call = "  pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"
+          traced_pump_call = "  pro = checkedFluidProperties(Pm, C1.P, C2.P, h, mode, fluid);"
+          if pump_source.count(pump_call) != 1:
+              raise SystemExit(f"expected one StaticCentrifugalPump property call, got {pump_source.count(pump_call)}")
+          pump_model.write_text(pump_source.replace(pump_call, traced_pump_call, 1))
+          shutil.copyfile(pump_model, Path("outputs/tsp42/StaticCentrifugalPump-diagnostic.mo"))
           model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           source = model.read_text()
           # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
