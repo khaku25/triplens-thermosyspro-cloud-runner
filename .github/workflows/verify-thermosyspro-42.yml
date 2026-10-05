@@ -74,6 +74,8 @@ jobs:
             outputs/tsp42/reference-source/SimpleDynamicCondenser.mo
           cp vendor/ThermoSysPro/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo \
             outputs/tsp42/reference-source/PipePressureLoss.mo
+          cp vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StaticCentrifugalPump.mo \
+            outputs/tsp42/reference-source/StaticCentrifugalPump.mo
 
       - name: Diagnostic upstream combined-cycle reference on ThermoSysPro 4.2
         continue-on-error: true
