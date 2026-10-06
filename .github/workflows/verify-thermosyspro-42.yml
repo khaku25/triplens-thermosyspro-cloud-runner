@@ -66,7 +66,9 @@ jobs:
       - name: Capture ThermoSysPro 4.2 pressure-property source
         run: |
           set -euo pipefail
-          mkdir -p outputs/tsp42/reference-source
+          mkdir -p outputs/tsp42/reference-source/Properties
+          cp -a vendor/ThermoSysPro/ThermoSysPro/Properties/Fluid \
+            outputs/tsp42/reference-source/Properties/Fluid
           cp vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/IF97_packages.mo \
             outputs/tsp42/reference-source/IF97_packages.mo
           cp vendor/ThermoSysPro/ThermoSysPro/Properties/WaterSteam/BaseIF97.mo \
@@ -377,11 +379,20 @@ jobs:
           cp "$pipe_loss" outputs/tsp42/PipePressureLoss-4.2-property-floor.mo
           sha256sum outputs/tsp42/PipePressureLoss-4.2-property-floor.mo \
             | tee outputs/tsp42/PipePressureLoss-4.2-property-floor.sha256
-          ph=vendor/ThermoSysPro/ThermoSysPro/Properties/Fluid/Ph.mo
-          cp "$ph" outputs/tsp42/Ph-4.2-upstream.mo
-          python3 scripts/patch_tsp42_if97_domain_guard.py "$ph"
-          cp "$ph" outputs/tsp42/Ph-4.2-if97-domain-guard.mo
+          fluid_properties=vendor/ThermoSysPro/ThermoSysPro/Properties/Fluid
+          test -s "$fluid_properties/Ph.mo"
+          cp "$fluid_properties/Ph.mo" outputs/tsp42/Ph-4.2-upstream.mo
+          python3 scripts/patch_tsp42_if97_domain_guard.py "$fluid_properties" \
+            | tee outputs/tsp42/if97-domain-guard-patch-report.txt
+          cp "$fluid_properties/Ph.mo" outputs/tsp42/Ph-4.2-if97-domain-guard.mo
+          cp "$fluid_properties/Ph_der.mo" outputs/tsp42/Ph_der-4.2-if97-domain-guard.mo
+          mkdir -p outputs/tsp42/patched-source/Properties
+          cp -a "$fluid_properties" outputs/tsp42/patched-source/Properties/Fluid
+          find "$fluid_properties" -maxdepth 1 -type f -name '*.mo' -print0 \
+            | sort -z | xargs -0 sha256sum \
+            > outputs/tsp42/Patched-Fluid-Properties-4.2.sha256
           sha256sum outputs/tsp42/Ph-4.2-if97-domain-guard.mo \
+            outputs/tsp42/Ph_der-4.2-if97-domain-guard.mo \
             | tee outputs/tsp42/Ph-4.2-if97-domain-guard.sha256
           cp "$plant" outputs/tsp42/CombinedCycle_TripTAC-4.2-patched.mo
           sha256sum outputs/tsp42/CombinedCycle_TripTAC-4.2-patched.mo \
