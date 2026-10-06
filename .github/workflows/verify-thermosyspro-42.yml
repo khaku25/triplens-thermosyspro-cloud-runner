@@ -442,7 +442,8 @@ jobs:
               outputs/tsp42/if97-boundary-regression.log; then
             exit 1
           fi
-          test -s build/tsp42_if97_boundary_regression_res.csv
+          test -s tsp42_if97_boundary_regression_res.csv
+          cp tsp42_if97_boundary_regression_res.csv outputs/tsp42/if97-boundary-regression_res.csv
           printf 'TSP42_IF97_10_TO_16_5292_MPA_BOUNDARY_REGRESSION_PASS\n' \
             | tee outputs/tsp42/if97-boundary-regression-result.txt
 
@@ -753,7 +754,7 @@ jobs:
           if function_start < 0 or function_end < 0:
               raise SystemExit("could not isolate Water_Ph for diagnostic instrumentation")
           function = source[function_start:function_end]
-          old = 'assert(false, "Water_Ph: Incorrect region number");'
+          old = 'assert(false, "Water_Ph: Incorrect region number (" + String(region) + ")");'
           new = ('assert(false, "TRIPLENS_IF97_INVALID_REGION: region=" + String(region) + '
                  '" p=" + String(p) + " Pa, h=" + String(h) + '
                  '" J/kg, mode=" + String(mode) + ", phase=" + String(phase));')
