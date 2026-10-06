@@ -38,8 +38,10 @@ PROPERTY_PATCH = '''algorithm
   if (fluid == 1) then
     pEval := min(max(P, 700), ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PLIMIT1);
     hLower := ThermoSysPro.Properties.WaterSteam.BaseIF97.Regions.hlowerofp1(pEval);
-    if (pEval < 10.0e6) then
+    if (pEval < ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PLIMIT5) then
       hUpper := ThermoSysPro.Properties.WaterSteam.BaseIF97.Regions.hupperofp5(pEval);
+    elseif (pEval < ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PLIMIT4A) then
+      hUpper := ThermoSysPro.Properties.WaterSteam.BaseIF97.Regions.hlowerofp5(pEval);
     else
       hUpper := ThermoSysPro.Properties.WaterSteam.BaseIF97.Regions.hupperofp2(pEval);
     end if;
@@ -75,8 +77,10 @@ protected
 algorithm
   pEval := min(max(P, 700), ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PLIMIT1);
   hLower := ThermoSysPro.Properties.WaterSteam.BaseIF97.Regions.hlowerofp1(pEval);
-  if (pEval < 10.0e6) then
+  if (pEval < ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PLIMIT5) then
     hUpper := ThermoSysPro.Properties.WaterSteam.BaseIF97.Regions.hupperofp5(pEval);
+  elseif (pEval < ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PLIMIT4A) then
+    hUpper := ThermoSysPro.Properties.WaterSteam.BaseIF97.Regions.hlowerofp5(pEval);
   else
     hUpper := ThermoSysPro.Properties.WaterSteam.BaseIF97.Regions.hupperofp2(pEval);
   end if;

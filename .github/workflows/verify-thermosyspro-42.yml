@@ -443,7 +443,7 @@ jobs:
             exit 1
           fi
           test -s build/tsp42_if97_boundary_regression_res.csv
-          printf 'TSP42_IF97_10_TO_16_5292_MPA_BOUNDARY_REGRESSION_PASS\\n' \
+          printf 'TSP42_IF97_10_TO_16_5292_MPA_BOUNDARY_REGRESSION_PASS\n' \
             | tee outputs/tsp42/if97-boundary-regression-result.txt
 
       - name: Probe TripLens with condenser P0 and pump pressure trace
@@ -734,6 +734,64 @@ jobs:
           fi
           test -s build/tsp42_triplens_condenser_seed_res.csv
 
+      - name: Prepare an unseeded TripLens diagnostic source copy
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import shutil
+
+          source_root = Path("vendor/ThermoSysPro/ThermoSysPro")
+          diagnostic_root = Path("build/tsp42-triplens-main-diagnostic/ThermoSysPro")
+          shutil.copytree(source_root, diagnostic_root)
+
+          if97 = diagnostic_root / "Properties/WaterSteam/IF97_packages.mo"
+          source = if97.read_text(encoding="utf-8")
+          function_start = source.find("    function Water_Ph\n")
+          function_end = source.find("    end Water_Ph;", function_start)
+          if function_start < 0 or function_end < 0:
+              raise SystemExit("could not isolate Water_Ph for diagnostic instrumentation")
+          function = source[function_start:function_end]
+          old = 'assert(false, "Water_Ph: Incorrect region number");'
+          new = ('assert(false, "TRIPLENS_IF97_INVALID_REGION: region=" + String(region) + '
+                 '" p=" + String(p) + " Pa, h=" + String(h) + '
+                 '" J/kg, mode=" + String(mode) + ", phase=" + String(phase));')
+          if function.count(old) != 1:
+              raise SystemExit(f"expected one Water_Ph invalid-region assert, found {function.count(old)}")
+          function = function.replace(old, new, 1)
+          source = source[:function_start] + function + source[function_end:]
+          if97.write_text(source, encoding="utf-8")
+
+          changed = []
+          for original in source_root.rglob("*"):
+              if not original.is_file():
+                  continue
+              relative = original.relative_to(source_root)
+              copied = diagnostic_root / relative
+              if hashlib.sha256(original.read_bytes()).digest() != hashlib.sha256(copied.read_bytes()).digest():
+                  changed.append(relative.as_posix())
+          expected = ["Properties/WaterSteam/IF97_packages.mo"]
+          if changed != expected:
+              raise SystemExit(f"diagnostic copy changed unexpected source files: {changed}")
+
+          trip_model = Path("build/TripLens_CombinedCycle_TripTAC.mo")
+          model_sha = hashlib.sha256(trip_model.read_bytes()).hexdigest()
+          function_end = source.find("    end Water_Ph;", function_start)
+          diagnostic_function = source[function_start:function_end + len("    end Water_Ph;")]
+          Path("outputs/tsp42/Water_Ph-unseeded-diagnostic.mo").write_text(
+              diagnostic_function + "\n", encoding="utf-8")
+          Path("outputs/tsp42/unseeded-diagnostic-source.txt").write_text(
+              "source_copy=vendor/ThermoSysPro/ThermoSysPro\n"
+              "diagnostic_copy=build/tsp42-triplens-main-diagnostic/ThermoSysPro\n"
+              "changed_source_file=Properties/WaterSteam/IF97_packages.mo (Water_Ph assert message only)\n"
+              "TripLens_model_sha256=" + model_sha + "\n"
+              "pressure_seed_overrides=none\n",
+              encoding="utf-8")
+          print("verified diagnostic clone differs only in Water_Ph invalid-region assertion text")
+          print("TripLens main model hash=" + model_sha + "; pressure seed overrides=none")
+          PY
+
       - name: Simulate the TripLens physical model with ThermoSysPro 4.2
         run: |
           set -euo pipefail
@@ -746,7 +804,7 @@ jobs:
             print(getErrorString());
             exit(1);
           end if;
-          if not loadFile("$PWD/vendor/ThermoSysPro/ThermoSysPro/package.mo") then
+          if not loadFile("$PWD/build/tsp42-triplens-main-diagnostic/ThermoSysPro/package.mo") then
             print(getErrorString());
             exit(1);
           end if;
@@ -772,6 +830,8 @@ jobs:
           timeout --signal=TERM --kill-after=30s 25m \
             omc "$PWD/build/tsp42-triplens.mos" \
             | tee outputs/tsp42/triplens-physical-trip.log
+          grep -F 'TRIPLENS_IF97_INVALID_REGION:' outputs/tsp42/triplens-physical-trip.log \
+            > outputs/tsp42/triplens-invalid-region-inputs.txt || true
           if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' \
               outputs/tsp42/triplens-physical-trip.log; then
             exit 1

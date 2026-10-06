@@ -66,6 +66,17 @@ class Tsp42IF97DomainGuardTests(unittest.TestCase):
         self.assertLess(patched.index("protected\n"), patched.index("algorithm\n"))
         self.assertEqual(patched.count("algorithm\n"), 1)
 
+    def test_region5_pressure_band_uses_if97_region_ph_upper_boundary(self) -> None:
+        patched = patch_text(UPSTREAM)
+
+        for source in (patched, PH_DER_SOURCE):
+            lower_pressure_branch = "if (pEval < ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PLIMIT5)"
+            high_pressure_branch = "elseif (pEval < ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PLIMIT4A)"
+            self.assertIn(lower_pressure_branch, source)
+            self.assertIn(high_pressure_branch, source)
+            self.assertIn("BaseIF97.Regions.hlowerofp5(pEval)", source)
+            self.assertLess(source.index(lower_pressure_branch), source.index(high_pressure_branch))
+
     def test_property_helpers_route_direct_if97_calls_through_guard(self) -> None:
         helper = f'''within ThermoSysPro.Properties.Fluid;
 function Temperature_Ph
