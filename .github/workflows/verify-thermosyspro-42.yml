@@ -402,6 +402,50 @@ jobs:
           sha256sum outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.mo \
             | tee outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.sha256
 
+      - name: Run numeric IF97 boundary regression with ThermoSysPro 4.2
+        run: |
+          set -euo pipefail
+          cp tests/If97DomainGuardRegression.mo outputs/tsp42/If97DomainGuardRegression.mo
+          cat > build/tsp42-if97-boundary-regression.mos <<MOS
+          setCommandLineOptions("--std=3.4");
+          setCommandLineOptions("-d=initialization,aliasConflicts");
+          setMatchingAlgorithm("PFPlusExt");
+          setIndexReductionMethod("dynamicStateSelection");
+          if not loadModel(Modelica, {"4.0.0"}) then
+            print(getErrorString());
+            exit(1);
+          end if;
+          if not loadFile("$PWD/vendor/ThermoSysPro/ThermoSysPro/package.mo") then
+            print(getErrorString());
+            exit(1);
+          end if;
+          if not loadFile("$PWD/tests/If97DomainGuardRegression.mo") then
+            print(getErrorString());
+            exit(1);
+          end if;
+          simulate(
+            If97DomainGuardRegression,
+            startTime=0,
+            stopTime=1,
+            numberOfIntervals=1,
+            tolerance=1e-8,
+            method="dassl",
+            outputFormat="csv",
+            simflags="-lv=LOG_ASSERT,LOG_NLS",
+            fileNamePrefix="tsp42_if97_boundary_regression");
+          getErrorString();
+          MOS
+          timeout --signal=TERM --kill-after=15s 5m \
+            omc "$PWD/build/tsp42-if97-boundary-regression.mos" \
+            | tee outputs/tsp42/if97-boundary-regression.log
+          if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:|TRIPLENS_IF97_INVALID_REGION' \
+              outputs/tsp42/if97-boundary-regression.log; then
+            exit 1
+          fi
+          test -s build/tsp42_if97_boundary_regression_res.csv
+          printf 'TSP42_IF97_10_TO_16_5292_MPA_BOUNDARY_REGRESSION_PASS\\n' \
+            | tee outputs/tsp42/if97-boundary-regression-result.txt
+
       - name: Probe TripLens with condenser P0 and pump pressure trace
         continue-on-error: true
         run: |
