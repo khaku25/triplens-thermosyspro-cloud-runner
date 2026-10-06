@@ -155,6 +155,14 @@ jobs:
           if water_function.count(needle) != 1:
               raise SystemExit(f"expected one target in Water_Ph, got {water_function.count(needle)}")
           water_function = water_function.replace(needle, traced, 1)
+          invalid_region = """assert(false, "Water_Ph: Incorrect region number (" + String(region) + ")");"""
+          invalid_region_trace = """assert(false, "TRIPLENS_IF97_INVALID_REGION: region=" +
+                    String(region) + " p=" + String(p) + " Pa, h=" + String(h) +
+                    " J/kg, mode=" + String(mode) + ", phase=" + String(phase));"""
+          if water_function.count(invalid_region) != 1:
+              raise SystemExit(
+                  f"expected one Water_Ph invalid-region assertion, got {water_function.count(invalid_region)}")
+          water_function = water_function.replace(invalid_region, invalid_region_trace, 1)
           properties.write_text(property_source[:function_start] + water_function + property_source[function_end:])
           fluid_package = seed_root / "Properties/Fluid/package.mo"
           if not fluid_package.is_file():
