@@ -883,7 +883,7 @@ jobs:
                   algorithm_line_end = candidate_source.find("\n", match.start() + algorithm_match.end())
                   if algorithm_line_end < 0:
                       continue
-                  relative = candidate.relative_to(source_root).as_posix()
+                  relative = candidate.relative_to(diagnostic_root).as_posix()
                   diagnostic_functions.append(f"{relative}: {function_name}")
                   injection = (
                       f"{indent}algorithm\n"
