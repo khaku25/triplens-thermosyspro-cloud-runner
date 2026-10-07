@@ -816,7 +816,7 @@ jobs:
               "TRIPLENS_INVALID_PH_CALLER: " + caller +
               " p=" + String(p) + " Pa, h=" + String(h) +
               " J/kg, mode=" + String(mode) + ", fluid=" + String(fluid));
-            props := Ph(p, h, mode, fluid);
+            props := Ph(p, h, mode, fluid, caller);
           end checkedPh;
           """
           fluid_source = fluid_source[:fluid_end] + helper_source + fluid_source[fluid_end:]
@@ -829,6 +829,31 @@ jobs:
           diagnostic_function_specs = {}
           function_pattern = re.compile(
               r"(?m)^[ \t]*(?:partial[ \t]+)?function[ \t]+([A-Za-z_][A-Za-z_0-9]*)\b")
+          # Carry the model call-site label into Ph itself. Assertions inside the
+          # called property function are visible during nonlinear solver evaluations.
+          ph_file = property_root / "Ph.mo"
+          if not ph_file.is_file():
+              raise SystemExit("could not find Properties/Fluid/Ph.mo")
+          ph_source = ph_file.read_text(encoding="utf-8")
+          ph_start_match = re.search(
+              r"(?m)^[ \t]*(?:partial[ \t]+)?function[ \t]+Ph\b", ph_source)
+          if ph_start_match is None:
+              raise SystemExit("could not isolate Properties/Fluid/Ph")
+          ph_end_match = re.search(
+              r"(?m)^[ \t]*end[ \t]+Ph[ \t]*;", ph_source[ph_start_match.end():])
+          if ph_end_match is None:
+              raise SystemExit("could not find end of Properties/Fluid/Ph")
+          ph_function_end = ph_start_match.end() + ph_end_match.end()
+          ph_function = ph_source[ph_start_match.start():ph_function_end]
+          if not re.search(r"(?m)^[ \t]*input[ \t]+String[ \t]+caller\b", ph_function):
+              output_match = re.search(r"(?m)^([ \t]*)output\b", ph_function)
+              if output_match is None:
+                  raise SystemExit("could not find the Ph output declaration")
+              caller_input = output_match.group(1) + 'input String caller = "unspecified";\n'
+              absolute_output = ph_start_match.start() + output_match.start()
+              ph_source = ph_source[:absolute_output] + caller_input + ph_source[absolute_output:]
+              write_changed(ph_file, ph_source)
+
           for candidate in sorted(property_root.rglob("*.mo")):
               if candidate == fluid_package:
                   continue
@@ -918,10 +943,15 @@ jobs:
                       continue
                   relative = candidate.relative_to(diagnostic_root).as_posix()
                   diagnostic_functions.append(f"{relative}: {function_name}")
+                  if function_name == "Ph":
+                      message_expression = (
+                          f'"TRIPLENS_INVALID_PH_CALLER: " + caller + " [{relative}:{function_name}] p="')
+                  else:
+                      message_expression = (
+                          f'"TRIPLENS_INVALID_PH_CALLER: {relative}:{function_name} p="')
                   injection = (
                       f"{indent}algorithm\n"
-                      f'{indent}  assert({fluid_guard}, '
-                      f'"TRIPLENS_INVALID_PH_CALLER: {relative}:{function_name} p=" + '
+                      f'{indent}  assert({fluid_guard}, {message_expression} + '
                       f'String({pressure_name}) + " Pa, h=" + String({enthalpy_name}) + '
                       f'" J/kg, mode=" + String({mode_name}));\n'
                   )
