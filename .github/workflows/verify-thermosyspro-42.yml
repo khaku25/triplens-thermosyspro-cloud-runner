@@ -826,6 +826,7 @@ jobs:
           # or IF97 Water_Ph. The conditional preserves non-IF97 fluid paths.
           property_root = diagnostic_root / "Properties/Fluid"
           diagnostic_functions = []
+          diagnostic_function_specs = {}
           function_pattern = re.compile(
               r"(?m)^[ \t]*(?:partial[ \t]+)?function[ \t]+([A-Za-z_][A-Za-z_0-9]*)\b")
           for candidate in sorted(property_root.rglob("*.mo")):
@@ -875,6 +876,38 @@ jobs:
                       if fluid_match else
                       f"isValidIF97Ph({pressure_name}, {enthalpy_name}, {mode_name})"
                   )
+                  input_names = []
+                  for input_line in re.finditer(r"(?m)^[ \t]*input\b([^;\n]*);", function_source):
+                      declaration = re.sub(r'"[^"]*"', "", input_line.group(1))
+                      declaration = declaration.split("=", 1)[0].strip()
+                      input_name = re.search(r"([A-Za-z_][A-Za-z_0-9]*)\s*$", declaration)
+                      if input_name:
+                          input_names.append(input_name.group(1))
+                  def input_position(name, default):
+                      return next(
+                          (index for index, input_name in enumerate(input_names)
+                           if input_name.lower() == name.lower()),
+                          default)
+                  mode_name = next(
+                      (name for name in input_names if name.lower() == "mode"), None)
+                  fluid_name = next(
+                      (name for name in input_names if name.lower() == "fluid"), None)
+                  fluid_guard = (
+                      f"if {fluid_name} == 1 then "
+                      f"isValidIF97Ph({pressure_name}, {enthalpy_name}, {mode_name or '0'}) else true"
+                      if fluid_name else
+                      f"isValidIF97Ph({pressure_name}, {enthalpy_name}, {mode_name or '0'})"
+                  )
+                  diagnostic_function_specs[function_name] = {
+                      "pressure_name": pressure_name,
+                      "enthalpy_name": enthalpy_name,
+                      "mode_name": mode_name,
+                      "fluid_name": fluid_name,
+                      "pressure_position": input_position(pressure_name, 0),
+                      "enthalpy_position": input_position(enthalpy_name, 1),
+                      "mode_position": input_position(mode_name, 2) if mode_name else 2,
+                      "fluid_position": input_position(fluid_name, 3) if fluid_name else 3,
+                  }
                   algorithm_match = re.search(r"(?m)^([ \t]*)algorithm[ \t]*$", function_source)
                   if algorithm_match is None:
                       continue
@@ -934,83 +967,195 @@ jobs:
               positional = [arg for arg in arguments if not re.match(r"^[A-Za-z_][A-Za-z_0-9]*\s*=", arg)]
               return positional[position].strip() if position < len(positional) else default
 
-          def inside_function(source_text, position):
-              starts = list(function_pattern.finditer(source_text))
-              for match in reversed(starts):
-                  if match.start() >= position:
-                      continue
+          def collect_function_spans(source_text):
+              spans = []
+              for match in function_pattern.finditer(source_text):
                   name = match.group(1)
                   end_match = re.search(
                       r"(?m)^[ \t]*end[ \t]+" + re.escape(name) + r"[ \t]*;",
                       source_text[match.end():])
-                  if end_match is None:
-                      continue
-                  end = match.end() + end_match.end()
-                  return match.start() < position < end
-              return False
+                  if end_match:
+                      spans.append((match.start(), match.end() + end_match.end()))
+              return spans
 
+          def inside_spans(position, spans):
+              return any(start < position < end for start, end in spans)
+
+          class_pattern = re.compile(
+              r"(?m)^[ \t]*(?:(?:partial|encapsulated|replaceable|redeclare|final|pure|impure)[ \t]+)*"
+              r"(model|block|function|package|record|connector|class|type)\b")
+          section_pattern = re.compile(
+              r"(?m)^[ \t]*(?:initial[ \t]+)?(equation|algorithm)[ \t]*$")
           diagnostic_callers = []
+          diagnostic_model_callers = []
           for candidate in sorted(diagnostic_root.rglob("*.mo")):
               relative = candidate.relative_to(diagnostic_root).as_posix()
               if relative.startswith("Properties/"):
                   continue
-              candidate_source = candidate.read_text(encoding="utf-8")
-              if "Fluid.Ph(" not in candidate_source and "Water_Ph(" not in candidate_source:
+              original_source = candidate.read_text(encoding="utf-8")
+              has_property_call = any(
+                  re.search(
+                      r"(?<![A-Za-z0-9_])(?:[A-Za-z_][A-Za-z_0-9]*[ \t\r\n]*\.[ \t\r\n]*)*"
+                      + re.escape(name) + r"[ \t\r\n]*\(",
+                      original_source)
+                  for name in diagnostic_function_specs)
+              has_direct_call = re.search(
+                  r"(?<![A-Za-z0-9_])(?:[A-Za-z_][A-Za-z_0-9]*[ \t\r\n]*\.[ \t\r\n]*)*"
+                  r"(?:Fluid[ \t\r\n]*\.[ \t\r\n]*Ph|Water_Ph)[ \t\r\n]*\(",
+                  original_source)
+              if not has_property_call and not has_direct_call:
                   continue
-              call_sites = []
-              for token in ("Fluid.Ph(", "Water_Ph("):
-                  cursor = 0
-                  while cursor < len(candidate_source):
-                      call_start = candidate_source.find(token, cursor)
-                      if call_start < 0:
-                          break
-                      opening = call_start + len(token) - 1
-                      closing = find_call_end(candidate_source, opening)
+
+              function_spans = collect_function_spans(original_source)
+              class_matches = list(class_pattern.finditer(original_source))
+              section_matches = list(section_pattern.finditer(original_source))
+              assertion_edits = {}
+              model_call_records = []
+
+              for function_name, spec in diagnostic_function_specs.items():
+                  function_call_pattern = re.compile(
+                      r"(?<![A-Za-z0-9_])(?:[A-Za-z_][A-Za-z_0-9]*[ \t\r\n]*\.[ \t\r\n]*)*"
+                      + re.escape(function_name) + r"[ \t\r\n]*\(")
+                  for call_match in function_call_pattern.finditer(original_source):
+                      call_start = call_match.start()
+                      if inside_spans(call_start, function_spans):
+                          continue
+                      enclosing_class = None
+                      for class_match in class_matches:
+                          if class_match.start() >= call_start:
+                              break
+                          enclosing_class = class_match
+                      if enclosing_class is None or enclosing_class.group(1).lower() not in ("model", "block"):
+                          continue
+                      section_match = None
+                      for candidate_section in section_matches:
+                          if candidate_section.start() >= call_start:
+                              break
+                          section_match = candidate_section
+                      if section_match is None or section_match.start() < enclosing_class.start():
+                          continue
+
+                      line_start = original_source.rfind("\n", 0, call_start) + 1
+                      prefix = original_source[line_start:call_start]
+                      if not prefix.strip() or "//" in prefix:
+                          continue
+                      if not re.search(r"(?::=|(?<![<>=])=(?!=))", prefix):
+                          continue
+                      if re.search(r"\b(?:if|then|else|elseif|when|for|loop|end)\b", prefix):
+                          continue
+                      if re.search(r"\bannotation[ \t\r\n]*\(", original_source[section_match.end():call_start]):
+                          continue
+
+                      opening = call_match.end() - 1
+                      closing = find_call_end(original_source, opening)
                       if closing is None:
-                          break
-                      arguments = split_arguments(candidate_source[opening + 1:closing])
-                      if token == "Fluid.Ph(":
+                          continue
+                      arguments = split_arguments(original_source[opening + 1:closing])
+                      pressure = value_for(
+                          arguments, spec["pressure_name"], spec["pressure_position"], None)
+                      enthalpy = value_for(
+                          arguments, spec["enthalpy_name"], spec["enthalpy_position"], None)
+                      mode_arg = (
+                          value_for(arguments, spec["mode_name"], spec["mode_position"], "0")
+                          if spec["mode_name"] else "0")
+                      fluid_arg = (
+                          value_for(arguments, spec["fluid_name"], spec["fluid_position"], "1")
+                          if spec["fluid_name"] else "1")
+                      if not pressure or not enthalpy:
+                          continue
+
+                      fluid_guard = (
+                          f"if {fluid_arg} == 1 then "
+                          f"ThermoSysPro.Properties.Fluid.isValidIF97Ph({pressure}, {enthalpy}, {mode_arg}) "
+                          "else true")
+                      line_number = original_source.count("\n", 0, call_start) + 1
+                      message = (
+                          f'"TRIPLENS_INVALID_PH_MODEL_CALLER: {relative}:{line_number}:{function_name}; instance=" '
+                          f'+ getInstanceName() + " p=" + String(' + pressure + ') + " Pa, h=" + String('
+                          + enthalpy + ') + " J/kg, mode=" + String(' + mode_arg + ')')
+                      assertion = f"assert({fluid_guard}, {message});"
+                      indent_match = re.match(r"[ \t]*", original_source[line_start:])
+                      indent = indent_match.group(0) if indent_match else ""
+                      assertion_edits.setdefault(line_start, []).append((indent, assertion))
+                      model_call_records.append(
+                          f"{relative}:{line_number}: {function_name} p={pressure} h={enthalpy} mode={mode_arg} fluid={fluid_arg}")
+
+              call_replacements = []
+              direct_patterns = (
+                  (re.compile(
+                      r"(?<![A-Za-z0-9_])(?:[A-Za-z_][A-Za-z_0-9]*[ \t\r\n]*\.[ \t\r\n]*)*"
+                      r"Fluid[ \t\r\n]*\.[ \t\r\n]*Ph[ \t\r\n]*\("), "Fluid.Ph"),
+                  (re.compile(
+                      r"(?<![A-Za-z0-9_])(?:[A-Za-z_][A-Za-z_0-9]*[ \t\r\n]*\.[ \t\r\n]*)*"
+                      r"Water_Ph[ \t\r\n]*\("), "Water_Ph"),
+              )
+              for pattern, token in direct_patterns:
+                  for call_match in pattern.finditer(original_source):
+                      call_start = call_match.start()
+                      line_start = original_source.rfind("\n", 0, call_start) + 1
+                      if original_source[line_start:call_start].lstrip().startswith("//"):
+                          continue
+                      opening = call_match.end() - 1
+                      closing = find_call_end(original_source, opening)
+                      if closing is None:
+                          continue
+                      if token == "Fluid.Ph":
+                          arguments = split_arguments(original_source[opening + 1:closing])
                           pressure = value_for(arguments, "P", 0, "0")
                           enthalpy = value_for(arguments, "h", 1, "0")
                           mode_arg = value_for(arguments, "mode", 2, "0")
                           fluid_arg = value_for(arguments, "fluid", 3, "1")
                       else:
-                          if "WaterSteamSimple" in candidate_source[max(0, call_start - 120):call_start]:
-                              cursor = closing + 1
+                          if "WaterSteamSimple" in original_source[max(0, call_start - 160):call_start]:
                               continue
+                          arguments = split_arguments(original_source[opening + 1:closing])
                           pressure = value_for(arguments, "p", 0, "0")
                           enthalpy = value_for(arguments, "h", 1, "0")
                           mode_arg = value_for(arguments, "mode", 2, "0")
                           fluid_arg = "1"
-                      qualified_start = call_start
-                      while qualified_start > 0 and (
-                          candidate_source[qualified_start - 1].isalnum()
-                          or candidate_source[qualified_start - 1] in "_."
-                      ):
-                          qualified_start -= 1
-                      if not inside_function(candidate_source, call_start):
-                          instance_suffix = ' + "; instance=" + getInstanceName()'
-                      else:
-                          instance_suffix = ""
-                      call_sites.append((
-                          qualified_start, closing + 1, pressure, enthalpy, mode_arg, fluid_arg,
-                          instance_suffix))
-                      cursor = closing + 1
-              if not call_sites:
+                      caller_index = len(call_replacements) + 1
+                      caller = f"{relative} call {caller_index}"
+                      enclosing_class = None
+                      for class_match in class_matches:
+                          if class_match.start() >= call_start:
+                              break
+                          enclosing_class = class_match
+                      dynamic_instance = (
+                          ' + "; instance=" + getInstanceName()'
+                          if enclosing_class and
+                          enclosing_class.group(1).lower() in ("model", "block") and
+                          not inside_spans(call_start, function_spans)
+                          else "")
+                      caller_expression = f'"{caller}"' + dynamic_instance
+                      replacement_call = (
+                          "ThermoSysPro.Properties.Fluid.checkedPh("
+                          f"{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, {caller_expression})")
+                      call_replacements.append((call_start, closing + 1, replacement_call))
+                      diagnostic_callers.append(f"{relative}: {token} call {caller_index}")
+
+              edits = [
+                  (line_start, line_start,
+                   "".join(indent + assertion + "\n" for indent, assertion in assertions))
+                  for line_start, assertions in assertion_edits.items()
+              ]
+              edits.extend(call_replacements)
+              if not edits:
                   continue
-              for index, (call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg,
-                          instance_suffix) in reversed(list(enumerate(call_sites, start=1))):
-                  caller = f"{relative} call {index}"
-                  caller_expression = f'"{caller}"' + instance_suffix
-                  replacement_call = (
-                      "ThermoSysPro.Properties.Fluid.checkedPh("
-                      f"{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, {caller_expression})")
-                  candidate_source = candidate_source[:call_start] + replacement_call + candidate_source[call_end:]
-              candidate.write_text(candidate_source, encoding="utf-8")
-              changed.add(relative)
-              diagnostic_callers.append(f"{relative}: {len(call_sites)}")
+              modified_source = original_source
+              for edit_start, edit_end, replacement_text in sorted(
+                      edits, key=lambda edit: edit[0], reverse=True):
+                  modified_source = (
+                      modified_source[:edit_start] + replacement_text + modified_source[edit_end:])
+              write_changed(candidate, modified_source)
+              diagnostic_model_callers.extend(model_call_records)
+              if assertion_edits:
+                  diagnostic_model_callers.append(
+                      f"{relative}: inserted {sum(len(v) for v in assertion_edits.values())} model-equation assertion(s)")
+
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
               "\n".join(diagnostic_callers) + "\n", encoding="utf-8")
+          Path("outputs/tsp42/diagnostic-model-callers.txt").write_text(
+              "\n".join(diagnostic_model_callers) + "\n", encoding="utf-8")
 
           diagnostic_source_dir = Path("outputs/tsp42/diagnostic-source")
           diagnostic_source_dir.mkdir(parents=True, exist_ok=True)
@@ -1030,12 +1175,12 @@ jobs:
           Path("outputs/tsp42/unseeded-diagnostic-source.txt").write_text(
               "source_copy=vendor/ThermoSysPro/ThermoSysPro\n"
               "diagnostic_copy=build/tsp42-triplens-main-diagnostic/ThermoSysPro\n"
-              "instrumentation=caller-tagged IF97 p/h validation in Fluid property functions and model call sites\n"
+              "instrumentation=IF97 p/h validation in Fluid property functions plus direct model-equation assertions with instance names\n"
               "changed_source_files=" + ", ".join(sorted(changed)) + "\n"
               "TripLens_model_sha256=" + model_sha + "\n"
               "pressure_seed_overrides=none\n",
               encoding="utf-8")
-          print("caller-tagged IF97 p/h diagnostics prepared")
+          print("model-equation IF97 p/h caller diagnostics prepared; model call sites=" + str(len(diagnostic_model_callers)))
           print("TripLens model hash=" + model_sha + "; pressure seed overrides=none")
           PY
       - name: Simulate the TripLens physical model with ThermoSysPro 4.2
@@ -1076,7 +1221,7 @@ jobs:
           timeout --signal=TERM --kill-after=30s 25m \
             omc "$PWD/build/tsp42-triplens.mos" \
             | tee outputs/tsp42/triplens-physical-trip.log
-          grep -E 'TRIPLENS_(IF97_INVALID_REGION|INVALID_PH_CALLER):' outputs/tsp42/triplens-physical-trip.log \
+          grep -E 'TRIPLENS_(IF97_INVALID_REGION|INVALID_PH_CALLER|INVALID_PH_MODEL_CALLER):' outputs/tsp42/triplens-physical-trip.log \
             > outputs/tsp42/triplens-invalid-property-callers.txt || true
           if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' \
               outputs/tsp42/triplens-physical-trip.log; then
