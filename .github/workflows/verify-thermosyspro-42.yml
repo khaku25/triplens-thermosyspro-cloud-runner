@@ -967,6 +967,18 @@ jobs:
               positional = [arg for arg in arguments if not re.match(r"^[A-Za-z_][A-Za-z_0-9]*\s*=", arg)]
               return positional[position].strip() if position < len(positional) else default
 
+          # Instrument direct IF97 calls used by the WaterSteam components as well.
+          diagnostic_function_specs.setdefault("Water_Ph", {
+              "pressure_name": "p",
+              "enthalpy_name": "h",
+              "mode_name": "mode",
+              "fluid_name": None,
+              "pressure_position": 0,
+              "enthalpy_position": 1,
+              "mode_position": 2,
+              "fluid_position": 3,
+          })
+
           def collect_function_spans(source_text):
               spans = []
               for match in function_pattern.finditer(source_text):
@@ -1018,6 +1030,8 @@ jobs:
                       + re.escape(function_name) + r"[ \t\r\n]*\(")
                   for call_match in function_call_pattern.finditer(original_source):
                       call_start = call_match.start()
+                      if function_name == "Water_Ph" and "WaterSteamSimple" in call_match.group(0):
+                          continue
                       if inside_spans(call_start, function_spans):
                           continue
                       enclosing_class = None
@@ -1106,7 +1120,7 @@ jobs:
                           mode_arg = value_for(arguments, "mode", 2, "0")
                           fluid_arg = value_for(arguments, "fluid", 3, "1")
                       else:
-                          if "WaterSteamSimple" in original_source[max(0, call_start - 160):call_start]:
+                          if "WaterSteamSimple" in call_match.group(0):
                               continue
                           arguments = split_arguments(original_source[opening + 1:closing])
                           pressure = value_for(arguments, "p", 0, "0")
