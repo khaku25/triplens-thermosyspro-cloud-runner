@@ -735,18 +735,25 @@ jobs:
           fi
           test -s build/tsp42_triplens_condenser_seed_res.csv
 
-      - name: Prepare an unseeded TripLens diagnostic source copy
+      - name: Prepare an unseeded TripLens caller diagnostic source copy
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
           import hashlib
+          import re
           import shutil
 
           source_root = Path("vendor/ThermoSysPro/ThermoSysPro")
           diagnostic_root = Path("build/tsp42-triplens-main-diagnostic/ThermoSysPro")
           shutil.copytree(source_root, diagnostic_root)
+          changed = set()
 
+          def write_changed(path, text):
+              path.write_text(text, encoding="utf-8")
+              changed.add(path.relative_to(diagnostic_root).as_posix())
+
+          # Preserve the IF97 assertion while reporting the invalid p/h values.
           if97 = diagnostic_root / "Properties/WaterSteam/IF97_packages.mo"
           source = if97.read_text(encoding="utf-8")
           function_start = source.find("    function Water_Ph\n")
@@ -761,38 +768,276 @@ jobs:
           if function.count(old) != 1:
               raise SystemExit(f"expected one Water_Ph invalid-region assert, found {function.count(old)}")
           function = function.replace(old, new, 1)
-          source = source[:function_start] + function + source[function_end:]
-          if97.write_text(source, encoding="utf-8")
+          write_changed(if97, source[:function_start] + function + source[function_end:])
 
-          changed = []
-          for original in source_root.rglob("*"):
-              if not original.is_file():
+          # Validate p/h before the library call so the diagnostic names the
+          # component call site that first supplied an invalid IF97 state.
+          fluid_package = diagnostic_root / "Properties/Fluid/package.mo"
+          if not fluid_package.is_file():
+              fluid_package = diagnostic_root / "Properties/Fluid.mo"
+          if not fluid_package.is_file():
+              raise SystemExit("could not find the ThermoSysPro.Properties.Fluid package")
+          fluid_source = fluid_package.read_text(encoding="utf-8")
+          fluid_end = fluid_source.rfind("end Fluid;")
+          if fluid_end < 0 or "function checkedPh" in fluid_source:
+              raise SystemExit("could not safely add diagnostic helpers to Fluid package")
+          helper_source = """  function isValidIF97Ph
+            input ThermoSysPro.Units.SI.AbsolutePressure p;
+            input ThermoSysPro.Units.SI.SpecificEnthalpy h;
+            input Integer mode;
+            output Boolean valid;
+          protected
+            Integer phase;
+            Integer region;
+            Boolean supercritical;
+          algorithm
+            if (p <= 611.657) or
+               (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PLIMIT1) then
+              valid := false;
+            else
+              supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);
+              phase := if ((h < ThermoSysPro.Properties.WaterSteam.BaseIF97.Regions.hl_p(p)) or
+                           (h > ThermoSysPro.Properties.WaterSteam.BaseIF97.Regions.hv_p(p)) or
+                           supercritical) then 1 else 2;
+              region := ThermoSysPro.Properties.WaterSteam.BaseIF97.Regions.region_ph(p, h, phase, 0);
+              valid := (region >= 1) and (region <= 5);
+            end if;
+          end isValidIF97Ph;
+
+          function checkedPh
+            input ThermoSysPro.Units.SI.AbsolutePressure p;
+            input ThermoSysPro.Units.SI.SpecificEnthalpy h;
+            input Integer mode;
+            input Integer fluid;
+            input String caller;
+            output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph props;
+          algorithm
+            assert(if fluid == 1 then isValidIF97Ph(p, h, mode) else true,
+              "TRIPLENS_INVALID_PH_CALLER: " + caller +
+              " p=" + String(p) + " Pa, h=" + String(h) +
+              " J/kg, mode=" + String(mode) + ", fluid=" + String(fluid));
+            props := Ph(p, h, mode, fluid);
+          end checkedPh;
+          """
+          fluid_source = fluid_source[:fluid_end] + helper_source + fluid_source[fluid_end:]
+          write_changed(fluid_package, fluid_source)
+
+          # Tag property functions that route their p/h inputs into Fluid.Ph
+          # or IF97 Water_Ph. The conditional preserves non-IF97 fluid paths.
+          property_root = diagnostic_root / "Properties/Fluid"
+          diagnostic_functions = []
+          function_pattern = re.compile(
+              r"(?m)^[ \t]*(?:partial[ \t]+)?function[ \t]+([A-Za-z_][A-Za-z_0-9]*)\b")
+          for candidate in sorted(property_root.rglob("*.mo")):
+              if candidate == fluid_package:
                   continue
-              relative = original.relative_to(source_root)
-              copied = diagnostic_root / relative
-              if hashlib.sha256(original.read_bytes()).digest() != hashlib.sha256(copied.read_bytes()).digest():
-                  changed.append(relative.as_posix())
-          expected = ["Properties/WaterSteam/IF97_packages.mo"]
-          if changed != expected:
-              raise SystemExit(f"diagnostic copy changed unexpected source files: {changed}")
+              candidate_source = candidate.read_text(encoding="utf-8")
+              matches = list(function_pattern.finditer(candidate_source))
+              for match in reversed(matches):
+                  function_name = match.group(1)
+                  end_match = re.search(
+                      r"(?m)^[ \t]*end[ \t]+" + re.escape(function_name) + r"[ \t]*;",
+                      candidate_source[match.end():])
+                  if end_match is None:
+                      continue
+                  function_end = match.end() + end_match.end()
+                  function_source = candidate_source[match.start():function_end]
+                  body_start = function_source.find("algorithm")
+                  if body_start < 0:
+                      continue
+                  body = function_source[body_start:]
+                  has_ph_call = (
+                      "Water_Ph(" in body or
+                      re.search(r"(?<![A-Za-z0-9_])(?:[A-Za-z_][A-Za-z_0-9]*\\.)*Ph[ \t]*\\(", body)
+                  )
+                  if not has_ph_call:
+                      continue
+                  pressure_match = re.search(
+                      r'(?m)^[ \t]*input\b[^;\n]*\b([pP])(?:[ \t]+"[^"]*")?[ \t]*;',
+                      function_source)
+                  enthalpy_match = re.search(
+                      r'(?m)^[ \t]*input\b[^;\n]*\b([hH])(?:[ \t]+"[^"]*")?[ \t]*;',
+                      function_source)
+                  if pressure_match is None or enthalpy_match is None:
+                      continue
+                  pressure_name = pressure_match.group(1)
+                  enthalpy_name = enthalpy_match.group(1)
+                  mode_match = re.search(
+                      r'(?m)^[ \t]*input\b[^;\n]*\b(mode)\b(?:[ \t]*=[^;\n]*)?[ \t]*;',
+                      function_source)
+                  mode_name = mode_match.group(1) if mode_match else "0"
+                  fluid_match = re.search(
+                      r'(?m)^[ \t]*input\b[^;\n]*\b(fluid)\b(?:[ \t]*=[^;\n]*)?[ \t]*;',
+                      function_source)
+                  fluid_guard = (
+                      f"if {fluid_match.group(1)} == 1 then "
+                      f"isValidIF97Ph({pressure_name}, {enthalpy_name}, {mode_name}) else true"
+                      if fluid_match else
+                      f"isValidIF97Ph({pressure_name}, {enthalpy_name}, {mode_name})"
+                  )
+                  algorithm_match = re.search(r"(?m)^([ \t]*)algorithm[ \t]*$", function_source)
+                  if algorithm_match is None:
+                      continue
+                  indent = algorithm_match.group(1)
+                  absolute_algorithm = match.start() + algorithm_match.start()
+                  algorithm_line_end = candidate_source.find("\n", match.start() + algorithm_match.end())
+                  if algorithm_line_end < 0:
+                      continue
+                  relative = candidate.relative_to(source_root).as_posix()
+                  diagnostic_functions.append(f"{relative}: {function_name}")
+                  injection = (
+                      f"{indent}algorithm\n"
+                      f'{indent}  assert({fluid_guard}, '
+                      f'"TRIPLENS_INVALID_PH_CALLER: {relative}:{function_name} p=" + '
+                      f'String({pressure_name}) + " Pa, h=" + String({enthalpy_name}) + '
+                      f'" J/kg, mode=" + String({mode_name}));\n'
+                  )
+                  candidate_source = (
+                      candidate_source[:absolute_algorithm] + injection +
+                      candidate_source[algorithm_line_end + 1:])
+              if candidate_source != candidate.read_text(encoding="utf-8"):
+                  write_changed(candidate, candidate_source)
+          Path("outputs/tsp42/diagnostic-ph-functions.txt").write_text(
+              "\n".join(sorted(set(diagnostic_functions))) + "\n", encoding="utf-8")
 
-          trip_model = Path("build/TripLens_CombinedCycle_TripTAC.mo")
-          model_sha = hashlib.sha256(trip_model.read_bytes()).hexdigest()
+          def split_arguments(argument_text):
+              arguments = []
+              depth = 0
+              start = 0
+              for index, character in enumerate(argument_text):
+                  if character == "(":
+                      depth += 1
+                  elif character == ")":
+                      depth -= 1
+                  elif character == "," and depth == 0:
+                      arguments.append(argument_text[start:index].strip())
+                      start = index + 1
+              arguments.append(argument_text[start:].strip())
+              return arguments
+
+          def find_call_end(source_text, opening):
+              depth = 1
+              for index in range(opening + 1, len(source_text)):
+                  if source_text[index] == "(":
+                      depth += 1
+                  elif source_text[index] == ")":
+                      depth -= 1
+                      if depth == 0:
+                          return index
+              return None
+
+          def value_for(arguments, name, position, default):
+              for argument in arguments:
+                  match = re.match(r"^" + re.escape(name) + r"\s*=\s*(.*)$", argument, re.IGNORECASE)
+                  if match:
+                      return match.group(1).strip()
+              positional = [arg for arg in arguments if not re.match(r"^[A-Za-z_][A-Za-z_0-9]*\s*=", arg)]
+              return positional[position].strip() if position < len(positional) else default
+
+          def inside_function(source_text, position):
+              starts = list(function_pattern.finditer(source_text))
+              for match in reversed(starts):
+                  if match.start() >= position:
+                      continue
+                  name = match.group(1)
+                  end_match = re.search(
+                      r"(?m)^[ \t]*end[ \t]+" + re.escape(name) + r"[ \t]*;",
+                      source_text[match.end():])
+                  if end_match is None:
+                      continue
+                  end = match.end() + end_match.end()
+                  return match.start() < position < end
+              return False
+
+          diagnostic_callers = []
+          for candidate in sorted(diagnostic_root.rglob("*.mo")):
+              relative = candidate.relative_to(diagnostic_root).as_posix()
+              if relative.startswith("Properties/"):
+                  continue
+              candidate_source = candidate.read_text(encoding="utf-8")
+              if "Fluid.Ph(" not in candidate_source and "Water_Ph(" not in candidate_source:
+                  continue
+              call_sites = []
+              for token in ("Fluid.Ph(", "Water_Ph("):
+                  cursor = 0
+                  while cursor < len(candidate_source):
+                      call_start = candidate_source.find(token, cursor)
+                      if call_start < 0:
+                          break
+                      opening = call_start + len(token) - 1
+                      closing = find_call_end(candidate_source, opening)
+                      if closing is None:
+                          break
+                      arguments = split_arguments(candidate_source[opening + 1:closing])
+                      if token == "Fluid.Ph(":
+                          pressure = value_for(arguments, "P", 0, "0")
+                          enthalpy = value_for(arguments, "h", 1, "0")
+                          mode_arg = value_for(arguments, "mode", 2, "0")
+                          fluid_arg = value_for(arguments, "fluid", 3, "1")
+                      else:
+                          if "WaterSteamSimple" in candidate_source[max(0, call_start - 120):call_start]:
+                              cursor = closing + 1
+                              continue
+                          pressure = value_for(arguments, "p", 0, "0")
+                          enthalpy = value_for(arguments, "h", 1, "0")
+                          mode_arg = value_for(arguments, "mode", 2, "0")
+                          fluid_arg = "1"
+                      qualified_start = call_start
+                      while qualified_start > 0 and (
+                          candidate_source[qualified_start - 1].isalnum()
+                          or candidate_source[qualified_start - 1] in "_."
+                      ):
+                          qualified_start -= 1
+                      if not inside_function(candidate_source, call_start):
+                          instance_suffix = ' + "; instance=" + getInstanceName()'
+                      else:
+                          instance_suffix = ""
+                      call_sites.append((
+                          qualified_start, closing + 1, pressure, enthalpy, mode_arg, fluid_arg,
+                          instance_suffix))
+                      cursor = closing + 1
+              if not call_sites:
+                  continue
+              for index, (call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg,
+                          instance_suffix) in reversed(list(enumerate(call_sites, start=1))):
+                  caller = f"{relative} call {index}"
+                  caller_expression = f'"{caller}"' + instance_suffix
+                  replacement_call = (
+                      "ThermoSysPro.Properties.Fluid.checkedPh("
+                      f"{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, {caller_expression})")
+                  candidate_source = candidate_source[:call_start] + replacement_call + candidate_source[call_end:]
+              candidate.write_text(candidate_source, encoding="utf-8")
+              changed.add(relative)
+              diagnostic_callers.append(f"{relative}: {len(call_sites)}")
+          Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
+              "\n".join(diagnostic_callers) + "\n", encoding="utf-8")
+
+          diagnostic_source_dir = Path("outputs/tsp42/diagnostic-source")
+          diagnostic_source_dir.mkdir(parents=True, exist_ok=True)
+          for relative in sorted(changed):
+              source_file = diagnostic_root / relative
+              target = diagnostic_source_dir / relative
+              target.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copyfile(source_file, target)
+
           function_end = source.find("    end Water_Ph;", function_start)
           diagnostic_function = source[function_start:function_end + len("    end Water_Ph;")]
           Path("outputs/tsp42/Water_Ph-unseeded-diagnostic.mo").write_text(
               diagnostic_function + "\n", encoding="utf-8")
+
+          trip_model = Path("build/TripLens_CombinedCycle_TripTAC.mo")
+          model_sha = hashlib.sha256(trip_model.read_bytes()).hexdigest()
           Path("outputs/tsp42/unseeded-diagnostic-source.txt").write_text(
               "source_copy=vendor/ThermoSysPro/ThermoSysPro\n"
               "diagnostic_copy=build/tsp42-triplens-main-diagnostic/ThermoSysPro\n"
-              "changed_source_file=Properties/WaterSteam/IF97_packages.mo (Water_Ph assert message only)\n"
+              "instrumentation=caller-tagged IF97 p/h validation in Fluid property functions and model call sites\n"
+              "changed_source_files=" + ", ".join(sorted(changed)) + "\n"
               "TripLens_model_sha256=" + model_sha + "\n"
               "pressure_seed_overrides=none\n",
               encoding="utf-8")
-          print("verified diagnostic clone differs only in Water_Ph invalid-region assertion text")
-          print("TripLens main model hash=" + model_sha + "; pressure seed overrides=none")
+          print("caller-tagged IF97 p/h diagnostics prepared")
+          print("TripLens model hash=" + model_sha + "; pressure seed overrides=none")
           PY
-
       - name: Simulate the TripLens physical model with ThermoSysPro 4.2
         run: |
           set -euo pipefail
@@ -831,8 +1076,8 @@ jobs:
           timeout --signal=TERM --kill-after=30s 25m \
             omc "$PWD/build/tsp42-triplens.mos" \
             | tee outputs/tsp42/triplens-physical-trip.log
-          grep -F 'TRIPLENS_IF97_INVALID_REGION:' outputs/tsp42/triplens-physical-trip.log \
-            > outputs/tsp42/triplens-invalid-region-inputs.txt || true
+          grep -E 'TRIPLENS_(IF97_INVALID_REGION|INVALID_PH_CALLER):' outputs/tsp42/triplens-physical-trip.log \
+            > outputs/tsp42/triplens-invalid-property-callers.txt || true
           if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' \
               outputs/tsp42/triplens-physical-trip.log; then
             exit 1
