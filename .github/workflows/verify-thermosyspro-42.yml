@@ -848,7 +848,7 @@ jobs:
                   body = function_source[body_start:]
                   has_ph_call = (
                       "Water_Ph(" in body or
-                      re.search(r"(?<![A-Za-z0-9_])(?:[A-Za-z_][A-Za-z_0-9]*\\.)*Ph[ \t]*\\(", body)
+                      re.search(r"(?<![A-Za-z0-9_])(?:[A-Za-z_][A-Za-z_0-9]*\.)*Ph[ \t]*\(", body)
                   )
                   if not has_ph_call:
                       continue
