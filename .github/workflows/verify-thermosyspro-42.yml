@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - experiment/thermosyspro-4.2
+      - codex/fix-tsp42-bp-init-20261008
   pull_request:
     branches:
       - main
