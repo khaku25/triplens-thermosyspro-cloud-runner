@@ -26,6 +26,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Test BP path initialization seeds
+        run: python3 -m unittest discover -s tests -p "test_bp_initialization_seed.py" -v
+
       - name: Install OpenModelica 1.27.1 official release
         run: |
           set -euo pipefail
