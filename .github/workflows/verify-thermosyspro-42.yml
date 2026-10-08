@@ -27,8 +27,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Test BP path initialization seeds
-        run: python3 -m unittest discover -s tests -p "test_bp_initialization_seed.py" -v
+      - name: Test ThermoSysPro 4.2 specific enthalpy nominal patch
+        run: python3 -m unittest discover -s tests -p "test_tsp42_specific_enthalpy_nominal.py" -v
 
       - name: Install OpenModelica 1.27.1 official release
         run: |
@@ -346,6 +346,17 @@ jobs:
             exit 1
           fi
           test -s build/tsp42_reference_condenser_seed_res.csv
+
+      - name: Apply ThermoSysPro 4.2 specific enthalpy nominal scale
+        run: |
+          set -euo pipefail
+          units=vendor/ThermoSysPro/ThermoSysPro/Units.mo
+          cp "$units" outputs/tsp42/Units-4.2-upstream.mo
+          python3 scripts/patch_tsp42_specific_enthalpy_nominal.py "$units"
+          cp "$units" outputs/tsp42/Units-4.2-patched.mo
+          sha256sum outputs/tsp42/Units-4.2-upstream.mo outputs/tsp42/Units-4.2-patched.mo \
+            | tee outputs/tsp42/Units-4.2-nominal-sha256.txt
+          grep -Fq 'type SpecificEnthalpy = SpecificEnergy(nominal = 1e6);' "$units"
 
       - name: Test the version-independent turbine patch
         run: python3 -m unittest discover -s tests -p "test_turbine_bypass_patch.py"
