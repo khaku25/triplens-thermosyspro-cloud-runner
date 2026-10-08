@@ -125,6 +125,18 @@ model TripLens_CombinedCycle_TripTAC
          h(start=3523910), h_vol(start=3523910)),
       Cs(Q(start=176.7893383342879, nominal=200),
          h(start=3029780), h_vol(start=3029780))),
+    // Match the BP superheater outlet and the connected pressure-loss inlet.
+    DoubleDebitBP(
+      P(start=501850, nominal=5e5),
+      h(start=2919992.1127030067, nominal=3e6),
+      Ce(P(start=501850),
+         h(start=2919992.1127030067), h_vol(start=2919992.1127030067)),
+      Cs(P(start=501850),
+         h(start=2919992.1127030067), h_vol(start=2919992.1127030067))),
+    PerteChargeZero2(
+      h(start=2919992.1127030067, nominal=3e6),
+      C1(P(start=501850),
+         h(start=2919992.1127030067), h_vol(start=2919992.1127030067))),
     TurbineBP(
       regularizePressureCrossover=true,
       Q(start=196.6524916480812, nominal=200),
