@@ -29,6 +29,8 @@ jobs:
 
       - name: Test ThermoSysPro 4.2 specific enthalpy nominal patch
         run: python3 -m unittest discover -s tests -p "test_tsp42_specific_enthalpy_nominal.py" -v
+      - name: Test BP path initialization seeds
+        run: python3 -m unittest discover -s tests -p "test_bp_initialization_seed.py" -v
 
       - name: Install OpenModelica 1.27.1 official release
         run: |
