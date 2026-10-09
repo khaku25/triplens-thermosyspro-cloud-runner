@@ -137,6 +137,25 @@ model TripLens_CombinedCycle_TripTAC
       h(start=2919992.1127030067, nominal=3e6),
       C1(P(start=501850),
          h(start=2919992.1127030067), h_vol(start=2919992.1127030067))),
+    // Restore the saved TripTAC BP evaporator initialization state.
+    BallonBP(
+      hl(fixed=false,start=549249.519022482),
+      hv(fixed=false,start=2709858.97470349),
+      P(fixed=false,start=563775.329209196)),
+    VolumeEvapBP(
+      h(start=549249.519022482),
+      P(start=564000)),
+    EvaporateurBP(
+      TwoPhaseFlowPipe(
+        h(start={550075.0,765243.011613326,912673.256542569,1013555.73710231,550075.0}),
+        hb(start={550075.0,765243.011613326,912673.256542569,1013555.73710231}),
+        Q(start={49.787311368631,49.787311368631,49.787311368631,49.787311368631}),
+        P(start={512583.375,488000,487000,486000,485588.46875}))),
+    vanne_alimentationBP(
+      C1(h_vol(start=511900.0)),
+      h(fixed=false,start=509000),
+      Cv(start=142.5),
+      Pm(fixed=false,start=969800)),
     TurbineBP(
       regularizePressureCrossover=true,
       Q(start=196.6524916480812, nominal=200),
