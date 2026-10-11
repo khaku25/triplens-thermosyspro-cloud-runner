@@ -378,7 +378,7 @@ jobs:
                       )
                   else:
                       replacement = (
-                          "TSPFluidTrace.checkedPh("
+                          "ThermoSysPro.Properties.Fluid.checkedPh("
                           f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
@@ -684,7 +684,7 @@ jobs:
                       )
                   else:
                       replacement = (
-                          "TSPFluidTrace.checkedPh("
+                          "ThermoSysPro.Properties.Fluid.checkedPh("
                           f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
