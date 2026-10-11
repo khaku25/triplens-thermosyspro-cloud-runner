@@ -160,6 +160,29 @@ jobs:
               + root_source[root_line_end + 1:]
           )
           root_package.write_text(root_source)
+          print("TRACE IF97 DIRECTORY:", sorted(p.name for p in (trace_root / "Properties/WaterSteam").iterdir()))
+          reported = 0
+          for inspect_path in sorted(trace_root.rglob("*.mo")):
+              try:
+                  source_lines = inspect_path.read_text().splitlines()
+              except UnicodeDecodeError:
+                  continue
+              hits = []
+              for line_number, line in enumerate(source_lines, start=1):
+                  if re.search(r"\b(package|function|model|class)[ \t]+(IF97|IF97_wAJ|Fluid|Ph|Water_Ph)\b|^[ \t]*end[ \t]+(IF97|IF97_wAJ|Fluid|Ph|Water_Ph)\b", line) or (("IF97" in line) and re.search(r"\b(import|package)\b|=", line)):
+                      hits.append((line_number, line.strip()))
+              if hits and ("IF97" in inspect_path.name or any("IF97_wAJ" in line or "package Fluid" in line or "package IF97" in line for _,line in hits)):
+                  print("TRACE IF97 DECLARATIONS:", inspect_path.relative_to(trace_root))
+                  for line_number, line in hits[:20]:
+                      print(f"{line_number}: {line}")
+                  reported += 1
+                  if reported >= 30:
+                      break
+          candidate_model = trace_root / "WaterSteam/Volumes/DynamicDrum.mo"
+          if candidate_model.is_file():
+              for line_number, line in enumerate(candidate_model.read_text().splitlines(), start=1):
+                  if re.search(r"\b(import|Fluid\.Ph|Water_Ph|IF97)\b", line):
+                      print(f"TRACE DYNAMICDRUM {line_number}: {line.strip()}")
           properties = trace_root / "Properties/WaterSteam/IF97_packages.mo"
           property_source = properties.read_text()
           needle = """    algorithm
