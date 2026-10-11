@@ -11,78 +11,73 @@ permissions:
 jobs:
   rebuild-run3-mat:
     runs-on: ubuntu-24.04
-    container:
-      image: openmodelica/openmodelica:v1.27.0-minimal
-    timeout-minutes: 45
+    timeout-minutes: 50
     env:
-      THERMOSYSPRO_SHA: db81ae1b5a6a85f6c6c7693244cafa6087e18ff
+      THERMOSYSPRO_COMMIT: db81ae1b5a6a85f6c6c7693244cafa6087e18ff
+      OPENMODELICA_IMAGE: openmodelica/openmodelica:v1.27.0-minimal
     steps:
       - uses: actions/checkout@v4
         with:
           ref: df8d12b7fa340af941c5fbbdf2b554077b223c5f
           path: legacy
 
-      - name: Rebuild the RUN 3 initialization MAT
+      - name: Render and pin the exact RUN 3 model sources
+        working-directory: legacy
         run: |
           set -euo pipefail
-          apt-get update
-          apt-get install -y ca-certificates curl unzip python3
-          mkdir -p /workspace legacy-output vendor-old
-          test ! -e /workspace/modelica
-          test ! -e /workspace/scripts
-          test ! -e /workspace/build
-          test ! -e /workspace/vendor
-          ln -s "$GITHUB_WORKSPACE/legacy/modelica" /workspace/modelica
-          cp -a legacy/scripts /workspace/scripts
-          ln -s "$GITHUB_WORKSPACE/legacy-output" /workspace/build
-          ln -s "$GITHUB_WORKSPACE/vendor-old" /workspace/vendor
+          mkdir -p build/omhome vendor
+          python3 scripts/render_modelica.py --normal-operation --stop-time 2 --intervals 20
+          git clone --no-checkout \
+            https://github.com/Dwarf-Planet-Project/ThermoSysPro.git \
+            vendor/ThermoSysPro
+          git -C vendor/ThermoSysPro checkout --detach "$THERMOSYSPRO_COMMIT"
+          test "$(git -C vendor/ThermoSysPro rev-parse HEAD)" = "$THERMOSYSPRO_COMMIT"
 
-          python3 /workspace/scripts/render_modelica.py \
-            --normal-operation --stop-time 2 --intervals 2 --output-dir /workspace/build
+      - name: Apply the exact RUN 3 physical model patches
+        working-directory: legacy
+        run: |
+          set -euo pipefail
+          MODEL=vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
+          python3 scripts/patch_turbine_bypass_model.py --source "$MODEL"
+          python3 scripts/patch_fmu_valve_controls.py --source "$MODEL"
+          python3 scripts/patch_stodola_turbine.py \
+            vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
 
-          archive_url="https://gitlab.pam-retd.fr/thermosysproandco/ThermoSysPro/-/archive/$THERMOSYSPRO_SHA/ThermoSysPro-$THERMOSYSPRO_SHA.zip"
-          curl --fail --location --retry 3 --retry-delay 2 "$archive_url" \
-            --output "$RUNNER_TEMP/ThermoSysPro-3.1.zip"
-          unzip -q "$RUNNER_TEMP/ThermoSysPro-3.1.zip" -d "$RUNNER_TEMP/tsp31"
-          package_file="$(find "$RUNNER_TEMP/tsp31" -type f \
-            -path '*/ThermoSysPro/package.mo' -print -quit)"
-          test -n "$package_file"
-          archive_root="$(dirname "$(dirname "$package_file")")"
-          mv "$archive_root" /workspace/vendor/ThermoSysPro
-          package_dir=/workspace/vendor/ThermoSysPro/ThermoSysPro
-          printf 'revision=%s\n' "$THERMOSYSPRO_SHA" \
-            | tee legacy-output/thermosyspro-3.1-source.txt
+      - name: Install the exact RUN 3 Modelica dependency
+        working-directory: legacy
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 8m \
+            docker run --rm \
+              -v "$PWD/build/omhome:/root" \
+              -v "$PWD:/workspace" \
+              -w /workspace \
+              "$OPENMODELICA_IMAGE" \
+              omc /workspace/modelica/install_dependencies.mos
 
-          plant="$package_dir/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
-          turbine="$package_dir/WaterSteam/Machines/StodolaTurbine.mo"
-          test -s "$plant"
-          test -s "$turbine"
-          python3 /workspace/scripts/patch_turbine_bypass_model.py --source "$plant"
-          python3 /workspace/scripts/patch_stodola_turbine.py "$turbine"
-
-          cat > /workspace/install-modelica.mos <<'MOS'
-          setCommandLineOptions("--std=3.4");
-          if not installPackage(Modelica, "3.2.3", exactMatch=true) then
-            print(getErrorString());
-            exit(1);
-          end if;
-          if not loadModel(Modelica, {"3.2.3"}) then
-            print(getErrorString());
-            exit(1);
-          end if;
-          getVersion(Modelica);
-          MOS
-          omc /workspace/install-modelica.mos \
-            | tee legacy-output/install-modelica.log
-
-          omc /workspace/modelica/build_omedit_initialization.mos \
-            | tee legacy-output/build-run3-mat.log
-          result=/workspace/build/TripLensUserModels_CombinedCycle_TripTAC_steady_init_res.mat
-          test -s "$result"
-          grep -Eq 'resultFile = ".*TripLensUserModels_CombinedCycle_TripTAC_steady_init_res.mat"' \
-            legacy-output/build-run3-mat.log
-          sha256sum "$result" | tee legacy-output/run3-mat.sha256
-          stat -c 'bytes=%s' "$result" | tee -a legacy-output/run3-mat.sha256
+      - name: Rebuild the RUN 3 initialization MAT
+        working-directory: legacy
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 35m \
+            docker run --rm \
+              -v "$PWD/build/omhome:/root" \
+              -v "$PWD:/workspace" \
+              -w /workspace \
+              "$OPENMODELICA_IMAGE" \
+              omc /workspace/modelica/build_omedit_initialization.mos \
+            | tee build/openmodelica-omedit-init.log
+          if grep -Eq \
+            'resultFile = ""|Failed to build model|Simulation execution failed|Error:' \
+            build/openmodelica-omedit-init.log; then
+            echo "OpenModelica reported a build or simulation failure" >&2
+            exit 1
+          fi
+          test -s build/TripLensUserModels.CombinedCycle_TripTAC_steady_init_res.mat
+          sha256sum build/TripLensUserModels.CombinedCycle_TripTAC_steady_init_res.mat \
+            | tee build/run3-mat.sha256
+          stat -c 'bytes=%s' build/TripLensUserModels.CombinedCycle_TripTAC_steady_init_res.mat \
+            | tee -a build/run3-mat.sha256
 
       - name: Upload rebuilt RUN 3 MAT and logs
         if: always()
@@ -90,7 +85,9 @@ jobs:
         with:
           name: run3-initialization-mat-for-tsp42-test
           path: |
-            legacy-output/**
+            legacy/build/TripLensUserModels.CombinedCycle_TripTAC_steady_init_res.mat
+            legacy/build/run3-mat.sha256
+            legacy/build/openmodelica-omedit-init.log
           if-no-files-found: warn
           retention-days: 14
 
@@ -153,16 +150,16 @@ jobs:
           python3 scripts/patch_turbine_bypass_model.py --source "$plant"
           python3 scripts/patch_stodola_turbine.py "$turbine"
           sha256sum "$plant" "$turbine" | tee outputs/tsp42/patched-source.sha256
-          sha256sum "$GITHUB_WORKSPACE/run3-mat/TripLensUserModels_CombinedCycle_TripTAC_steady_init_res.mat" \
-            | tee outputs/tsp42/run3-mat.sha256
-          stat -c 'bytes=%s' "$GITHUB_WORKSPACE/run3-mat/TripLensUserModels_CombinedCycle_TripTAC_steady_init_res.mat" \
-            | tee -a outputs/tsp42/run3-mat.sha256
+          MATFILE="$GITHUB_WORKSPACE/run3-mat/TripLensUserModels.CombinedCycle_TripTAC_steady_init_res.mat"
+          test -s "$MATFILE"
+          sha256sum "$MATFILE" | tee outputs/tsp42/run3-mat.sha256
+          stat -c 'bytes=%s' "$MATFILE" | tee -a outputs/tsp42/run3-mat.sha256
 
       - name: Run the RUN 44 model using RUN 3 MAT as initial guesses
         run: |
           set -euo pipefail
           cd "$GITHUB_WORKSPACE/target"
-          MATFILE="$GITHUB_WORKSPACE/run3-mat/TripLensUserModels_CombinedCycle_TripTAC_steady_init_res.mat"
+          MATFILE="$GITHUB_WORKSPACE/run3-mat/TripLensUserModels.CombinedCycle_TripTAC_steady_init_res.mat"
           test -s "$MATFILE"
           cat > build/tsp42-run3-mat.mos <<MOS
           setCommandLineOptions("--std=3.4");
