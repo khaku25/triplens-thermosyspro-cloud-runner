@@ -1,0 +1,233 @@
+name: Validate RUN 3 MAT as ThermoSysPro 4.2 initialization input
+
+on:
+  push:
+    branches:
+      - codex/validate-run3-mat-on-42-20261011
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild-run3-mat:
+    runs-on: ubuntu-24.04
+    container:
+      image: openmodelica/openmodelica:v1.27.0-minimal
+    timeout-minutes: 45
+    env:
+      THERMOSYSPRO_SHA: db81ae1b5a6a85f6c6c7693244cafa6087e18ff
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: df8d12b7fa340af941c5fbbdf2b554077b223c5f
+          path: legacy
+
+      - name: Rebuild the RUN 3 initialization MAT
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install -y ca-certificates curl unzip python3
+          mkdir -p /workspace legacy-output vendor-old
+          test ! -e /workspace/modelica
+          test ! -e /workspace/scripts
+          test ! -e /workspace/build
+          test ! -e /workspace/vendor
+          ln -s "$GITHUB_WORKSPACE/legacy/modelica" /workspace/modelica
+          cp -a legacy/scripts /workspace/scripts
+          ln -s "$GITHUB_WORKSPACE/legacy-output" /workspace/build
+          ln -s "$GITHUB_WORKSPACE/vendor-old" /workspace/vendor
+
+          python3 /workspace/scripts/render_modelica.py \
+            --normal-operation --stop-time 2 --intervals 2 --output-dir /workspace/build
+
+          archive_url="https://gitlab.pam-retd.fr/thermosysproandco/ThermoSysPro/-/archive/$THERMOSYSPRO_SHA/ThermoSysPro-$THERMOSYSPRO_SHA.zip"
+          curl --fail --location --retry 3 --retry-delay 2 "$archive_url" \
+            --output "$RUNNER_TEMP/ThermoSysPro-3.1.zip"
+          unzip -q "$RUNNER_TEMP/ThermoSysPro-3.1.zip" -d "$RUNNER_TEMP/tsp31"
+          package_file="$(find "$RUNNER_TEMP/tsp31" -type f \
+            -path '*/ThermoSysPro/package.mo' -print -quit)"
+          test -n "$package_file"
+          archive_root="$(dirname "$(dirname "$package_file")")"
+          mv "$archive_root" /workspace/vendor/ThermoSysPro
+          package_dir=/workspace/vendor/ThermoSysPro/ThermoSysPro
+          printf 'revision=%s\n' "$THERMOSYSPRO_SHA" \
+            | tee legacy-output/thermosyspro-3.1-source.txt
+
+          plant="$package_dir/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
+          turbine="$package_dir/WaterSteam/Machines/StodolaTurbine.mo"
+          test -s "$plant"
+          test -s "$turbine"
+          python3 /workspace/scripts/patch_turbine_bypass_model.py --source "$plant"
+          python3 /workspace/scripts/patch_stodola_turbine.py "$turbine"
+
+          cat > /workspace/install-modelica.mos <<'MOS'
+          setCommandLineOptions("--std=3.4");
+          if not installPackage(Modelica, "3.2.3", exactMatch=true) then
+            print(getErrorString());
+            exit(1);
+          end if;
+          if not loadModel(Modelica, {"3.2.3"}) then
+            print(getErrorString());
+            exit(1);
+          end if;
+          getVersion(Modelica);
+          MOS
+          omc /workspace/install-modelica.mos \
+            | tee legacy-output/install-modelica.log
+
+          omc /workspace/modelica/build_omedit_initialization.mos \
+            | tee legacy-output/build-run3-mat.log
+          result=/workspace/build/TripLensUserModels_CombinedCycle_TripTAC_steady_init_res.mat
+          test -s "$result"
+          grep -Eq 'resultFile = ".*TripLensUserModels_CombinedCycle_TripTAC_steady_init_res.mat"' \
+            legacy-output/build-run3-mat.log
+          sha256sum "$result" | tee legacy-output/run3-mat.sha256
+          stat -c 'bytes=%s' "$result" | tee -a legacy-output/run3-mat.sha256
+
+      - name: Upload rebuilt RUN 3 MAT and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run3-initialization-mat-for-tsp42-test
+          path: |
+            legacy-output/**
+          if-no-files-found: warn
+          retention-days: 14
+
+  test-run3-mat-on-thermosyspro-42:
+    runs-on: ubuntu-24.04
+    needs: rebuild-run3-mat
+    timeout-minutes: 45
+    env:
+      THERMOSYSPRO_SHA: a896ab75ce22162369e7fa4ce79927eeca44ad4a
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 3f04893ba24b2640d8a6ea1143d7eaa7b3578669
+          path: target
+
+      - name: Download the rebuilt RUN 3 MAT
+        uses: actions/download-artifact@v4
+        with:
+          name: run3-initialization-mat-for-tsp42-test
+          path: run3-mat
+
+      - name: Install the RUN 44 OpenModelica 1.27.1 environment
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates curl gnupg unzip python3
+          curl -fsSL https://build.openmodelica.org/apt/openmodelica.asc \
+            | sudo gpg --dearmor -o /usr/share/keyrings/openmodelica-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/openmodelica-keyring.gpg] https://build.openmodelica.org/apt noble stable" \
+            | sudo tee /etc/apt/sources.list.d/openmodelica.list
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends omc
+          omc --version | tee target/openmodelica-version.txt
+          grep -q '1.27.1' target/openmodelica-version.txt
+
+      - name: Install and patch the exact ThermoSysPro 4.2 source
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE/target"
+          mkdir -p vendor build outputs/tsp42 "$RUNNER_TEMP/tsp42"
+          archive_url="https://gitlab.pam-retd.fr/thermosysproandco/ThermoSysPro/-/archive/$THERMOSYSPRO_SHA/ThermoSysPro-$THERMOSYSPRO_SHA.zip"
+          curl --fail --location --retry 3 --retry-delay 2 "$archive_url" \
+            --output "$RUNNER_TEMP/tsp42/ThermoSysPro.zip"
+          unzip -q "$RUNNER_TEMP/tsp42/ThermoSysPro.zip" -d "$RUNNER_TEMP/tsp42/unpacked"
+          package_file="$(find "$RUNNER_TEMP/tsp42" -type f \
+            -path '*/ThermoSysPro/package.mo' -print -quit)"
+          test -n "$package_file"
+          archive_root="$(dirname "$(dirname "$package_file")")"
+          mv "$archive_root" vendor/ThermoSysPro
+          package_file=vendor/ThermoSysPro/ThermoSysPro/package.mo
+          grep -Eq 'ThermoSysPro Version 4\.2|version[[:space:]]*=[[:space:]]*"(4\.2|4\.2\.0)' \
+            "$package_file"
+          printf 'revision=%s\n' "$THERMOSYSPRO_SHA" \
+            | tee outputs/tsp42/source-identity.txt
+
+          python3 scripts/render_modelica.py \
+            --trip-time 2 --trip-ramp-duration 5 --stop-time 10 --intervals 10000
+          plant=vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo
+          turbine=vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StodolaTurbine.mo
+          python3 scripts/patch_turbine_bypass_model.py --source "$plant"
+          python3 scripts/patch_stodola_turbine.py "$turbine"
+          sha256sum "$plant" "$turbine" | tee outputs/tsp42/patched-source.sha256
+          sha256sum "$GITHUB_WORKSPACE/run3-mat/TripLensUserModels_CombinedCycle_TripTAC_steady_init_res.mat" \
+            | tee outputs/tsp42/run3-mat.sha256
+          stat -c 'bytes=%s' "$GITHUB_WORKSPACE/run3-mat/TripLensUserModels_CombinedCycle_TripTAC_steady_init_res.mat" \
+            | tee -a outputs/tsp42/run3-mat.sha256
+
+      - name: Run the RUN 44 model using RUN 3 MAT as initial guesses
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE/target"
+          MATFILE="$GITHUB_WORKSPACE/run3-mat/TripLensUserModels_CombinedCycle_TripTAC_steady_init_res.mat"
+          test -s "$MATFILE"
+          cat > build/tsp42-run3-mat.mos <<MOS
+          setCommandLineOptions("--std=3.4");
+          setCommandLineOptions("-d=initialization,aliasConflicts");
+          setMatchingAlgorithm("PFPlusExt");
+          setIndexReductionMethod("dynamicStateSelection");
+          if not installPackage(Modelica, "4.0.0", exactMatch=true) then
+            print(getErrorString());
+            exit(1);
+          end if;
+          if not loadModel(Modelica, {"4.0.0"}) then
+            print(getErrorString());
+            exit(1);
+          end if;
+          if not loadFile("$PWD/vendor/ThermoSysPro/ThermoSysPro/package.mo") then
+            print(getErrorString());
+            exit(1);
+          end if;
+          if not loadFile("$PWD/build/TripLens_CombinedCycle_TripTAC.mo") then
+            print(getErrorString());
+            exit(1);
+          end if;
+          getVersion(Modelica);
+          getVersion(ThermoSysPro);
+          cd("$PWD/build");
+          simulate(
+            TripLens_CombinedCycle_TripTAC,
+            startTime=0,
+            stopTime=10,
+            numberOfIntervals=10000,
+            tolerance=1e-3,
+            method="dassl",
+            outputFormat="csv",
+            simflags="-iif=$MATFILE -iit=0.0 -lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS",
+            fileNamePrefix="tsp42_triplens_run3_mat",
+            variableFilter="^(time|vppGTExhaustMassFlowTH|vppHPTurbineSteamFlowTH|vppIPTurbineSteamFlowTH|vppLPTurbineSteamFlowTH|vppSTTripLatch)$");
+          getErrorString();
+          MOS
+          set +e
+          timeout --signal=TERM --kill-after=30s 25m \
+            omc "$PWD/build/tsp42-run3-mat.mos" \
+            > outputs/tsp42/run3-mat-import.log 2>&1
+          status=$?
+          set -e
+          cat outputs/tsp42/run3-mat-import.log
+          printf 'omc_exit_status=%s\n' "$status" \
+            | tee outputs/tsp42/run3-mat-import-status.txt
+          if [ "$status" -ne 0 ]; then exit "$status"; fi
+          if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' \
+              outputs/tsp42/run3-mat-import.log; then
+            exit 1
+          fi
+          test -s build/tsp42_triplens_run3_mat_res.csv
+          printf 'RUN3_MAT_IMPORTED_AND_TSP42_SIMULATED_TO_10S\n' \
+            | tee outputs/tsp42/result.txt
+
+      - name: Upload ThermoSysPro 4.2 import test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run3-mat-on-thermosyspro-42-test
+          path: |
+            target/openmodelica-version.txt
+            target/outputs/tsp42/**
+            target/build/tsp42_triplens_run3_mat_res.csv
+            run3-mat/**
+          if-no-files-found: warn
+          retention-days: 14
