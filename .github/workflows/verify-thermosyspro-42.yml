@@ -212,14 +212,14 @@ jobs:
               candidate_source = candidate.read_text()
               if "Fluid.Ph(" not in candidate_source and "Water_Ph(" not in candidate_source:
                   continue
-              model_match = re.search(r"(?m)^(?:partial[ \\t]+)?model[ \\t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
+              model_match = re.search(r"(?m)^(?:partial[ \t]+)?model[ \t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
               if model_match is None:
                   continue
-              equation_match = re.search(r"(?m)^[ \\t]*equation[ \\t]*$", candidate_source[model_match.end():])
+              equation_match = re.search(r"(?m)^[ \t]*equation[ \t]*$", candidate_source[model_match.end():])
               if equation_match is None:
                   continue
               scan_start = model_match.end() + equation_match.end()
-              if candidate_source[scan_start:scan_start + 1] == "\\n":
+              if candidate_source[scan_start:scan_start + 1] == "\n":
                   scan_start += 1
               annotation_start = candidate_source.find("annotation(", scan_start)
               scan_end = annotation_start if annotation_start >= 0 else len(candidate_source)
@@ -253,13 +253,26 @@ jobs:
               for index, (call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg) in reversed(list(enumerate(call_sites, start=1))):
                   caller = f"{relative} call {index}"
                   replacement = (
-                      "Fluid.checkedPh("
+                      "TSPFluid.checkedPh("
                       f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
+              model_match = re.search(r"(?m)^(?:partial[ \t]+)?model[ \t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
+              if model_match is None:
+                  raise SystemExit(f"could not place diagnostic import in {relative}")
+              import_position = candidate_source.find("\n", model_match.end())
+              if import_position < 0:
+                  raise SystemExit(f"could not find model header line ending in {relative}")
+              import_position += 1
+              if "import TSPFluid =" not in candidate_source:
+                  candidate_source = (
+                      candidate_source[:import_position]
+                      + "  import TSPFluid = .ThermoSysPro.Properties.Fluid;\n"
+                      + candidate_source[import_position:]
+                  )
               candidate.write_text(candidate_source)
               diagnostic_callers.append(f"{relative}: {len(call_sites)}")
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
-              "\\n".join(diagnostic_callers) + "\\n")
+              "\n".join(diagnostic_callers) + "\n")
           print("Instrumented pressure property call sites:", diagnostic_callers)
           PY
           cp build/tsp42-reference-traced/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo \
@@ -426,14 +439,14 @@ jobs:
               candidate_source = candidate.read_text()
               if "Fluid.Ph(" not in candidate_source and "Water_Ph(" not in candidate_source:
                   continue
-              model_match = re.search(r"(?m)^(?:partial[ \\t]+)?model[ \\t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
+              model_match = re.search(r"(?m)^(?:partial[ \t]+)?model[ \t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
               if model_match is None:
                   continue
-              equation_match = re.search(r"(?m)^[ \\t]*equation[ \\t]*$", candidate_source[model_match.end():])
+              equation_match = re.search(r"(?m)^[ \t]*equation[ \t]*$", candidate_source[model_match.end():])
               if equation_match is None:
                   continue
               scan_start = model_match.end() + equation_match.end()
-              if candidate_source[scan_start:scan_start + 1] == "\\n":
+              if candidate_source[scan_start:scan_start + 1] == "\n":
                   scan_start += 1
               annotation_start = candidate_source.find("annotation(", scan_start)
               scan_end = annotation_start if annotation_start >= 0 else len(candidate_source)
@@ -467,13 +480,27 @@ jobs:
               for index, (call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg) in reversed(list(enumerate(call_sites, start=1))):
                   caller = f"{relative} call {index}"
                   replacement = (
-                      "Fluid.checkedPh("
+                      "TSPFluid.checkedPh("
                       f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
+              model_match = re.search(r"(?m)^(?:partial[ \t]+)?model[ \t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
+              equation_match = re.search(
+                  r"(?m)^[ \t]*equation[ \t]*$",
+                  candidate_source[model_match.end():] if model_match else "",
+              )
+              if model_match is None or equation_match is None:
+                  raise SystemExit(f"could not place diagnostic import in {relative}")
+              import_position = model_match.end() + equation_match.start()
+              if "import TSPFluid =" not in candidate_source:
+                  candidate_source = (
+                      candidate_source[:import_position]
+                      + "  import TSPFluid = .ThermoSysPro.Properties.Fluid;\n"
+                      + candidate_source[import_position:]
+                  )
               candidate.write_text(candidate_source)
               diagnostic_callers.append(f"{relative}: {len(call_sites)}")
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
-              "\\n".join(diagnostic_callers) + "\\n")
+              "\n".join(diagnostic_callers) + "\n")
           print("Instrumented pressure property call sites:", diagnostic_callers)
           PY
           cp build/tsp42-triplens-traced/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo \
