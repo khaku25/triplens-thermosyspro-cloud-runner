@@ -197,10 +197,63 @@ jobs:
           if function_start < 0 or function_end < 0:
               raise SystemExit("could not isolate Water_Ph function")
           water_function = property_source[function_start:function_end]
+          checked_water_function = water_function
           if water_function.count(needle) != 1:
               raise SystemExit(f"expected one target in Water_Ph, got {water_function.count(needle)}")
           water_function = water_function.replace(needle, traced, 1)
-          properties.write_text(property_source[:function_start] + water_function + property_source[function_end:])
+          
+          function_match = re.search(r"(?m)^([ \t]*)function Water_Ph[ \t]*$", checked_water_function)
+          if function_match is None:
+              raise SystemExit("could not isolate Water_Ph declaration for checked wrapper")
+          function_indent = function_match.group(1)
+          header_end = checked_water_function.find("\n", function_match.end())
+          if header_end < 0:
+              raise SystemExit("could not find Water_Ph declaration line ending")
+          checked_water_function = (
+              checked_water_function[:header_end + 1]
+              + function_indent + "  input String caller;\n"
+              + checked_water_function[header_end + 1:]
+          )
+          checked_water_function = checked_water_function.replace(
+              "function Water_Ph", "function checkedWater_Ph", 1)
+          algorithm_match = re.search(r"(?m)^([ \t]*)algorithm[ \t]*$", checked_water_function)
+          if algorithm_match is None:
+              raise SystemExit("could not find Water_Ph algorithm section")
+          algorithm_line_end = checked_water_function.find("\n", algorithm_match.end())
+          if algorithm_line_end < 0:
+              raise SystemExit("could not find Water_Ph algorithm line ending")
+          assert_indent = algorithm_match.group(1) + "  "
+          trace_assert = (
+              f'{assert_indent}assert(p > 611.657,\n'
+              f'{assert_indent}  "TRACE " + caller + ": p=" + String(p) + " Pa, h=" + String(h) +\n'
+              f'{assert_indent}  " J/kg, mode=" + String(mode));\n'
+          )
+          checked_water_function = (
+              checked_water_function[:algorithm_line_end + 1]
+              + trace_assert
+              + checked_water_function[algorithm_line_end + 1:]
+          )
+          checked_water_function = checked_water_function.replace(
+              "end Water_Ph;", "end checkedWater_Ph;", 1)
+          
+          property_source = (
+              property_source[:function_start]
+              + water_function
+              + property_source[function_end:]
+          )
+          package_end = property_source.rfind("end IF97_wAJ;")
+          if package_end < 0:
+              raise SystemExit("could not find end of IF97_wAJ package")
+          if "function checkedWater_Ph" in property_source:
+              raise SystemExit("checkedWater_Ph already exists in IF97_wAJ")
+          property_source = (
+              property_source[:package_end]
+              + "\n"
+              + checked_water_function
+              + "\n"
+              + property_source[package_end:]
+          )
+          properties.write_text(property_source)
           fluid_package = trace_root / "Properties/Fluid.mo"
           if not fluid_package.is_file():
               fluid_package = trace_root / "Properties/Fluid/package.mo"
@@ -285,25 +338,49 @@ jobs:
                       if closing is None or closing >= scan_end:
                           break
                       arguments = split_arguments(candidate_source[opening + 1:closing])
+                      qualified_if97 = False
+                      replace_start = call_start
                       if token == "Fluid.Ph(" and len(arguments) == 4:
                           pressure, enthalpy, mode_arg, fluid_arg = arguments
                       elif token == "Water_Ph(" and len(arguments) >= 2:
                           pressure, enthalpy = arguments[:2]
                           mode_arg = arguments[2] if len(arguments) >= 3 else "0"
                           fluid_arg = "1"
+                          if call_start >= len("ThermoSysPro.Properties.WaterSteam.IF97.") and (
+                              candidate_source[call_start - len("ThermoSysPro.Properties.WaterSteam.IF97."):call_start]
+                              == "ThermoSysPro.Properties.WaterSteam.IF97."
+                          ):
+                              qualified_if97 = True
+                              replace_start -= len("ThermoSysPro.Properties.WaterSteam.IF97.")
                       else:
                           cursor = closing + 1
                           continue
-                      call_sites.append((call_start, closing + 1, pressure, enthalpy, mode_arg, fluid_arg))
+                      call_sites.append((
+                          replace_start, closing + 1, pressure, enthalpy, mode_arg,
+                          fluid_arg, len(arguments), qualified_if97,
+                      ))
                       cursor = closing + 1
               if not call_sites:
                   continue
           
-              for index, (call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg) in reversed(list(enumerate(call_sites, start=1))):
+              for index, (
+                  call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg,
+                  argument_count, qualified_if97,
+              ) in reversed(list(enumerate(call_sites, start=1))):
                   caller = f"{relative} call {index}"
-                  replacement = (
-                      "TSPFluidTrace.checkedPh("
-                      f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
+                  if qualified_if97:
+                      checked_arguments = [f'"{caller}"', pressure, enthalpy]
+                      if argument_count >= 3:
+                          checked_arguments.append(mode_arg)
+                      replacement = (
+                          "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
+                          + ", ".join(checked_arguments)
+                          + ")"
+                      )
+                  else:
+                      replacement = (
+                          "TSPFluidTrace.checkedPh("
+                          f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
               diagnostic_callers.append(f"{relative}: {len(call_sites)}")
@@ -427,10 +504,63 @@ jobs:
           if function_start < 0 or function_end < 0:
               raise SystemExit("could not isolate Water_Ph function")
           water_function = property_source[function_start:function_end]
+          checked_water_function = water_function
           if water_function.count(needle) != 1:
               raise SystemExit(f"expected one target in Water_Ph, got {water_function.count(needle)}")
           water_function = water_function.replace(needle, traced, 1)
-          properties.write_text(property_source[:function_start] + water_function + property_source[function_end:])
+          
+          function_match = re.search(r"(?m)^([ \t]*)function Water_Ph[ \t]*$", checked_water_function)
+          if function_match is None:
+              raise SystemExit("could not isolate Water_Ph declaration for checked wrapper")
+          function_indent = function_match.group(1)
+          header_end = checked_water_function.find("\n", function_match.end())
+          if header_end < 0:
+              raise SystemExit("could not find Water_Ph declaration line ending")
+          checked_water_function = (
+              checked_water_function[:header_end + 1]
+              + function_indent + "  input String caller;\n"
+              + checked_water_function[header_end + 1:]
+          )
+          checked_water_function = checked_water_function.replace(
+              "function Water_Ph", "function checkedWater_Ph", 1)
+          algorithm_match = re.search(r"(?m)^([ \t]*)algorithm[ \t]*$", checked_water_function)
+          if algorithm_match is None:
+              raise SystemExit("could not find Water_Ph algorithm section")
+          algorithm_line_end = checked_water_function.find("\n", algorithm_match.end())
+          if algorithm_line_end < 0:
+              raise SystemExit("could not find Water_Ph algorithm line ending")
+          assert_indent = algorithm_match.group(1) + "  "
+          trace_assert = (
+              f'{assert_indent}assert(p > 611.657,\n'
+              f'{assert_indent}  "TRACE " + caller + ": p=" + String(p) + " Pa, h=" + String(h) +\n'
+              f'{assert_indent}  " J/kg, mode=" + String(mode));\n'
+          )
+          checked_water_function = (
+              checked_water_function[:algorithm_line_end + 1]
+              + trace_assert
+              + checked_water_function[algorithm_line_end + 1:]
+          )
+          checked_water_function = checked_water_function.replace(
+              "end Water_Ph;", "end checkedWater_Ph;", 1)
+          
+          property_source = (
+              property_source[:function_start]
+              + water_function
+              + property_source[function_end:]
+          )
+          package_end = property_source.rfind("end IF97_wAJ;")
+          if package_end < 0:
+              raise SystemExit("could not find end of IF97_wAJ package")
+          if "function checkedWater_Ph" in property_source:
+              raise SystemExit("checkedWater_Ph already exists in IF97_wAJ")
+          property_source = (
+              property_source[:package_end]
+              + "\n"
+              + checked_water_function
+              + "\n"
+              + property_source[package_end:]
+          )
+          properties.write_text(property_source)
           fluid_package = trace_root / "Properties/Fluid.mo"
           if not fluid_package.is_file():
               fluid_package = trace_root / "Properties/Fluid/package.mo"
@@ -515,25 +645,49 @@ jobs:
                       if closing is None or closing >= scan_end:
                           break
                       arguments = split_arguments(candidate_source[opening + 1:closing])
+                      qualified_if97 = False
+                      replace_start = call_start
                       if token == "Fluid.Ph(" and len(arguments) == 4:
                           pressure, enthalpy, mode_arg, fluid_arg = arguments
                       elif token == "Water_Ph(" and len(arguments) >= 2:
                           pressure, enthalpy = arguments[:2]
                           mode_arg = arguments[2] if len(arguments) >= 3 else "0"
                           fluid_arg = "1"
+                          if call_start >= len("ThermoSysPro.Properties.WaterSteam.IF97.") and (
+                              candidate_source[call_start - len("ThermoSysPro.Properties.WaterSteam.IF97."):call_start]
+                              == "ThermoSysPro.Properties.WaterSteam.IF97."
+                          ):
+                              qualified_if97 = True
+                              replace_start -= len("ThermoSysPro.Properties.WaterSteam.IF97.")
                       else:
                           cursor = closing + 1
                           continue
-                      call_sites.append((call_start, closing + 1, pressure, enthalpy, mode_arg, fluid_arg))
+                      call_sites.append((
+                          replace_start, closing + 1, pressure, enthalpy, mode_arg,
+                          fluid_arg, len(arguments), qualified_if97,
+                      ))
                       cursor = closing + 1
               if not call_sites:
                   continue
           
-              for index, (call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg) in reversed(list(enumerate(call_sites, start=1))):
+              for index, (
+                  call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg,
+                  argument_count, qualified_if97,
+              ) in reversed(list(enumerate(call_sites, start=1))):
                   caller = f"{relative} call {index}"
-                  replacement = (
-                      "TSPFluidTrace.checkedPh("
-                      f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
+                  if qualified_if97:
+                      checked_arguments = [f'"{caller}"', pressure, enthalpy]
+                      if argument_count >= 3:
+                          checked_arguments.append(mode_arg)
+                      replacement = (
+                          "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
+                          + ", ".join(checked_arguments)
+                          + ")"
+                      )
+                  else:
+                      replacement = (
+                          "TSPFluidTrace.checkedPh("
+                          f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
               diagnostic_callers.append(f"{relative}: {len(call_sites)}")
