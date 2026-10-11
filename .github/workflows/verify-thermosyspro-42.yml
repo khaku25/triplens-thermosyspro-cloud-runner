@@ -131,9 +131,25 @@ jobs:
           from pathlib import Path
           import re
           import shutil
-
+          
           trace_root = Path("build/tsp42-reference-traced/ThermoSysPro")
           shutil.copytree(Path("vendor/ThermoSysPro/ThermoSysPro"), trace_root)
+          root_package = trace_root / "package.mo"
+          root_source = root_package.read_text()
+          root_match = re.search(r"(?m)^(?:encapsulated[ \t]+)?package[ \t]+ThermoSysPro\b", root_source)
+          if root_match is None:
+              raise SystemExit(f"could not find ThermoSysPro root package in {root_package}")
+          if "package TSPFluidTrace =" in root_source:
+              raise SystemExit("TSPFluidTrace already exists in the source clone")
+          root_line_end = root_source.find("\n", root_match.end())
+          if root_line_end < 0:
+              raise SystemExit("could not find ThermoSysPro package declaration line ending")
+          root_source = (
+              root_source[:root_line_end + 1]
+              + "  package TSPFluidTrace = Properties.Fluid;\n"
+              + root_source[root_line_end + 1:]
+          )
+          root_package.write_text(root_source)
           properties = trace_root / "Properties/WaterSteam/IF97_packages.mo"
           property_source = properties.read_text()
           needle = """    algorithm
@@ -177,7 +193,7 @@ jobs:
               raise SystemExit("checkedPh already exists in the source clone")
           fluid_source = fluid_source[:fluid_end] + helper_source + fluid_source[fluid_end:]
           fluid_package.write_text(fluid_source)
-
+          
           def split_arguments(argument_text):
               arguments = []
               depth = 0
@@ -192,7 +208,7 @@ jobs:
                       start = index + 1
               arguments.append(argument_text[start:].strip())
               return arguments
-
+          
           def find_call_end(source_text, opening):
               depth = 1
               for index in range(opening + 1, len(source_text)):
@@ -203,7 +219,7 @@ jobs:
                       if depth == 0:
                           return index
               return None
-
+          
           diagnostic_callers = []
           for candidate in sorted(trace_root.rglob("*.mo")):
               relative = candidate.relative_to(trace_root).as_posix()
@@ -223,7 +239,7 @@ jobs:
                   scan_start += 1
               annotation_start = candidate_source.find("annotation(", scan_start)
               scan_end = annotation_start if annotation_start >= 0 else len(candidate_source)
-
+          
               call_sites = []
               for token in ("Fluid.Ph(", "Water_Ph("):
                   cursor = scan_start
@@ -249,26 +265,13 @@ jobs:
                       cursor = closing + 1
               if not call_sites:
                   continue
-
+          
               for index, (call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg) in reversed(list(enumerate(call_sites, start=1))):
                   caller = f"{relative} call {index}"
                   replacement = (
-                      "TSPFluid.checkedPh("
+                      "TSPFluidTrace.checkedPh("
                       f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
-              model_match = re.search(r"(?m)^(?:partial[ \t]+)?model[ \t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
-              if model_match is None:
-                  raise SystemExit(f"could not place diagnostic import in {relative}")
-              import_position = candidate_source.find("\n", model_match.end())
-              if import_position < 0:
-                  raise SystemExit(f"could not find model header line ending in {relative}")
-              import_position += 1
-              if "import TSPFluid =" not in candidate_source:
-                  candidate_source = (
-                      candidate_source[:import_position]
-                      + "  import TSPFluid = .ThermoSysPro.Properties.Fluid;\n"
-                      + candidate_source[import_position:]
-                  )
               candidate.write_text(candidate_source)
               diagnostic_callers.append(f"{relative}: {len(call_sites)}")
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
@@ -358,9 +361,25 @@ jobs:
           from pathlib import Path
           import re
           import shutil
-
+          
           trace_root = Path("build/tsp42-triplens-traced/ThermoSysPro")
           shutil.copytree(Path("vendor/ThermoSysPro/ThermoSysPro"), trace_root)
+          root_package = trace_root / "package.mo"
+          root_source = root_package.read_text()
+          root_match = re.search(r"(?m)^(?:encapsulated[ \t]+)?package[ \t]+ThermoSysPro\b", root_source)
+          if root_match is None:
+              raise SystemExit(f"could not find ThermoSysPro root package in {root_package}")
+          if "package TSPFluidTrace =" in root_source:
+              raise SystemExit("TSPFluidTrace already exists in the source clone")
+          root_line_end = root_source.find("\n", root_match.end())
+          if root_line_end < 0:
+              raise SystemExit("could not find ThermoSysPro package declaration line ending")
+          root_source = (
+              root_source[:root_line_end + 1]
+              + "  package TSPFluidTrace = Properties.Fluid;\n"
+              + root_source[root_line_end + 1:]
+          )
+          root_package.write_text(root_source)
           properties = trace_root / "Properties/WaterSteam/IF97_packages.mo"
           property_source = properties.read_text()
           needle = """    algorithm
@@ -404,7 +423,7 @@ jobs:
               raise SystemExit("checkedPh already exists in the source clone")
           fluid_source = fluid_source[:fluid_end] + helper_source + fluid_source[fluid_end:]
           fluid_package.write_text(fluid_source)
-
+          
           def split_arguments(argument_text):
               arguments = []
               depth = 0
@@ -419,7 +438,7 @@ jobs:
                       start = index + 1
               arguments.append(argument_text[start:].strip())
               return arguments
-
+          
           def find_call_end(source_text, opening):
               depth = 1
               for index in range(opening + 1, len(source_text)):
@@ -430,7 +449,7 @@ jobs:
                       if depth == 0:
                           return index
               return None
-
+          
           diagnostic_callers = []
           for candidate in sorted(trace_root.rglob("*.mo")):
               relative = candidate.relative_to(trace_root).as_posix()
@@ -450,7 +469,7 @@ jobs:
                   scan_start += 1
               annotation_start = candidate_source.find("annotation(", scan_start)
               scan_end = annotation_start if annotation_start >= 0 else len(candidate_source)
-
+          
               call_sites = []
               for token in ("Fluid.Ph(", "Water_Ph("):
                   cursor = scan_start
@@ -476,27 +495,13 @@ jobs:
                       cursor = closing + 1
               if not call_sites:
                   continue
-
+          
               for index, (call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg) in reversed(list(enumerate(call_sites, start=1))):
                   caller = f"{relative} call {index}"
                   replacement = (
-                      "TSPFluid.checkedPh("
+                      "TSPFluidTrace.checkedPh("
                       f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
-              model_match = re.search(r"(?m)^(?:partial[ \t]+)?model[ \t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
-              equation_match = re.search(
-                  r"(?m)^[ \t]*equation[ \t]*$",
-                  candidate_source[model_match.end():] if model_match else "",
-              )
-              if model_match is None or equation_match is None:
-                  raise SystemExit(f"could not place diagnostic import in {relative}")
-              import_position = model_match.end() + equation_match.start()
-              if "import TSPFluid =" not in candidate_source:
-                  candidate_source = (
-                      candidate_source[:import_position]
-                      + "  import TSPFluid = .ThermoSysPro.Properties.Fluid;\n"
-                      + candidate_source[import_position:]
-                  )
               candidate.write_text(candidate_source)
               diagnostic_callers.append(f"{relative}: {len(call_sites)}")
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
