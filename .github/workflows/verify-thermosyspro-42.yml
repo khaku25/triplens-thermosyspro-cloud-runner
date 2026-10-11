@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - experiment/thermosyspro-4.2
+      - debug/trace-negative-pressure-20261011
   pull_request:
     branches:
       - main
@@ -122,7 +123,7 @@ jobs:
           fi
           test -s build/tsp42_reference_res.csv
 
-      - name: Probe reference with condenser P0 and pump pressure trace
+      - name: Trace upstream reference pressure call sites
         continue-on-error: true
         run: |
           set -euo pipefail
@@ -131,9 +132,9 @@ jobs:
           import re
           import shutil
 
-          seed_root = Path("build/tsp42-reference-seeded/ThermoSysPro")
-          shutil.copytree(Path("vendor/ThermoSysPro/ThermoSysPro"), seed_root)
-          properties = seed_root / "Properties/WaterSteam/IF97_packages.mo"
+          trace_root = Path("build/tsp42-reference-traced/ThermoSysPro")
+          shutil.copytree(Path("vendor/ThermoSysPro/ThermoSysPro"), trace_root)
+          properties = trace_root / "Properties/WaterSteam/IF97_packages.mo"
           property_source = properties.read_text()
           needle = """    algorithm
                 supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
@@ -151,9 +152,9 @@ jobs:
               raise SystemExit(f"expected one target in Water_Ph, got {water_function.count(needle)}")
           water_function = water_function.replace(needle, traced, 1)
           properties.write_text(property_source[:function_start] + water_function + property_source[function_end:])
-          fluid_package = seed_root / "Properties/Fluid.mo"
+          fluid_package = trace_root / "Properties/Fluid.mo"
           if not fluid_package.is_file():
-              fluid_package = seed_root / "Properties/Fluid/package.mo"
+              fluid_package = trace_root / "Properties/Fluid/package.mo"
           fluid_source = fluid_package.read_text()
           fluid_end = fluid_source.rfind("end Fluid;")
           if fluid_end < 0:
@@ -204,8 +205,8 @@ jobs:
               return None
 
           diagnostic_callers = []
-          for candidate in sorted(seed_root.rglob("*.mo")):
-              relative = candidate.relative_to(seed_root).as_posix()
+          for candidate in sorted(trace_root.rglob("*.mo")):
+              relative = candidate.relative_to(trace_root).as_posix()
               if relative.startswith("Properties/") or relative.startswith("Examples/"):
                   continue
               candidate_source = candidate.read_text()
@@ -253,34 +254,19 @@ jobs:
                   caller = f"{relative} call {index}"
                   replacement = (
                       "ThermoSysPro.Properties.Fluid.checkedPh("
-                      f"{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, \\"{caller}\\")")
+                      f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
               diagnostic_callers.append(f"{relative}: {len(call_sites)}")
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
               "\\n".join(diagnostic_callers) + "\\n")
-          model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
-          source = model.read_text()
-          # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
-          # This instance starts P at 6136 Pa; gravity_pressure defaults false, so Pfond=P.
-          # Keep P free and align P0, Pfond, and the nearby pressure-loss start at 6136 Pa.
-          replacements = (
-              ("steady_state = false, yNiveau(signal(start = 1.5))",
-               "steady_state = false, P0 = 6136, gravity_pressure = false, yNiveau(signal(start = 1.5))"),
-              ("Pfond(start = 10000.0)", "Pfond(start = 6136)"),
-              ("Pm(start = 6200)", "Pm(start = 6136)"),
-          )
-          for old, new in replacements:
-              if source.count(old) != 1:
-                  raise SystemExit(f"expected one occurrence of {old!r}, got {source.count(old)}")
-              source = source.replace(old, new, 1)
-          model.write_text(source)
+          print("Instrumented pressure property call sites:", diagnostic_callers)
           PY
-          cp build/tsp42-reference-seeded/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo \
-            outputs/tsp42/CombinedCycle_TripTAC-4.2-reference-pressure-seed.mo
-          sha256sum outputs/tsp42/CombinedCycle_TripTAC-4.2-reference-pressure-seed.mo \
-            | tee outputs/tsp42/reference-pressure-seed.sha256
-          cat > build/tsp42-reference-condenser-seed.mos <<MOS
+          cp build/tsp42-reference-traced/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo \
+            outputs/tsp42/CombinedCycle_TripTAC-4.2-reference-traced-source.mo
+          sha256sum outputs/tsp42/CombinedCycle_TripTAC-4.2-reference-traced-source.mo \
+            | tee outputs/tsp42/reference-traced-source.sha256
+          cat > build/tsp42-reference-pressure-trace.mos <<MOS
           setCommandLineOptions("--std=3.4");
           setCommandLineOptions("-d=initialization,aliasConflicts");
           setMatchingAlgorithm("PFPlusExt");
@@ -289,7 +275,7 @@ jobs:
             print(getErrorString());
             exit(1);
           end if;
-          if not loadFile("$PWD/build/tsp42-reference-seeded/ThermoSysPro/package.mo") then
+          if not loadFile("$PWD/build/tsp42-reference-traced/ThermoSysPro/package.mo") then
             print(getErrorString());
             exit(1);
           end if;
@@ -305,19 +291,19 @@ jobs:
             method="dassl",
             outputFormat="csv",
             simflags="-lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS",
-            fileNamePrefix="tsp42_reference_condenser_seed");
+            fileNamePrefix="tsp42_reference_pressure_trace");
           getErrorString();
           MOS
-          printf 'source-clone initial conditions: P=P0=6136 Pa; gravity_pressure=false, so Pfond=P; Pm(start)=6136 Pa\n' \
-            | tee outputs/tsp42/reference-condenser-seed.txt
+          printf '%s\n' 'TRACE uses baseline starts; failures include caller, p, h, and mode.' \
+            | tee outputs/tsp42/reference-pressure-trace.txt
           timeout --signal=TERM --kill-after=30s 18m \
-            omc "$PWD/build/tsp42-reference-condenser-seed.mos" \
-            | tee outputs/tsp42/upstream-reference-condenser-seed.log
+            omc "$PWD/build/tsp42-reference-pressure-trace.mos" \
+            | tee outputs/tsp42/upstream-reference-pressure-trace.log
           if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' \
-              outputs/tsp42/upstream-reference-condenser-seed.log; then
+              outputs/tsp42/upstream-reference-pressure-trace.log; then
             exit 1
           fi
-          test -s build/tsp42_reference_condenser_seed_res.csv
+          test -s build/tsp42_reference_pressure_trace_res.csv
 
       - name: Test the version-independent turbine patch
         run: python3 -m unittest discover -s tests -p "test_turbine_bypass_patch.py"
@@ -351,7 +337,7 @@ jobs:
           sha256sum outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.mo \
             | tee outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.sha256
 
-      - name: Probe TripLens with condenser P0 and pump pressure trace
+      - name: Trace TripLens pressure call sites
         continue-on-error: true
         run: |
           set -euo pipefail
@@ -360,9 +346,9 @@ jobs:
           import re
           import shutil
 
-          seed_root = Path("build/tsp42-triplens-seeded/ThermoSysPro")
-          shutil.copytree(Path("vendor/ThermoSysPro/ThermoSysPro"), seed_root)
-          properties = seed_root / "Properties/WaterSteam/IF97_packages.mo"
+          trace_root = Path("build/tsp42-triplens-traced/ThermoSysPro")
+          shutil.copytree(Path("vendor/ThermoSysPro/ThermoSysPro"), trace_root)
+          properties = trace_root / "Properties/WaterSteam/IF97_packages.mo"
           property_source = properties.read_text()
           needle = """    algorithm
                 supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
@@ -380,9 +366,9 @@ jobs:
               raise SystemExit(f"expected one target in Water_Ph, got {water_function.count(needle)}")
           water_function = water_function.replace(needle, traced, 1)
           properties.write_text(property_source[:function_start] + water_function + property_source[function_end:])
-          fluid_package = seed_root / "Properties/Fluid.mo"
+          fluid_package = trace_root / "Properties/Fluid.mo"
           if not fluid_package.is_file():
-              fluid_package = seed_root / "Properties/Fluid/package.mo"
+              fluid_package = trace_root / "Properties/Fluid/package.mo"
           fluid_source = fluid_package.read_text()
           fluid_end = fluid_source.rfind("end Fluid;")
           if fluid_end < 0:
@@ -433,8 +419,8 @@ jobs:
               return None
 
           diagnostic_callers = []
-          for candidate in sorted(seed_root.rglob("*.mo")):
-              relative = candidate.relative_to(seed_root).as_posix()
+          for candidate in sorted(trace_root.rglob("*.mo")):
+              relative = candidate.relative_to(trace_root).as_posix()
               if relative.startswith("Properties/") or relative.startswith("Examples/"):
                   continue
               candidate_source = candidate.read_text()
@@ -482,34 +468,19 @@ jobs:
                   caller = f"{relative} call {index}"
                   replacement = (
                       "ThermoSysPro.Properties.Fluid.checkedPh("
-                      f"{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, \\"{caller}\\")")
+                      f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
               diagnostic_callers.append(f"{relative}: {len(call_sites)}")
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
               "\\n".join(diagnostic_callers) + "\\n")
-          model = seed_root / "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
-          source = model.read_text()
-          # ThermoSysPro 4.2 imposes P=P0 when steady_state=false.
-          # This instance starts P at 6136 Pa; gravity_pressure defaults false, so Pfond=P.
-          # Keep P free and align P0, Pfond, and the nearby pressure-loss start at 6136 Pa.
-          replacements = (
-              ("steady_state = false, yNiveau(signal(start = 1.5))",
-               "steady_state = false, P0 = 6136, gravity_pressure = false, yNiveau(signal(start = 1.5))"),
-              ("Pfond(start = 10000.0)", "Pfond(start = 6136)"),
-              ("Pm(start = 6200)", "Pm(start = 6136)"),
-          )
-          for old, new in replacements:
-              if source.count(old) != 1:
-                  raise SystemExit(f"expected one occurrence of {old!r}, got {source.count(old)}")
-              source = source.replace(old, new, 1)
-          model.write_text(source)
+          print("Instrumented pressure property call sites:", diagnostic_callers)
           PY
-          cp build/tsp42-triplens-seeded/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo \
-            outputs/tsp42/CombinedCycle_TripTAC-4.2-triplens-pressure-seed.mo
-          sha256sum outputs/tsp42/CombinedCycle_TripTAC-4.2-triplens-pressure-seed.mo \
-            | tee outputs/tsp42/triplens-pressure-seed.sha256
-          cat > build/tsp42-triplens-condenser-seed.mos <<MOS
+          cp build/tsp42-triplens-traced/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo \
+            outputs/tsp42/CombinedCycle_TripTAC-4.2-triplens-traced-source.mo
+          sha256sum outputs/tsp42/CombinedCycle_TripTAC-4.2-triplens-traced-source.mo \
+            | tee outputs/tsp42/triplens-traced-source.sha256
+          cat > build/tsp42-triplens-pressure-trace.mos <<MOS
           setCommandLineOptions("--std=3.4");
           setCommandLineOptions("-d=initialization,aliasConflicts");
           setMatchingAlgorithm("PFPlusExt");
@@ -518,7 +489,7 @@ jobs:
             print(getErrorString());
             exit(1);
           end if;
-          if not loadFile("$PWD/build/tsp42-triplens-seeded/ThermoSysPro/package.mo") then
+          if not loadFile("$PWD/build/tsp42-triplens-traced/ThermoSysPro/package.mo") then
             print(getErrorString());
             exit(1);
           end if;
@@ -538,19 +509,19 @@ jobs:
             method="dassl",
             outputFormat="csv",
             simflags="-lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS",
-            fileNamePrefix="tsp42_triplens_condenser_seed");
+            fileNamePrefix="tsp42_triplens_pressure_trace");
           getErrorString();
           MOS
-          printf 'source-clone initial conditions: P=P0=6136 Pa; gravity_pressure=false, so Pfond=P; Pm(start)=6136 Pa\n' \
-            | tee outputs/tsp42/triplens-condenser-seed.txt
+          printf '%s\n' 'TRACE uses baseline starts; failures include caller, p, h, and mode.' \
+            | tee outputs/tsp42/triplens-pressure-trace.txt
           timeout --signal=TERM --kill-after=30s 20m \
-            omc "$PWD/build/tsp42-triplens-condenser-seed.mos" \
-            | tee outputs/tsp42/triplens-condenser-seed.log
+            omc "$PWD/build/tsp42-triplens-pressure-trace.mos" \
+            | tee outputs/tsp42/triplens-pressure-trace.log
           if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' \
-              outputs/tsp42/triplens-condenser-seed.log; then
+              outputs/tsp42/triplens-pressure-trace.log; then
             exit 1
           fi
-          test -s build/tsp42_triplens_condenser_seed_res.csv
+          test -s build/tsp42_triplens_pressure_trace_res.csv
 
       - name: Simulate the TripLens physical model with ThermoSysPro 4.2
         run: |
