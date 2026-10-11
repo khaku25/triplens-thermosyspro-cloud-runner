@@ -134,6 +134,16 @@ jobs:
           
           trace_root = Path("build/tsp42-reference-traced/ThermoSysPro")
           shutil.copytree(Path("vendor/ThermoSysPro/ThermoSysPro"), trace_root)
+          for inspect_path in (
+              trace_root / "Properties/WaterSteam/IF97.mo",
+              trace_root / "Properties/WaterSteam/IF97_packages.mo",
+          ):
+              if inspect_path.is_file():
+                  print("TRACE IF97 SOURCE:", inspect_path.relative_to(trace_root))
+                  source_lines = inspect_path.read_text().splitlines()
+                  for line_number, line in enumerate(source_lines, start=1):
+                      if re.search(r"\b(package|function)[ \t]+(IF97|IF97_wAJ|Fluid|Ph|Water_Ph)\b|^[ \t]*end[ \t]+(IF97|IF97_wAJ|Fluid|Ph|Water_Ph)\b", line):
+                          print(f"{line_number}: {line.strip()}")
           root_package = trace_root / "package.mo"
           root_source = root_package.read_text()
           root_match = re.search(r"(?m)^(?:encapsulated[ \t]+)?package[ \t]+ThermoSysPro\b", root_source)
