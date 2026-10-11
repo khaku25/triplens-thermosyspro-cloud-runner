@@ -271,7 +271,7 @@ jobs:
             assert(p > 611.657,
               "TRACE " + caller + ": p=" + String(p) + " Pa, h=" + String(h) +
               " J/kg, mode=" + String(mode));
-            props := ThermoSysPro.Properties.Fluid.Ph(p, h, mode, fluid);
+            props := Ph(p, h, mode, fluid);
           end checkedPh;
           """
           if "function checkedPh" in fluid_source:
@@ -378,7 +378,7 @@ jobs:
                       )
                   else:
                       replacement = (
-                          "ThermoSysPro.Properties.Fluid.checkedPh("
+                          "Fluid.checkedPh("
                           f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
@@ -577,7 +577,7 @@ jobs:
             assert(p > 611.657,
               "TRACE " + caller + ": p=" + String(p) + " Pa, h=" + String(h) +
               " J/kg, mode=" + String(mode));
-            props := ThermoSysPro.Properties.Fluid.Ph(p, h, mode, fluid);
+            props := Ph(p, h, mode, fluid);
           end checkedPh;
           """
           if "function checkedPh" in fluid_source:
@@ -684,7 +684,7 @@ jobs:
                       )
                   else:
                       replacement = (
-                          "ThermoSysPro.Properties.Fluid.checkedPh("
+                          "Fluid.checkedPh("
                           f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
