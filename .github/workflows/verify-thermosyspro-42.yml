@@ -699,6 +699,91 @@ jobs:
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
               diagnostic_callers.append(f"{relative}: {len(call_sites)}")
+          residual_targets = (
+              "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo",
+              "WaterSteam/Junctions/MassFlowMultiplier.mo",
+              "WaterSteam/Machines/StaticCentrifugalPump.mo",
+              "WaterSteam/Machines/StodolaTurbine.mo",
+              "WaterSteam/PressureLosses/ControlValve.mo",
+              "WaterSteam/PressureLosses/PipePressureLoss.mo",
+              "WaterSteam/Volumes/VolumeA.mo",
+              "WaterSteam/Volumes/VolumeB.mo",
+              "WaterSteam/Volumes/VolumeC.mo",
+              "WaterSteam/Volumes/VolumeD.mo",
+          )
+          residual_callers = []
+          for relative in residual_targets:
+              candidate = trace_root / relative
+              candidate_source = candidate.read_text()
+              call_sites = []
+              for token in ("Fluid.Ph(", "Water_Ph("):
+                  cursor = 0
+                  while cursor < len(candidate_source):
+                      call_start = candidate_source.find(token, cursor)
+                      if call_start < 0:
+                          break
+                      opening = call_start + len(token) - 1
+                      closing = find_call_end(candidate_source, opening)
+                      if closing is None:
+                          break
+                      arguments = split_arguments(candidate_source[opening + 1:closing])
+                      replace_start = call_start
+                      qualified_if97 = False
+                      if token == "Fluid.Ph(" and len(arguments) == 4:
+                          pressure, enthalpy, mode_arg, fluid_arg = arguments
+                          fluid_prefix = "ThermoSysPro.Properties."
+                          if call_start >= len(fluid_prefix) and (
+                              candidate_source[call_start - len(fluid_prefix):call_start] == fluid_prefix
+                          ):
+                              replace_start -= len(fluid_prefix)
+                      elif token == "Water_Ph(" and len(arguments) >= 2:
+                          pressure, enthalpy = arguments[:2]
+                          mode_arg = arguments[2] if len(arguments) >= 3 else "0"
+                          fluid_arg = "1"
+                          if call_start >= len("ThermoSysPro.Properties.WaterSteam.IF97.") and (
+                              candidate_source[call_start - len("ThermoSysPro.Properties.WaterSteam.IF97."):call_start]
+                              == "ThermoSysPro.Properties.WaterSteam.IF97."
+                          ):
+                              qualified_if97 = True
+                              replace_start -= len("ThermoSysPro.Properties.WaterSteam.IF97.")
+                      else:
+                          cursor = closing + 1
+                          continue
+                      line_number = candidate_source.count("\n", 0, call_start) + 1
+                      call_sites.append((
+                          replace_start, closing + 1, pressure, enthalpy, mode_arg,
+                          fluid_arg, len(arguments), qualified_if97, line_number,
+                      ))
+                      cursor = closing + 1
+
+              for (
+                  call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg,
+                  argument_count, qualified_if97, line_number,
+              ) in reversed(call_sites):
+                  caller = f"{relative}:{line_number}"
+                  if qualified_if97:
+                      checked_arguments = [f'"{caller}"', pressure, enthalpy]
+                      if argument_count >= 3:
+                          checked_arguments.append(mode_arg)
+                      replacement_call = (
+                          ".ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
+                          + ", ".join(checked_arguments)
+                          + ")"
+                      )
+                  else:
+                      replacement_call = (
+                          ".ThermoSysPro.Properties.Fluid.checkedPh("
+                          f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
+                  candidate_source = (
+                      candidate_source[:call_start] + replacement_call
+                      + candidate_source[call_end:]
+                  )
+                  residual_callers.append(caller)
+              candidate.write_text(candidate_source)
+
+          Path("outputs/tsp42/residual-unwrapped-property-callers.txt").write_text(
+              "\n".join(residual_callers) + "\n")
+          print("Instrumented residual unwrapped calls:", residual_callers)
           Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
               "\n".join(diagnostic_callers) + "\n")
           print("Instrumented pressure property call sites:", diagnostic_callers)
