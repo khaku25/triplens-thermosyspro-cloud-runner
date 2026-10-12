@@ -177,37 +177,34 @@ jobs:
                   f"{properties.count(old_assert)}"
               )
           properties = properties.replace(old_assert, new_assert, 1)
-          wrapper = """    function checkedWater_Ph
-              input String caller;
-              input Units.SI.AbsolutePressure p "Pressure";
-              input Units.SI.SpecificEnthalpy h "Specific enthalpy";
-              input Integer mode = 0 "IF97 region. 0:automatic";
-              output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph pro;
-            protected
-              Boolean supercritical;
-              Integer phase;
-              Integer region;
-            algorithm
-              supercritical := (
-                p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT
-              );
-              phase := if (
-                (h < ThermoSysPro.Properties.WaterSteam.BaseIF97.Regions.hl_p(p))
-                or (h > ThermoSysPro.Properties.WaterSteam.BaseIF97.Regions.hv_p(p))
-                or supercritical
-              ) then 1 else 2;
-              region := ThermoSysPro.Properties.WaterSteam.BaseIF97.Regions.region_ph(
-                p, h, phase, mode
-              );
-              assert(
-                region >= 1 and region <= 5,
-                "TRACE caller " + caller + ": p=" + String(p)
-                + " Pa, h=" + String(h) + " J/kg, mode=" + String(mode)
-                + ", region=" + String(region)
-              );
-              pro := Water_Ph(p, h, mode);
-            end checkedWater_Ph;
-
+          water_match = re.search(
+              r"(?ms)^    function Water_Ph\\n.*?^    end Water_Ph;\\n",
+              properties,
+          )
+          if water_match is None:
+              raise SystemExit("could not clone Water_Ph for caller tracing")
+          wrapper = water_match.group(0)
+          wrapper = wrapper.replace(
+              "    function Water_Ph\\n",
+              "    function checkedWater_Ph\\n"
+              "      input String caller;\\n",
+              1,
+          )
+          wrapper = wrapper.replace(
+              'assert(false, "TRACE Water_Ph invalid region: p=" + String(p) '
+              '+ " Pa, h=" + String(h) + " J/kg, mode=" + String(mode) '
+              '+ ", region=" + String(region));',
+              'assert(false, "TRACE caller " + caller + ": p=" + String(p) '
+              '+ " Pa, h=" + String(h) + " J/kg, mode=" + String(mode) '
+              '+ ", region=" + String(region));',
+              1,
+          )
+          derivative_annotation = (
+              "        derivative(noDerivative = mode) = Water_Ph_der,\\n"
+          )
+          if wrapper.count(derivative_annotation) != 1:
+              raise SystemExit("unexpected Water_Ph derivative annotation")
+          wrapper = wrapper.replace(derivative_annotation, "", 1)
           """
           package_end = properties.rfind("end IF97_wAJ;")
           if package_end < 0 or "function checkedWater_Ph" in properties:
