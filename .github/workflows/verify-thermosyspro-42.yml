@@ -214,6 +214,38 @@ jobs:
           if package_end < 0 or "function checkedWater_Ph" in properties:
               raise SystemExit("could not insert checkedWater_Ph exactly once")
           properties = properties[:package_end] + wrapper + properties[package_end:]
+          conductivity_helper = """    function checkedThermalConductivity_rhoT
+      input String caller;
+      input Units.SI.Density rho "Density";
+      input Units.SI.Temperature T "Temperature";
+      input Units.SI.AbsolutePressure P "Pressure";
+      input Integer region = 0 "IF97 region. 0:automatic";
+      output Units.SI.ThermalConductivity lambda "Thermal conductivity";
+    algorithm
+      assert(
+        rho > 0.00485458,
+        "TRACE thermal conductivity caller " + caller
+        + ": d=" + String(rho) + " kg/m3, T=" + String(T)
+        + " K, p=" + String(P) + " Pa, region=" + String(region)
+      );
+      lambda := ThermalConductivity_rhoT(rho, T, P, region);
+    end checkedThermalConductivity_rhoT;
+
+"""
+          if "function checkedThermalConductivity_rhoT" in properties:
+              raise SystemExit(
+                  "checkedThermalConductivity_rhoT already exists before patch"
+              )
+          package_end = properties.rfind("end IF97_wAJ;")
+          if package_end < 0:
+              raise SystemExit(
+                  "could not insert checkedThermalConductivity_rhoT"
+              )
+          properties = (
+              properties[:package_end]
+              + conductivity_helper
+              + properties[package_end:]
+          )
           properties_path.write_text(properties)
 
           fluid_path = Path(
@@ -339,23 +371,15 @@ jobs:
           conductivity_sites = [
               (
                   "    kl[i] = ThermoSysPro.Properties.WaterSteam.IF97.ThermalConductivity_rhoT(rhol1[i], T1[i], P[i + 1]);",
-                  """    assert(
-          noEvent(rhol1[i] > 0.00485458),
-          "TRACE DynamicTwoPhaseFlowPipe " + getInstanceName()
-          + ".kl[" + String(i) + "]: d=" + String(rhol1[i])
-          + " kg/m3, T=" + String(T1[i]) + " K, p=" + String(P[i + 1]) + " Pa"
-          );
-          kl[i] = ThermoSysPro.Properties.WaterSteam.IF97.ThermalConductivity_rhoT(rhol1[i], T1[i], P[i + 1]);""",
+                  """    kl[i] = ThermoSysPro.Properties.WaterSteam.IF97.checkedThermalConductivity_rhoT(
+          getInstanceName() + ".kl[" + String(i) + "]",
+          rhol1[i], T1[i], P[i + 1]);""",
               ),
               (
                   "    kv[i] = ThermoSysPro.Properties.WaterSteam.IF97.ThermalConductivity_rhoT(rhov1[i], T1[i], P[i + 1]);",
-                  """    assert(
-          noEvent(rhov1[i] > 0.00485458),
-          "TRACE DynamicTwoPhaseFlowPipe " + getInstanceName()
-          + ".kv[" + String(i) + "]: d=" + String(rhov1[i])
-          + " kg/m3, T=" + String(T1[i]) + " K, p=" + String(P[i + 1]) + " Pa"
-          );
-          kv[i] = ThermoSysPro.Properties.WaterSteam.IF97.ThermalConductivity_rhoT(rhov1[i], T1[i], P[i + 1]);""",
+                  """    kv[i] = ThermoSysPro.Properties.WaterSteam.IF97.checkedThermalConductivity_rhoT(
+          getInstanceName() + ".kv[" + String(i) + "]",
+          rhov1[i], T1[i], P[i + 1]);""",
               ),
           ]
           for original, diagnostic in conductivity_sites:
