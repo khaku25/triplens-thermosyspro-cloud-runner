@@ -284,7 +284,7 @@ jobs:
               "none: global Fluid.Ph instrumentation deliberately removed\n"
           )
 
-                    pipe_path = Path(
+          pipe_path = Path(
               "vendor/ThermoSysPro/ThermoSysPro/"
               "WaterSteam/HeatExchangers/DynamicTwoPhaseFlowPipe.mo"
           )
