@@ -469,16 +469,21 @@ jobs:
         run: |
           set -euo pipefail
           executable="$PWD/build/tsp42_triplens_consistent_start"
+          result_file="$PWD/build/tsp42_triplens_trip_res.csv"
+          log_file="$PWD/outputs/tsp42/triplens-physical-trip.log"
           test -x "$executable"
-          timeout --signal=TERM --kill-after=30s 25m \
-            "$executable" \
-              -override=startTime=0,stopTime=10,numberOfIntervals=10000,tolerance=0.001 \
-              -r="$PWD/build/tsp42_triplens_trip_res.csv" \
-              -outputFormat=csv \
-              -nls=hybrid \
-              -nlssMaxDensity=0 \
-              -lv=LOG_RES_INIT \
-            | tee outputs/tsp42/triplens-physical-trip.log
+          (
+            cd "$PWD/build"
+            timeout --signal=TERM --kill-after=30s 25m \
+              "$executable" \
+                -override=startTime=0,stopTime=10,numberOfIntervals=10000,tolerance=0.001 \
+                -r="$result_file" \
+                -outputFormat=csv \
+                -nls=hybrid \
+                -nlssMaxDensity=0 \
+                -lv=LOG_RES_INIT \
+              | tee "$log_file"
+          )
           if grep -Eq 'Simulation execution failed|assert|division by zero|Error:' \
               outputs/tsp42/triplens-physical-trip.log; then
             exit 1
