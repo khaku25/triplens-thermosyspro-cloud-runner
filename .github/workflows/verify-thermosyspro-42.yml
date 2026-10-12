@@ -843,6 +843,7 @@ jobs:
           cp -a vendor/ThermoSysPro/ThermoSysPro             build/tsp42-targeted-tearing/ThermoSysPro
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           source_path = Path(
               "build/tsp42-targeted-tearing/ThermoSysPro/"
