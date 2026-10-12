@@ -336,6 +336,34 @@ jobs:
                       f"expected one DynamicTwoPhaseFlowPipe diagnostic site: {original}"
                   )
               pipe_source = pipe_source.replace(original, diagnostic, 1)
+          conductivity_sites = [
+              (
+                  "    kl[i] = ThermoSysPro.Properties.WaterSteam.IF97.ThermalConductivity_rhoT(rhol1[i], T1[i], P[i + 1]);",
+                  """    assert(
+          noEvent(rhol1[i] > 0.00485458),
+          "TRACE DynamicTwoPhaseFlowPipe " + getInstanceName()
+          + ".kl[" + String(i) + "]: d=" + String(rhol1[i])
+          + " kg/m3, T=" + String(T1[i]) + " K, p=" + String(P[i + 1]) + " Pa"
+          );
+          kl[i] = ThermoSysPro.Properties.WaterSteam.IF97.ThermalConductivity_rhoT(rhol1[i], T1[i], P[i + 1]);""",
+              ),
+              (
+                  "    kv[i] = ThermoSysPro.Properties.WaterSteam.IF97.ThermalConductivity_rhoT(rhov1[i], T1[i], P[i + 1]);",
+                  """    assert(
+          noEvent(rhov1[i] > 0.00485458),
+          "TRACE DynamicTwoPhaseFlowPipe " + getInstanceName()
+          + ".kv[" + String(i) + "]: d=" + String(rhov1[i])
+          + " kg/m3, T=" + String(T1[i]) + " K, p=" + String(P[i + 1]) + " Pa"
+          );
+          kv[i] = ThermoSysPro.Properties.WaterSteam.IF97.ThermalConductivity_rhoT(rhov1[i], T1[i], P[i + 1]);""",
+              ),
+          ]
+          for original, diagnostic in conductivity_sites:
+              if pipe_source.count(original) != 1:
+                  raise SystemExit(
+                      f"expected one thermal-conductivity diagnostic site: {original}"
+                  )
+              pipe_source = pipe_source.replace(original, diagnostic, 1)
           Path(
               "outputs/tsp42/consistent-start/"
               "DynamicTwoPhaseFlowPipe-diagnostic-sites.txt"
@@ -458,7 +486,7 @@ jobs:
             tolerance=1e-3,
             method="dassl",
             outputFormat="csv",
-            simflags="-nls=hybrid -nlssMaxDensity=0 -lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS",
+            simflags="-nls=hybrid -nlssMaxDensity=0 -lv=LOG_NLS,LOG_RES_INIT",
             fileNamePrefix="tsp42_triplens_consistent_start");
           getErrorString();
           MOS
@@ -499,7 +527,7 @@ jobs:
               -outputFormat=csv \
               -nls=hybrid \
               -nlssMaxDensity=0 \
-              -lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS \
+              -lv=LOG_NLS,LOG_RES_INIT \
             | tee outputs/tsp42/triplens-physical-trip.log
           if grep -Eq 'Simulation execution failed|assert|division by zero|Error:' \
               outputs/tsp42/triplens-physical-trip.log; then
