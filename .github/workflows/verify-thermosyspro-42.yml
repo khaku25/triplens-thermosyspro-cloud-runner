@@ -169,6 +169,10 @@ jobs:
           setCommandLineOptions("-d=initialization,aliasConflicts");
           setMatchingAlgorithm("PFPlusExt");
           setIndexReductionMethod("dynamicStateSelection");
+          if not installPackage(Modelica, "4.0.0", exactMatch=true) then
+            print(getErrorString());
+            exit(1);
+          end if;
           if not loadModel(Modelica, {"4.0.0"}) then
             print(getErrorString());
             exit(1);
