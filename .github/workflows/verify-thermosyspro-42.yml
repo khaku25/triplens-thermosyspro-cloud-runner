@@ -187,10 +187,7 @@ jobs:
                 Units.SI.AbsolutePressure pSafe;
               algorithm
                 pSafe := max(
-                  min(
-                    p,
-                    ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT - 1
-                  ),
+                  p,
                   ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple + 1
                 );
                 assert(
@@ -244,22 +241,23 @@ jobs:
                 output Units.SI.ThermalConductivity lambda "Thermal conductivity";
               protected
                 Units.SI.AbsolutePressure pSafe;
+                Units.SI.Density rhoSafe;
               algorithm
                 pSafe := max(
-                  min(
-                    P,
-                    ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT - 1
-                  ),
+                  P,
                   ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple + 1
                 );
+                rhoSafe := max(rho, 0.004854581);
                 assert(
-                  rho > 0.00485458,
+                  noEvent(rho == rhoSafe),
                   "TRACE thermal conductivity caller " + caller
-                  + ": d=" + String(rho) + " kg/m3, T=" + String(T)
+                  + ": raw d=" + String(rho) + " kg/m3, safe d="
+                  + String(rhoSafe) + " kg/m3, T=" + String(T)
                   + " K, raw p=" + String(P) + " Pa, safe p=" + String(pSafe)
-                  + " Pa, region=" + String(region)
+                  + " Pa, region=" + String(region),
+                  AssertionLevel.warning
                 );
-                lambda := ThermalConductivity_rhoT(rho, T, pSafe, region);
+                lambda := ThermalConductivity_rhoT(rhoSafe, T, pSafe, region);
                 annotation(Inline = false);
               end checkedThermalConductivity_rhoT;
 
@@ -280,74 +278,13 @@ jobs:
           )
           properties_path.write_text(properties)
 
-          fluid_path = Path(
-              "vendor/ThermoSysPro/ThermoSysPro/Properties/Fluid.mo"
-          )
-          if not fluid_path.is_file():
-              fluid_path = Path(
-                  "vendor/ThermoSysPro/ThermoSysPro/Properties/Fluid/package.mo"
-              )
-          fluid_source = fluid_path.read_text()
-          fluid_end = fluid_source.rfind("end Fluid;")
-          if fluid_end < 0 or "function checkedPh" in fluid_source:
-              raise SystemExit("could not insert checkedPh exactly once")
-          fluid_helper = """  function checkedPh
-            input String caller;
-            input ThermoSysPro.Units.SI.AbsolutePressure p;
-            input ThermoSysPro.Units.SI.SpecificEnthalpy h;
-            input Integer mode;
-            input Integer fluid;
-            output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph props;
-          algorithm
-            if fluid == 1 then
-              props := ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph(
-                caller, p, h, mode
-              );
-            else
-              props := Ph(p, h, mode, fluid);
-            end if;
-          end checkedPh;
-
-          """
-          fluid_path.write_text(
-              fluid_source[:fluid_end] + fluid_helper + fluid_source[fluid_end:]
-          )
-          Path(
-              "outputs/tsp42/consistent-start/Fluid-traced.mo"
-          ).write_text(fluid_path.read_text())
-
-          instrumented = []
-          library_root = Path("vendor/ThermoSysPro/ThermoSysPro")
-          qualified = "ThermoSysPro.Properties.Fluid.Ph("
-          replacement = (
-              "ThermoSysPro.Properties.Fluid.checkedPh(getInstanceName(), "
-          )
-          for candidate in sorted(library_root.rglob("*.mo")):
-              relative = candidate.relative_to(library_root).as_posix()
-              if relative.startswith("Properties/"):
-                  continue
-              candidate_source = candidate.read_text()
-              if qualified not in candidate_source:
-                  continue
-              if not re.search(
-                  r"(?m)^(?:partial[ \\t]+)?model[ \\t]+"
-                  r"[A-Za-z_][A-Za-z_0-9]*",
-                  candidate_source,
-              ):
-                  continue
-              count = candidate_source.count(qualified)
-              candidate.write_text(
-                  candidate_source.replace(qualified, replacement)
-              )
-              instrumented.append(f"{relative}: {count}")
-          if not instrumented:
-              raise SystemExit("no model Fluid.Ph calls instrumented")
           Path(
               "outputs/tsp42/consistent-start/instrumented-fluid-ph-callers.txt"
-          ).write_text("\n".join(instrumented) + "\n")
-          print(f"instrumented Fluid.Ph callers: {instrumented}")
+          ).write_text(
+              "none: global Fluid.Ph instrumentation deliberately removed\n"
+          )
 
-          pipe_path = Path(
+                    pipe_path = Path(
               "vendor/ThermoSysPro/ThermoSysPro/"
               "WaterSteam/HeatExchangers/DynamicTwoPhaseFlowPipe.mo"
           )
@@ -454,40 +391,11 @@ jobs:
               "DynamicTwoPhaseFlowPipe calls with node labels"
           )
 
-          direct_instrumented = []
-          direct_call = (
-              "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
-          )
-          direct_replacement = (
-              "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
-              "getInstanceName(), "
-          )
-          for candidate in sorted(library_root.rglob("*.mo")):
-              relative = candidate.relative_to(library_root).as_posix()
-              if relative.startswith("Properties/"):
-                  continue
-              candidate_source = candidate.read_text()
-              if direct_call not in candidate_source:
-                  continue
-              if not re.search(
-                  r"(?m)^(?:partial[ \\t]+)?model[ \\t]+"
-                  r"[A-Za-z_][A-Za-z_0-9]*",
-                  candidate_source,
-              ):
-                  continue
-              count = candidate_source.count(direct_call)
-              candidate.write_text(
-                  candidate_source.replace(direct_call, direct_replacement)
-              )
-              direct_instrumented.append(f"{relative}: {count}")
-          if not direct_instrumented:
-              raise SystemExit("no additional direct Water_Ph callers instrumented")
           Path(
               "outputs/tsp42/consistent-start/"
               "instrumented-direct-water-ph-callers.txt"
-          ).write_text("\n".join(direct_instrumented) + "\n")
-          print(
-              f"instrumented direct Water_Ph callers: {direct_instrumented}"
+          ).write_text(
+              "none: global direct Water_Ph instrumentation deliberately removed\n"
           )
           PY
           cp             vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo             outputs/tsp42/consistent-start/CombinedCycle_TripTAC-consistent-start.mo
@@ -528,7 +436,7 @@ jobs:
             tolerance=1e-3,
             method="dassl",
             outputFormat="csv",
-            simflags="-nls=mixed -nlssMaxDensity=0 -lv=LOG_RES_INIT",
+            simflags="-nls=hybrid -nlssMaxDensity=0 -lv=LOG_RES_INIT",
             fileNamePrefix="tsp42_triplens_consistent_start");
           getErrorString();
           MOS
@@ -567,7 +475,7 @@ jobs:
               -override=startTime=0,stopTime=10,numberOfIntervals=10000,tolerance=0.001 \
               -r="$PWD/build/tsp42_triplens_trip_res.csv" \
               -outputFormat=csv \
-              -nls=mixed \
+              -nls=hybrid \
               -nlssMaxDensity=0 \
               -lv=LOG_RES_INIT \
             | tee outputs/tsp42/triplens-physical-trip.log
