@@ -835,6 +835,38 @@ jobs:
           fi
           test -s build/tsp42_triplens_pressure_trace_res.csv
 
+      - name: Capture first fatal assertion stack
+        if: always()
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          mkdir -p outputs/tsp42/generated-pressure-trace
+          executable="$PWD/build/tsp42_triplens_pressure_trace"
+          stack_log="$PWD/outputs/tsp42/generated-pressure-trace/first-fatal-assertion-gdb.txt"
+          if ! test -x "$executable"; then
+            printf 'missing executable: %s\n' "$executable" | tee "$stack_log"
+            exit 1
+          fi
+          sudo apt-get install -y --no-install-recommends gdb
+          cat > build/first-fatal-assertion.gdb <<'GDB'
+          set pagination off
+          set breakpoint pending on
+          set print frame-arguments all
+          break omc_assert
+          run
+          printf "\n=== first omc_assert backtrace ===\n"
+          bt 100
+          printf "\n=== current frame arguments ===\n"
+          info args
+          GDB
+          timeout --signal=TERM --kill-after=20s 8m \
+            gdb --batch --quiet \
+              -x build/first-fatal-assertion.gdb \
+              --args "$executable" \
+                -lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS \
+            > "$stack_log" 2>&1 || true
+          sed -n '/=== first omc_assert backtrace ===/,$p' "$stack_log" | head -n 180
+
       - name: Capture generated nonlinear-system 5693 metadata
         if: always()
         continue-on-error: true
