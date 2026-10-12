@@ -859,9 +859,10 @@ jobs:
           printf "\n=== current frame arguments ===\n"
           info args
           GDB
+          cd build
           timeout --signal=TERM --kill-after=20s 8m \
             gdb --batch --quiet \
-              -x build/first-fatal-assertion.gdb \
+              -x first-fatal-assertion.gdb \
               --args "$executable" \
                 -lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS \
             > "$stack_log" 2>&1 || true
