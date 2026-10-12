@@ -215,23 +215,23 @@ jobs:
               raise SystemExit("could not insert checkedWater_Ph exactly once")
           properties = properties[:package_end] + wrapper + properties[package_end:]
           conductivity_helper = """    function checkedThermalConductivity_rhoT
-      input String caller;
-      input Units.SI.Density rho "Density";
-      input Units.SI.Temperature T "Temperature";
-      input Units.SI.AbsolutePressure P "Pressure";
-      input Integer region = 0 "IF97 region. 0:automatic";
-      output Units.SI.ThermalConductivity lambda "Thermal conductivity";
-    algorithm
-      assert(
-        rho > 0.00485458,
-        "TRACE thermal conductivity caller " + caller
-        + ": d=" + String(rho) + " kg/m3, T=" + String(T)
-        + " K, p=" + String(P) + " Pa, region=" + String(region)
-      );
-      lambda := ThermalConductivity_rhoT(rho, T, P, region);
-    end checkedThermalConductivity_rhoT;
+                input String caller;
+                input Units.SI.Density rho "Density";
+                input Units.SI.Temperature T "Temperature";
+                input Units.SI.AbsolutePressure P "Pressure";
+                input Integer region = 0 "IF97 region. 0:automatic";
+                output Units.SI.ThermalConductivity lambda "Thermal conductivity";
+              algorithm
+                assert(
+                  rho > 0.00485458,
+                  "TRACE thermal conductivity caller " + caller
+                  + ": d=" + String(rho) + " kg/m3, T=" + String(T)
+                  + " K, p=" + String(P) + " Pa, region=" + String(region)
+                );
+                lambda := ThermalConductivity_rhoT(rho, T, P, region);
+              end checkedThermalConductivity_rhoT;
 
-"""
+          """
           if "function checkedThermalConductivity_rhoT" in properties:
               raise SystemExit(
                   "checkedThermalConductivity_rhoT already exists before patch"
