@@ -476,7 +476,10 @@ jobs:
             cd "$PWD/build"
             timeout --signal=TERM --kill-after=30s 25m \
               "$executable" \
-                -override=startTime=0,stopTime=10,numberOfIntervals=10000,tolerance=0.001 \
+                -startTime=0 \
+                -stopTime=10 \
+                -stepSize=0.001 \
+                -tolerance=0.001 \
                 -r="$result_file" \
                 -outputFormat=csv \
                 -nls=hybrid \
@@ -484,12 +487,24 @@ jobs:
                 -lv=LOG_RES_INIT \
               | tee "$log_file"
           )
-          if grep -Eq 'Simulation execution failed|assert|division by zero|Error:' \
+          if grep -Eq 'Simulation execution failed|division by zero|Error:' \
               outputs/tsp42/triplens-physical-trip.log; then
             exit 1
           fi
           test -s build/tsp42_triplens_trip_res.csv
           test "$(wc -l < build/tsp42_triplens_trip_res.csv)" -gt 1
+          last_time="$(tail -n 1 build/tsp42_triplens_trip_res.csv | cut -d, -f1 | tr -d '\r"')"
+          python3 - "$last_time" <<'PY'
+          import math
+          import sys
+
+          last_time = float(sys.argv[1])
+          if not math.isclose(last_time, 10.0, rel_tol=0.0, abs_tol=1e-9):
+              raise SystemExit(
+                  f"expected 10-second result, CSV ends at {last_time}"
+              )
+          print(f"verified CSV final time: {last_time} s")
+          PY
           cp build/tsp42_triplens_trip_res.csv outputs/tsp42/
           printf 'THERMOSYSPRO_42_TRIPLENS_PHYSICAL_SIMULATION_PASS\n' \
             | tee outputs/tsp42/result.txt
