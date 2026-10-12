@@ -872,8 +872,52 @@ jobs:
           )
           source_path.write_text("".join(lines))
           print(lines[index].rstrip())
+
+          source = source_path.read_text()
+          property_call = "  pro = Fluid.Ph(Pm, h, mode, fluid);"
+          traced_call = """  assert(Pm > 611.657,
+            "TRACE PipePressureLoss " + getInstanceName() +
+            ": p=" + String(Pm) + " Pa, h=" + String(h) +
+            " J/kg, mode=" + String(mode));
+          pro = Fluid.Ph(Pm, h, mode, fluid);"""
+          if source.count(property_call) != 1:
+              raise SystemExit(
+                  f"expected one PipePressureLoss property call, got "
+                  f"{source.count(property_call)}"
+              )
+          source_path.write_text(source.replace(property_call, traced_call, 1))
+
+          properties_path = Path(
+              "build/tsp42-targeted-tearing/ThermoSysPro/"
+              "Properties/WaterSteam/IF97_packages.mo"
+          )
+          properties = properties_path.read_text()
+          water_ph_needle = """    algorithm
+                supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
+          water_ph_trace = """    algorithm
+                assert(p > 611.657,
+                  "TRACE targeted Water_Ph: p=" + String(p) +
+                  " Pa, h=" + String(h) + " J/kg, mode=" + String(mode));
+                supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
+          function_start = properties.find("    function Water_Ph\n")
+          function_end = properties.find("    end Water_Ph;", function_start)
+          if function_start < 0 or function_end < 0:
+              raise SystemExit("could not isolate Water_Ph")
+          water_function = properties[function_start:function_end]
+          if water_function.count(water_ph_needle) != 1:
+              raise SystemExit(
+                  f"expected one Water_Ph algorithm target, got "
+                  f"{water_function.count(water_ph_needle)}"
+              )
+          water_function = water_function.replace(
+              water_ph_needle, water_ph_trace, 1
+          )
+          properties_path.write_text(
+              properties[:function_start] + water_function + properties[function_end:]
+          )
           PY
-          cp             build/tsp42-targeted-tearing/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo             outputs/tsp42/targeted-tearing/PipePressureLoss-targeted-tearing.mo
+          cp build/tsp42-targeted-tearing/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo outputs/tsp42/targeted-tearing/PipePressureLoss-targeted-tearing.mo
+          cp build/tsp42-targeted-tearing/ThermoSysPro/Properties/WaterSteam/IF97_packages.mo outputs/tsp42/targeted-tearing/IF97_packages-targeted-tearing.mo
           cat > build/tsp42-triplens-targeted-tearing.mos <<MOS
           setCommandLineOptions("--std=3.4");
           setCommandLineOptions("-d=initialization,aliasConflicts");
@@ -905,18 +949,18 @@ jobs:
           getErrorString();
           MOS
           timeout --signal=TERM --kill-after=30s 20m             omc "$PWD/build/tsp42-triplens-targeted-tearing.mos"             | tee outputs/tsp42/targeted-tearing/triplens-targeted-tearing.log
-          if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:'               outputs/tsp42/targeted-tearing/triplens-targeted-tearing.log; then
-            exit 1
-          fi
-          test -s build/tsp42_triplens_targeted_tearing_res.csv
-          test "$(wc -l < build/tsp42_triplens_targeted_tearing_res.csv)" -gt 1
-          cp build/tsp42_triplens_targeted_tearing_res.csv             outputs/tsp42/targeted-tearing/
           for suffix in _info.json _init.xml _02nls.c _06inz.c; do
             source_file="build/tsp42_triplens_targeted_tearing${suffix}"
             if test -f "$source_file"; then
               cp "$source_file" outputs/tsp42/targeted-tearing/
             fi
           done
+          if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' outputs/tsp42/targeted-tearing/triplens-targeted-tearing.log; then
+            exit 1
+          fi
+          test -s build/tsp42_triplens_targeted_tearing_res.csv
+          test "$(wc -l < build/tsp42_triplens_targeted_tearing_res.csv)" -gt 1
+          cp build/tsp42_triplens_targeted_tearing_res.csv outputs/tsp42/targeted-tearing/
           printf 'THERMOSYSPRO_42_TARGETED_TEARING_INITIALIZATION_PASS\n'             | tee outputs/tsp42/targeted-tearing/result.txt
 
       - name: Capture first fatal assertion stack
