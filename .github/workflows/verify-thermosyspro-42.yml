@@ -133,29 +133,7 @@ jobs:
           if new in source:
               raise SystemExit("consistent pump start already present before patch")
           source = source.replace(old, new, 1)
-          bp_h_start = (
-              "h(start = {2682927.25, 2790287.093854774, "
-              "2866365.945824299, 2919992.1127030067, 2919992.0})"
-          )
-          bp_h_scaled = (
-              "h(start = {2682927.25, 2790287.093854774, "
-              "2866365.945824299, 2919992.1127030067, 2919992.0}, "
-              "nominal = {2682927.25, 2790287.093854774, "
-              "2866365.945824299, 2919992.1127030067, 2919992.0})"
-          )
-          if source.count(bp_h_start) != 1:
-              raise SystemExit(
-                  "expected one SurchauffeurBP enthalpy start vector"
-              )
-          source = source.replace(bp_h_start, bp_h_scaled, 1)
           source_path.write_text(source)
-          Path(
-              "outputs/tsp42/consistent-start/"
-              "surchauffeur-bp-enthalpy-scaling.txt"
-          ).write_text(
-              "physical starts unchanged; h nominal vector set equal to "
-              "the existing SurchauffeurBP h start vector\n"
-          )
 
           match = re.search(
               r"PompeAlimBP\([^;]*?Pm\(start = ([0-9.]+)\)", source
@@ -480,7 +458,7 @@ jobs:
             tolerance=1e-3,
             method="dassl",
             outputFormat="csv",
-            simflags="-lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS",
+            simflags="-nls=hybrid -lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS",
             fileNamePrefix="tsp42_triplens_consistent_start");
           getErrorString();
           MOS
@@ -519,6 +497,7 @@ jobs:
               -override=startTime=0,stopTime=10,numberOfIntervals=10000,tolerance=0.001 \
               -r="$PWD/build/tsp42_triplens_trip_res.csv" \
               -outputFormat=csv \
+              -nls=hybrid \
               -lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS \
             | tee outputs/tsp42/triplens-physical-trip.log
           if grep -Eq 'Simulation execution failed|assert|division by zero|Error:' \
