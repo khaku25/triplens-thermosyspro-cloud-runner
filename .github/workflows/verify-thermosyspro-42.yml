@@ -191,6 +191,11 @@ jobs:
               1,
           )
           wrapper = wrapper.replace(
+              "    end Water_Ph;\n",
+              "    end checkedWater_Ph;\n",
+              1,
+          )
+          wrapper = wrapper.replace(
               'assert(false, "TRACE Water_Ph invalid region: p=" + String(p) '
               '+ " Pa, h=" + String(h) + " J/kg, mode=" + String(mode) '
               '+ ", region=" + String(region));',
