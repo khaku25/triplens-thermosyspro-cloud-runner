@@ -923,7 +923,7 @@ jobs:
               output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph pro;
             algorithm
               assert(p > 611.657,
-                "TRACE DynamicTwoPhaseFlowPipe " + caller +
+                "TRACE caller " + caller +
                 ": p=" + String(p) + " Pa, h=" + String(h) +
                 " J/kg, mode=" + String(mode));
               pro := Water_Ph(p, h, mode);
@@ -952,6 +952,62 @@ jobs:
           )
           dynamic_pipe_path.write_text(dynamic_pipe)
           print(f"instrumented {call_count} DynamicTwoPhaseFlowPipe calls")
+
+          generic_callers = []
+          qualified_call = (
+              "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
+          )
+          short_call_pattern = re.compile(
+              r"(?<![A-Za-z0-9_.])Water_Ph\\("
+          )
+          for candidate in sorted(
+              Path("build/tsp42-targeted-tearing/ThermoSysPro").rglob("*.mo")
+          ):
+              relative = candidate.relative_to(
+                  Path("build/tsp42-targeted-tearing/ThermoSysPro")
+              ).as_posix()
+              if relative.startswith("Properties/"):
+                  continue
+              source = candidate.read_text()
+              model_match = re.search(
+                  r"(?m)^(?:partial[ \\t]+)?model[ \\t]+[A-Za-z_][A-Za-z_0-9]*",
+                  source,
+              )
+              if model_match is None:
+                  continue
+              equation_match = re.search(
+                  r"(?m)^[ \\t]*equation[ \\t]*$",
+                  source[model_match.end():],
+              )
+              if equation_match is None:
+                  continue
+              scan_start = model_match.end() + equation_match.end()
+              annotation_start = source.find("annotation(", scan_start)
+              scan_end = annotation_start if annotation_start >= 0 else len(source)
+              equation_source = source[scan_start:scan_end]
+              if "Water_Ph(" not in equation_source:
+                  continue
+              caller = f'getInstanceName() + " [{relative}]"'
+              replacement = (
+                  "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
+                  + caller + ", "
+              )
+              updated = equation_source.replace(qualified_call, replacement)
+              updated = short_call_pattern.sub(replacement, updated)
+              replacements = updated.count("checkedWater_Ph(") - equation_source.count(
+                  "checkedWater_Ph("
+              )
+              if replacements:
+                  candidate.write_text(
+                      source[:scan_start] + updated + source[scan_end:]
+                  )
+                  generic_callers.append(f"{relative}: {replacements}")
+          if not generic_callers:
+              raise SystemExit("no additional model Water_Ph calls instrumented")
+          Path(
+              "outputs/tsp42/targeted-tearing/instrumented-water-ph-callers.txt"
+          ).write_text("\\n".join(generic_callers) + "\\n")
+          print("instrumented model Water_Ph calls:", generic_callers)
           PY
           cp build/tsp42-targeted-tearing/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo outputs/tsp42/targeted-tearing/PipePressureLoss-targeted-tearing.mo
           cp build/tsp42-targeted-tearing/ThermoSysPro/Properties/WaterSteam/IF97_packages.mo outputs/tsp42/targeted-tearing/IF97_packages-targeted-tearing.mo
