@@ -874,7 +874,7 @@ jobs:
           print(lines[index].rstrip())
 
           source = source_path.read_text()
-          property_call = "  pro = Fluid.Ph(Pm, h, mode, fluid);"
+          property_call = "  pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"
           traced_call = """  assert(Pm > 611.657,
             "TRACE PipePressureLoss " + getInstanceName() +
             ": p=" + String(Pm) + " Pa, h=" + String(h) +
