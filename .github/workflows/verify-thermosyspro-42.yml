@@ -342,17 +342,47 @@ jobs:
           ).write_text(
               "\n".join(original for original, _ in diagnostic_sites) + "\n"
           )
-          direct_call = "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
-          call_count = pipe_source.count(direct_call)
-          if call_count < 1:
-              raise SystemExit("no DynamicTwoPhaseFlowPipe Water_Ph calls found")
-          pipe_source = pipe_source.replace(
-              direct_call,
-              "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
-              "getInstanceName(), ",
-          )
+          pipe_call_sites = [
+              (
+                  "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
+                  "P[i + 1], h[i + 1])",
+                  "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
+                  "getInstanceName() + \".pro1[\" + String(i) + \"]\", "
+                  "P[i + 1], h[i + 1])",
+              ),
+              (
+                  "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
+                  "(P[i] + P[i + 1])/2, hb[i])",
+                  "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
+                  "getInstanceName() + \".pro2[\" + String(i) + \"]\", "
+                  "(P[i] + P[i + 1])/2, hb[i])",
+              ),
+              (
+                  "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
+                  "P[1], h[1])",
+                  "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
+                  "getInstanceName() + \".proc[1]\", P[1], h[1])",
+              ),
+              (
+                  "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
+                  "P[N + 1], h[N + 1])",
+                  "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
+                  "getInstanceName() + \".proc[2]\", P[N + 1], h[N + 1])",
+              ),
+          ]
+          for original_call, traced_call in pipe_call_sites:
+              if pipe_source.count(original_call) != 1:
+                  raise SystemExit(
+                      f"expected one pipe property call: {original_call}"
+                  )
+              pipe_source = pipe_source.replace(
+                  original_call, traced_call, 1
+              )
           pipe_path.write_text(pipe_source)
-          print(f"instrumented {call_count} DynamicTwoPhaseFlowPipe calls")
+          print(
+              f"instrumented {len(pipe_call_sites)} "
+              "DynamicTwoPhaseFlowPipe calls with node labels"
+          )
 
           direct_instrumented = []
           direct_call = (
