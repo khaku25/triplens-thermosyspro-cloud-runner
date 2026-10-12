@@ -320,6 +320,22 @@ jobs:
               "WaterSteam/HeatExchangers/DynamicTwoPhaseFlowPipe.mo"
           )
           pipe_source = pipe_path.read_text()
+          bounded_saturation_sites = [
+              (
+                  "ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P(P[i + 1])",
+                  "ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P(Pb[i + 1])",
+              ),
+              (
+                  "ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P((P[i] + P[i + 1])/2)",
+                  "ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P((Pb[i] + Pb[i + 1])/2)",
+              ),
+          ]
+          for raw_call, bounded_call in bounded_saturation_sites:
+              if pipe_source.count(raw_call) != 1:
+                  raise SystemExit(
+                      f"expected one saturation pressure call: {raw_call}"
+                  )
+              pipe_source = pipe_source.replace(raw_call, bounded_call, 1)
           diagnostic_sites = [
               (
                   "    pro1[i] = ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph(P[i + 1], h[i + 1]);",
@@ -373,13 +389,13 @@ jobs:
                   "    kl[i] = ThermoSysPro.Properties.WaterSteam.IF97.ThermalConductivity_rhoT(rhol1[i], T1[i], P[i + 1]);",
                   """    kl[i] = ThermoSysPro.Properties.WaterSteam.IF97.checkedThermalConductivity_rhoT(
           getInstanceName() + ".kl[" + String(i) + "]",
-          rhol1[i], T1[i], P[i + 1]);""",
+          rhol1[i], T1[i], Pb[i + 1]);""",
               ),
               (
                   "    kv[i] = ThermoSysPro.Properties.WaterSteam.IF97.ThermalConductivity_rhoT(rhov1[i], T1[i], P[i + 1]);",
                   """    kv[i] = ThermoSysPro.Properties.WaterSteam.IF97.checkedThermalConductivity_rhoT(
           getInstanceName() + ".kv[" + String(i) + "]",
-          rhov1[i], T1[i], P[i + 1]);""",
+          rhov1[i], T1[i], Pb[i + 1]);""",
               ),
           ]
           for original, diagnostic in conductivity_sites:
@@ -400,26 +416,26 @@ jobs:
                   "P[i + 1], h[i + 1])",
                   "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
                   "getInstanceName() + \".pro1[\" + String(i) + \"]\", "
-                  "P[i + 1], h[i + 1])",
+                  "Pb[i + 1], h[i + 1])",
               ),
               (
                   "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
                   "(P[i] + P[i + 1])/2, hb[i])",
                   "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
                   "getInstanceName() + \".pro2[\" + String(i) + \"]\", "
-                  "(P[i] + P[i + 1])/2, hb[i])",
+                  "(Pb[i] + Pb[i + 1])/2, hb[i])",
               ),
               (
                   "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
                   "P[1], h[1])",
                   "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
-                  "getInstanceName() + \".proc[1]\", P[1], h[1])",
+                  "getInstanceName() + \".proc[1]\", Pb[1], h[1])",
               ),
               (
                   "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
                   "P[N + 1], h[N + 1])",
                   "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
-                  "getInstanceName() + \".proc[2]\", P[N + 1], h[N + 1])",
+                  "getInstanceName() + \".proc[2]\", Pb[N + 1], h[N + 1])",
               ),
           ]
           for original_call, traced_call in pipe_call_sites:
@@ -431,6 +447,15 @@ jobs:
                   original_call, traced_call, 1
               )
           pipe_path.write_text(pipe_source)
+          bounded_evidence = (
+              "DynamicTwoPhaseFlowPipe thermodynamic-property calls use "
+              "existing bounded pressure Pb; momentum equations retain raw P.\n"
+              "No model start values or physical parameters changed.\n"
+          )
+          Path(
+              "outputs/tsp42/consistent-start/bounded-property-pressure.txt"
+          ).write_text(bounded_evidence)
+          print(bounded_evidence, end="")
           print(
               f"instrumented {len(pipe_call_sites)} "
               "DynamicTwoPhaseFlowPipe calls with node labels"
