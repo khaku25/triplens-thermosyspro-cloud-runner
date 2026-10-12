@@ -177,59 +177,91 @@ jobs:
                   f"{properties.count(old_assert)}"
               )
           properties = properties.replace(old_assert, new_assert, 1)
-          water_match = re.search(
-              r"(?ms)^    function Water_Ph\n.*?^    end Water_Ph;\n",
-              properties,
-          )
-          if water_match is None:
-              raise SystemExit("could not clone Water_Ph for caller tracing")
-          wrapper = water_match.group(0)
-          wrapper = wrapper.replace(
-              "    function Water_Ph\n",
-              "    function checkedWater_Ph\n"
-              "      input String caller;\n",
-              1,
-          )
-          wrapper = wrapper.replace(
-              "    end Water_Ph;\n",
-              "    end checkedWater_Ph;\n",
-              1,
-          )
-          wrapper = wrapper.replace(
-              'assert(false, "TRACE Water_Ph invalid region: p=" + String(p) '
-              '+ " Pa, h=" + String(h) + " J/kg, mode=" + String(mode) '
-              '+ ", region=" + String(region));',
-              'assert(false, "TRACE caller " + caller + ": p=" + String(p) '
-              '+ " Pa, h=" + String(h) + " J/kg, mode=" + String(mode) '
-              '+ ", region=" + String(region));',
-              1,
-          )
-          derivative_annotation = (
-              "        derivative(noDerivative = mode) = Water_Ph_der,\n"
-          )
-          if wrapper.count(derivative_annotation) != 1:
-              raise SystemExit("unexpected Water_Ph derivative annotation")
-          wrapper = wrapper.replace(derivative_annotation, "", 1)
+          wrapper = """    function checkedWater_Ph
+      input String caller;
+      input Units.SI.AbsolutePressure p "Raw pressure";
+      input Units.SI.SpecificEnthalpy h "Specific enthalpy";
+      input Integer mode = 0 "IF97 region. 0:automatic";
+      output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph pro;
+    protected
+      Units.SI.AbsolutePressure pSafe;
+    algorithm
+      pSafe := max(
+        min(
+          p,
+          ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT - 1
+        ),
+        ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple
+      );
+      assert(
+        noEvent(p == pSafe),
+        "TRACE bounded Water_Ph caller " + caller
+        + ": raw p=" + String(p) + " Pa, safe p=" + String(pSafe)
+        + " Pa, h=" + String(h) + " J/kg",
+        AssertionLevel.warning
+      );
+      pro := Water_Ph(pSafe, h, mode);
+      annotation(Inline = false);
+    end checkedWater_Ph;
+
+"""
           package_end = properties.rfind("end IF97_wAJ;")
           if package_end < 0 or "function checkedWater_Ph" in properties:
               raise SystemExit("could not insert checkedWater_Ph exactly once")
           properties = properties[:package_end] + wrapper + properties[package_end:]
-          conductivity_helper = """    function checkedThermalConductivity_rhoT
-                input String caller;
-                input Units.SI.Density rho "Density";
-                input Units.SI.Temperature T "Temperature";
-                input Units.SI.AbsolutePressure P "Pressure";
-                input Integer region = 0 "IF97 region. 0:automatic";
-                output Units.SI.ThermalConductivity lambda "Thermal conductivity";
-              algorithm
-                assert(
-                  rho > 0.00485458,
-                  "TRACE thermal conductivity caller " + caller
-                  + ": d=" + String(rho) + " kg/m3, T=" + String(T)
-                  + " K, p=" + String(P) + " Pa, region=" + String(region)
-                );
-                lambda := ThermalConductivity_rhoT(rho, T, P, region);
-              end checkedThermalConductivity_rhoT;
+          conductivity_helper = """    function checkedWater_sat_P
+      input String caller;
+      input Units.SI.AbsolutePressure p "Raw pressure";
+      output ThermoSysPro.Properties.WaterSteam.Common.PropThermoSat lsat;
+      output ThermoSysPro.Properties.WaterSteam.Common.PropThermoSat vsat;
+    protected
+      Units.SI.AbsolutePressure pSafe;
+    algorithm
+      pSafe := max(
+        min(
+          p,
+          ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT - 1
+        ),
+        ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple
+      );
+      assert(
+        noEvent(p == pSafe),
+        "TRACE bounded Water_sat_P caller " + caller
+        + ": raw p=" + String(p) + " Pa, safe p=" + String(pSafe)
+        + " Pa",
+        AssertionLevel.warning
+      );
+      (lsat, vsat) := Water_sat_P(pSafe);
+      annotation(Inline = false);
+    end checkedWater_sat_P;
+
+    function checkedThermalConductivity_rhoT
+      input String caller;
+      input Units.SI.Density rho "Density";
+      input Units.SI.Temperature T "Temperature";
+      input Units.SI.AbsolutePressure P "Raw pressure";
+      input Integer region = 0 "IF97 region. 0:automatic";
+      output Units.SI.ThermalConductivity lambda "Thermal conductivity";
+    protected
+      Units.SI.AbsolutePressure pSafe;
+    algorithm
+      pSafe := max(
+        min(
+          P,
+          ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT - 1
+        ),
+        ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple
+      );
+      assert(
+        rho > 0.00485458,
+        "TRACE thermal conductivity caller " + caller
+        + ": d=" + String(rho) + " kg/m3, T=" + String(T)
+        + " K, raw p=" + String(P) + " Pa, safe p=" + String(pSafe)
+        + " Pa, region=" + String(region)
+      );
+      lambda := ThermalConductivity_rhoT(rho, T, pSafe, region);
+      annotation(Inline = false);
+    end checkedThermalConductivity_rhoT;
 
           """
           if "function checkedThermalConductivity_rhoT" in properties:
@@ -323,11 +355,15 @@ jobs:
           bounded_saturation_sites = [
               (
                   "ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P(P[i + 1])",
-                  "ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P(max(min(P[i + 1], pcrit - 1), ptriple))",
+                  "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_sat_P("
+                  "getInstanceName() + \".sat1[\" + String(i) + \"]\", "
+                  "P[i + 1])",
               ),
               (
                   "ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P((P[i] + P[i + 1])/2)",
-                  "ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P((max(min(P[i], pcrit - 1), ptriple) + max(min(P[i + 1], pcrit - 1), ptriple))/2)",
+                  "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_sat_P("
+                  "getInstanceName() + \".sat2[\" + String(i) + \"]\", "
+                  "(P[i] + P[i + 1])/2)",
               ),
           ]
           for raw_call, bounded_call in bounded_saturation_sites:
@@ -336,66 +372,22 @@ jobs:
                       f"expected one saturation pressure call: {raw_call}"
                   )
               pipe_source = pipe_source.replace(raw_call, bounded_call, 1)
-          diagnostic_sites = [
-              (
-                  "    pro1[i] = ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph(P[i + 1], h[i + 1]);",
-                  """    assert(
-          noEvent(P[i + 1] > 0 and abs(h[i + 1]) < 1e8),
-          "TRACE DynamicTwoPhaseFlowPipe " + getInstanceName()
-          + " pro1[" + String(i) + "]: p=" + String(P[i + 1])
-          + " Pa, h=" + String(h[i + 1]) + " J/kg"
-          );
-          pro1[i] = ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph(P[i + 1], h[i + 1]);""",
-              ),
-              (
-                  "    pro2[i] = ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph((P[i] + P[i + 1])/2, hb[i]);",
-                  """    assert(
-          noEvent((P[i] + P[i + 1])/2 > 0 and abs(hb[i]) < 1e8),
-          "TRACE DynamicTwoPhaseFlowPipe " + getInstanceName()
-          + " pro2[" + String(i) + "]: p=" + String((P[i] + P[i + 1])/2)
-          + " Pa, h=" + String(hb[i]) + " J/kg"
-          );
-          pro2[i] = ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph((P[i] + P[i + 1])/2, hb[i]);""",
-              ),
-              (
-                  "  proc[1] = ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph(P[1], h[1]);",
-                  """  assert(
-          noEvent(P[1] > 0 and abs(h[1]) < 1e8),
-          "TRACE DynamicTwoPhaseFlowPipe " + getInstanceName()
-          + " proc[1]: p=" + String(P[1])
-          + " Pa, h=" + String(h[1]) + " J/kg"
-          );
-          proc[1] = ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph(P[1], h[1]);""",
-              ),
-              (
-                  "  proc[2] = ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph(P[N + 1], h[N + 1]);",
-                  """  assert(
-          noEvent(P[N + 1] > 0 and abs(h[N + 1]) < 1e8),
-          "TRACE DynamicTwoPhaseFlowPipe " + getInstanceName()
-          + " proc[2]: p=" + String(P[N + 1])
-          + " Pa, h=" + String(h[N + 1]) + " J/kg"
-          );
-          proc[2] = ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph(P[N + 1], h[N + 1]);""",
-              ),
-          ]
-          for original, diagnostic in diagnostic_sites:
-              if pipe_source.count(original) != 1:
-                  raise SystemExit(
-                      f"expected one DynamicTwoPhaseFlowPipe diagnostic site: {original}"
-                  )
-              pipe_source = pipe_source.replace(original, diagnostic, 1)
+          # Caller-aware property wrappers now emit non-fatal raw/safe pressure
+          # traces.  The earlier standalone assertions were solver-fatal and
+          # could be evaluated after the property call by equation sorting.
+          diagnostic_sites = []
           conductivity_sites = [
               (
                   "    kl[i] = ThermoSysPro.Properties.WaterSteam.IF97.ThermalConductivity_rhoT(rhol1[i], T1[i], P[i + 1]);",
                   """    kl[i] = ThermoSysPro.Properties.WaterSteam.IF97.checkedThermalConductivity_rhoT(
           getInstanceName() + ".kl[" + String(i) + "]",
-          rhol1[i], T1[i], max(min(P[i + 1], pcrit - 1), ptriple));""",
+          rhol1[i], T1[i], P[i + 1]);""",
               ),
               (
                   "    kv[i] = ThermoSysPro.Properties.WaterSteam.IF97.ThermalConductivity_rhoT(rhov1[i], T1[i], P[i + 1]);",
                   """    kv[i] = ThermoSysPro.Properties.WaterSteam.IF97.checkedThermalConductivity_rhoT(
           getInstanceName() + ".kv[" + String(i) + "]",
-          rhov1[i], T1[i], max(min(P[i + 1], pcrit - 1), ptriple));""",
+          rhov1[i], T1[i], P[i + 1]);""",
               ),
           ]
           for original, diagnostic in conductivity_sites:
@@ -416,26 +408,26 @@ jobs:
                   "P[i + 1], h[i + 1])",
                   "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
                   "getInstanceName() + \".pro1[\" + String(i) + \"]\", "
-                  "max(min(P[i + 1], pcrit - 1), ptriple), h[i + 1])",
+                  "P[i + 1], h[i + 1])",
               ),
               (
                   "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
                   "(P[i] + P[i + 1])/2, hb[i])",
                   "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
                   "getInstanceName() + \".pro2[\" + String(i) + \"]\", "
-                  "(max(min(P[i], pcrit - 1), ptriple) + max(min(P[i + 1], pcrit - 1), ptriple))/2, hb[i])",
+                  "(P[i] + P[i + 1])/2, hb[i])",
               ),
               (
                   "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
                   "P[1], h[1])",
                   "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
-                  "getInstanceName() + \".proc[1]\", max(min(P[1], pcrit - 1), ptriple), h[1])",
+                  "getInstanceName() + \".proc[1]\", P[1], h[1])",
               ),
               (
                   "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
                   "P[N + 1], h[N + 1])",
                   "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
-                  "getInstanceName() + \".proc[2]\", max(min(P[N + 1], pcrit - 1), ptriple), h[N + 1])",
+                  "getInstanceName() + \".proc[2]\", P[N + 1], h[N + 1])",
               ),
           ]
           for original_call, traced_call in pipe_call_sites:
@@ -448,9 +440,9 @@ jobs:
               )
           pipe_path.write_text(pipe_source)
           bounded_evidence = (
-              "DynamicTwoPhaseFlowPipe thermodynamic-property calls inline "
-              "the existing pressure bound so Newton tearing cannot iterate "
-              "an unconstrained Pb; momentum equations retain raw P.\n"
+              "DynamicTwoPhaseFlowPipe passes raw P to non-inline wrappers; "
+              "each wrapper clamps pressure in an algorithm-local pSafe so "
+              "equation tearing/CSE cannot expose the bounded value.\n"
               "No model start values or physical parameters changed.\n"
           )
           Path(
