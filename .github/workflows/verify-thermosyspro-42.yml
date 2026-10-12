@@ -835,21 +835,55 @@ jobs:
           fi
           test -s build/tsp42_triplens_pressure_trace_res.csv
 
-      - name: Test TripLens initialization with minimal tearing
+      - name: Test PipePressureLoss Pm as an explicit tearing variable
         continue-on-error: true
         run: |
           set -euo pipefail
-          cat > build/tsp42-triplens-minimal-tearing.mos <<MOS
+          mkdir -p build/tsp42-targeted-tearing outputs/tsp42/targeted-tearing
+          cp -a vendor/ThermoSysPro/ThermoSysPro             build/tsp42-targeted-tearing/ThermoSysPro
+          python3 - <<'PY'
+          from pathlib import Path
+
+          source_path = Path(
+              "build/tsp42-targeted-tearing/ThermoSysPro/"
+              "WaterSteam/PressureLosses/PipePressureLoss.mo"
+          )
+          lines = source_path.read_text().splitlines(keepends=True)
+          matches = []
+          for index, line in enumerate(lines):
+              if (
+                  "Units.SI.AbsolutePressure Pm(" in line
+                  and "__OpenModelica_tearingSelect" not in line
+              ):
+                  matches.append(index)
+          if len(matches) != 1:
+              raise SystemExit(
+                  f"expected exactly one unannotated Pm declaration, got {len(matches)}"
+              )
+          index = matches[0]
+          newline = "\n" if lines[index].endswith("\n") else ""
+          declaration = lines[index].rstrip("\n")
+          if not declaration.endswith(";"):
+              raise SystemExit(f"unexpected Pm declaration: {declaration}")
+          lines[index] = (
+              declaration[:-1]
+              + " annotation(__OpenModelica_tearingSelect = TearingSelect.always);"
+              + newline
+          )
+          source_path.write_text("".join(lines))
+          print(lines[index].rstrip())
+          PY
+          cp             build/tsp42-targeted-tearing/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo             outputs/tsp42/targeted-tearing/PipePressureLoss-targeted-tearing.mo
+          cat > build/tsp42-triplens-targeted-tearing.mos <<MOS
           setCommandLineOptions("--std=3.4");
           setCommandLineOptions("-d=initialization,aliasConflicts");
-          setCommandLineOptions("--tearingMethod=minimalTearing");
           setMatchingAlgorithm("PFPlusExt");
           setIndexReductionMethod("dynamicStateSelection");
           if not loadModel(Modelica, {"4.0.0"}) then
             print(getErrorString());
             exit(1);
           end if;
-          if not loadFile("$PWD/vendor/ThermoSysPro/ThermoSysPro/package.mo") then
+          if not loadFile("$PWD/build/tsp42-targeted-tearing/ThermoSysPro/package.mo") then
             print(getErrorString());
             exit(1);
           end if;
@@ -866,22 +900,24 @@ jobs:
             tolerance=1e-3,
             method="dassl",
             outputFormat="csv",
-            simflags="-lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT",
-            fileNamePrefix="tsp42_triplens_minimal_tearing");
+            simflags="-lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS",
+            fileNamePrefix="tsp42_triplens_targeted_tearing");
           getErrorString();
           MOS
-          timeout --signal=TERM --kill-after=30s 20m \
-            omc "$PWD/build/tsp42-triplens-minimal-tearing.mos" \
-            | tee outputs/tsp42/triplens-minimal-tearing.log
-          if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' \
-              outputs/tsp42/triplens-minimal-tearing.log; then
+          timeout --signal=TERM --kill-after=30s 20m             omc "$PWD/build/tsp42-triplens-targeted-tearing.mos"             | tee outputs/tsp42/targeted-tearing/triplens-targeted-tearing.log
+          if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:'               outputs/tsp42/targeted-tearing/triplens-targeted-tearing.log; then
             exit 1
           fi
-          test -s build/tsp42_triplens_minimal_tearing_res.csv
-          test "$(wc -l < build/tsp42_triplens_minimal_tearing_res.csv)" -gt 1
-          cp build/tsp42_triplens_minimal_tearing_res.csv outputs/tsp42/
-          printf 'THERMOSYSPRO_42_MINIMAL_TEARING_INITIALIZATION_PASS\n' \
-            | tee outputs/tsp42/minimal-tearing-result.txt
+          test -s build/tsp42_triplens_targeted_tearing_res.csv
+          test "$(wc -l < build/tsp42_triplens_targeted_tearing_res.csv)" -gt 1
+          cp build/tsp42_triplens_targeted_tearing_res.csv             outputs/tsp42/targeted-tearing/
+          for suffix in _info.json _init.xml _02nls.c _06inz.c; do
+            source_file="build/tsp42_triplens_targeted_tearing${suffix}"
+            if test -f "$source_file"; then
+              cp "$source_file" outputs/tsp42/targeted-tearing/
+            fi
+          done
+          printf 'THERMOSYSPRO_42_TARGETED_TEARING_INITIALIZATION_PASS\n'             | tee outputs/tsp42/targeted-tearing/result.txt
 
       - name: Capture first fatal assertion stack
         if: always()
