@@ -191,7 +191,7 @@ jobs:
                     p,
                     ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT - 1
                   ),
-                  ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple
+                  ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple + 1
                 );
                 assert(
                   noEvent(p == pSafe),
@@ -222,7 +222,7 @@ jobs:
                     p,
                     ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT - 1
                   ),
-                  ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple
+                  ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple + 1
                 );
                 assert(
                   noEvent(p == pSafe),
@@ -250,7 +250,7 @@ jobs:
                     P,
                     ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT - 1
                   ),
-                  ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple
+                  ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple + 1
                 );
                 assert(
                   rho > 0.00485458,
