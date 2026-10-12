@@ -750,6 +750,60 @@ jobs:
           fi
           test -s build/tsp42_triplens_pressure_trace_res.csv
 
+      - name: Capture generated nonlinear-system 5693 metadata
+        if: always()
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          mkdir -p outputs/tsp42/generated-pressure-trace
+          find build -maxdepth 1 -type f -name 'tsp42_triplens_pressure_trace*' \
+            -printf '%f %s bytes\n' | sort \
+            | tee outputs/tsp42/generated-pressure-trace/file-inventory.txt
+          for suffix in _info.json _init.xml _02nls.c _06inz.c _functions.c; do
+            source_file="build/tsp42_triplens_pressure_trace${suffix}"
+            if test -f "$source_file"; then
+              cp "$source_file" outputs/tsp42/generated-pressure-trace/
+            fi
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+
+          output = Path("outputs/tsp42/generated-pressure-trace")
+          info_path = Path("build/tsp42_triplens_pressure_trace_info.json")
+          needles = (
+              "5693",
+              "Water_Ph",
+              "checkedPh",
+              "regulation_Niveau_Condenseur",
+              "SurchauffeurHP2",
+              "pIsat",
+          )
+          findings = []
+
+          if info_path.is_file():
+              data = json.loads(info_path.read_text())
+              def visit(node, path="$"):
+                  if isinstance(node, dict):
+                      rendered = json.dumps(node, ensure_ascii=False)
+                      if any(needle in rendered for needle in needles):
+                          findings.append(f"{path}: {rendered}")
+                      for key, value in node.items():
+                          visit(value, f"{path}.{key}")
+                  elif isinstance(node, list):
+                      for index, value in enumerate(node):
+                          visit(value, f"{path}[{index}]")
+              visit(data)
+          else:
+              findings.append("missing build/tsp42_triplens_pressure_trace_info.json")
+
+          (output / "equation-5693-info.txt").write_text(
+              "\n".join(findings[:2000]) + "\n")
+          PY
+          grep -R -n -C 4 -E             'Water_Ph|checkedPh|regulation_Niveau_Condenseur|pIsat|nonlinearSystemData\[5693\]|equationIndex[^0-9]*5693'             build/tsp42_triplens_pressure_trace_*.c             > outputs/tsp42/generated-pressure-trace/generated-c-hits.txt || true
+          sed -n '1,240p' outputs/tsp42/generated-pressure-trace/equation-5693-info.txt
+          sed -n '1,240p' outputs/tsp42/generated-pressure-trace/generated-c-hits.txt
+
       - name: Simulate the TripLens physical model with ThermoSysPro 4.2
         run: |
           set -euo pipefail
