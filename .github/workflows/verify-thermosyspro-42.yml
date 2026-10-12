@@ -323,11 +323,11 @@ jobs:
           bounded_saturation_sites = [
               (
                   "ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P(P[i + 1])",
-                  "ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P(Pb[i + 1])",
+                  "ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P(max(min(P[i + 1], pcrit - 1), ptriple))",
               ),
               (
                   "ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P((P[i] + P[i + 1])/2)",
-                  "ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P((Pb[i] + Pb[i + 1])/2)",
+                  "ThermoSysPro.Properties.WaterSteam.IF97.Water_sat_P((max(min(P[i], pcrit - 1), ptriple) + max(min(P[i + 1], pcrit - 1), ptriple))/2)",
               ),
           ]
           for raw_call, bounded_call in bounded_saturation_sites:
@@ -389,13 +389,13 @@ jobs:
                   "    kl[i] = ThermoSysPro.Properties.WaterSteam.IF97.ThermalConductivity_rhoT(rhol1[i], T1[i], P[i + 1]);",
                   """    kl[i] = ThermoSysPro.Properties.WaterSteam.IF97.checkedThermalConductivity_rhoT(
           getInstanceName() + ".kl[" + String(i) + "]",
-          rhol1[i], T1[i], Pb[i + 1]);""",
+          rhol1[i], T1[i], max(min(P[i + 1], pcrit - 1), ptriple));""",
               ),
               (
                   "    kv[i] = ThermoSysPro.Properties.WaterSteam.IF97.ThermalConductivity_rhoT(rhov1[i], T1[i], P[i + 1]);",
                   """    kv[i] = ThermoSysPro.Properties.WaterSteam.IF97.checkedThermalConductivity_rhoT(
           getInstanceName() + ".kv[" + String(i) + "]",
-          rhov1[i], T1[i], Pb[i + 1]);""",
+          rhov1[i], T1[i], max(min(P[i + 1], pcrit - 1), ptriple));""",
               ),
           ]
           for original, diagnostic in conductivity_sites:
@@ -416,26 +416,26 @@ jobs:
                   "P[i + 1], h[i + 1])",
                   "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
                   "getInstanceName() + \".pro1[\" + String(i) + \"]\", "
-                  "Pb[i + 1], h[i + 1])",
+                  "max(min(P[i + 1], pcrit - 1), ptriple), h[i + 1])",
               ),
               (
                   "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
                   "(P[i] + P[i + 1])/2, hb[i])",
                   "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
                   "getInstanceName() + \".pro2[\" + String(i) + \"]\", "
-                  "(Pb[i] + Pb[i + 1])/2, hb[i])",
+                  "(max(min(P[i], pcrit - 1), ptriple) + max(min(P[i + 1], pcrit - 1), ptriple))/2, hb[i])",
               ),
               (
                   "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
                   "P[1], h[1])",
                   "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
-                  "getInstanceName() + \".proc[1]\", Pb[1], h[1])",
+                  "getInstanceName() + \".proc[1]\", max(min(P[1], pcrit - 1), ptriple), h[1])",
               ),
               (
                   "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
                   "P[N + 1], h[N + 1])",
                   "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
-                  "getInstanceName() + \".proc[2]\", Pb[N + 1], h[N + 1])",
+                  "getInstanceName() + \".proc[2]\", max(min(P[N + 1], pcrit - 1), ptriple), h[N + 1])",
               ),
           ]
           for original_call, traced_call in pipe_call_sites:
@@ -448,8 +448,9 @@ jobs:
               )
           pipe_path.write_text(pipe_source)
           bounded_evidence = (
-              "DynamicTwoPhaseFlowPipe thermodynamic-property calls use "
-              "existing bounded pressure Pb; momentum equations retain raw P.\n"
+              "DynamicTwoPhaseFlowPipe thermodynamic-property calls inline "
+              "the existing pressure bound so Newton tearing cannot iterate "
+              "an unconstrained Pb; momentum equations retain raw P.\n"
               "No model start values or physical parameters changed.\n"
           )
           Path(
