@@ -78,363 +78,6 @@ jobs:
           cp vendor/ThermoSysPro/ThermoSysPro/WaterSteam/Machines/StaticCentrifugalPump.mo \
             outputs/tsp42/reference-source/StaticCentrifugalPump.mo
 
-      - name: Diagnostic upstream combined-cycle reference on ThermoSysPro 4.2
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          cat > build/tsp42-reference.mos <<MOS
-          setCommandLineOptions("--std=3.4");
-          setCommandLineOptions("-d=initialization,aliasConflicts");
-          setMatchingAlgorithm("PFPlusExt");
-          setIndexReductionMethod("dynamicStateSelection");
-          if not installPackage(Modelica, "4.0.0", exactMatch=true) then
-            print(getErrorString());
-            exit(1);
-          end if;
-          if not loadModel(Modelica, {"4.0.0"}) then
-            print(getErrorString());
-            exit(1);
-          end if;
-          if not loadFile("$PWD/vendor/ThermoSysPro/ThermoSysPro/package.mo") then
-            print(getErrorString());
-            exit(1);
-          end if;
-          getVersion(Modelica);
-          getVersion(ThermoSysPro);
-          cd("$PWD/build");
-          simulate(
-            ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC,
-            startTime=0,
-            stopTime=0.04,
-            numberOfIntervals=10,
-            tolerance=1e-3,
-            method="dassl",
-            outputFormat="csv",
-            simflags="-lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS",
-            fileNamePrefix="tsp42_reference");
-          getErrorString();
-          MOS
-          timeout --signal=TERM --kill-after=30s 18m \
-            omc "$PWD/build/tsp42-reference.mos" \
-            | tee outputs/tsp42/upstream-reference.log
-          if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' \
-              outputs/tsp42/upstream-reference.log; then
-            exit 1
-          fi
-          test -s build/tsp42_reference_res.csv
-
-      - name: Trace upstream reference pressure call sites
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          import shutil
-          
-          trace_root = Path("build/tsp42-reference-traced/ThermoSysPro")
-          shutil.copytree(Path("vendor/ThermoSysPro/ThermoSysPro"), trace_root)
-          for inspect_path in (
-              trace_root / "Properties/WaterSteam/IF97.mo",
-              trace_root / "Properties/WaterSteam/IF97_packages.mo",
-          ):
-              if inspect_path.is_file():
-                  print("TRACE IF97 SOURCE:", inspect_path.relative_to(trace_root))
-                  source_lines = inspect_path.read_text().splitlines()
-                  for line_number, line in enumerate(source_lines, start=1):
-                      if re.search(r"\b(package|function)[ \t]+(IF97|IF97_wAJ|Fluid|Ph|Water_Ph)\b|^[ \t]*end[ \t]+(IF97|IF97_wAJ|Fluid|Ph|Water_Ph)\b", line):
-                          print(f"{line_number}: {line.strip()}")
-          root_package = trace_root / "package.mo"
-          root_source = root_package.read_text()
-          root_match = re.search(r"(?m)^(?:encapsulated[ \t]+)?package[ \t]+ThermoSysPro\b", root_source)
-          if root_match is None:
-              raise SystemExit(f"could not find ThermoSysPro root package in {root_package}")
-          if "package TSPFluidTrace =" in root_source:
-              raise SystemExit("TSPFluidTrace already exists in the source clone")
-          root_line_end = root_source.find("\n", root_match.end())
-          if root_line_end < 0:
-              raise SystemExit("could not find ThermoSysPro package declaration line ending")
-          root_source = (
-              root_source[:root_line_end + 1]
-              + "  package TSPFluidTrace = Properties.Fluid;\n"
-              + root_source[root_line_end + 1:]
-          )
-          root_package.write_text(root_source)
-          print("TRACE IF97 DIRECTORY:", sorted(p.name for p in (trace_root / "Properties/WaterSteam").iterdir()))
-          reported = 0
-          for inspect_path in sorted(trace_root.rglob("*.mo")):
-              try:
-                  source_lines = inspect_path.read_text().splitlines()
-              except UnicodeDecodeError:
-                  continue
-              hits = []
-              for line_number, line in enumerate(source_lines, start=1):
-                  if re.search(r"\b(package|function|model|class)[ \t]+(IF97|IF97_wAJ|Fluid|Ph|Water_Ph)\b|^[ \t]*end[ \t]+(IF97|IF97_wAJ|Fluid|Ph|Water_Ph)\b", line) or (("IF97" in line) and re.search(r"\b(import|package)\b|=", line)):
-                      hits.append((line_number, line.strip()))
-              if hits and ("IF97" in inspect_path.name or any("IF97_wAJ" in line or "package Fluid" in line or "package IF97" in line for _,line in hits)):
-                  print("TRACE IF97 DECLARATIONS:", inspect_path.relative_to(trace_root))
-                  for line_number, line in hits[:20]:
-                      print(f"{line_number}: {line}")
-                  reported += 1
-                  if reported >= 30:
-                      break
-          candidate_model = trace_root / "WaterSteam/Volumes/DynamicDrum.mo"
-          if candidate_model.is_file():
-              for line_number, line in enumerate(candidate_model.read_text().splitlines(), start=1):
-                  if re.search(r"\b(import|Fluid\.Ph|Water_Ph|IF97)\b", line):
-                      print(f"TRACE DYNAMICDRUM {line_number}: {line.strip()}")
-          properties = trace_root / "Properties/WaterSteam/IF97_packages.mo"
-          property_source = properties.read_text()
-          needle = """    algorithm
-                supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
-          traced = """    algorithm
-                assert(p > 611.657,
-                  "TRACE Water_Ph: p = " + String(p) + " Pa, h = " + String(h) +
-                  " J/kg, mode = " + String(mode));
-                supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
-          function_start = property_source.find("    function Water_Ph\n")
-          function_end = property_source.find("    end Water_Ph;", function_start)
-          if function_start < 0 or function_end < 0:
-              raise SystemExit("could not isolate Water_Ph function")
-          water_function = property_source[function_start:function_end]
-          checked_water_function = water_function
-          if water_function.count(needle) != 1:
-              raise SystemExit(f"expected one target in Water_Ph, got {water_function.count(needle)}")
-          water_function = water_function.replace(needle, traced, 1)
-          
-          function_match = re.search(r"(?m)^([ \t]*)function Water_Ph[ \t]*$", checked_water_function)
-          if function_match is None:
-              raise SystemExit("could not isolate Water_Ph declaration for checked wrapper")
-          function_indent = function_match.group(1)
-          header_end = checked_water_function.find("\n", function_match.end())
-          if header_end < 0:
-              raise SystemExit("could not find Water_Ph declaration line ending")
-          checked_water_function = (
-              checked_water_function[:header_end + 1]
-              + function_indent + "  input String caller;\n"
-              + checked_water_function[header_end + 1:]
-          )
-          checked_water_function = checked_water_function.replace(
-              "function Water_Ph", "function checkedWater_Ph", 1)
-          algorithm_match = re.search(r"(?m)^([ \t]*)algorithm[ \t]*$", checked_water_function)
-          if algorithm_match is None:
-              raise SystemExit("could not find Water_Ph algorithm section")
-          algorithm_line_end = checked_water_function.find("\n", algorithm_match.end())
-          if algorithm_line_end < 0:
-              raise SystemExit("could not find Water_Ph algorithm line ending")
-          assert_indent = algorithm_match.group(1) + "  "
-          trace_assert = (
-              f'{assert_indent}assert(p > 611.657,\n'
-              f'{assert_indent}  "TRACE " + caller + ": p=" + String(p) + " Pa, h=" + String(h) +\n'
-              f'{assert_indent}  " J/kg, mode=" + String(mode));\n'
-          )
-          checked_water_function = (
-              checked_water_function[:algorithm_line_end + 1]
-              + trace_assert
-              + checked_water_function[algorithm_line_end + 1:]
-          )
-          checked_water_function += function_indent + "end checkedWater_Ph;\n"
-          
-          property_source = (
-              property_source[:function_start]
-              + water_function
-              + property_source[function_end:]
-          )
-          package_end = property_source.rfind("end IF97_wAJ;")
-          if package_end < 0:
-              raise SystemExit("could not find end of IF97_wAJ package")
-          if "function checkedWater_Ph" in property_source:
-              raise SystemExit("checkedWater_Ph already exists in IF97_wAJ")
-          property_source = (
-              property_source[:package_end]
-              + "\n"
-              + checked_water_function
-              + "\n"
-              + property_source[package_end:]
-          )
-          properties.write_text(property_source)
-          fluid_package = trace_root / "Properties/Fluid.mo"
-          if not fluid_package.is_file():
-              fluid_package = trace_root / "Properties/Fluid/package.mo"
-          fluid_source = fluid_package.read_text()
-          fluid_end = fluid_source.rfind("end Fluid;")
-          if fluid_end < 0:
-              raise SystemExit(f"could not find end of Fluid package in {fluid_package}")
-          helper_source = """  function checkedPh
-            input ThermoSysPro.Units.SI.AbsolutePressure p;
-            input ThermoSysPro.Units.SI.SpecificEnthalpy h;
-            input Integer mode;
-            input Integer fluid;
-            input String caller;
-            output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph props;
-          algorithm
-            assert(p > 611.657,
-              "TRACE " + caller + ": p=" + String(p) + " Pa, h=" + String(h) +
-              " J/kg, mode=" + String(mode));
-            props := Ph(p, h, mode, fluid);
-          end checkedPh;
-          """
-          if "function checkedPh" in fluid_source:
-              raise SystemExit("checkedPh already exists in the source clone")
-          fluid_source = fluid_source[:fluid_end] + helper_source + fluid_source[fluid_end:]
-          fluid_package.write_text(fluid_source)
-          
-          def split_arguments(argument_text):
-              arguments = []
-              depth = 0
-              start = 0
-              for index, character in enumerate(argument_text):
-                  if character == "(":
-                      depth += 1
-                  elif character == ")":
-                      depth -= 1
-                  elif character == "," and depth == 0:
-                      arguments.append(argument_text[start:index].strip())
-                      start = index + 1
-              arguments.append(argument_text[start:].strip())
-              return arguments
-          
-          def find_call_end(source_text, opening):
-              depth = 1
-              for index in range(opening + 1, len(source_text)):
-                  if source_text[index] == "(":
-                      depth += 1
-                  elif source_text[index] == ")":
-                      depth -= 1
-                      if depth == 0:
-                          return index
-              return None
-          
-          diagnostic_callers = []
-          for candidate in sorted(trace_root.rglob("*.mo")):
-              relative = candidate.relative_to(trace_root).as_posix()
-              if relative.startswith("Properties/") or relative.startswith("Examples/"):
-                  continue
-              candidate_source = candidate.read_text()
-              if "Fluid.Ph(" not in candidate_source and "Water_Ph(" not in candidate_source:
-                  continue
-              model_match = re.search(r"(?m)^(?:partial[ \t]+)?model[ \t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
-              if model_match is None:
-                  continue
-              equation_match = re.search(r"(?m)^[ \t]*equation[ \t]*$", candidate_source[model_match.end():])
-              if equation_match is None:
-                  continue
-              scan_start = model_match.end() + equation_match.end()
-              if candidate_source[scan_start:scan_start + 1] == "\n":
-                  scan_start += 1
-              annotation_start = candidate_source.find("annotation(", scan_start)
-              scan_end = annotation_start if annotation_start >= 0 else len(candidate_source)
-          
-              call_sites = []
-              for token in ("Fluid.Ph(", "Water_Ph("):
-                  cursor = scan_start
-                  while cursor < scan_end:
-                      call_start = candidate_source.find(token, cursor, scan_end)
-                      if call_start < 0:
-                          break
-                      opening = call_start + len(token) - 1
-                      closing = find_call_end(candidate_source, opening)
-                      if closing is None or closing >= scan_end:
-                          break
-                      arguments = split_arguments(candidate_source[opening + 1:closing])
-                      qualified_if97 = False
-                      replace_start = call_start
-                      if token == "Fluid.Ph(" and len(arguments) == 4:
-                          pressure, enthalpy, mode_arg, fluid_arg = arguments
-                          fluid_prefix = "ThermoSysPro.Properties."
-                          if call_start >= len(fluid_prefix) and (
-                              candidate_source[call_start - len(fluid_prefix):call_start] == fluid_prefix
-                          ):
-                              replace_start -= len(fluid_prefix)
-                      elif token == "Water_Ph(" and len(arguments) >= 2:
-                          pressure, enthalpy = arguments[:2]
-                          mode_arg = arguments[2] if len(arguments) >= 3 else "0"
-                          fluid_arg = "1"
-                          if call_start >= len("ThermoSysPro.Properties.WaterSteam.IF97.") and (
-                              candidate_source[call_start - len("ThermoSysPro.Properties.WaterSteam.IF97."):call_start]
-                              == "ThermoSysPro.Properties.WaterSteam.IF97."
-                          ):
-                              qualified_if97 = True
-                              replace_start -= len("ThermoSysPro.Properties.WaterSteam.IF97.")
-                      else:
-                          cursor = closing + 1
-                          continue
-                      call_sites.append((
-                          replace_start, closing + 1, pressure, enthalpy, mode_arg,
-                          fluid_arg, len(arguments), qualified_if97,
-                      ))
-                      cursor = closing + 1
-              if not call_sites:
-                  continue
-          
-              for index, (
-                  call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg,
-                  argument_count, qualified_if97,
-              ) in reversed(list(enumerate(call_sites, start=1))):
-                  caller = f"{relative} call {index}"
-                  if qualified_if97:
-                      checked_arguments = [f'"{caller}"', pressure, enthalpy]
-                      if argument_count >= 3:
-                          checked_arguments.append(mode_arg)
-                      replacement = (
-                          ".ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
-                          + ", ".join(checked_arguments)
-                          + ")"
-                      )
-                  else:
-                      replacement = (
-                          ".ThermoSysPro.Properties.Fluid.checkedPh("
-                          f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
-                  candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
-              candidate.write_text(candidate_source)
-              diagnostic_callers.append(f"{relative}: {len(call_sites)}")
-          Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
-              "\n".join(diagnostic_callers) + "\n")
-          print("Instrumented pressure property call sites:", diagnostic_callers)
-          PY
-          cp build/tsp42-reference-traced/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo \
-            outputs/tsp42/CombinedCycle_TripTAC-4.2-reference-traced-source.mo
-          sha256sum outputs/tsp42/CombinedCycle_TripTAC-4.2-reference-traced-source.mo \
-            | tee outputs/tsp42/reference-traced-source.sha256
-          cat > build/tsp42-reference-pressure-trace.mos <<MOS
-          setCommandLineOptions("--std=3.4");
-          setCommandLineOptions("-d=initialization,aliasConflicts");
-          setMatchingAlgorithm("PFPlusExt");
-          setIndexReductionMethod("dynamicStateSelection");
-          if not loadModel(Modelica, {"4.0.0"}) then
-            print(getErrorString());
-            exit(1);
-          end if;
-          if not loadFile("$PWD/build/tsp42-reference-traced/ThermoSysPro/package.mo") then
-            print(getErrorString());
-            exit(1);
-          end if;
-          getVersion(Modelica);
-          getVersion(ThermoSysPro);
-          cd("$PWD/build");
-          simulate(
-            ThermoSysPro.Examples.CombinedCyclePowerPlant.CombinedCycle_TripTAC,
-            startTime=0,
-            stopTime=0.04,
-            numberOfIntervals=10,
-            tolerance=1e-3,
-            method="dassl",
-            outputFormat="csv",
-            simflags="-lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS",
-            fileNamePrefix="tsp42_reference_pressure_trace");
-          getErrorString();
-          MOS
-          printf '%s\n' 'TRACE uses baseline starts; failures include caller, p, h, and mode.' \
-            | tee outputs/tsp42/reference-pressure-trace.txt
-          timeout --signal=TERM --kill-after=30s 18m \
-            omc "$PWD/build/tsp42-reference-pressure-trace.mos" \
-            | tee outputs/tsp42/upstream-reference-pressure-trace.log
-          if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' \
-              outputs/tsp42/upstream-reference-pressure-trace.log; then
-            exit 1
-          fi
-          test -s build/tsp42_reference_pressure_trace_res.csv
-
       - name: Test the version-independent turbine patch
         run: python3 -m unittest discover -s tests -p "test_turbine_bypass_patch.py"
 
@@ -467,688 +110,61 @@ jobs:
           sha256sum outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.mo \
             | tee outputs/tsp42/TripLens_CombinedCycle_TripTAC-4.2-rendered.sha256
 
-      - name: Trace TripLens pressure call sites
-        continue-on-error: true
+      - name: Apply consistent boiler-feed-pump pressure start
         run: |
           set -euo pipefail
+          mkdir -p outputs/tsp42/consistent-start
           python3 - <<'PY'
           from pathlib import Path
-          import re
-          import shutil
-          
-          trace_root = Path("build/tsp42-triplens-traced/ThermoSysPro")
-          shutil.copytree(Path("vendor/ThermoSysPro/ThermoSysPro"), trace_root)
-          root_package = trace_root / "package.mo"
-          root_source = root_package.read_text()
-          root_match = re.search(r"(?m)^(?:encapsulated[ \t]+)?package[ \t]+ThermoSysPro\b", root_source)
-          if root_match is None:
-              raise SystemExit(f"could not find ThermoSysPro root package in {root_package}")
-          if "package TSPFluidTrace =" in root_source:
-              raise SystemExit("TSPFluidTrace already exists in the source clone")
-          root_line_end = root_source.find("\n", root_match.end())
-          if root_line_end < 0:
-              raise SystemExit("could not find ThermoSysPro package declaration line ending")
-          root_source = (
-              root_source[:root_line_end + 1]
-              + "  package TSPFluidTrace = Properties.Fluid;\n"
-              + root_source[root_line_end + 1:]
-          )
-          root_package.write_text(root_source)
-          properties = trace_root / "Properties/WaterSteam/IF97_packages.mo"
-          property_source = properties.read_text()
-          needle = """    algorithm
-                supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
-          traced = """    algorithm
-                assert(p > 611.657,
-                  "TRACE Water_Ph: p = " + String(p) + " Pa, h = " + String(h) +
-                  " J/kg, mode = " + String(mode));
-                supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
-          function_start = property_source.find("    function Water_Ph\n")
-          function_end = property_source.find("    end Water_Ph;", function_start)
-          if function_start < 0 or function_end < 0:
-              raise SystemExit("could not isolate Water_Ph function")
-          water_function = property_source[function_start:function_end]
-          checked_water_function = water_function
-          if water_function.count(needle) != 1:
-              raise SystemExit(f"expected one target in Water_Ph, got {water_function.count(needle)}")
-          water_function = water_function.replace(needle, traced, 1)
-          
-          function_match = re.search(r"(?m)^([ \t]*)function Water_Ph[ \t]*$", checked_water_function)
-          if function_match is None:
-              raise SystemExit("could not isolate Water_Ph declaration for checked wrapper")
-          function_indent = function_match.group(1)
-          header_end = checked_water_function.find("\n", function_match.end())
-          if header_end < 0:
-              raise SystemExit("could not find Water_Ph declaration line ending")
-          checked_water_function = (
-              checked_water_function[:header_end + 1]
-              + function_indent + "  input String caller;\n"
-              + checked_water_function[header_end + 1:]
-          )
-          checked_water_function = checked_water_function.replace(
-              "function Water_Ph", "function checkedWater_Ph", 1)
-          algorithm_match = re.search(r"(?m)^([ \t]*)algorithm[ \t]*$", checked_water_function)
-          if algorithm_match is None:
-              raise SystemExit("could not find Water_Ph algorithm section")
-          algorithm_line_end = checked_water_function.find("\n", algorithm_match.end())
-          if algorithm_line_end < 0:
-              raise SystemExit("could not find Water_Ph algorithm line ending")
-          assert_indent = algorithm_match.group(1) + "  "
-          trace_assert = (
-              f'{assert_indent}assert(p > 611.657,\n'
-              f'{assert_indent}  "TRACE " + caller + ": p=" + String(p) + " Pa, h=" + String(h) +\n'
-              f'{assert_indent}  " J/kg, mode=" + String(mode));\n'
-          )
-          checked_water_function = (
-              checked_water_function[:algorithm_line_end + 1]
-              + trace_assert
-              + checked_water_function[algorithm_line_end + 1:]
-          )
-          checked_water_function += function_indent + "end checkedWater_Ph;\n"
-          
-          property_source = (
-              property_source[:function_start]
-              + water_function
-              + property_source[function_end:]
-          )
-          package_end = property_source.rfind("end IF97_wAJ;")
-          if package_end < 0:
-              raise SystemExit("could not find end of IF97_wAJ package")
-          if "function checkedWater_Ph" in property_source:
-              raise SystemExit("checkedWater_Ph already exists in IF97_wAJ")
-          property_source = (
-              property_source[:package_end]
-              + "\n"
-              + checked_water_function
-              + "\n"
-              + property_source[package_end:]
-          )
-          properties.write_text(property_source)
-          fluid_package = trace_root / "Properties/Fluid.mo"
-          if not fluid_package.is_file():
-              fluid_package = trace_root / "Properties/Fluid/package.mo"
-          fluid_source = fluid_package.read_text()
-          fluid_end = fluid_source.rfind("end Fluid;")
-          if fluid_end < 0:
-              raise SystemExit(f"could not find end of Fluid package in {fluid_package}")
-          helper_source = """  function checkedPh
-            input ThermoSysPro.Units.SI.AbsolutePressure p;
-            input ThermoSysPro.Units.SI.SpecificEnthalpy h;
-            input Integer mode;
-            input Integer fluid;
-            input String caller;
-            output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph props;
-          algorithm
-            assert(p > 611.657,
-              "TRACE " + caller + ": p=" + String(p) + " Pa, h=" + String(h) +
-              " J/kg, mode=" + String(mode));
-            props := Ph(p, h, mode, fluid);
-          end checkedPh;
-          """
-          if "function checkedPh" in fluid_source:
-              raise SystemExit("checkedPh already exists in the source clone")
-          fluid_source = fluid_source[:fluid_end] + helper_source + fluid_source[fluid_end:]
-          fluid_package.write_text(fluid_source)
-          
-          def split_arguments(argument_text):
-              arguments = []
-              depth = 0
-              start = 0
-              for index, character in enumerate(argument_text):
-                  if character == "(":
-                      depth += 1
-                  elif character == ")":
-                      depth -= 1
-                  elif character == "," and depth == 0:
-                      arguments.append(argument_text[start:index].strip())
-                      start = index + 1
-              arguments.append(argument_text[start:].strip())
-              return arguments
-          
-          def find_call_end(source_text, opening):
-              depth = 1
-              for index in range(opening + 1, len(source_text)):
-                  if source_text[index] == "(":
-                      depth += 1
-                  elif source_text[index] == ")":
-                      depth -= 1
-                      if depth == 0:
-                          return index
-              return None
-          
-          diagnostic_callers = []
-          for candidate in sorted(trace_root.rglob("*.mo")):
-              relative = candidate.relative_to(trace_root).as_posix()
-              if relative.startswith("Properties/") or relative.startswith("Examples/"):
-                  continue
-              candidate_source = candidate.read_text()
-              if "Fluid.Ph(" not in candidate_source and "Water_Ph(" not in candidate_source:
-                  continue
-              model_match = re.search(r"(?m)^(?:partial[ \t]+)?model[ \t]+[A-Za-z_][A-Za-z_0-9]*", candidate_source)
-              if model_match is None:
-                  continue
-              equation_match = re.search(r"(?m)^[ \t]*equation[ \t]*$", candidate_source[model_match.end():])
-              if equation_match is None:
-                  continue
-              scan_start = model_match.end() + equation_match.end()
-              if candidate_source[scan_start:scan_start + 1] == "\n":
-                  scan_start += 1
-              annotation_start = candidate_source.find("annotation(", scan_start)
-              scan_end = annotation_start if annotation_start >= 0 else len(candidate_source)
-          
-              call_sites = []
-              for token in ("Fluid.Ph(", "Water_Ph("):
-                  cursor = scan_start
-                  while cursor < scan_end:
-                      call_start = candidate_source.find(token, cursor, scan_end)
-                      if call_start < 0:
-                          break
-                      opening = call_start + len(token) - 1
-                      closing = find_call_end(candidate_source, opening)
-                      if closing is None or closing >= scan_end:
-                          break
-                      arguments = split_arguments(candidate_source[opening + 1:closing])
-                      qualified_if97 = False
-                      replace_start = call_start
-                      if token == "Fluid.Ph(" and len(arguments) == 4:
-                          pressure, enthalpy, mode_arg, fluid_arg = arguments
-                          fluid_prefix = "ThermoSysPro.Properties."
-                          if call_start >= len(fluid_prefix) and (
-                              candidate_source[call_start - len(fluid_prefix):call_start] == fluid_prefix
-                          ):
-                              replace_start -= len(fluid_prefix)
-                      elif token == "Water_Ph(" and len(arguments) >= 2:
-                          pressure, enthalpy = arguments[:2]
-                          mode_arg = arguments[2] if len(arguments) >= 3 else "0"
-                          fluid_arg = "1"
-                          if call_start >= len("ThermoSysPro.Properties.WaterSteam.IF97.") and (
-                              candidate_source[call_start - len("ThermoSysPro.Properties.WaterSteam.IF97."):call_start]
-                              == "ThermoSysPro.Properties.WaterSteam.IF97."
-                          ):
-                              qualified_if97 = True
-                              replace_start -= len("ThermoSysPro.Properties.WaterSteam.IF97.")
-                      else:
-                          cursor = closing + 1
-                          continue
-                      call_sites.append((
-                          replace_start, closing + 1, pressure, enthalpy, mode_arg,
-                          fluid_arg, len(arguments), qualified_if97,
-                      ))
-                      cursor = closing + 1
-              if not call_sites:
-                  continue
-          
-              for index, (
-                  call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg,
-                  argument_count, qualified_if97,
-              ) in reversed(list(enumerate(call_sites, start=1))):
-                  caller = f"{relative} call {index}"
-                  if qualified_if97:
-                      checked_arguments = [f'"{caller}"', pressure, enthalpy]
-                      if argument_count >= 3:
-                          checked_arguments.append(mode_arg)
-                      replacement = (
-                          ".ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
-                          + ", ".join(checked_arguments)
-                          + ")"
-                      )
-                  else:
-                      replacement = (
-                          ".ThermoSysPro.Properties.Fluid.checkedPh("
-                          f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
-                  candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
-              candidate.write_text(candidate_source)
-              diagnostic_callers.append(f"{relative}: {len(call_sites)}")
-          residual_targets = (
-              "Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo",
-              "WaterSteam/Junctions/MassFlowMultiplier.mo",
-              "WaterSteam/Machines/StaticCentrifugalPump.mo",
-              "WaterSteam/Machines/StodolaTurbine.mo",
-              "WaterSteam/PressureLosses/ControlValve.mo",
-              "WaterSteam/PressureLosses/PipePressureLoss.mo",
-              "WaterSteam/Volumes/VolumeA.mo",
-              "WaterSteam/Volumes/VolumeB.mo",
-              "WaterSteam/Volumes/VolumeC.mo",
-              "WaterSteam/Volumes/VolumeD.mo",
-          )
-          residual_callers = []
-          for relative in residual_targets:
-              candidate = trace_root / relative
-              candidate_source = candidate.read_text()
-              call_sites = []
-              for token in ("Fluid.Ph(", "Water_Ph("):
-                  cursor = 0
-                  while cursor < len(candidate_source):
-                      call_start = candidate_source.find(token, cursor)
-                      if call_start < 0:
-                          break
-                      opening = call_start + len(token) - 1
-                      closing = find_call_end(candidate_source, opening)
-                      if closing is None:
-                          break
-                      arguments = split_arguments(candidate_source[opening + 1:closing])
-                      replace_start = call_start
-                      qualified_if97 = False
-                      if token == "Fluid.Ph(" and len(arguments) == 4:
-                          pressure, enthalpy, mode_arg, fluid_arg = arguments
-                          fluid_prefix = "ThermoSysPro.Properties."
-                          if call_start >= len(fluid_prefix) and (
-                              candidate_source[call_start - len(fluid_prefix):call_start] == fluid_prefix
-                          ):
-                              replace_start -= len(fluid_prefix)
-                      elif token == "Water_Ph(" and len(arguments) >= 2:
-                          pressure, enthalpy = arguments[:2]
-                          mode_arg = arguments[2] if len(arguments) >= 3 else "0"
-                          fluid_arg = "1"
-                          if call_start >= len("ThermoSysPro.Properties.WaterSteam.IF97.") and (
-                              candidate_source[call_start - len("ThermoSysPro.Properties.WaterSteam.IF97."):call_start]
-                              == "ThermoSysPro.Properties.WaterSteam.IF97."
-                          ):
-                              qualified_if97 = True
-                              replace_start -= len("ThermoSysPro.Properties.WaterSteam.IF97.")
-                      else:
-                          cursor = closing + 1
-                          continue
-                      line_number = candidate_source.count("\n", 0, call_start) + 1
-                      call_sites.append((
-                          replace_start, closing + 1, pressure, enthalpy, mode_arg,
-                          fluid_arg, len(arguments), qualified_if97, line_number,
-                      ))
-                      cursor = closing + 1
-
-              for (
-                  call_start, call_end, pressure, enthalpy, mode_arg, fluid_arg,
-                  argument_count, qualified_if97, line_number,
-              ) in reversed(call_sites):
-                  caller = f"{relative}:{line_number}"
-                  if qualified_if97:
-                      checked_arguments = [f'"{caller}"', pressure, enthalpy]
-                      if argument_count >= 3:
-                          checked_arguments.append(mode_arg)
-                      replacement_call = (
-                          ".ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
-                          + ", ".join(checked_arguments)
-                          + ")"
-                      )
-                  else:
-                      replacement_call = (
-                          ".ThermoSysPro.Properties.Fluid.checkedPh("
-                          f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
-                  candidate_source = (
-                      candidate_source[:call_start] + replacement_call
-                      + candidate_source[call_end:]
-                  )
-                  residual_callers.append(caller)
-              candidate.write_text(candidate_source)
-
-          Path("outputs/tsp42/residual-unwrapped-property-callers.txt").write_text(
-              "\n".join(residual_callers) + "\n")
-          print("Instrumented residual unwrapped calls:", residual_callers)
-          Path("outputs/tsp42/diagnostic-property-callers.txt").write_text(
-              "\n".join(diagnostic_callers) + "\n")
-          print("Instrumented pressure property call sites:", diagnostic_callers)
-          PY
-          cp build/tsp42-triplens-traced/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo \
-            outputs/tsp42/CombinedCycle_TripTAC-4.2-triplens-traced-source.mo
-          sha256sum outputs/tsp42/CombinedCycle_TripTAC-4.2-triplens-traced-source.mo \
-            | tee outputs/tsp42/triplens-traced-source.sha256
-          cat > build/tsp42-triplens-pressure-trace.mos <<MOS
-          setCommandLineOptions("--std=3.4");
-          setCommandLineOptions("-d=initialization,aliasConflicts");
-          setMatchingAlgorithm("PFPlusExt");
-          setIndexReductionMethod("dynamicStateSelection");
-          if not loadModel(Modelica, {"4.0.0"}) then
-            print(getErrorString());
-            exit(1);
-          end if;
-          if not loadFile("$PWD/build/tsp42-triplens-traced/ThermoSysPro/package.mo") then
-            print(getErrorString());
-            exit(1);
-          end if;
-          if not loadFile("$PWD/build/TripLens_CombinedCycle_TripTAC.mo") then
-            print(getErrorString());
-            exit(1);
-          end if;
-          getVersion(Modelica);
-          getVersion(ThermoSysPro);
-          cd("$PWD/build");
-          simulate(
-            TripLens_CombinedCycle_TripTAC,
-            startTime=0,
-            stopTime=0.04,
-            numberOfIntervals=10,
-            tolerance=1e-3,
-            method="dassl",
-            outputFormat="csv",
-            simflags="-lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS",
-            fileNamePrefix="tsp42_triplens_pressure_trace");
-          getErrorString();
-          MOS
-          printf '%s\n' 'TRACE uses baseline starts; failures include caller, p, h, and mode.' \
-            | tee outputs/tsp42/triplens-pressure-trace.txt
-          timeout --signal=TERM --kill-after=30s 20m \
-            omc "$PWD/build/tsp42-triplens-pressure-trace.mos" \
-            | tee outputs/tsp42/triplens-pressure-trace.log
-          if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' \
-              outputs/tsp42/triplens-pressure-trace.log; then
-            exit 1
-          fi
-          test -s build/tsp42_triplens_pressure_trace_res.csv
-
-      - name: Test PipePressureLoss Pm as an explicit tearing variable
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          mkdir -p build/tsp42-targeted-tearing outputs/tsp42/targeted-tearing
-          cp -a vendor/ThermoSysPro/ThermoSysPro             build/tsp42-targeted-tearing/ThermoSysPro
-          python3 - <<'PY'
-          from pathlib import Path
+          import math
           import re
 
           source_path = Path(
-              "build/tsp42-targeted-tearing/ThermoSysPro/"
-              "WaterSteam/PressureLosses/PipePressureLoss.mo"
+              "vendor/ThermoSysPro/ThermoSysPro/Examples/"
+              "CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo"
           )
-          lines = source_path.read_text().splitlines(keepends=True)
-          matches = []
-          for index, line in enumerate(lines):
-              if (
-                  "Units.SI.AbsolutePressure Pm(" in line
-                  and "__OpenModelica_tearingSelect" not in line
-              ):
-                  matches.append(index)
-          if len(matches) != 1:
-              raise SystemExit(
-                  f"expected exactly one unannotated Pm declaration, got {len(matches)}"
-              )
-          index = matches[0]
-          newline = "\n" if lines[index].endswith("\n") else ""
-          declaration = lines[index].rstrip("\n")
-          if not declaration.endswith(";"):
-              raise SystemExit(f"unexpected Pm declaration: {declaration}")
-          lines[index] = (
-              declaration[:-1]
-              + " annotation(__OpenModelica_tearingSelect = TearingSelect.always);"
-              + newline
-          )
-          source_path.write_text("".join(lines))
-          print(lines[index].rstrip())
-
           source = source_path.read_text()
-          property_call = "  pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"
-          traced_call = """  assert(Pm > 611.657,
-            "TRACE PipePressureLoss " + getInstanceName() +
-            ": p=" + String(Pm) + " Pa, h=" + String(h) +
-            " J/kg, mode=" + String(mode));
-          pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"""
-          if source.count(property_call) != 1:
+          old = "Pm(start = 802830.7060548771)"
+          new = "Pm(start = 812570.4167526974)"
+          if source.count(old) != 1:
               raise SystemExit(
-                  f"expected one PipePressureLoss property call, got "
-                  f"{source.count(property_call)}"
+                  f"expected exactly one baseline pump start, got {source.count(old)}"
               )
-          source_path.write_text(source.replace(property_call, traced_call, 1))
+          if new in source:
+              raise SystemExit("consistent pump start already present before patch")
+          source = source.replace(old, new, 1)
+          source_path.write_text(source)
 
-          properties_path = Path(
-              "build/tsp42-targeted-tearing/ThermoSysPro/"
-              "Properties/WaterSteam/IF97_packages.mo"
+          match = re.search(
+              r"PompeAlimBP\([^;]*?Pm\(start = ([0-9.]+)\)", source
           )
-          properties = properties_path.read_text()
-          water_ph_needle = """    algorithm
-                supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
-          water_ph_trace = """    algorithm
-                assert(p > 611.657,
-                  "TRACE targeted Water_Ph: p=" + String(p) +
-                  " Pa, h=" + String(h) + " J/kg, mode=" + String(mode));
-                supercritical := (p > ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT);"""
-          function_start = properties.find("    function Water_Ph\n")
-          function_end = properties.find("    end Water_Ph;", function_start)
-          if function_start < 0 or function_end < 0:
-              raise SystemExit("could not isolate Water_Ph")
-          water_function = properties[function_start:function_end]
-          if water_function.count(water_ph_needle) != 1:
-              raise SystemExit(
-                  f"expected one Water_Ph algorithm target, got "
-                  f"{water_function.count(water_ph_needle)}"
-              )
-          water_function = water_function.replace(
-              water_ph_needle, water_ph_trace, 1
+          if match is None:
+              raise SystemExit("missing patched PompeAlimBP.Pm(start)")
+          pump_pm = float(match.group(1))
+          pump_outlet = 1622740.8335053949
+          pump_inlet = 2 * pump_pm - pump_outlet
+          loss_pm = (10000.0 + pump_inlet) / 2
+          evidence = (
+              f"PompeAlimBP.Pm(start)={pump_pm:.10f} Pa\n"
+              f"derived PompeAlimBP.C1.P={pump_inlet:.10f} Pa\n"
+              f"derived perteChargeK.Pm={loss_pm:.10f} Pa\n"
           )
-          properties = (
-              properties[:function_start] + water_function + properties[function_end:]
-          )
-          checked_water_ph = """    function checkedWater_Ph
-              input String caller;
-              input Units.SI.AbsolutePressure p "Pressure";
-              input Units.SI.SpecificEnthalpy h "Specific enthalpy";
-              input Integer mode = 0 "IF97 region. 0:automatic";
-              output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph pro;
-            algorithm
-              assert(p > 611.657,
-                "TRACE caller " + caller +
-                ": p=" + String(p) + " Pa, h=" + String(h) +
-                " J/kg, mode=" + String(mode));
-              pro := Water_Ph(p, h, mode);
-            end checkedWater_Ph;
-
-          """
-          package_end = properties.rfind("end IF97_wAJ;")
-          if package_end < 0 or "function checkedWater_Ph" in properties:
-              raise SystemExit("could not insert checkedWater_Ph exactly once")
-          properties = properties[:package_end] + checked_water_ph + properties[package_end:]
-          properties_path.write_text(properties)
-
-          dynamic_pipe_path = Path(
-              "build/tsp42-targeted-tearing/ThermoSysPro/"
-              "WaterSteam/HeatExchangers/DynamicTwoPhaseFlowPipe.mo"
-          )
-          dynamic_pipe = dynamic_pipe_path.read_text()
-          direct_call = "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
-          call_count = dynamic_pipe.count(direct_call)
-          if call_count < 1:
-              raise SystemExit("no DynamicTwoPhaseFlowPipe Water_Ph calls found")
-          dynamic_pipe = dynamic_pipe.replace(
-              direct_call,
-              "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
-              "getInstanceName(), ",
-          )
-          dynamic_pipe_path.write_text(dynamic_pipe)
-          print(f"instrumented {call_count} DynamicTwoPhaseFlowPipe calls")
-
-          generic_callers = []
-          qualified_call = (
-              "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
-          )
-          short_call_pattern = re.compile(
-              r"(?<![A-Za-z0-9_.])Water_Ph\\("
-          )
-          for candidate in sorted(
-              Path("build/tsp42-targeted-tearing/ThermoSysPro").rglob("*.mo")
-          ):
-              relative = candidate.relative_to(
-                  Path("build/tsp42-targeted-tearing/ThermoSysPro")
-              ).as_posix()
-              if relative.startswith("Properties/"):
-                  continue
-              source = candidate.read_text()
-              model_match = re.search(
-                  r"(?m)^(?:partial[ \\t]+)?model[ \\t]+[A-Za-z_][A-Za-z_0-9]*",
-                  source,
-              )
-              if model_match is None:
-                  continue
-              equation_match = re.search(
-                  r"(?m)^[ \\t]*equation[ \\t]*$",
-                  source[model_match.end():],
-              )
-              if equation_match is None:
-                  continue
-              scan_start = model_match.end() + equation_match.end()
-              annotation_start = source.find("annotation(", scan_start)
-              scan_end = annotation_start if annotation_start >= 0 else len(source)
-              equation_source = source[scan_start:scan_end]
-              if "Water_Ph(" not in equation_source:
-                  continue
-              caller = f'getInstanceName() + " [{relative}]"'
-              replacement = (
-                  "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
-                  + caller + ", "
-              )
-              updated = equation_source.replace(qualified_call, replacement)
-              updated = short_call_pattern.sub(replacement, updated)
-              replacements = updated.count("checkedWater_Ph(") - equation_source.count(
-                  "checkedWater_Ph("
-              )
-              if replacements:
-                  candidate.write_text(
-                      source[:scan_start] + updated + source[scan_end:]
-                  )
-                  generic_callers.append(f"{relative}: {replacements}")
-          if not generic_callers:
-              raise SystemExit("no additional model Water_Ph calls instrumented")
+          print(evidence, end="")
           Path(
-              "outputs/tsp42/targeted-tearing/instrumented-water-ph-callers.txt"
-          ).write_text("\\n".join(generic_callers) + "\\n")
-          print("instrumented model Water_Ph calls:", generic_callers)
+              "outputs/tsp42/consistent-start/pressure-chain.txt"
+          ).write_text(evidence)
+          if not math.isclose(loss_pm, 6200.0, rel_tol=0.0, abs_tol=1e-7):
+              raise SystemExit(
+                  f"expected consistent perteChargeK.Pm=6200 Pa, got {loss_pm}"
+              )
           PY
-          cp build/tsp42-targeted-tearing/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo outputs/tsp42/targeted-tearing/PipePressureLoss-targeted-tearing.mo
-          cp build/tsp42-targeted-tearing/ThermoSysPro/Properties/WaterSteam/IF97_packages.mo outputs/tsp42/targeted-tearing/IF97_packages-targeted-tearing.mo
-          cp build/tsp42-targeted-tearing/ThermoSysPro/WaterSteam/HeatExchangers/DynamicTwoPhaseFlowPipe.mo outputs/tsp42/targeted-tearing/DynamicTwoPhaseFlowPipe-targeted-tearing.mo
-          cat > build/tsp42-triplens-targeted-tearing.mos <<MOS
-          setCommandLineOptions("--std=3.4");
-          setCommandLineOptions("-d=initialization,aliasConflicts");
-          setMatchingAlgorithm("PFPlusExt");
-          setIndexReductionMethod("dynamicStateSelection");
-          if not loadModel(Modelica, {"4.0.0"}) then
-            print(getErrorString());
-            exit(1);
-          end if;
-          if not loadFile("$PWD/build/tsp42-targeted-tearing/ThermoSysPro/package.mo") then
-            print(getErrorString());
-            exit(1);
-          end if;
-          if not loadFile("$PWD/build/TripLens_CombinedCycle_TripTAC.mo") then
-            print(getErrorString());
-            exit(1);
-          end if;
-          cd("$PWD/build");
-          simulate(
-            TripLens_CombinedCycle_TripTAC,
-            startTime=0,
-            stopTime=0.04,
-            numberOfIntervals=10,
-            tolerance=1e-3,
-            method="dassl",
-            outputFormat="csv",
-            simflags="-lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS",
-            fileNamePrefix="tsp42_triplens_targeted_tearing");
-          getErrorString();
-          MOS
-          timeout --signal=TERM --kill-after=30s 20m             omc "$PWD/build/tsp42-triplens-targeted-tearing.mos"             | tee outputs/tsp42/targeted-tearing/triplens-targeted-tearing.log
-          for suffix in _info.json _init.xml _02nls.c _06inz.c; do
-            source_file="build/tsp42_triplens_targeted_tearing${suffix}"
-            if test -f "$source_file"; then
-              cp "$source_file" outputs/tsp42/targeted-tearing/
-            fi
-          done
-          if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' outputs/tsp42/targeted-tearing/triplens-targeted-tearing.log; then
-            exit 1
-          fi
-          test -s build/tsp42_triplens_targeted_tearing_res.csv
-          test "$(wc -l < build/tsp42_triplens_targeted_tearing_res.csv)" -gt 1
-          cp build/tsp42_triplens_targeted_tearing_res.csv outputs/tsp42/targeted-tearing/
-          printf 'THERMOSYSPRO_42_TARGETED_TEARING_INITIALIZATION_PASS\n'             | tee outputs/tsp42/targeted-tearing/result.txt
+          cp             vendor/ThermoSysPro/ThermoSysPro/Examples/CombinedCyclePowerPlant/CombinedCycle_TripTAC.mo             outputs/tsp42/consistent-start/CombinedCycle_TripTAC-consistent-start.mo
+          git diff --no-index             outputs/tsp42/CombinedCycle_TripTAC-4.2-patched.mo             outputs/tsp42/consistent-start/CombinedCycle_TripTAC-consistent-start.mo             > outputs/tsp42/consistent-start/start-value.patch || test "$?" -eq 1
 
-      - name: Capture first fatal assertion stack
-        if: always()
-        continue-on-error: true
+      - name: Verify consistent start through OpenModelica initialization
         run: |
           set -euo pipefail
-          mkdir -p outputs/tsp42/generated-pressure-trace
-          executable="$PWD/build/tsp42_triplens_pressure_trace"
-          stack_log="$PWD/outputs/tsp42/generated-pressure-trace/first-fatal-assertion-gdb.txt"
-          if ! test -x "$executable"; then
-            printf 'missing executable: %s\n' "$executable" | tee "$stack_log"
-            exit 1
-          fi
-          sudo apt-get install -y --no-install-recommends gdb
-          cat > build/first-fatal-assertion.gdb <<'GDB'
-          set pagination off
-          set breakpoint pending on
-          set print frame-arguments all
-          break omc_assert
-          run
-          printf "\n=== first omc_assert backtrace ===\n"
-          bt 100
-          printf "\n=== current frame arguments ===\n"
-          info args
-          GDB
-          cd build
-          timeout --signal=TERM --kill-after=20s 8m \
-            gdb --batch --quiet \
-              -x first-fatal-assertion.gdb \
-              --args "$executable" \
-                -lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS \
-            > "$stack_log" 2>&1 || true
-          sed -n '/=== first omc_assert backtrace ===/,$p' "$stack_log" | head -n 180
-
-      - name: Capture generated nonlinear-system 5693 metadata
-        if: always()
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          mkdir -p outputs/tsp42/generated-pressure-trace
-          find build -maxdepth 1 -type f -name 'tsp42_triplens_pressure_trace*' \
-            -printf '%f %s bytes\n' | sort \
-            | tee outputs/tsp42/generated-pressure-trace/file-inventory.txt
-          for suffix in _info.json _init.xml _02nls.c _06inz.c _functions.c; do
-            source_file="build/tsp42_triplens_pressure_trace${suffix}"
-            if test -f "$source_file"; then
-              cp "$source_file" outputs/tsp42/generated-pressure-trace/
-            fi
-          done
-          python3 - <<'PY'
-          from pathlib import Path
-          import json
-
-          output = Path("outputs/tsp42/generated-pressure-trace")
-          info_path = Path("build/tsp42_triplens_pressure_trace_info.json")
-          needles = (
-              "5693",
-              "Water_Ph",
-              "checkedPh",
-              "regulation_Niveau_Condenseur",
-              "SurchauffeurHP2",
-              "pIsat",
-          )
-          findings = []
-
-          if info_path.is_file():
-              data = json.loads(info_path.read_text())
-              def visit(node, path="$"):
-                  if isinstance(node, dict):
-                      rendered = json.dumps(node, ensure_ascii=False)
-                      if any(needle in rendered for needle in needles):
-                          findings.append(f"{path}: {rendered}")
-                      for key, value in node.items():
-                          visit(value, f"{path}.{key}")
-                  elif isinstance(node, list):
-                      for index, value in enumerate(node):
-                          visit(value, f"{path}[{index}]")
-              visit(data)
-          else:
-              findings.append("missing build/tsp42_triplens_pressure_trace_info.json")
-
-          (output / "equation-5693-info.txt").write_text(
-              "\n".join(findings[:2000]) + "\n")
-          PY
-          grep -R -n -C 4 -E             'Water_Ph|checkedPh|regulation_Niveau_Condenseur|pIsat|nonlinearSystemData\[5693\]|equationIndex[^0-9]*5693'             build/tsp42_triplens_pressure_trace_*.c             > outputs/tsp42/generated-pressure-trace/generated-c-hits.txt || true
-          sed -n '1,240p' outputs/tsp42/generated-pressure-trace/equation-5693-info.txt
-          sed -n '1,240p' outputs/tsp42/generated-pressure-trace/generated-c-hits.txt
-
-      - name: Simulate the TripLens physical model with ThermoSysPro 4.2
-        run: |
-          set -euo pipefail
-          cat > build/tsp42-triplens.mos <<MOS
+          cat > build/tsp42-consistent-start.mos <<MOS
           setCommandLineOptions("--std=3.4");
           setCommandLineOptions("-d=initialization,aliasConflicts");
           setMatchingAlgorithm("PFPlusExt");
@@ -1165,29 +181,52 @@ jobs:
             print(getErrorString());
             exit(1);
           end if;
-          getVersion(Modelica);
-          getVersion(ThermoSysPro);
           cd("$PWD/build");
           simulate(
             TripLens_CombinedCycle_TripTAC,
             startTime=0,
-            stopTime=10,
-            numberOfIntervals=10000,
+            stopTime=0.04,
+            numberOfIntervals=10,
             tolerance=1e-3,
             method="dassl",
             outputFormat="csv",
             simflags="-lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS",
-            fileNamePrefix="tsp42_triplens_trip");
+            fileNamePrefix="tsp42_triplens_consistent_start");
           getErrorString();
           MOS
           timeout --signal=TERM --kill-after=30s 25m \
-            omc "$PWD/build/tsp42-triplens.mos" \
-            | tee outputs/tsp42/triplens-physical-trip.log
+            omc "$PWD/build/tsp42-consistent-start.mos" \
+            | tee outputs/tsp42/consistent-start/initialization.log
           if grep -Eq 'Failed to build model|Simulation execution failed|resultFile = ""|Error:' \
+              outputs/tsp42/consistent-start/initialization.log; then
+            exit 1
+          fi
+          test -s build/tsp42_triplens_consistent_start_res.csv
+          test "$(wc -l < build/tsp42_triplens_consistent_start_res.csv)" -gt 1
+          cp build/tsp42_triplens_consistent_start_res.csv \
+            outputs/tsp42/consistent-start/
+          printf 'THERMOSYSPRO_42_CONSISTENT_START_INITIALIZATION_PASS\n' \
+            | tee outputs/tsp42/consistent-start/initialization-result.txt
+
+      - name: Simulate the corrected TripLens physical model for 10 seconds
+        run: |
+          set -euo pipefail
+          executable="$PWD/build/tsp42_triplens_consistent_start"
+          test -x "$executable"
+          timeout --signal=TERM --kill-after=30s 25m \
+            "$executable" \
+              -override=startTime=0,stopTime=10,numberOfIntervals=10000,tolerance=0.001 \
+              -r="$PWD/build/tsp42_triplens_trip_res.csv" \
+              -outputFormat=csv \
+              -lv=LOG_NLS,LOG_NLS_V,LOG_RES_INIT,LOG_NLS_NEWTON_DIAGNOSTICS \
+            | tee outputs/tsp42/triplens-physical-trip.log
+          if grep -Eq 'Simulation execution failed|assert|division by zero|Error:' \
               outputs/tsp42/triplens-physical-trip.log; then
             exit 1
           fi
           test -s build/tsp42_triplens_trip_res.csv
+          test "$(wc -l < build/tsp42_triplens_trip_res.csv)" -gt 1
+          cp build/tsp42_triplens_trip_res.csv outputs/tsp42/
           printf 'THERMOSYSPRO_42_TRIPLENS_PHYSICAL_SIMULATION_PASS\n' \
             | tee outputs/tsp42/result.txt
 
