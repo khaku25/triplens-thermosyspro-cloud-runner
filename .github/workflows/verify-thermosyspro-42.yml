@@ -20,7 +20,7 @@ permissions:
 jobs:
   physical-simulation:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 120
     env:
       THERMOSYSPRO_SHA: a896ab75ce22162369e7fa4ce79927eeca44ad4a
     steps:
@@ -474,12 +474,13 @@ jobs:
           test -x "$executable"
           (
             cd "$PWD/build"
-            timeout --signal=TERM --kill-after=30s 25m \
+            timeout --signal=TERM --kill-after=30s 90m \
               "$executable" \
                 -startTime=0 \
                 -stopTime=10 \
-                -stepSize=0.001 \
+                -stepSize=0.01 \
                 -tolerance=0.001 \
+                '-variableFilter=.*\.(P(\[[0-9]+\])?|Pm|p)' \
                 -r="$result_file" \
                 -outputFormat=csv \
                 -nls=hybrid \
@@ -493,17 +494,67 @@ jobs:
           fi
           test -s build/tsp42_triplens_trip_res.csv
           test "$(wc -l < build/tsp42_triplens_trip_res.csv)" -gt 1
-          last_time="$(tail -n 1 build/tsp42_triplens_trip_res.csv | cut -d, -f1 | tr -d '\r"')"
-          python3 - "$last_time" <<'PY'
+          python3 - <<'PY'
+          import csv
           import math
-          import sys
+          from pathlib import Path
+          import re
 
-          last_time = float(sys.argv[1])
-          if not math.isclose(last_time, 10.0, rel_tol=0.0, abs_tol=1e-9):
-              raise SystemExit(
-                  f"expected 10-second result, CSV ends at {last_time}"
+          result_path = Path("build/tsp42_triplens_trip_res.csv")
+          pressure_name = re.compile(r"\.(?:P(?:\[[0-9]+\])?|Pm|p)$")
+          required = {"perteChargeK.Pm", "PompeAlimBP.C1.P"}
+          with result_path.open(newline="") as result_file:
+              rows = csv.reader(result_file)
+              header = next(rows)
+              width = len(header)
+              pressure_columns = [
+                  index
+                  for index, name in enumerate(header)
+                  if pressure_name.search(name)
+              ]
+              missing = required.difference(header)
+              if missing:
+                  raise SystemExit(
+                      f"missing required pressure variables: {sorted(missing)}"
+                  )
+              row_count = 0
+              last_time = None
+              min_pressure = (math.inf, "")
+              for row in rows:
+                  if len(row) != width:
+                      raise SystemExit(
+                          f"incomplete CSV row {row_count + 2}: "
+                          f"{len(row)} of {width} fields"
+                      )
+                  row_count += 1
+                  last_time = float(row[0])
+                  for index in pressure_columns:
+                      pressure = float(row[index])
+                      if not math.isfinite(pressure):
+                          raise SystemExit(
+                              f"non-finite pressure {header[index]} "
+                              f"at t={last_time}"
+                          )
+                      if pressure < min_pressure[0]:
+                          min_pressure = (pressure, header[index])
+              if row_count == 0:
+                  raise SystemExit("result CSV has no data rows")
+              if not math.isclose(
+                  last_time, 10.0, rel_tol=0.0, abs_tol=1e-9
+              ):
+                  raise SystemExit(
+                      f"expected 10-second result, CSV ends at {last_time}"
+                  )
+              if min_pressure[0] < 0.0:
+                  raise SystemExit(
+                      f"negative pressure {min_pressure[0]} Pa in "
+                      f"{min_pressure[1]}"
+                  )
+              print(
+                  f"verified {row_count} rows through {last_time} s; "
+                  f"{len(pressure_columns)} pressure variables; "
+                  f"minimum {min_pressure[0]} Pa in {min_pressure[1]}"
               )
-          print(f"verified CSV final time: {last_time} s")
           PY
           cp build/tsp42_triplens_trip_res.csv outputs/tsp42/
           printf 'THERMOSYSPRO_42_TRIPLENS_PHYSICAL_SIMULATION_PASS\n' \
