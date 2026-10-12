@@ -341,6 +341,11 @@ jobs:
                       replace_start = call_start
                       if token == "Fluid.Ph(" and len(arguments) == 4:
                           pressure, enthalpy, mode_arg, fluid_arg = arguments
+                          fluid_prefix = "ThermoSysPro.Properties."
+                          if call_start >= len(fluid_prefix) and (
+                              candidate_source[call_start - len(fluid_prefix):call_start] == fluid_prefix
+                          ):
+                              replace_start -= len(fluid_prefix)
                       elif token == "Water_Ph(" and len(arguments) >= 2:
                           pressure, enthalpy = arguments[:2]
                           mode_arg = arguments[2] if len(arguments) >= 3 else "0"
@@ -372,13 +377,13 @@ jobs:
                       if argument_count >= 3:
                           checked_arguments.append(mode_arg)
                       replacement = (
-                          "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
+                          ".ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
                           + ", ".join(checked_arguments)
                           + ")"
                       )
                   else:
                       replacement = (
-                          "Fluid.checkedPh("
+                          ".ThermoSysPro.Properties.Fluid.checkedPh("
                           f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
@@ -647,6 +652,11 @@ jobs:
                       replace_start = call_start
                       if token == "Fluid.Ph(" and len(arguments) == 4:
                           pressure, enthalpy, mode_arg, fluid_arg = arguments
+                          fluid_prefix = "ThermoSysPro.Properties."
+                          if call_start >= len(fluid_prefix) and (
+                              candidate_source[call_start - len(fluid_prefix):call_start] == fluid_prefix
+                          ):
+                              replace_start -= len(fluid_prefix)
                       elif token == "Water_Ph(" and len(arguments) >= 2:
                           pressure, enthalpy = arguments[:2]
                           mode_arg = arguments[2] if len(arguments) >= 3 else "0"
@@ -678,13 +688,13 @@ jobs:
                       if argument_count >= 3:
                           checked_arguments.append(mode_arg)
                       replacement = (
-                          "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
+                          ".ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
                           + ", ".join(checked_arguments)
                           + ")"
                       )
                   else:
                       replacement = (
-                          "Fluid.checkedPh("
+                          ".ThermoSysPro.Properties.Fluid.checkedPh("
                           f'{pressure}, {enthalpy}, {mode_arg}, {fluid_arg}, "{caller}")')
                   candidate_source = candidate_source[:call_start] + replacement + candidate_source[call_end:]
               candidate.write_text(candidate_source)
