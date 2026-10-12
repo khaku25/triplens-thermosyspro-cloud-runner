@@ -178,16 +178,16 @@ jobs:
               )
           properties = properties.replace(old_assert, new_assert, 1)
           water_match = re.search(
-              r"(?ms)^    function Water_Ph\\n.*?^    end Water_Ph;\\n",
+              r"(?ms)^    function Water_Ph\n.*?^    end Water_Ph;\n",
               properties,
           )
           if water_match is None:
               raise SystemExit("could not clone Water_Ph for caller tracing")
           wrapper = water_match.group(0)
           wrapper = wrapper.replace(
-              "    function Water_Ph\\n",
-              "    function checkedWater_Ph\\n"
-              "      input String caller;\\n",
+              "    function Water_Ph\n",
+              "    function checkedWater_Ph\n"
+              "      input String caller;\n",
               1,
           )
           wrapper = wrapper.replace(
@@ -200,12 +200,11 @@ jobs:
               1,
           )
           derivative_annotation = (
-              "        derivative(noDerivative = mode) = Water_Ph_der,\\n"
+              "        derivative(noDerivative = mode) = Water_Ph_der,\n"
           )
           if wrapper.count(derivative_annotation) != 1:
               raise SystemExit("unexpected Water_Ph derivative annotation")
           wrapper = wrapper.replace(derivative_annotation, "", 1)
-          """
           package_end = properties.rfind("end IF97_wAJ;")
           if package_end < 0 or "function checkedWater_Ph" in properties:
               raise SystemExit("could not insert checkedWater_Ph exactly once")
