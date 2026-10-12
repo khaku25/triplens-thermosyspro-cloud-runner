@@ -376,10 +376,41 @@ jobs:
                   original_call, traced_call, 1
               )
           pipe_path.write_text(pipe_source)
+
+          pressure_loss_path = Path(
+              "vendor/ThermoSysPro/ThermoSysPro/"
+              "WaterSteam/PressureLosses/PipePressureLoss.mo"
+          )
+          pressure_loss_source = pressure_loss_path.read_text()
+          raw_pressure_loss_property = (
+              "  pro = ThermoSysPro.Properties.Fluid.Ph("
+              "Pm, h, mode, fluid);"
+          )
+          traced_pressure_loss_property = """  pro = if fluid == 1 then
+            ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph(
+              getInstanceName() + ".pro", Pm, h, mode)
+          else ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"""
+          if pressure_loss_source.count(raw_pressure_loss_property) != 1:
+              raise SystemExit(
+                  "expected one PipePressureLoss Fluid.Ph property call"
+              )
+          pressure_loss_source = pressure_loss_source.replace(
+              raw_pressure_loss_property,
+              traced_pressure_loss_property,
+              1,
+          )
+          pressure_loss_path.write_text(pressure_loss_source)
+          Path(
+              "outputs/tsp42/consistent-start/"
+              "PipePressureLoss-traced.mo"
+          ).write_text(pressure_loss_source)
+
           bounded_evidence = (
               "DynamicTwoPhaseFlowPipe passes raw P to non-inline wrappers; "
               "each wrapper clamps pressure in an algorithm-local pSafe so "
               "equation tearing/CSE cannot expose the bounded value.\n"
+              "PipePressureLoss now routes water/steam Pm through the same "
+              "caller-labelled wrapper to isolate zero-pressure Newton trials.\n"
               "No model start values or physical parameters changed.\n"
           )
           Path(
