@@ -912,12 +912,50 @@ jobs:
           water_function = water_function.replace(
               water_ph_needle, water_ph_trace, 1
           )
-          properties_path.write_text(
+          properties = (
               properties[:function_start] + water_function + properties[function_end:]
           )
+          checked_water_ph = """    function checkedWater_Ph
+              input String caller;
+              input Units.SI.AbsolutePressure p "Pressure";
+              input Units.SI.SpecificEnthalpy h "Specific enthalpy";
+              input Integer mode = 0 "IF97 region. 0:automatic";
+              output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph pro;
+            algorithm
+              assert(p > 611.657,
+                "TRACE DynamicTwoPhaseFlowPipe " + caller +
+                ": p=" + String(p) + " Pa, h=" + String(h) +
+                " J/kg, mode=" + String(mode));
+              pro := Water_Ph(p, h, mode);
+            end checkedWater_Ph;
+
+"""
+          package_end = properties.rfind("end IF97_wAJ;")
+          if package_end < 0 or "function checkedWater_Ph" in properties:
+              raise SystemExit("could not insert checkedWater_Ph exactly once")
+          properties = properties[:package_end] + checked_water_ph + properties[package_end:]
+          properties_path.write_text(properties)
+
+          dynamic_pipe_path = Path(
+              "build/tsp42-targeted-tearing/ThermoSysPro/"
+              "WaterSteam/HeatExchangers/DynamicTwoPhaseFlowPipe.mo"
+          )
+          dynamic_pipe = dynamic_pipe_path.read_text()
+          direct_call = "ThermoSysPro.Properties.WaterSteam.IF97.Water_Ph("
+          call_count = dynamic_pipe.count(direct_call)
+          if call_count < 1:
+              raise SystemExit("no DynamicTwoPhaseFlowPipe Water_Ph calls found")
+          dynamic_pipe = dynamic_pipe.replace(
+              direct_call,
+              "ThermoSysPro.Properties.WaterSteam.IF97.checkedWater_Ph("
+              "getInstanceName(), ",
+          )
+          dynamic_pipe_path.write_text(dynamic_pipe)
+          print(f"instrumented {call_count} DynamicTwoPhaseFlowPipe calls")
           PY
           cp build/tsp42-targeted-tearing/ThermoSysPro/WaterSteam/PressureLosses/PipePressureLoss.mo outputs/tsp42/targeted-tearing/PipePressureLoss-targeted-tearing.mo
           cp build/tsp42-targeted-tearing/ThermoSysPro/Properties/WaterSteam/IF97_packages.mo outputs/tsp42/targeted-tearing/IF97_packages-targeted-tearing.mo
+          cp build/tsp42-targeted-tearing/ThermoSysPro/WaterSteam/HeatExchangers/DynamicTwoPhaseFlowPipe.mo outputs/tsp42/targeted-tearing/DynamicTwoPhaseFlowPipe-targeted-tearing.mo
           cat > build/tsp42-triplens-targeted-tearing.mos <<MOS
           setCommandLineOptions("--std=3.4");
           setCommandLineOptions("-d=initialization,aliasConflicts");
