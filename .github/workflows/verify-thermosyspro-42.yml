@@ -133,7 +133,43 @@ jobs:
           if new in source:
               raise SystemExit("consistent pump start already present before patch")
           source = source.replace(old, new, 1)
+
+          scaling_replacements = {
+              "MassFlowMultiplier DoubleDebitHP(alpha = 2)": (
+                  "MassFlowMultiplier DoubleDebitHP("
+                  "alpha = 2, Cs(h(nominal = 3500000)))"
+              ),
+              (
+                  "h(fixed = false, start = 3433000), "
+                  "Cv(start = 10875), "
+                  "Pm(fixed = false, start = 12550000)"
+              ): (
+                  "h(fixed = false, start = 3433000, nominal = 3500000), "
+                  "Cv(start = 10875), "
+                  "Pm(fixed = false, start = 12550000, nominal = 10000000)"
+              ),
+          }
+          for baseline, scaled in scaling_replacements.items():
+              if source.count(baseline) != 1:
+                  raise SystemExit(
+                      f"expected exactly one nonlinear scaling target: {baseline}"
+                  )
+              if scaled in source:
+                  raise SystemExit(
+                      f"nonlinear scaling target already patched: {scaled}"
+                  )
+              source = source.replace(baseline, scaled, 1)
           source_path.write_text(source)
+          scaling_evidence = (
+              "vanne_entree_TurbineHP.h nominal=3500000 J/kg\\n"
+              "vanne_entree_TurbineHP.Pm nominal=10000000 Pa\\n"
+              "DoubleDebitHP.Cs.h nominal=3500000 J/kg\\n"
+              "Solver scaling metadata only; starts and physical parameters unchanged.\\n"
+          )
+          print(scaling_evidence, end="")
+          Path(
+              "outputs/tsp42/consistent-start/nls-scaling-metadata.txt"
+          ).write_text(scaling_evidence)
 
           match = re.search(
               r"PompeAlimBP\([^;]*?Pm\(start = ([0-9.]+)\)", source
