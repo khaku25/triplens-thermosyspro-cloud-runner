@@ -516,7 +516,10 @@ jobs:
                 -outputFormat=csv \
                 -nls=hybrid \
                 -nlssMaxDensity=0 \
-                -lv=LOG_RES_INIT \
+                -lv=LOG_RES_INIT,LOG_NLS,LOG_NLS_V \
+                -lv_time=2.57,2.61 \
+                -lv_system=9328,9346 \
+                -lvMaxWarn=10000 \
               | tee "$log_file"
           )
           if grep -Eq 'Simulation execution failed|division by zero|Error:' \
