@@ -528,7 +528,7 @@ jobs:
             tolerance=1e-3,
             method="dassl",
             outputFormat="csv",
-            simflags="-nls=mixed -lv=LOG_RES_INIT",
+            simflags="-nls=mixed -nlssMaxDensity=0 -lv=LOG_RES_INIT",
             fileNamePrefix="tsp42_triplens_consistent_start");
           getErrorString();
           MOS
@@ -568,6 +568,7 @@ jobs:
               -r="$PWD/build/tsp42_triplens_trip_res.csv" \
               -outputFormat=csv \
               -nls=mixed \
+              -nlssMaxDensity=0 \
               -lv=LOG_RES_INIT \
             | tee outputs/tsp42/triplens-physical-trip.log
           if grep -Eq 'Simulation execution failed|assert|division by zero|Error:' \
