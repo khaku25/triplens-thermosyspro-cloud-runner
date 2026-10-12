@@ -879,7 +879,7 @@ jobs:
             "TRACE PipePressureLoss " + getInstanceName() +
             ": p=" + String(Pm) + " Pa, h=" + String(h) +
             " J/kg, mode=" + String(mode));
-          pro = Fluid.Ph(Pm, h, mode, fluid);"""
+          pro = ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"""
           if source.count(property_call) != 1:
               raise SystemExit(
                   f"expected one PipePressureLoss property call, got "
