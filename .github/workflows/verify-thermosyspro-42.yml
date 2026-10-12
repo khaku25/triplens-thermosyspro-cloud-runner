@@ -178,90 +178,90 @@ jobs:
               )
           properties = properties.replace(old_assert, new_assert, 1)
           wrapper = """    function checkedWater_Ph
-      input String caller;
-      input Units.SI.AbsolutePressure p "Raw pressure";
-      input Units.SI.SpecificEnthalpy h "Specific enthalpy";
-      input Integer mode = 0 "IF97 region. 0:automatic";
-      output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph pro;
-    protected
-      Units.SI.AbsolutePressure pSafe;
-    algorithm
-      pSafe := max(
-        min(
-          p,
-          ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT - 1
-        ),
-        ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple
-      );
-      assert(
-        noEvent(p == pSafe),
-        "TRACE bounded Water_Ph caller " + caller
-        + ": raw p=" + String(p) + " Pa, safe p=" + String(pSafe)
-        + " Pa, h=" + String(h) + " J/kg",
-        AssertionLevel.warning
-      );
-      pro := Water_Ph(pSafe, h, mode);
-      annotation(Inline = false);
-    end checkedWater_Ph;
+                input String caller;
+                input Units.SI.AbsolutePressure p "Raw pressure";
+                input Units.SI.SpecificEnthalpy h "Specific enthalpy";
+                input Integer mode = 0 "IF97 region. 0:automatic";
+                output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph pro;
+              protected
+                Units.SI.AbsolutePressure pSafe;
+              algorithm
+                pSafe := max(
+                  min(
+                    p,
+                    ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT - 1
+                  ),
+                  ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple
+                );
+                assert(
+                  noEvent(p == pSafe),
+                  "TRACE bounded Water_Ph caller " + caller
+                  + ": raw p=" + String(p) + " Pa, safe p=" + String(pSafe)
+                  + " Pa, h=" + String(h) + " J/kg",
+                  AssertionLevel.warning
+                );
+                pro := Water_Ph(pSafe, h, mode);
+                annotation(Inline = false);
+              end checkedWater_Ph;
 
-"""
+          """
           package_end = properties.rfind("end IF97_wAJ;")
           if package_end < 0 or "function checkedWater_Ph" in properties:
               raise SystemExit("could not insert checkedWater_Ph exactly once")
           properties = properties[:package_end] + wrapper + properties[package_end:]
           conductivity_helper = """    function checkedWater_sat_P
-      input String caller;
-      input Units.SI.AbsolutePressure p "Raw pressure";
-      output ThermoSysPro.Properties.WaterSteam.Common.PropThermoSat lsat;
-      output ThermoSysPro.Properties.WaterSteam.Common.PropThermoSat vsat;
-    protected
-      Units.SI.AbsolutePressure pSafe;
-    algorithm
-      pSafe := max(
-        min(
-          p,
-          ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT - 1
-        ),
-        ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple
-      );
-      assert(
-        noEvent(p == pSafe),
-        "TRACE bounded Water_sat_P caller " + caller
-        + ": raw p=" + String(p) + " Pa, safe p=" + String(pSafe)
-        + " Pa",
-        AssertionLevel.warning
-      );
-      (lsat, vsat) := Water_sat_P(pSafe);
-      annotation(Inline = false);
-    end checkedWater_sat_P;
+                input String caller;
+                input Units.SI.AbsolutePressure p "Raw pressure";
+                output ThermoSysPro.Properties.WaterSteam.Common.PropThermoSat lsat;
+                output ThermoSysPro.Properties.WaterSteam.Common.PropThermoSat vsat;
+              protected
+                Units.SI.AbsolutePressure pSafe;
+              algorithm
+                pSafe := max(
+                  min(
+                    p,
+                    ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT - 1
+                  ),
+                  ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple
+                );
+                assert(
+                  noEvent(p == pSafe),
+                  "TRACE bounded Water_sat_P caller " + caller
+                  + ": raw p=" + String(p) + " Pa, safe p=" + String(pSafe)
+                  + " Pa",
+                  AssertionLevel.warning
+                );
+                (lsat, vsat) := Water_sat_P(pSafe);
+                annotation(Inline = false);
+              end checkedWater_sat_P;
 
-    function checkedThermalConductivity_rhoT
-      input String caller;
-      input Units.SI.Density rho "Density";
-      input Units.SI.Temperature T "Temperature";
-      input Units.SI.AbsolutePressure P "Raw pressure";
-      input Integer region = 0 "IF97 region. 0:automatic";
-      output Units.SI.ThermalConductivity lambda "Thermal conductivity";
-    protected
-      Units.SI.AbsolutePressure pSafe;
-    algorithm
-      pSafe := max(
-        min(
-          P,
-          ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT - 1
-        ),
-        ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple
-      );
-      assert(
-        rho > 0.00485458,
-        "TRACE thermal conductivity caller " + caller
-        + ": d=" + String(rho) + " kg/m3, T=" + String(T)
-        + " K, raw p=" + String(P) + " Pa, safe p=" + String(pSafe)
-        + " Pa, region=" + String(region)
-      );
-      lambda := ThermalConductivity_rhoT(rho, T, pSafe, region);
-      annotation(Inline = false);
-    end checkedThermalConductivity_rhoT;
+              function checkedThermalConductivity_rhoT
+                input String caller;
+                input Units.SI.Density rho "Density";
+                input Units.SI.Temperature T "Temperature";
+                input Units.SI.AbsolutePressure P "Raw pressure";
+                input Integer region = 0 "IF97 region. 0:automatic";
+                output Units.SI.ThermalConductivity lambda "Thermal conductivity";
+              protected
+                Units.SI.AbsolutePressure pSafe;
+              algorithm
+                pSafe := max(
+                  min(
+                    P,
+                    ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PCRIT - 1
+                  ),
+                  ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple
+                );
+                assert(
+                  rho > 0.00485458,
+                  "TRACE thermal conductivity caller " + caller
+                  + ": d=" + String(rho) + " kg/m3, T=" + String(T)
+                  + " K, raw p=" + String(P) + " Pa, safe p=" + String(pSafe)
+                  + " Pa, region=" + String(region)
+                );
+                lambda := ThermalConductivity_rhoT(rho, T, pSafe, region);
+                annotation(Inline = false);
+              end checkedThermalConductivity_rhoT;
 
           """
           if "function checkedThermalConductivity_rhoT" in properties:
