@@ -237,6 +237,27 @@ jobs:
                 annotation(Inline = false);
               end checkedWater_Ph;
 
+              function tracedWater_Ph
+                input String caller;
+                input Units.SI.AbsolutePressure p "Raw pressure";
+                input Units.SI.SpecificEnthalpy h "Specific enthalpy";
+                input Integer mode = 0 "IF97 region. 0:automatic";
+                output ThermoSysPro.Properties.WaterSteam.Common.ThermoProperties_ph pro;
+              algorithm
+                assert(
+                  noEvent(
+                    p
+                    > ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple
+                  ),
+                  "TRACE direct Water_Ph caller " + caller
+                  + ": p=" + String(p) + " Pa, h=" + String(h)
+                  + " J/kg, mode=" + String(mode),
+                  AssertionLevel.warning
+                );
+                pro := Water_Ph(p, h, mode);
+                annotation(Inline = false);
+              end tracedWater_Ph;
+
           """
           package_end = properties.rfind("end IF97_wAJ;")
           if package_end < 0 or "function checkedWater_Ph" in properties:
@@ -441,6 +462,57 @@ jobs:
               "PipePressureLoss-traced.mo"
           ).write_text(pressure_loss_source)
 
+          control_valve_path = Path(
+              "vendor/ThermoSysPro/ThermoSysPro/"
+              "WaterSteam/PressureLosses/ControlValve.mo"
+          )
+          control_valve_source = control_valve_path.read_text()
+          raw_valve_property = (
+              "  pro = ThermoSysPro.Properties.Fluid.Ph("
+              "Pm, h, mode, fluid);"
+          )
+          traced_valve_property = """  pro = if fluid == 1 then
+            ThermoSysPro.Properties.WaterSteam.IF97.tracedWater_Ph(
+              getInstanceName() + ".pro", Pm, h, mode)
+          else ThermoSysPro.Properties.Fluid.Ph(Pm, h, mode, fluid);"""
+          if control_valve_source.count(raw_valve_property) != 1:
+              raise SystemExit(
+                  "expected one ControlValve Fluid.Ph property call"
+              )
+          control_valve_source = control_valve_source.replace(
+              raw_valve_property, traced_valve_property, 1
+          )
+          control_valve_path.write_text(control_valve_source)
+          Path(
+              "outputs/tsp42/consistent-start/ControlValve-traced.mo"
+          ).write_text(control_valve_source)
+
+          turbine_path = Path(
+              "vendor/ThermoSysPro/ThermoSysPro/"
+              "WaterSteam/Machines/StodolaTurbine.mo"
+          )
+          turbine_source = turbine_path.read_text()
+          raw_turbine_inlet = (
+              "  proe = ThermoSysPro.Properties.Fluid.Ph("
+              "Pe, Ce.h, mode_e, fluid);"
+          )
+          traced_turbine_inlet = """  proe = if fluid == 1 then
+            ThermoSysPro.Properties.WaterSteam.IF97.tracedWater_Ph(
+              getInstanceName() + ".proe", Pe, Ce.h, mode_e)
+          else ThermoSysPro.Properties.Fluid.Ph(
+            Pe, Ce.h, mode_e, fluid);"""
+          if turbine_source.count(raw_turbine_inlet) != 1:
+              raise SystemExit(
+                  "expected one StodolaTurbine inlet Fluid.Ph call"
+              )
+          turbine_source = turbine_source.replace(
+              raw_turbine_inlet, traced_turbine_inlet, 1
+          )
+          turbine_path.write_text(turbine_source)
+          Path(
+              "outputs/tsp42/consistent-start/StodolaTurbine-traced.mo"
+          ).write_text(turbine_source)
+
           bounded_evidence = (
               "DynamicTwoPhaseFlowPipe passes raw P to non-inline wrappers; "
               "each wrapper clamps pressure in an algorithm-local pSafe so "
@@ -552,9 +624,7 @@ jobs:
                 -outputFormat=csv \
                 -nls=hybrid \
                 -nlssMaxDensity=0 \
-                -lv=LOG_RES_INIT,LOG_NLS,LOG_NLS_V \
-                -lv_time=2.57,2.61 \
-                -lv_system=9328,9346 \
+                -lv=LOG_RES_INIT \
                 -lvMaxWarn=10000 \
               | tee "$log_file"
           )
