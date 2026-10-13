@@ -577,7 +577,7 @@ jobs:
             tolerance=1e-3,
             method="dassl",
             outputFormat="csv",
-            simflags="-nls=kinsol -nlsLS=lapack -nlssMaxDensity=0 -lv=LOG_RES_INIT",
+            simflags="-nls=kinsol -nlsLS=lapack -lv=LOG_RES_INIT",
             fileNamePrefix="tsp42_triplens_consistent_start");
           getErrorString();
           MOS
@@ -626,7 +626,6 @@ jobs:
                 -outputFormat=csv \
                 -nls=kinsol \
                 -nlsLS=lapack \
-                -nlssMaxDensity=0 \
                 -lv=LOG_RES_INIT \
                 -lvMaxWarn=10000 \
               2>&1 \
