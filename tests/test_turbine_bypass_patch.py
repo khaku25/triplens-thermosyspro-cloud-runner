@@ -42,6 +42,17 @@ end CombinedCycle_TripTAC;
 
 
 class TurbineBypassPatchTests(unittest.TestCase):
+    def test_vpp_property_calls_do_not_add_a_noninline_trace_wrapper(self) -> None:
+        patched = patch_model(UPSTREAM_STUB)
+
+        self.assertNotIn("IF97.tracedWater_Ph(", patched)
+        self.assertEqual(
+            patched.count(
+                "ThermoSysPro.Properties.Fluid.Ph(Pthermo, h, mode, fluid)"
+            ),
+            2,
+        )
+
     def test_regularized_water_property_floor_exceeds_if97_triple_point(self) -> None:
         patched = patch_model(UPSTREAM_STUB)
 

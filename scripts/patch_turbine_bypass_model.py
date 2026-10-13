@@ -52,10 +52,7 @@ PARAMETERS = f'''  // {MARKER}
     // divides by p in that trial state. Bound only the property evaluation,
     // never the physical connector pressure or the pressure-flow equation.
     Pthermo = noEvent(max(pressureFloor, P));
-    pro = if fluid == 1 then
-      ThermoSysPro.Properties.WaterSteam.IF97.tracedWater_Ph(
-        getInstanceName() + ".pro", Pthermo, h, mode)
-    else ThermoSysPro.Properties.Fluid.Ph(Pthermo, h, mode, fluid);
+    pro = ThermoSysPro.Properties.Fluid.Ph(Pthermo, h, mode, fluid);
     T = pro.T;
   end VPPRegularizedSplitter2;
 
@@ -119,10 +116,7 @@ PARAMETERS = f'''  // {MARKER}
     Ce3.h_vol = h;
     Cs.h_vol = h;
     Pthermo = noEvent(max(pressureFloor, P));
-    pro = if fluid == 1 then
-      ThermoSysPro.Properties.WaterSteam.IF97.tracedWater_Ph(
-        getInstanceName() + ".pro", Pthermo, h, mode)
-    else ThermoSysPro.Properties.Fluid.Ph(Pthermo, h, mode, fluid);
+    pro = ThermoSysPro.Properties.Fluid.Ph(Pthermo, h, mode, fluid);
     T = pro.T;
     rho = if p_rho > 0 then p_rho else noEvent(max(1e-6, pro.d));
   end VPPRegularizedMixingVolume;
