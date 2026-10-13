@@ -131,7 +131,7 @@ PARAMETERS = f'''  // {MARKER}
     ThermoSysPro.WaterSteam.Connectors.FluidInlet C1;
     ThermoSysPro.WaterSteam.Connectors.FluidOutlet C2;
     ThermoSysPro.Units.xSI.Cv Cv(start=0);
-    Modelica.Units.SI.Pressure deltaP;
+    Modelica.Units.SI.Pressure deltaP(nominal=1e7);
     Modelica.Units.SI.MassFlowRate Q(start=0);
   equation
     C1.Q = C2.Q;
@@ -653,3 +653,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

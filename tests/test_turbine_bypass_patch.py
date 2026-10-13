@@ -123,6 +123,14 @@ end StodolaTurbine;
         self.assertNotIn("ThermoSysPro.Units.DifferentialPressure", patched)
         self.assertNotIn("ThermoSysPro.Units.xSI.DifferentialPressure", patched)
 
+    def test_bypass_pressure_drop_has_solver_nominal_scale(self) -> None:
+        patched = patch_model(UPSTREAM_STUB)
+
+        self.assertIn(
+            "Modelica.Units.SI.Pressure deltaP(nominal=1e7)",
+            patched,
+        )
+
     def test_patch_accepts_pinned_thermosyspro_42_combined_cycle_source(self) -> None:
         upstream = (
             ROOT
@@ -299,3 +307,4 @@ end StodolaTurbine;
 
 if __name__ == "__main__":
     unittest.main()
+
