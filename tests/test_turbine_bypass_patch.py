@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 import tempfile
@@ -41,6 +42,19 @@ end CombinedCycle_TripTAC;
 
 
 class TurbineBypassPatchTests(unittest.TestCase):
+    def test_regularized_water_property_floor_exceeds_if97_triple_point(self) -> None:
+        patched = patch_model(UPSTREAM_STUB)
+
+        pressure_floors = [
+            float(value)
+            for value in re.findall(r"pressureFloor=([0-9.]+)", patched)
+        ]
+        self.assertEqual(len(pressure_floors), 2)
+        self.assertTrue(
+            all(value > 611.657 for value in pressure_floors),
+            pressure_floors,
+        )
+
     def test_stodola_patch_uses_thermosyspro_42_pressure_type(self) -> None:
         source = """within ThermoSysPro.WaterSteam.Machines;
 model StodolaTurbine
