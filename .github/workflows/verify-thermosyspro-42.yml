@@ -577,7 +577,7 @@ jobs:
             tolerance=1e-3,
             method="dassl",
             outputFormat="csv",
-            simflags="-nls=kinsol -nlsLS=lapack -lv=LOG_RES_INIT",
+            simflags="-nls=mixed -lv=LOG_RES_INIT",
             fileNamePrefix="tsp42_triplens_consistent_start");
           getErrorString();
           MOS
@@ -624,8 +624,7 @@ jobs:
                 '-variableFilter=.*\.(P(\[[0-9]+\])?|Pm|p)' \
                 -r="$result_file" \
                 -outputFormat=csv \
-                -nls=kinsol \
-                -nlsLS=lapack \
+                -nls=mixed \
                 -lv=LOG_RES_INIT \
                 -lvMaxWarn=10000 \
               2>&1 \
