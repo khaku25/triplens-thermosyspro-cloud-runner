@@ -613,9 +613,9 @@ jobs:
           result_file="$PWD/build/tsp42_triplens_trip_res.csv"
           log_file="$PWD/outputs/tsp42/triplens-physical-trip.log"
           test -x "$executable"
-          (
-            cd "$PWD/build"
-            timeout --signal=TERM --kill-after=30s 90m \
+          pushd "$PWD/build" >/dev/null
+          set +e
+          timeout --signal=TERM --kill-after=30s 90m \
               "$executable" \
                 -startTime=0 \
                 -stopTime=10 \
@@ -630,8 +630,20 @@ jobs:
                 -lv_time=2.59,2.62 \
                 -lv_system=8063 \
                 -lvMaxWarn=10000 \
-              | tee "$log_file"
-          )
+              2>&1 \
+            | python3 "$GITHUB_WORKSPACE/scripts/capture_log_window.py" \
+                "$log_file" \
+                --head-lines 300 \
+                --tail-lines 60000
+          pipeline_status=("${PIPESTATUS[@]}")
+          set -e
+          popd >/dev/null
+          simulator_status="${pipeline_status[0]}"
+          capture_status="${pipeline_status[1]}"
+          printf 'simulator_status=%s\ncapture_status=%s\n' \
+            "$simulator_status" "$capture_status" \
+            | tee outputs/tsp42/simulation-exit-status.txt
+          test "$capture_status" -eq 0
           if grep -Eq 'Simulation execution failed|division by zero|Error:' \
               outputs/tsp42/triplens-physical-trip.log; then
             exit 1
@@ -703,6 +715,7 @@ jobs:
           cp build/tsp42_triplens_trip_res.csv outputs/tsp42/
           printf 'THERMOSYSPRO_42_TRIPLENS_PHYSICAL_SIMULATION_PASS\n' \
             | tee outputs/tsp42/result.txt
+          test "$simulator_status" -eq 0
 
       - name: Upload ThermoSysPro 4.2 simulation evidence
         if: always()
