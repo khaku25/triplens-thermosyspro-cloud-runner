@@ -626,9 +626,7 @@ jobs:
                 -outputFormat=csv \
                 -nls=hybrid \
                 -nlssMaxDensity=0 \
-                -lv=LOG_RES_INIT,LOG_NLS,LOG_NLS_V \
-                -lv_time=2.59,2.62 \
-                -lv_system=8063 \
+                -lv=LOG_RES_INIT \
                 -lvMaxWarn=10000 \
               2>&1 \
             | python3 "$GITHUB_WORKSPACE/scripts/capture_log_window.py" \
@@ -643,6 +641,8 @@ jobs:
           printf 'simulator_status=%s\ncapture_status=%s\n' \
             "$simulator_status" "$capture_status" \
             | tee outputs/tsp42/simulation-exit-status.txt
+          echo '--- final simulator log tail ---'
+          tail -n 400 "$log_file"
           test "$capture_status" -eq 0
           if grep -Eq 'Simulation execution failed|division by zero|Error:' \
               outputs/tsp42/triplens-physical-trip.log; then
@@ -695,6 +695,12 @@ jobs:
                           min_pressure = (pressure, header[index])
               if row_count == 0:
                   raise SystemExit("result CSV has no data rows")
+              print(
+                  f"partial verification: {row_count} rows through "
+                  f"{last_time} s; {len(pressure_columns)} pressure "
+                  f"variables; minimum {min_pressure[0]} Pa in "
+                  f"{min_pressure[1]}"
+              )
               if not math.isclose(
                   last_time, 10.0, rel_tol=0.0, abs_tol=1e-9
               ):
