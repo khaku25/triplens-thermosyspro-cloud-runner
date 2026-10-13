@@ -626,7 +626,9 @@ jobs:
                 -outputFormat=csv \
                 -nls=hybrid \
                 -nlssMaxDensity=0 \
-                -lv=LOG_RES_INIT \
+                -lv=LOG_RES_INIT,LOG_NLS,LOG_NLS_V \
+                -lv_time=2.59,2.62 \
+                -lv_system=8063 \
                 -lvMaxWarn=10000 \
               | tee "$log_file"
           )
