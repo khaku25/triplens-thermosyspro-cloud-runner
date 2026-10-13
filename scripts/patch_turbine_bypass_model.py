@@ -23,7 +23,7 @@ MARKER = "TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V13"
 PARAMETERS = f'''  // {MARKER}
   model VPPRegularizedSplitter2
     "Two-way steam splitter with bounded IF97 evaluation during Newton trials"
-    parameter Modelica.Units.SI.AbsolutePressure pressureFloor=500
+    parameter Modelica.Units.SI.AbsolutePressure pressureFloor=612.657
       "IF97 evaluation floor; the connector pressure itself is not clipped";
     parameter Integer fluid=1 "1: water/steam - 2: C3H3F5";
     parameter Integer mode=0 "IF97 region";
@@ -69,7 +69,7 @@ PARAMETERS = f'''  // {MARKER}
     parameter Integer fluid=1;
     parameter Modelica.Units.SI.Density p_rho=0;
     parameter Integer mode=0;
-    parameter Modelica.Units.SI.AbsolutePressure pressureFloor=500
+    parameter Modelica.Units.SI.AbsolutePressure pressureFloor=612.657
       "IF97 evaluation floor; the connector pressure itself is not clipped";
     Modelica.Units.SI.Temperature T;
     Modelica.Units.SI.AbsolutePressure P(start=1e5, min=0);

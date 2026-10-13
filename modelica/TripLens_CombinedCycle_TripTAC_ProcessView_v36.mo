@@ -5,7 +5,7 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
   // TRIPLENS_VPP_TURBINE_BYPASS_PATCH_V13
 
   model VPPRegularizedSplitter2 "Two-way steam splitter with bounded IF97 evaluation during Newton trials"
-    parameter Modelica.SIunits.AbsolutePressure pressureFloor = 500 "IF97 evaluation floor; the connector pressure itself is not clipped";
+    parameter Modelica.SIunits.AbsolutePressure pressureFloor = 612.657 "IF97 evaluation floor; the connector pressure itself is not clipped";
     parameter Integer fluid = 1 "1: water/steam - 2: C3H3F5";
     parameter Integer mode = 0 "IF97 region";
     Modelica.SIunits.AbsolutePressure P(start = 10e5, min = 0);
@@ -48,7 +48,7 @@ model TripLens_CombinedCycle_TripTAC_ProcessView_v36 "CCPP model to simulate a l
     parameter Integer fluid = 1;
     parameter Modelica.SIunits.Density p_rho = 0;
     parameter Integer mode = 0;
-    parameter Modelica.SIunits.AbsolutePressure pressureFloor = 500 "IF97 evaluation floor; the connector pressure itself is not clipped";
+    parameter Modelica.SIunits.AbsolutePressure pressureFloor = 612.657 "IF97 evaluation floor; the connector pressure itself is not clipped";
     Modelica.SIunits.Temperature T;
     Modelica.SIunits.AbsolutePressure P(start = 1e5, min = 0);
     Modelica.SIunits.AbsolutePressure Pthermo;
