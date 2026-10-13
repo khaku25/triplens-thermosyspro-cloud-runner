@@ -248,6 +248,8 @@ jobs:
                   noEvent(
                     p
                     > ThermoSysPro.Properties.WaterSteam.BaseIF97.triple.ptriple
+                    and p
+                    <= ThermoSysPro.Properties.WaterSteam.BaseIF97.data.PLIMIT1
                   ),
                   "TRACE direct Water_Ph caller " + caller
                   + ": p=" + String(p) + " Pa, h=" + String(h)
